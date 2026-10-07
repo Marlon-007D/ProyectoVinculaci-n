@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import type { ReactNode } from 'react'
-import { ArrowLeft, ArrowRight, CalendarDays, Check, CirclePlus, Pencil, Trash2 } from 'lucide-react'
+import { ArrowLeft, ArrowRight, CalendarDays, Check, CirclePlus, Eye, Pencil, Trash2 } from 'lucide-react'
 import { Button } from '../../../shared/components/Button/Button'
 import { Modal } from '../../../shared/components/Modal/Modal'
 import { institutions } from '../mocks/academicContentMock'
@@ -81,6 +81,25 @@ export function AcademicContentManager({ kind, title, singular }: Props) {
     try { remove(entry.id); setNotice(`${singular} eliminado.`) }
     catch (error) { setNotice(error instanceof Error ? error.message : 'No se pudo eliminar el registro.') }
   }
+  const previewRecognition = async (entry: AcademicContentEntry) => {
+    const institutionName = institutions.find(institution => institution.id === entry.institutionId)?.name ?? title
+    const periodName = periods.find(period => period.id === entry.periodId)?.title ?? ''
+    const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim()
+    const previewWindow = window.open('about:blank', '_blank')
+    if (!previewWindow) {
+      setNotice('El navegador bloqueó la pestaña del reconocimiento. Permite ventanas emergentes e inténtalo de nuevo.')
+      return
+    }
+    previewWindow.opener = null
+    previewWindow.document.title = `Reconocimiento de ${entry.studentName}`
+    try {
+      const { createRecognitionPdf } = await import('../../honors/services/createRecognitionPdf')
+      previewWindow.location.href = createRecognitionPdf(entry, institutionName, periodName, accent)
+    } catch {
+      previewWindow.close()
+      setNotice('No se pudo generar el PDF del reconocimiento.')
+    }
+  }
   const renderPagination = (position: 'top' | 'bottom') => visibleEntries.length > pageSize && <nav className={`academic-pagination is-${position}`} aria-label={`Paginación de ${title}`}><button type="button" onClick={() => setPage(current => Math.max(1, current - 1))} disabled={page === 1} aria-label="Página anterior"><ArrowLeft size={16} /></button><span>Página {page} de {pageCount}</span><button type="button" onClick={() => setPage(current => Math.min(pageCount, current + 1))} disabled={page === pageCount} aria-label="Página siguiente"><ArrowRight size={16} /></button></nav>
 
   return <section className="page-content academic-content-page">
@@ -103,7 +122,7 @@ export function AcademicContentManager({ kind, title, singular }: Props) {
             {subText && <p>{subText}</p>}
             <small>{kind === 'period' ? `${dateLabel(entry.startDate)} – ${dateLabel(entry.endDate)}` : kind === 'event' ? `${dateLabel(entry.date)}${entry.location ? ` · ${entry.location}` : ''}` : kind === 'honor' ? linkedPeriod?.title ?? 'Sin período académico' : `${entry.date ? dateLabel(entry.date) : 'Sin fecha'} · ${linkedPeriod?.title ?? 'Sin período académico'}`}</small>
           </div>
-          <div className="academic-entry-actions"><button type="button" className="academic-icon-button" onClick={() => beginEdit(entry)} aria-label={`Editar ${mainText}`}><Pencil size={17} /></button>{kind !== 'period' && <button type="button" className="academic-icon-button is-danger" onClick={() => deleteEntry(entry)} aria-label={`Eliminar ${mainText}`}><Trash2 size={17} /></button>}</div>
+          <div className="academic-entry-actions">{kind === 'honor' && <button type="button" className="academic-icon-button is-preview" onClick={() => previewRecognition(entry)} aria-label={`Ver reconocimiento de ${mainText}`} title="Ver reconocimiento"><Eye size={18} /></button>}<button type="button" className="academic-icon-button" onClick={() => beginEdit(entry)} aria-label={`Editar ${mainText}`}><Pencil size={17} /></button>{kind !== 'period' && <button type="button" className="academic-icon-button is-danger" onClick={() => deleteEntry(entry)} aria-label={`Eliminar ${mainText}`}><Trash2 size={17} /></button>}</div>
         </article>
       })}</div>}
       {renderPagination('bottom')}

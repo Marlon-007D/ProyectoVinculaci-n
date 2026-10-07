@@ -1,2 +1,2 @@
-.result-card { border: 1px solid var(--line); border-radius: 14px; background: #fbfafc; }
+.result-card { border: 1px solid var(--line); border-radius: 14px; background: #fff; }
 .reset-button:focus-visible { outline: 3px solid var(--accent-focus); outline-offset: 2px; }

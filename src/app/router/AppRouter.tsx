@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
+import { ChevronRight, Home } from 'lucide-react'
 import { Sidebar } from '../../shared/components/Sidebar/Sidebar'
 import { AppHeader } from '../../shared/components/AppHeader/AppHeader'
 import { InvoiceSimulatorPage } from '../../features/simulators/invoice/pages/InvoiceSimulatorPage'
@@ -26,6 +27,11 @@ const pages = {
   'academic-periods': { Component: AcademicPeriodsPage },
 } satisfies Record<AppRoute, { Component: () => ReactNode }>
 
+const routeLabels: Record<AppRoute, string> = {
+  invoice: 'Facturación electrónica', converter: 'Unidades y monedas', interest: 'Interés financiero',
+  news: 'Noticias', events: 'Eventos', honors: 'Cuadro de honor', 'academic-periods': 'Período académico',
+}
+
 export function AppRouter({ collapsed, theme, onThemeChange, onToggleSidebar }: Props) {
   const [route, setRoute] = useState<AppRoute>('invoice')
   const { Component } = pages[route]
@@ -33,6 +39,11 @@ export function AppRouter({ collapsed, theme, onThemeChange, onToggleSidebar }: 
     <AppHeader />
     <Sidebar active={route} collapsed={collapsed} theme={theme} onThemeChange={onThemeChange} onSelect={setRoute} onToggle={onToggleSidebar} />
     <main className="main">
+      <nav className="breadcrumbs" aria-label="Migas de pan">
+        <span className="breadcrumb-home"><Home size={15} aria-hidden="true" /> SimulaEdu</span>
+        <ChevronRight size={15} aria-hidden="true" />
+        <span aria-current="page">{routeLabels[route]}</span>
+      </nav>
       <Component />
     </main>
   </>

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { FileText, Plus, Trash2 } from 'lucide-react'
+import { CalendarDays, CreditCard, FileText, IdCard, Plus, ShoppingBag, Trash2, UserRound } from 'lucide-react'
 import type { InvoiceDraft, InvoiceLine } from '../types/invoice.types'
 import './InvoiceForm.css'
 
@@ -38,14 +38,14 @@ export function InvoiceForm({ draft, onField, onUpdate, onAdd, onRemove, onSubmi
   const fieldError = (key: string) => errors[key] && <span className="invoice-field-error" id={`invoice-error-${key}`} role="alert">{errors[key]}</span>
 
   return <section className="invoice-card">
-    <div className="card-heading"><h2>Factura de venta</h2></div>
+    <div className="card-heading"><div className="invoice-title"><span className="invoice-title-icon"><FileText size={21} aria-hidden="true" /></span><h2>Factura de venta</h2></div></div>
     <div className="form-grid">
-      <label>Cliente<input required aria-invalid={!!errors.customer} aria-describedby={errors.customer ? 'invoice-error-customer' : undefined} value={draft.customer} onChange={e => { onField('customer', e.target.value); if (e.target.value.trim()) clearError('customer') }} />{fieldError('customer')}</label>
-      <label>Identificación<input required type="text" inputMode="numeric" autoComplete="off" maxLength={10} pattern="[0-9]{0,10}" aria-invalid={!!errors.identification} aria-describedby={errors.identification ? 'invoice-error-identification' : undefined} value={draft.identification} onChange={e => { const value = e.target.value.replace(/\D/g, '').slice(0, 10); onField('identification', value); if (value.trim()) clearError('identification') }} />{fieldError('identification')}</label>
-      <label>Fecha de emisión<input required type="date" aria-invalid={!!errors.date} aria-describedby={errors.date ? 'invoice-error-date' : undefined} value={draft.date} onChange={e => { onField('date', e.target.value); if (e.target.value) clearError('date') }} />{fieldError('date')}</label>
-      <label>Forma de pago<select required aria-invalid={!!errors.paymentMethod} aria-describedby={errors.paymentMethod ? 'invoice-error-paymentMethod' : undefined} value={draft.paymentMethod} onChange={e => { onField('paymentMethod', e.target.value); if (e.target.value) clearError('paymentMethod') }}><option value="" disabled>Selecciona una forma de pago</option><option>Efectivo</option><option>Transferencia</option><option>Tarjeta</option></select>{fieldError('paymentMethod')}</label>
+      <label><span className="invoice-field-label"><UserRound size={16} aria-hidden="true" />Cliente</span><input required aria-invalid={!!errors.customer} aria-describedby={errors.customer ? 'invoice-error-customer' : undefined} value={draft.customer} onChange={e => { onField('customer', e.target.value); if (e.target.value.trim()) clearError('customer') }} />{fieldError('customer')}</label>
+      <label><span className="invoice-field-label"><IdCard size={16} aria-hidden="true" />Identificación</span><input required type="text" inputMode="numeric" autoComplete="off" maxLength={10} pattern="[0-9]{0,10}" aria-invalid={!!errors.identification} aria-describedby={errors.identification ? 'invoice-error-identification' : undefined} value={draft.identification} onChange={e => { const value = e.target.value.replace(/\D/g, '').slice(0, 10); onField('identification', value); if (value.trim()) clearError('identification') }} />{fieldError('identification')}</label>
+      <label><span className="invoice-field-label"><CalendarDays size={16} aria-hidden="true" />Fecha de emisión</span><input required type="date" aria-invalid={!!errors.date} aria-describedby={errors.date ? 'invoice-error-date' : undefined} value={draft.date} onChange={e => { onField('date', e.target.value); if (e.target.value) clearError('date') }} />{fieldError('date')}</label>
+      <label><span className="invoice-field-label"><CreditCard size={16} aria-hidden="true" />Forma de pago</span><select required aria-invalid={!!errors.paymentMethod} aria-describedby={errors.paymentMethod ? 'invoice-error-paymentMethod' : undefined} value={draft.paymentMethod} onChange={e => { onField('paymentMethod', e.target.value); if (e.target.value) clearError('paymentMethod') }}><option value="" disabled>Selecciona una forma de pago</option><option>Efectivo</option><option>Transferencia</option><option>Tarjeta</option></select>{fieldError('paymentMethod')}</label>
     </div>
-    <div className="line-items"><div className="items-heading"><h3>Productos</h3><button className="text-button" onClick={onAdd}><Plus size={18} /> Agregar ítem</button></div>
+    <div className="line-items"><div className="items-heading"><h3><ShoppingBag size={18} aria-hidden="true" />Productos</h3><button className="text-button" onClick={onAdd}><Plus size={18} /> Agregar ítem</button></div>
       <div className="item-table"><div className="table-header"><span>Descripción</span><span>Cantidad</span><span>Precio unitario</span><span aria-hidden="true" /><span>Total</span></div>
         {draft.lines.map(line => <div className="table-row" key={line.id}>
           <label className="table-cell description-cell"><span>Descripción</span><input required aria-label="Descripción" aria-invalid={!!errors[`${line.id}-description`]} aria-describedby={errors[`${line.id}-description`] ? `invoice-error-${line.id}-description` : undefined} value={line.description} onChange={e => { onUpdate(line.id, 'description', e.target.value); if (e.target.value.trim()) clearError(`${line.id}-description`) }} />{fieldError(`${line.id}-description`)}</label>
