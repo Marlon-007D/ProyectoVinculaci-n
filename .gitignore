@@ -1,24 +1,56 @@
-# Logs
-logs
+# Dependencies
+node_modules/
+.pnp/
+.pnp.*
+
+# Vite / build outputs
+dist/
+.vite/
+coverage/
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+
+# Local instructions and requirements documents
+AGENTS.md
+**/AGENTS.md
+agents.md
+requerimientos.md
+Requerimientos.md
+requerimietnos.md
+
+# Package manager and tool caches
+.npm-cache/
+.cache/
+.eslintcache
+.stylelintcache
+
+# Logs and temporary debug output
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
-lerna-debug.log*
+vite-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
+# TypeScript incremental build metadata
+*.tsbuildinfo
 
-# Editor directories and files
+# Operating system files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editors and IDEs
+.idea/
 .vscode/*
 !.vscode/extensions.json
-.idea
-.DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
+*.swp
+*.swo
+
+# Local database files
+*.sqlite
+*.sqlite3
+*.db

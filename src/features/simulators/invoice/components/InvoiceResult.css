@@ -1,0 +1,2 @@
+.summary-card { border: 1px solid var(--line); border-radius: 14px; background: #fbfafc; }
+.summary-card .grand-total dd { color: var(--accent); }

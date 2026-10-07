@@ -1,0 +1,10 @@
+.theme-user { position: relative; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
+.theme-trigger { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 46px; padding: 0 12px; border: 0; border-radius: 12px; color: var(--accent); background: transparent; text-align: left; font: 600 14px 'DM Sans',sans-serif; }
+.theme-trigger:hover { background: var(--accent-soft); }.theme-trigger > span:not(.theme-trigger-swatch) { flex: 1; color: #514b56; }
+.theme-trigger-swatch { width: 13px; height: 13px; flex: none; border: 1px solid #0002; border-radius: 50%; }.theme-chevron { margin-left: auto; color: #79727f; transition: transform .15s ease; }.theme-user.is-open .theme-chevron { transform: rotate(180deg); }
+.theme-options { position: absolute; z-index: 8; top: calc(100% + 8px); left: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; width: 192px; padding: 9px; border: 1px solid var(--line); border-radius: 13px; background: white; }
+.theme-option { position: relative; display: grid; place-items: center; width: 38px; height: 38px; padding: 0; border: 0; border-radius: 50%; background: transparent; }.theme-option:hover, .theme-option[aria-pressed="true"] { background: var(--accent-soft); }
+.theme-option-swatch { width: 23px; height: 23px; border: 1px solid #0002; border-radius: 50%; }.theme-option > svg { position: absolute; right: -1px; bottom: -1px; padding: 2px; border-radius: 50%; color: white; background: var(--accent); }
+.theme-trigger:focus-visible, .theme-option:focus-visible { outline: 3px solid var(--accent-focus); outline-offset: 2px; }
+.sidebar.is-collapsed .theme-user { display: grid; justify-items: center; }.sidebar.is-collapsed .theme-trigger { justify-content: center; width: 56px; padding: 0; }.sidebar.is-collapsed .theme-trigger-swatch { position: absolute; right: 11px; bottom: 17px; width: 10px; height: 10px; }.sidebar.is-collapsed .theme-options { top: 0; left: calc(100% + 8px); width: 170px; }
+@media(max-width:620px){.theme-options{width:192px}.sidebar.is-collapsed .theme-options{left:calc(100% + 8px)}}
