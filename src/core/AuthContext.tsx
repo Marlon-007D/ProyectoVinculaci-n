@@ -1,14 +1,15 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import type { User, Session } from '@supabase/supabase-js';
+import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from './supabaseClient';
 
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   role: string | null;
+  roleError: string | null;
   institutionId: string | null;
   loading: boolean;
-  login: (email: string, pass: string) => Promise<{ error: any }>;
+  login: (email: string, pass: string) => Promise<{ error: Error | null }>;
   logout: () => Promise<void>;
 }
 
@@ -18,62 +19,88 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [role, setRole] = useState<string | null>(null);
+  const [roleError, setRoleError] = useState<string | null>(null);
   const [institutionId, setInstitutionId] = useState<string | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState(true);
 
   const fetchUserRoleAndTenant = async (userId: string) => {
     setRole(null);
+    setRoleError(null);
     setInstitutionId(null);
-    // Consultar membresía para conocer el rol e institución vinculada
+
     const { data, error } = await supabase
       .from('memberships')
-      .select('role, institution_id')
-      .eq('user_id', userId)
-      .single();
+      .select('institution_id, role_id')
+      .eq('profile_id', userId);
 
-    if (!error && data) {
-      setRole(data.role);
-      setInstitutionId(data.institution_id);
-    } else {
-      // Si no existe membresía específica, comprobar si es superadmin global
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('is_superadmin')
-        .eq('id', userId)
-        .single();
-
-      if (profile?.is_superadmin) {
-        setRole('superadmin');
-      }
+    if (error) {
+      setRoleError('No se pudo consultar tu rol. Verifica que esté aplicada la migración de acceso de superadministrador.');
+      return;
     }
+
+    const memberships = data ?? [];
+    if (memberships.length === 0) return;
+
+    const { data: roles, error: rolesError } = await supabase
+      .from('roles')
+      .select('role_id, name')
+      .in('role_id', memberships.map((item) => item.role_id));
+
+    if (rolesError) {
+      setRoleError('No se pudieron consultar los nombres de rol. Verifica los permisos de lectura de la tabla roles.');
+      return;
+    }
+
+    const roleNameById = new Map((roles ?? []).map((item) => [item.role_id, item.name]));
+    const membership = memberships.find((item) => roleNameById.get(item.role_id) === 'super_admin') ?? memberships[0];
+    setRole(roleNameById.get(membership.role_id) ?? null);
+    setInstitutionId(membership?.institution_id ?? null);
   };
 
   useEffect(() => {
-    // Cargar sesión inicial
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        await fetchUserRoleAndTenant(session.user.id);
-      }
-      setLoading(false);
-    }).catch(() => setLoading(false));
+    let active = true;
 
-    // Escuchar cambios de estado en la autenticación
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        setLoading(true);
-        void fetchUserRoleAndTenant(session.user.id).finally(() => setLoading(false));
+    const applySession = async (nextSession: Session | null) => {
+      setSession(nextSession);
+      setUser(nextSession?.user ?? null);
+      if (nextSession?.user) {
+        await fetchUserRoleAndTenant(nextSession.user.id);
       } else {
         setRole(null);
+        setRoleError(null);
+        setInstitutionId(null);
+      }
+      if (active) setLoading(false);
+    };
+
+    void supabase.auth.getSession()
+      .then(({ data: { session: currentSession } }) => applySession(currentSession))
+      .catch(() => {
+        if (active) setLoading(false);
+      });
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      setLoading(true);
+      setSession(nextSession);
+      setUser(nextSession?.user ?? null);
+      if (nextSession?.user) {
+        window.setTimeout(() => {
+          void fetchUserRoleAndTenant(nextSession.user.id).finally(() => {
+            if (active) setLoading(false);
+          });
+        }, 0);
+      } else {
+        setRole(null);
+        setRoleError(null);
         setInstitutionId(null);
         setLoading(false);
       }
     });
 
-    return () => listener.subscription.unsubscribe();
+    return () => {
+      active = false;
+      authListener.subscription.unsubscribe();
+    };
   }, []);
 
   const login = async (email: string, pass: string) => {
@@ -86,7 +113,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, role, institutionId, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, session, role, roleError, institutionId, loading, login, logout }}>
       {children}
     </AuthContext.Provider>
   );
@@ -94,6 +121,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) throw new Error('useAuth debe ser usado dentro de AuthProvider');
+  if (!context) throw new Error('useAuth debe usarse dentro de AuthProvider');
   return context;
 };

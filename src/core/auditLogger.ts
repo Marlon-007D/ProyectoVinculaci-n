@@ -19,10 +19,10 @@ export const logAuditEvent = async ({
     const { data: { user } } = await supabase.auth.getUser();
 
     const { error } = await supabase.from('audit_events').insert({
-      user_id: user?.id || null,
+      profile_id: user?.id || null,
       institution_id: institutionId || null,
       action,
-      entity,
+      entity_type: entity,
       entity_id: entityId || null,
       payload: details || {},
       created_at: new Date().toISOString(),

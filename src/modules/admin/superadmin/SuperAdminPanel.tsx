@@ -4,14 +4,14 @@ import { logAuditEvent } from '../../../core/auditLogger';
 import styles from './SuperAdminPanel.module.css';
 
 interface Institution {
-  id: string;
+  institution_id: string;
   name: string;
   slug: string;
   is_active: boolean;
 }
 
 interface ModuleSetting {
-  id: string;
+  module_setting_id: string;
   institution_id: string;
   module_name: string;
   is_enabled: boolean;
@@ -28,7 +28,10 @@ export const SuperAdminPanel: React.FC = () => {
   const [message, setMessage] = useState('');
 
   const fetchInstitutions = async () => {
-    const { data, error } = await supabase.from('institutions').select('*').order('name');
+    const { data, error } = await supabase
+      .from('institutions')
+      .select('institution_id, name, slug, is_active')
+      .order('name');
     if (error) setLoadError('No se pudieron cargar las instituciones. Revisa la conexión y los permisos de tu cuenta.');
     else { setInstitutions(data ?? []); setLoadError(''); }
     setLoading(false);
@@ -37,7 +40,7 @@ export const SuperAdminPanel: React.FC = () => {
   const fetchModuleSettings = async (instId: string) => {
     const { data, error } = await supabase
       .from('module_settings')
-      .select('*')
+      .select('module_setting_id, institution_id, module_name, is_enabled')
       .eq('institution_id', instId);
     if (error) setMessage('No se pudo cargar la configuración de módulos.');
     else { setModuleSettings(data ?? []); setMessage(''); }
@@ -63,7 +66,7 @@ export const SuperAdminPanel: React.FC = () => {
       await logAuditEvent({
         action: 'CREATE_INSTITUTION',
         entity: 'institutions',
-        entityId: data.id,
+        entityId: data.institution_id,
         details: { name: newInstName, slug: newInstSlug },
       });
 
@@ -78,7 +81,7 @@ export const SuperAdminPanel: React.FC = () => {
     const { error } = await supabase
       .from('module_settings')
       .update({ is_enabled: !currentState })
-      .eq('id', settingId);
+      .eq('module_setting_id', settingId);
 
     if (!error) {
       await logAuditEvent({
@@ -88,6 +91,8 @@ export const SuperAdminPanel: React.FC = () => {
         details: { new_state: !currentState },
       });
       if (selectedInstId) void fetchModuleSettings(selectedInstId);
+    } else {
+      setMessage('No se pudo actualizar el módulo. Revisa los permisos de la cuenta.');
     }
   };
 
@@ -135,15 +140,15 @@ export const SuperAdminPanel: React.FC = () => {
             {loading && <tr><td colSpan={4}>Cargando instituciones…</td></tr>}
             {!loading && !loadError && institutions.length === 0 && <tr><td colSpan={4}>Aún no hay instituciones registradas. Puedes crear la primera desde el formulario.</td></tr>}
             {institutions.map((inst) => (
-              <tr key={inst.id}>
+              <tr key={inst.institution_id}>
                 <td>{inst.name}</td>
                 <td>{inst.slug}</td>
                 <td>{inst.is_active ? 'Activa' : 'Inactiva'}</td>
                 <td>
                   <button
                     onClick={() => {
-                      setSelectedInstId(inst.id);
-                      fetchModuleSettings(inst.id);
+                      setSelectedInstId(inst.institution_id);
+                      fetchModuleSettings(inst.institution_id);
                     }}
                     className={styles.btnSelect}
                   >
@@ -162,10 +167,10 @@ export const SuperAdminPanel: React.FC = () => {
           <div className={styles.moduleGrid}>
             {!message && moduleSettings.length === 0 && <p>No hay módulos configurados para esta institución.</p>}
             {moduleSettings.map((mod) => (
-              <div key={mod.id} className={styles.moduleCard}>
+              <div key={mod.module_setting_id} className={styles.moduleCard}>
                 <span>Módulo: <strong>{mod.module_name.toUpperCase()}</strong></span>
                 <button
-                  onClick={() => handleToggleModule(mod.id, mod.is_enabled)}
+                  onClick={() => handleToggleModule(mod.module_setting_id, mod.is_enabled)}
                   className={mod.is_enabled ? styles.btnActive : styles.btnInactive}
                 >
                   {mod.is_enabled ? 'Habilitado' : 'Deshabilitado'}

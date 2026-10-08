@@ -50,7 +50,7 @@ function AccessScreen() {
 }
 
 function Workspace() {
-  const { user, role, loading, logout } = useAuth();
+  const { user, role, roleError, loading, logout } = useAuth();
 
   if (loading) {
     return (
@@ -82,12 +82,12 @@ function Workspace() {
         <p className="mb-0 text-sm text-muted">Administra las instituciones, los accesos y la seguridad de la plataforma.</p>
       </section>
 
-      {role === 'superadmin' ? (
+      {role === 'super_admin' ? (
         <><SuperAdminPanel /><UserManagement /><MfaEnrollment /></>
       ) : (
         <section className="mt-4 rounded-lg border border-[#eadfc4] bg-white p-4 text-[13px] text-[#65573c]">
           <strong>Acceso restringido</strong>
-          <p className="my-1 text-sm">Tu cuenta no tiene permisos de superadministración. Si necesitas acceso, comunícate con el responsable de la plataforma.</p>
+          <p className="my-1 text-sm">{roleError ?? 'Tu cuenta no tiene permisos de superadministración. Si necesitas acceso, comunícate con el responsable de la plataforma.'}</p>
           <span className="text-xs text-[#827657]">Rol asignado: {role || 'sin asignar'}</span>
         </section>
       )}
