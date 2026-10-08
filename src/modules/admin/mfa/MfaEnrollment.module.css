@@ -1,0 +1,51 @@
+.container {
+  padding: 1.5rem;
+  background-color: #ffffff;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  max-width: 500px;
+  margin: 1rem 0;
+}
+
+.qrSection {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.qrImage {
+  width: 200px;
+  height: 200px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+}
+
+.input {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  text-align: center;
+  letter-spacing: 2px;
+  font-size: 1.1rem;
+}
+
+.btnPrimary {
+  background-color: #2563eb;
+  color: white;
+  padding: 0.6rem 1.2rem;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  width: 100%;
+}
+
+.statusMsg {
+  margin-top: 1rem;
+  font-size: 0.9rem;
+  color: #4b5563;
+  text-align: center;
+}
