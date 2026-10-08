@@ -66,17 +66,17 @@ function Workspace() {
   return (
     <main className="mx-auto max-w-[1180px] px-4 pb-6 sm:px-[30px]">
       <header className="flex h-[66px] items-center justify-between border-b border-line sm:h-[76px]">
-        <a href="#inicio" className="flex items-center gap-3 font-bold text-[#163a43] no-underline">
+        <div className="flex items-center gap-3 font-bold text-[#163a43]">
           <span className="grid size-[38px] place-items-center rounded-xl bg-brand text-lg font-bold text-white shadow-[0_6px_16px_#145b5825]">V</span>
           <span>Vinculación<small className="block text-[11px] font-medium tracking-normal text-[#71818a]">Gestión institucional</small></span>
-        </a>
+        </div>
         <div className="flex items-center gap-2 sm:gap-[18px]">
           <span className="hidden text-[13px] text-[#53656e] sm:inline">{user.email}</span>
           <button onClick={() => void logout()} className="rounded-lg border border-[#d8e1e4] bg-white px-3 py-2 text-sm font-semibold text-[#314953]">Cerrar sesión</button>
         </div>
       </header>
 
-      <section id="inicio" className="py-[26px] sm:pb-[18px] sm:pt-[34px]">
+      <section className="py-[26px] sm:pb-[18px] sm:pt-[34px]">
         <p className="mb-2 text-[10px] font-bold tracking-[0.16em] text-[#398278]">ESPACIO DE ADMINISTRACIÓN</p>
         <h1 className="mb-2 text-[26px] font-bold tracking-tight text-ink sm:text-3xl">Panel de gestión</h1>
         <p className="mb-0 text-sm text-muted">Administra las instituciones, los accesos y la seguridad de la plataforma.</p>

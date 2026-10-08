@@ -39,7 +39,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     const memberships = data ?? [];
-    if (memberships.length === 0) return;
+    if (memberships.length === 0) {
+      setRoleError('No se encontró una membresía visible para esta cuenta. Ejecuta database/superadmin.sql en Supabase y confirma que profile_id coincida con el ID de autenticación.');
+      return;
+    }
 
     const { data: roles, error: rolesError } = await supabase
       .from('roles')

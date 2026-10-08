@@ -1,5 +1,5 @@
--- Permite que la aplicación lea la membresía inicial del usuario y que
--- super_admin administre instituciones y membresías entre instituciones.
+-- Ejecutar después de database/script.sql.
+-- Agrega lectura de membresía propia y permisos globales para super_admin.
 
 CREATE OR REPLACE FUNCTION public.is_super_admin()
 RETURNS BOOLEAN
