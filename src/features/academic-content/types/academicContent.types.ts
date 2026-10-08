@@ -1,11 +1,6 @@
 export type AcademicContentKind = 'news' | 'event' | 'honor' | 'period'
 export type AcademicPublicationStatus = 'draft' | 'published'
 
-export interface InstitutionOption {
-  id: string
-  name: string
-}
-
 export interface AcademicContentEntry {
   id: string
   institutionId: string

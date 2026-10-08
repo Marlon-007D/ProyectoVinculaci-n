@@ -1,4 +1,5 @@
 .topbar { display: flex; align-items: center; min-height: 60px; padding: 0 clamp(20px, 3vw, 44px); border-bottom: 1px solid var(--line); background: var(--topbar-surface); }
+.tenant-chip { display: flex; align-items: center; gap: 9px; color: var(--accent); font-size: 13px; font-weight: 700; }.tenant-icon { flex: none; }
 .student-chip { display: flex; align-items: center; gap: 10px; margin-left: auto; }.profile-icon { flex: none; color: var(--accent); }
 .student-chip p { display: grid; gap: 1px; margin: 0; font-size: 12px; }.student-chip b { font-size: 13px; }.student-chip small { color: #847b89; }
-@media(max-width:620px){.topbar{min-height:52px;padding:0 17px}.student-chip p{display:none}}
+@media(max-width:620px){.topbar{min-height:52px;padding:0 14px}.tenant-chip{gap:6px;font-size:12px}.tenant-icon{width:18px;height:18px}.student-chip p{display:none}}
