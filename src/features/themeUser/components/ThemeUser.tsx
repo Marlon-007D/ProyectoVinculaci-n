@@ -3,7 +3,7 @@ import { themeOptions } from '../mocks/themeOptions'
 import type { ThemeName } from '../types/themeUser.types'
 import './ThemeUser.css'
 
-interface Props { theme: ThemeName; collapsed: boolean; open: boolean; onChange: (theme: ThemeName) => void; onToggle: () => void }
+interface Props { theme: ThemeName; collapsed: boolean; open: boolean; onChange: (theme: ThemeName, origin: { x: number; y: number }) => void; onToggle: () => void }
 
 export function ThemeUser({ theme, collapsed, open, onChange, onToggle }: Props) {
   return <div className={`theme-user${open ? ' is-open' : ''}${collapsed ? ' is-collapsed' : ''}`}>
@@ -13,7 +13,13 @@ export function ThemeUser({ theme, collapsed, open, onChange, onToggle }: Props)
       <span className="theme-trigger-swatch" style={{ backgroundColor: themeOptions.find(option => option.id === theme)?.swatch }} aria-hidden="true" />
     </button>
     {open && <div className="theme-options" id="theme-user-options" role="group" aria-label="Selecciona un tema">
-      {themeOptions.map(option => <button className="theme-option" type="button" key={option.id} aria-label={option.label} aria-pressed={theme === option.id} onClick={() => onChange(option.id)}>
+      {themeOptions.map(option => <button className="theme-option" type="button" key={option.id} aria-label={option.label} aria-pressed={theme === option.id} onClick={event => {
+        const bounds = event.currentTarget.getBoundingClientRect()
+        const hasPointerPosition = event.clientX !== 0 || event.clientY !== 0
+        onChange(option.id, hasPointerPosition
+          ? { x: event.clientX, y: event.clientY }
+          : { x: bounds.left + bounds.width / 2, y: bounds.top + bounds.height / 2 })
+      }}>
         <span className="theme-option-swatch" style={{ backgroundColor: option.swatch }} aria-hidden="true" />
         {theme === option.id && <Check size={16} aria-hidden="true" />}
       </button>)}

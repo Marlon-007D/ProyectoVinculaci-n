@@ -18,6 +18,16 @@
 :root[data-theme="slate"] { --accent: #505c69; --accent-hover: #414b56; --accent-soft: #f1f3f5; --accent-container: #e1e6eb; --accent-focus: #c2ccd5; }
 :root { --canvas: color-mix(in srgb, #f5f4f6 88%, var(--accent-container)); --surface: #fff; --sidebar-surface: var(--accent); --sidebar-text: #fff; --sidebar-muted: color-mix(in srgb, #fff 78%, var(--accent)); --sidebar-hover: color-mix(in srgb, #fff 16%, var(--accent)); --sidebar-active: color-mix(in srgb, #fff 23%, var(--accent)); --topbar-surface: color-mix(in srgb, #ffffff 74%, var(--accent-soft)); --accent-ink: color-mix(in srgb, var(--accent) 72%, #29272c); }
 * { box-sizing: border-box; }
+html { view-transition-name: root; }
+::view-transition-old(root),
+::view-transition-new(root) { animation-duration: 1050ms; }
+::view-transition-old(root) { z-index: 1; animation: none; }
+::view-transition-new(root) { z-index: 2; animation: theme-circle-reveal 1050ms cubic-bezier(.16,1,.3,1) both; }
+@keyframes theme-circle-reveal {
+  from { clip-path: circle(0 at var(--theme-reveal-x) var(--theme-reveal-y)); }
+  to { clip-path: circle(var(--theme-reveal-radius) at var(--theme-reveal-x) var(--theme-reveal-y)); }
+}
+@media(prefers-reduced-motion:reduce){::view-transition-old(root),::view-transition-new(root){animation:none}}
 html { scroll-behavior: smooth; }
 body { min-width: 320px; margin: 0; background: var(--canvas); color: var(--text); }
 button, input, select { font: inherit; }

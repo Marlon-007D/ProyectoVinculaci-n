@@ -62,7 +62,7 @@ function splitTwoLines(pdf: jsPDF, text: string, width: number): string[] {
   return [lines[0], `${lines[1].slice(0, Math.max(0, lines[1].length - 3)).trimEnd()}...`]
 }
 
-function drawHeader(pdf: jsPDF, institution: string, year: string, accent: Color, pale: Color, line: Color) {
+function drawHeader(pdf: jsPDF, institution: string, year: string, line: Color) {
   const pageWidth = pdf.internal.pageSize.getWidth()
   const centerX = pageWidth / 2
   const navy: Color = [14, 37, 72]
@@ -247,7 +247,6 @@ export async function createRecognitionPdf(
   const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
   const accent = hexColor(accentHex)
   const line = mixWithWhite(accent, 0.58)
-  const pale = mixWithWhite(accent, 0.94)
   const pageWidth = pdf.internal.pageSize.getWidth()
   const pageHeight = pdf.internal.pageSize.getHeight()
   const columns = 3
@@ -267,7 +266,7 @@ export async function createRecognitionPdf(
   pdf.setProperties({ title: `Cuadro de honor ${year}`, subject: institutionName, author: institutionName })
   for (let pageIndex = 0; pageIndex < pageCount; pageIndex += 1) {
     if (pageIndex > 0) pdf.addPage('a4', 'portrait')
-    drawHeader(pdf, institutionName, year, accent, pale, line)
+    drawHeader(pdf, institutionName, year, line)
 
     const pagePeople = people.slice(pageIndex * pageCapacity, (pageIndex + 1) * pageCapacity)
     pagePeople.forEach((person, index) => {

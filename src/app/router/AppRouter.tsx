@@ -19,7 +19,7 @@ import type { ThemeName } from '../../features/themeUser/types/themeUser.types'
 export type SimulatorRoute = 'invoice' | 'converter' | 'interest'
 export type AppRoute = SimulatorRoute | 'news' | 'events' | 'honors' | 'academic-periods'
 
-interface Props { collapsed: boolean; theme: ThemeName; onThemeChange: (theme: ThemeName) => void; onToggleSidebar: () => void }
+interface Props { collapsed: boolean; theme: ThemeName; onThemeChange: (theme: ThemeName, origin: { x: number; y: number }) => void; onToggleSidebar: () => void }
 
 const pages = {
   invoice: { Component: InvoiceSimulatorPage },

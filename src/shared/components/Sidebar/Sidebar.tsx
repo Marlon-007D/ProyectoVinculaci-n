@@ -5,7 +5,7 @@ import { ThemeUser } from '../../../features/themeUser/components/ThemeUser'
 import type { ThemeName } from '../../../features/themeUser/types/themeUser.types'
 import './Sidebar.css'
 
-interface Props { active: AppRoute; collapsed: boolean; theme: ThemeName; onThemeChange: (theme: ThemeName) => void; onSelect: (route: AppRoute) => void; onToggle: () => void }
+interface Props { active: AppRoute; collapsed: boolean; theme: ThemeName; onThemeChange: (theme: ThemeName, origin: { x: number; y: number }) => void; onSelect: (route: AppRoute) => void; onToggle: () => void }
 const items: { id: SimulatorRoute; label: string; Icon: typeof ReceiptText }[] = [
   { id: 'invoice', label: 'Facturación electrónica', Icon: ReceiptText },
   { id: 'converter', label: 'Unidades y monedas', Icon: ArrowLeftRight },
