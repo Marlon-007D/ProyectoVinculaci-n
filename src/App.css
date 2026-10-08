@@ -1,409 +1,275 @@
 .workspace {
-  max-width: 1180px;
-  margin: 0 auto;
-  padding: 0 30px 24px;
+    max-width: 1180px;
+    margin: auto;
+    padding: 0 30px 24px
 }
 
 .topbar {
-  height: 76px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  border-bottom: 1px solid #e2e9eb;
+    height: 76px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid #e2e9eb
 }
 
 .wordmark {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  color: #163a43;
-  text-decoration: none;
-  font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: #163a43;
+    text-decoration: none;
+    font-weight: 700
 }
 
 .wordmark small {
-  display: block;
-  color: #71818a;
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.02em;
+    display: block;
+    color: #71818a;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: .02em
 }
 
 .brand-mark {
-  width: 48px;
-  height: 48px;
-  display: grid;
-  place-items: center;
-  background: #145b58;
-  color: white;
-  border-radius: 15px;
-  font: 800 22px Manrope, sans-serif;
-  box-shadow: 0 6px 16px #145b5825;
+    width: 48px;
+    height: 48px;
+    display: grid;
+    place-items: center;
+    background: #145b58;
+    color: white;
+    border-radius: 15px;
+    font: 800 22px Manrope, sans-serif;
+    box-shadow: 0 6px 16px #145b5825
 }
 
 .brand-mark.small {
-  width: 38px;
-  height: 38px;
-  border-radius: 12px;
-  font-size: 18px;
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+    font-size: 18px
 }
 
 .account {
-  display: flex;
-  align-items: center;
-  gap: 18px;
+    display: flex;
+    align-items: center;
+    gap: 18px
 }
 
 .account-email {
-  font-size: 13px;
-  color: #53656e;
+    font-size: 13px;
+    color: #53656e
 }
 
 .quiet-button {
-  padding: 9px 13px;
-  background: white;
-  border: 1px solid #d8e1e4;
-  border-radius: 8px;
-  color: #314953;
-  font-weight: 600;
+    background: white;
+    border: 1px solid #d8e1e4;
+    border-radius: 8px;
+    padding: 9px 13px;
+    color: #314953;
+    font-weight: 600
 }
 
 .welcome {
-  padding: 34px 0 18px;
+    padding: 34px 0 18px
 }
 
 .eyebrow {
-  margin: 0 0 8px;
-  color: #398278;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.16em;
+    font-size: 10px;
+    letter-spacing: .16em;
+    font-weight: 700;
+    color: #398278;
+    margin: 0 0 8px
 }
 
 .welcome h1,
 .access-card h1 {
-  margin: 0 0 8px;
-  color: #173843;
-  font: 700 30px/1.2 Manrope, sans-serif;
-  letter-spacing: -0.035em;
+    font: 700 30px/1.2 Manrope, sans-serif;
+    color: #173843;
+    letter-spacing: -.035em;
+    margin: 0 0 8px
 }
 
-.welcome > p:last-child,
+.welcome>p:last-child,
 .access-copy {
-  margin: 0;
-  color: #70818a;
-  font-size: 14px;
+    font-size: 14px;
+    color: #70818a;
+    margin: 0
 }
 
 .footer {
-  margin-top: 28px;
-  padding: 20px 0 0;
-  border-top: 1px solid #e2e9eb;
-  color: #819098;
-  font-size: 12px;
+    border-top: 1px solid #e2e9eb;
+    padding: 20px 0 0;
+    color: #819098;
+    font-size: 12px;
+    margin-top: 28px
 }
 
 .footer span {
-  padding: 0 5px;
-  color: #48a294;
+    padding: 0 5px;
+    color: #48a294
 }
 
 .access-page {
-  min-height: 100vh;
-  display: grid;
-  place-items: center;
-  padding: 24px;
-  background: radial-gradient(ellipse at 50% 20%, #e6f1ef 0, transparent 55%), #f4f7f9;
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    background: radial-gradient(ellipse at 50% 20%, #e6f1ef 0, transparent 55%), #f4f7f9
 }
 
 .access-card {
-  width: min(100%, 430px);
-  padding: 38px;
-  background: #fff;
-  border: 1px solid #e4ebed;
-  border-radius: 18px;
-  box-shadow: 0 16px 50px #18384412;
+    background: #fff;
+    border: 1px solid #e4ebed;
+    border-radius: 18px;
+    box-shadow: 0 16px 50px #18384412;
+    width: min(100%, 430px);
+    padding: 38px
 }
 
 .access-card .brand-mark {
-  margin-bottom: 25px;
+    margin-bottom: 25px
 }
 
 .access-card h1 {
-  font-size: 25px;
+    font-size: 25px
 }
 
 .access-copy {
-  margin: 0 0 26px;
-  line-height: 1.6;
+    line-height: 1.6;
+    margin: 0 0 26px
 }
 
 .access-form {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px
 }
 
 .access-form label {
-  margin-top: 8px;
-  color: #314953;
-  font-size: 13px;
-  font-weight: 600;
+    font-size: 13px;
+    font-weight: 600;
+    color: #314953;
+    margin-top: 8px
 }
 
 .access-form input {
-  height: 44px;
-  padding: 0 12px;
-  color: #243c46;
-  background: #fff;
-  border: 1px solid #d8e1e4;
-  border-radius: 8px;
+    height: 44px;
+    border: 1px solid #d8e1e4;
+    border-radius: 8px;
+    padding: 0 12px;
+    color: #243c46;
+    background: #fff
 }
 
 .primary-button {
-  height: 45px;
-  margin-top: 12px;
-  background: #145b58;
-  border: 0;
-  border-radius: 8px;
-  color: #fff;
-  font-weight: 700;
+    margin-top: 12px;
+    height: 45px;
+    border: 0;
+    border-radius: 8px;
+    background: #145b58;
+    color: #fff;
+    font-weight: 700
 }
 
 .primary-button:hover {
-  background: #104945;
+    background: #104945
 }
 
 .primary-button:disabled {
-  opacity: 0.65;
-  cursor: wait;
+    opacity: .65;
+    cursor: wait
 }
 
 .access-foot {
-  margin: 22px 0 0;
-  color: #8b989d;
-  font-size: 11px;
-  text-align: center;
+    font-size: 11px;
+    color: #8b989d;
+    text-align: center;
+    margin: 22px 0 0
 }
 
 .loading-screen {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  color: #53656e;
-  font-size: 14px;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    color: #53656e;
+    font-size: 14px
 }
 
 .spinner {
-  width: 17px;
-  height: 17px;
-  border: 2px solid #dce7e7;
-  border-top-color: #398278;
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
+    width: 17px;
+    height: 17px;
+    border: 2px solid #dce7e7;
+    border-top-color: #398278;
+    border-radius: 50%;
+    animation: spin .7s linear infinite
 }
 
 @keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
+    to {
+        transform: rotate(360deg)
+    }
 }
 
 .notice {
-  padding: 14px 16px;
-  border-radius: 9px;
-  font-size: 13px;
+    padding: 14px 16px;
+    border-radius: 9px;
+    font-size: 13px
 }
 
 .notice.error {
-  color: #9b3838;
-  background: #fff1f0;
-  border: 1px solid #f2d1ce;
+    color: #9b3838;
+    background: #fff1f0;
+    border: 1px solid #f2d1ce
 }
 
 .notice.warning {
-  margin-top: 16px;
-  color: #65573c;
-  background: #fff;
-  border: 1px solid #eadfc4;
+    background: #fff;
+    border: 1px solid #eadfc4;
+    color: #65573c;
+    margin-top: 16px
 }
 
 .notice.warning p {
-  margin: 5px 0;
-  font-size: 14px;
+    margin: 5px 0;
+    font-size: 14px
 }
 
 .notice.warning span {
-  color: #827657;
-  font-size: 12px;
+    font-size: 12px;
+    color: #827657
 }
 
-.workspace .panelContainer,
-.workspace .container {
-  max-width: none;
-  margin: 12px 0 16px;
-  padding: 22px 24px;
-  background: #fff;
-  border: 1px solid #e2e9eb;
-  border-radius: 12px;
-  box-shadow: 0 3px 12px #18384408;
-  font-family: inherit;
-}
+@media(max-width:640px) {
+    .workspace {
+        padding: 0 16px 20px
+    }
 
-.workspace .panelContainer > h1 {
-  margin: 0 0 18px;
-  color: #203e49;
-  font: 700 18px Arial, sans-serif;
-}
+    .topbar {
+        height: 66px
+    }
 
-.workspace h2 {
-  margin: 0 0 12px;
-  color: #203e49;
-  font: 700 16px Arial, sans-serif;
-}
+    .account {
+        gap: 8px
+    }
 
-.workspace h3 {
-  margin: 24px 0 8px;
-  color: #203e49;
-  font: 700 14px Arial, sans-serif;
-}
+    .account-email {
+        display: none
+    }
 
-.workspace .section {
-  margin: 12px 0;
-  padding: 17px;
-  background: #fff;
-  border: 1px solid #e7edef;
-  border-radius: 9px;
-  box-shadow: none;
-}
+    .welcome {
+        padding-top: 26px
+    }
 
-.workspace input,
-.workspace select {
-  min-height: 41px;
-  padding: 8px 11px;
-  color: #30444c;
-  background: #fff;
-  border: 1px solid #d7e1e4;
-  border-radius: 7px;
-}
+    .welcome h1 {
+        font-size: 26px
+    }
 
-.workspace .table {
-  display: block;
-  overflow-x: auto;
-  border-collapse: collapse;
-  white-space: nowrap;
-}
+    .access-card {
+        padding: 28px 22px
+    }
 
-.workspace .table th {
-  color: #6e8189;
-  background: #f5f8f8;
-  font-size: 11px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.workspace .table td,
-.workspace .table th {
-  padding: 11px 13px;
-  border-bottom: 1px solid #e8edef;
-}
-
-.workspace .table td {
-  color: #394e57;
-  font-size: 13px;
-}
-
-.workspace .btnSave,
-.workspace .btnSelect,
-.workspace .btnSubmit,
-.workspace .btnPrimary {
-  padding: 10px 14px;
-  background: #145b58;
-  border: 0;
-  border-radius: 7px;
-  color: #fff;
-  font-weight: 600;
-}
-
-.workspace .btnActive,
-.workspace .btnInactive {
-  padding: 7px 12px;
-  background: #e3f3ec;
-  border: 0;
-  border-radius: 20px;
-  color: #28674e;
-  font-weight: 600;
-}
-
-.workspace .btnInactive {
-  color: #a34a42;
-  background: #f9e9e7;
-}
-
-.workspace .moduleCard {
-  padding: 14px;
-  border: 1px solid #e4ebed;
-  border-radius: 9px;
-}
-
-.workspace .form {
-  max-width: 580px;
-}
-
-.workspace .container > p {
-  padding: 10px 12px;
-  background: #f2f7f5;
-  border-radius: 7px;
-  color: #356556;
-  font-size: 13px;
-}
-
-@media (max-width: 640px) {
-  .workspace {
-    padding: 0 16px 20px;
-  }
-
-  .topbar {
-    height: 66px;
-  }
-
-  .account {
-    gap: 8px;
-  }
-
-  .account-email {
-    display: none;
-  }
-
-  .welcome {
-    padding-top: 26px;
-  }
-
-  .welcome h1 {
-    font-size: 26px;
-  }
-
-  .access-card {
-    padding: 28px 22px;
-  }
-
-  .footer {
-    line-height: 1.6;
-  }
-
-  .workspace .panelContainer,
-  .workspace .container {
-    padding: 16px;
-  }
-
-  .workspace .formInline {
-    flex-direction: column;
-  }
-
-  .workspace .formInline input,
-  .workspace .formInline button {
-    width: 100%;
-  }
+    .footer {
+        line-height: 1.6
+    }
 }

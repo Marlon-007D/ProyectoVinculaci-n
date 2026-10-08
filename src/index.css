@@ -1,1 +1,58 @@
-:root{font-family:'DM Sans',Arial,sans-serif;color:#172b3b;background:#f4f7f9;font-synthesis:none;text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;font-optical-sizing:auto;font-weight:400}*{box-sizing:border-box}body{margin:0;min-width:320px;min-height:100vh}button,input,select{font:inherit}button{cursor:pointer}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #8dc5bd;outline-offset:2px}h1,h2,h3,p{margin-top:0}::selection{background:#c9e8e2;color:#123a3a}
+@import "tailwindcss";
+
+@theme {
+  --color-brand: #145b58;
+  --color-brand-dark: #104945;
+  --color-ink: #173843;
+  --color-muted: #70818a;
+  --color-line: #e2e9eb;
+  --color-page: #f4f7f9;
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    min-width: 320px;
+    min-height: 100vh;
+    margin: 0;
+    background: var(--color-page);
+    color: #172b3b;
+    font-family: "DM Sans", Arial, sans-serif;
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  button,
+  input,
+  select {
+    font: inherit;
+  }
+
+  button {
+    cursor: pointer;
+  }
+
+  button:focus-visible,
+  input:focus-visible,
+  select:focus-visible {
+    outline: 3px solid #8dc5bd;
+    outline-offset: 2px;
+  }
+
+  h1,
+  h2,
+  h3,
+  p {
+    margin-top: 0;
+  }
+
+  ::selection {
+    background: #c9e8e2;
+    color: #123a3a;
+  }
+}
