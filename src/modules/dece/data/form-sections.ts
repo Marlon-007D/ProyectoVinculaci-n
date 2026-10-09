@@ -1,0 +1,2 @@
+export const generalFormSections = ['Identificaci\u00f3n', 'Datos familiares', 'Composici\u00f3n familiar', 'Vivienda y servicios', 'Salud', 'Informaci\u00f3n acad\u00e9mica']
+export const authorizationFormSections = ['Identificaci\u00f3n y responsable', 'Atenci\u00f3n y emergencias', 'Informaci\u00f3n de salud', 'Autorizaci\u00f3n']
