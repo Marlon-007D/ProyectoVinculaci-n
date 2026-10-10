@@ -9,10 +9,12 @@ type Props = {
 
 export default function FormNavigation({ labels, section, setSection }: Props) {
   return (
-    <aside className="step-list">
+    <nav className="step-list" aria-label="Secciones del formulario">
       {labels.map((label, index) => (
         <button
           className={`nav-item ${section === index ? 'current' : ''}`}
+          type="button"
+          aria-current={section === index ? 'step' : undefined}
           key={label}
           onClick={() => setSection(index)}
         >
@@ -31,6 +33,6 @@ export default function FormNavigation({ labels, section, setSection }: Props) {
           )}
         </button>
       ))}
-    </aside>
+    </nav>
   )
 }

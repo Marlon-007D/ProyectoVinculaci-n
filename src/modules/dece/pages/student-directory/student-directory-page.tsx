@@ -39,7 +39,7 @@ export default function StudentDirectoryPage({
           <b>{data.length}</b> registros visibles
         </div>
       </div>
-      <div className="table-card directory">
+      <section className="table-card directory" aria-label="Directorio de estudiantes">
         <div className="toolbar d-flex flex-wrap">
           <label className="search-box">
             <FontAwesomeIcon icon={faMagnifyingGlass} aria-hidden="true" />
@@ -61,15 +61,16 @@ export default function StudentDirectoryPage({
             {grades.map(item => <option key={item}>{item}</option>)}
           </select>
         </div>
-        <div className="table-scroll table-responsive">
+        <div className="table-scroll table-responsive student-table-view">
           <table className="table">
+            <caption className="visually-hidden">Directorio de estudiantes</caption>
             <thead>
               <tr>
-                <th>ESTUDIANTE</th>
-                <th>IDENTIFICACIÓN</th>
-                <th>GRADO / NIVEL</th>
-                <th>FICHA GENERAL</th>
-                <th>AUTORIZACIÓN</th>
+                <th scope="col">ESTUDIANTE</th>
+                <th scope="col">IDENTIFICACIÓN</th>
+                <th scope="col">GRADO / NIVEL</th>
+                <th scope="col">FICHA GENERAL</th>
+                <th scope="col">AUTORIZACIÓN</th>
               </tr>
             </thead>
             <tbody>
@@ -104,11 +105,33 @@ export default function StudentDirectoryPage({
             </div>
           )}
         </div>
+        <div className="student-card-view" aria-label="Estudiantes">
+          {data.map(student => (
+            <article className="student-card" key={student.id}>
+              <h2>{student.name}</h2>
+              <dl>
+                <div><dt>Identificación</dt><dd>{student.id}</dd></div>
+                <div><dt>Grado / nivel</dt><dd>{student.grade}</dd></div>
+              </dl>
+              <div className="student-card-actions">
+                <button type="button" className="table-link" onClick={() => onOpen(student, 'general')}>
+                  Abrir ficha general
+                </button>
+                <button type="button" className="table-link" onClick={() => onOpen(student, 'authorization')}>
+                  Abrir autorización
+                </button>
+              </div>
+            </article>
+          ))}
+          {data.length === 0 && (
+            <div className="empty-state">No encontramos estudiantes con esos criterios.</div>
+          )}
+        </div>
         <div className="table-bottom">
           Mostrando {data.length} estudiantes
           <span>Datos demostrativos</span>
         </div>
-      </div>
+      </section>
       <footer className="page-footer">
         Los datos de esta vista son ficticios y se usan únicamente para demostración.
       </footer>

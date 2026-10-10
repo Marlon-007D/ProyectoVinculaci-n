@@ -1,1 +1,73 @@
-﻿:root{--color-primary:#6656a5;--color-primary-hover:#514385;--color-secondary:#8c82a8;--color-background:#f7f7fa;--color-surface:#fff;--color-text:#292638;--color-text-muted:#88869a;--color-border:#ebeaf0;--color-success:#498c71;--color-warning:#c18a45;--color-danger:#bc5e67;--color-info:#5483a0;--color-sidebar-background:#fff;--color-sidebar-text:#514d60;--shadow-card:0 5px 24px rgba(37,30,63,.045);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--color-text);background:var(--color-background);font-synthesis:none;text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased}*{box-sizing:border-box}body{margin:0;min-width:360px;min-height:100vh}button,input,select,textarea{font:inherit}button{cursor:pointer}#root{min-height:100vh}
+:root {
+  --color-primary: #6656a5;
+  --color-primary-hover: color-mix(in srgb, var(--color-primary), #000 15%);
+  --color-secondary: #8c82a8;
+  --color-tertiary: #5483a0;
+  --color-background: #f7f7fa;
+  --color-surface: #fff;
+  --color-text: #292638;
+  --color-text-muted: #88869a;
+  --color-border: #ebeaf0;
+  --color-success: #498c71;
+  --color-warning: #c18a45;
+  --color-danger: #bc5e67;
+  --color-info: #5483a0;
+  --color-sidebar-background: #fff;
+  --color-sidebar-text: #514d60;
+  --shadow-card: 0 5px 24px rgba(37, 30, 63, .045);
+  --font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-size-base: 16px;
+  --font-size-h1: 27px;
+  --font-size-h2: 16px;
+  --font-size-h3: 13px;
+  --visual-scale: 1;
+  --bs-primary: var(--color-primary);
+  --bs-secondary: var(--color-secondary);
+  --bs-body-font-family: var(--font-family);
+  --bs-body-font-size: var(--font-size-base);
+  --bs-body-color: var(--color-text);
+  --bs-body-bg: var(--color-background);
+  --bs-border-color: var(--color-border);
+  --bs-link-color: var(--color-primary);
+  font-family: var(--font-family);
+  color: var(--color-text);
+  background: var(--color-background);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  font-family: var(--font-family);
+  font-size: var(--font-size-base);
+  color: var(--color-text);
+  background: var(--color-background);
+}
+button, input, select, textarea { font: inherit; }
+button { cursor: pointer; }
+#root { min-height: 100vh; }
+
+.btn-primary {
+  --bs-btn-bg: var(--color-primary);
+  --bs-btn-border-color: var(--color-primary);
+  --bs-btn-hover-bg: var(--color-primary-hover);
+  --bs-btn-hover-border-color: var(--color-primary-hover);
+  --bs-btn-active-bg: var(--color-primary-hover);
+  --bs-btn-active-border-color: var(--color-primary-hover);
+}
+.form-control:focus, .form-select:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 .2rem color-mix(in srgb, var(--color-primary), transparent 78%);
+}
+.form-check-input:checked {
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+.form-check-input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 .2rem color-mix(in srgb, var(--color-primary), transparent 78%);
+}

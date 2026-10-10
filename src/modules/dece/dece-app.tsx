@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
-import styles from '../../App.module.css'
+import styles from './dece.module.css'
 import { ProvisionalShell } from './components/provisional-shell'
-import { students } from './data/students'
+import { dashboardStats, students } from './data'
 import { AuthorizationFormPage } from './pages/authorization-form'
 import { DashboardPage } from './pages/dashboard'
 import { GeneralFormPage } from './pages/general-form'
@@ -38,7 +38,15 @@ export default function DeceApp() {
   return (
     <div className={styles.appShell}>
       <ProvisionalShell screen={screen} onNavigate={setScreen}>
-        {screen === 'home' && <DashboardPage onList={() => setScreen('students')} onOpen={openForm} />}
+        {screen === 'home' && (
+          <DashboardPage
+            students={students.slice(0, 3)}
+            featuredStudent={students[0]}
+            stats={dashboardStats}
+            onList={() => setScreen('students')}
+            onOpen={openForm}
+          />
+        )}
         {screen === 'students' && (
           <StudentDirectoryPage
             data={filteredStudents}

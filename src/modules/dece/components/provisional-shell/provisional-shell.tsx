@@ -25,21 +25,27 @@ export default function ProvisionalShell({ screen, onNavigate, children }: Props
             <small>Bienestar estudiantil</small>
           </div>
         </div>
-        <div className="nav-caption">ESPACIO DE TRABAJO</div>
-        <button
-          className={`nav-item ${screen === 'home' ? 'active' : ''}`}
-          onClick={() => onNavigate('home')}
-        >
-          <FontAwesomeIcon icon={faHouse} aria-hidden="true" />
-          Panel principal
-        </button>
-        <button
-          className={`nav-item ${screen !== 'home' ? 'active' : ''}`}
-          onClick={() => onNavigate('students')}
-        >
-          <FontAwesomeIcon icon={faUsers} aria-hidden="true" />
-          Estudiantes
-        </button>
+        <nav aria-label="Navegación principal">
+          <div className="nav-caption">ESPACIO DE TRABAJO</div>
+          <button
+            type="button"
+            className={`nav-item ${screen === 'home' ? 'active' : ''}`}
+            aria-current={screen === 'home' ? 'page' : undefined}
+            onClick={() => onNavigate('home')}
+          >
+            <FontAwesomeIcon icon={faHouse} aria-hidden="true" />
+            Panel principal
+          </button>
+          <button
+            type="button"
+            className={`nav-item ${screen !== 'home' ? 'active' : ''}`}
+            aria-current={screen === 'students' ? 'page' : undefined}
+            onClick={() => onNavigate('students')}
+          >
+            <FontAwesomeIcon icon={faUsers} aria-hidden="true" />
+            Estudiantes
+          </button>
+        </nav>
         <div className="sidebar-note">
           <div className="note-icon">
             <FontAwesomeIcon icon={faHeartPulse} aria-hidden="true" />

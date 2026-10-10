@@ -6,16 +6,19 @@ import {
   faPlus,
   faUsers,
 } from '@fortawesome/free-solid-svg-icons'
-import { students, dashboardStats } from '../../data'
-import type { DeceScreen, Student } from '../../types'
+import type { Student } from '../../types'
 import { StudentName, SummaryCard } from '../../components'
+import type { DashboardStat } from '../../data/dashboard-stats'
 
 type Props = {
+  students: Student[]
+  featuredStudent: Student
+  stats: DashboardStat[]
   onList: () => void
-  onOpen: (student: Student, target: DeceScreen) => void
+  onOpen: (student: Student, target: 'general' | 'authorization') => void
 }
 
-export default function DashboardPage({ onList, onOpen }: Props) {
+export default function DashboardPage({ students, featuredStudent, stats, onList, onOpen }: Props) {
   return (
     <div className="page-content container-fluid">
       <div className="welcome-row">
@@ -32,14 +35,15 @@ export default function DashboardPage({ onList, onOpen }: Props) {
         </button>
       </div>
       <div className="summary-grid row g-3">
-        {dashboardStats.map(stat => <SummaryCard key={stat.label} {...stat} />)}
+        {stats.map(stat => <SummaryCard key={stat.label} {...stat} />)}
       </div>
-      <div className="section-heading">
+      <section aria-labelledby="quick-access-heading">
+        <div className="section-heading">
         <div>
-          <h2>Accesos rápidos</h2>
+          <h2 id="quick-access-heading">Accesos rápidos</h2>
           <p>Continúa con una tarea frecuente.</p>
         </div>
-      </div>
+        </div>
       <div className="quick-grid row g-3">
         <button className="quick-card col-12 col-md-4" onClick={onList}>
           <span className="quick-icon violet">
@@ -51,7 +55,7 @@ export default function DashboardPage({ onList, onOpen }: Props) {
             <FontAwesomeIcon icon={faArrowUpRightFromSquare} aria-hidden="true" />
           </span>
         </button>
-        <button className="quick-card col-12 col-md-4" onClick={() => onOpen(students[0], 'general')}>
+        <button className="quick-card col-12 col-md-4" onClick={() => onOpen(featuredStudent, 'general')}>
           <span className="quick-icon green">
             <FontAwesomeIcon icon={faFileLines} aria-hidden="true" />
           </span>
@@ -61,7 +65,7 @@ export default function DashboardPage({ onList, onOpen }: Props) {
             <FontAwesomeIcon icon={faArrowUpRightFromSquare} aria-hidden="true" />
           </span>
         </button>
-        <button className="quick-card col-12 col-md-4" onClick={() => onOpen(students[0], 'authorization')}>
+        <button className="quick-card col-12 col-md-4" onClick={() => onOpen(featuredStudent, 'authorization')}>
           <span className="quick-icon orange">
             <FontAwesomeIcon icon={faHeartPulse} aria-hidden="true" />
           </span>
@@ -72,9 +76,11 @@ export default function DashboardPage({ onList, onOpen }: Props) {
           </span>
         </button>
       </div>
+      </section>
+      <section aria-labelledby="recent-students-heading">
       <div className="section-heading recent-heading">
         <div>
-          <h2>Estudiantes recientes</h2>
+          <h2 id="recent-students-heading">Estudiantes recientes</h2>
           <p>Accede a sus fichas para continuar.</p>
         </div>
         <button className="text-button" onClick={onList}>
@@ -85,11 +91,11 @@ export default function DashboardPage({ onList, onOpen }: Props) {
         <table className="table">
           <thead>
             <tr>
-              <th>ESTUDIANTE</th>
-              <th>IDENTIFICACIÓN</th>
-              <th>GRADO / NIVEL</th>
-              <th>FICHAS</th>
-              <th />
+              <th scope="col">ESTUDIANTE</th>
+              <th scope="col">IDENTIFICACIÓN</th>
+              <th scope="col">GRADO / NIVEL</th>
+              <th scope="col">FICHAS</th>
+              <th scope="col"><span className="visually-hidden">Acciones</span></th>
             </tr>
           </thead>
           <tbody>
@@ -113,6 +119,7 @@ export default function DashboardPage({ onList, onOpen }: Props) {
           </tbody>
         </table>
       </div>
+      </section>
       <footer className="page-footer">
         DECE · Herramienta de apoyo para el acompañamiento estudiantil
       </footer>

@@ -14,12 +14,12 @@ export function FormField({
         {required && <i> *</i>}
       </span>
       {options ? (
-        <select className="form-select" defaultValue="">
+        <select className="form-select" defaultValue="" required={required}>
           <option value="" disabled>Seleccionar</option>
           {options.map(option => <option key={option}>{option}</option>)}
         </select>
       ) : type === 'textarea' ? (
-        <textarea className="form-control" placeholder={placeholder} />
+        <textarea className="form-control" placeholder={placeholder} required={required} />
       ) : (
         <input
           className="form-control"
