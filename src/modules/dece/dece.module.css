@@ -35,4 +35,10 @@
 .appShell :global(.student-card) dd { margin: 0; color: var(--color-text); text-align: right; }
 .appShell :global(.student-card-actions) { display: flex; flex-wrap: wrap; gap: 8px 14px; }
 .appShell :global(.student-card-actions) button { min-height: 36px; }
+.appShell :global(.custom-question) { min-width: 0; }
+.appShell :global(.custom-question) > :global(.text-button) { padding: 5px 0; }
+.appShell :global(.question-builder) { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 14px; margin: 14px 0; border: 1px solid var(--color-border); border-radius: 8px; background: #fbfafc; }
+.appShell :global(.question-builder) > :global(.button) { justify-self: start; }
+.appShell :global(.form-actions) .save-message { flex: 1; margin-right: 12px; }
+@media (max-width: 720px) { .appShell :global(.question-builder) { grid-template-columns: 1fr; } }
 @media (max-width: 720px) { .appShell :global(.student-table-view) { display: none; } .appShell :global(.student-card-view) { display: block; } .appShell :global(.table-card) table { min-width: 0; } }

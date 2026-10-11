@@ -1,1 +1,10 @@
-export type Student = { id: string; name: string; grade: string; initials: string; color: string }
+export type Student = {
+  /** Identificador visible en el directorio (en la demo es la cédula). */
+  id: string
+  /** UUID de public.students; lo entrega el adaptador de datos real. */
+  recordId?: string
+  name: string
+  grade: string
+  initials: string
+  color: string
+}

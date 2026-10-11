@@ -2,8 +2,10 @@
 import { faArrowLeft, faArrowRight } from '@fortawesome/free-solid-svg-icons'
 import type { Student } from '../../types/student'
 import type { DeceScreen } from '../../types/screen'
-import type { ReactNode } from 'react'
+import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import FormNavigation from '../../components/form-navigation'
+import { useDeceData } from '../../services/dece-data-context'
+import ConfigurableForm from './configurable-form'
 
 type Props = {
   kind: 'general' | 'authorization'
@@ -29,6 +31,17 @@ export default function StudentFormLayout({
   onNavigate,
 }: Props) {
   const general = kind === 'general'
+  const integration = useDeceData()
+  const [activeLabels, setActiveLabels] = useState(labels)
+  const syncLabels = useCallback((next: string[]) => {
+    const unchanged = activeLabels.length === next.length && activeLabels.every((label, index) => label === next[index])
+    if (!unchanged) {
+      setActiveLabels(next)
+      setSection(0)
+    }
+  }, [activeLabels, setSection])
+  useEffect(() => { setActiveLabels(labels) }, [labels])
+  const visibleLabels = integration ? activeLabels : labels
 
   return (
     <div className="page-content container-fluid form-page">
@@ -62,25 +75,29 @@ export default function StudentFormLayout({
         </div>
       </div>
       <div className="form-layout">
-        <FormNavigation labels={labels} section={section} setSection={setSection} />
+        <FormNavigation labels={visibleLabels} section={Math.min(section, visibleLabels.length - 1)} setSection={setSection} />
         <section className="form-card">
           <div className="form-card-head">
             <div>
               <span className="eyebrow">
-                SECCIÓN {String(section + 1).padStart(2, '0')} DE {labels.length}
+                SECCIÓN {String(section + 1).padStart(2, '0')} DE {visibleLabels.length}
               </span>
-              <h2>{labels[section]}</h2>
+              <h2>{visibleLabels[section] ?? visibleLabels[0]}</h2>
             </div>
             <span className="required-note">* Campo requerido</span>
           </div>
           <div className="form-fields">
-            {contents.map((content, index) => (
-              <div key={index} hidden={index !== section}>
-                {content}
-              </div>
+            {integration ? <ConfigurableForm
+              integration={integration}
+              student={student}
+              code={kind}
+              section={section}
+              onSectionsChange={syncLabels}
+            /> : contents.map((content, index) => (
+              <div key={index} hidden={index !== section}>{content}</div>
             ))}
           </div>
-          <div className="form-actions">
+          {!integration && <div className="form-actions">
             <span className="helper">
               Los campos se mantienen mientras recorres las secciones.
             </span>
@@ -93,7 +110,7 @@ export default function StudentFormLayout({
                   Anterior
                 </button>
               )}
-              {section < labels.length - 1 ? (
+              {section < visibleLabels.length - 1 ? (
                 <button
                   className="button btn primary"
                   onClick={() => setSection(section + 1)}
@@ -106,11 +123,11 @@ export default function StudentFormLayout({
                 </button>
               )}
             </div>
-          </div>
+          </div>}
         </section>
       </div>
       <footer className="page-footer">
-        Los formularios son demostrativos. Los cambios no se envían ni se guardan en una base de datos.
+        {integration ? 'Las respuestas se guardan en la ficha del estudiante.' : 'Vista demostrativa: conecta el proveedor DECE con la sesión de Supabase y los UUID reales para guardar la ficha.'}
       </footer>
     </div>
   )
