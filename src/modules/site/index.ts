@@ -1,2 +1,1 @@
-export { InstitutionProvider } from "./context/InstitutionContext";
-export { SitePreview } from "./pages/SitePreview";
+export { SiteApp } from "./SiteApp";

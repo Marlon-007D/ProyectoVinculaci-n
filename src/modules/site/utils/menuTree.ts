@@ -37,3 +37,7 @@ export function buildMenuTree(items: Menu[]): MenuNode[] {
   assignDepth(roots, 0);
   return roots;
 }
+
+export function flattenLeaves(tree: MenuNode[]): MenuNode[] {
+  return tree.flatMap((n) => (n.children.length ? flattenLeaves(n.children) : [n]));
+}

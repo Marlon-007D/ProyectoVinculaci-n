@@ -1,41 +1,57 @@
+import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { AsyncView } from "../components/states/AsyncView";
 import { MediaPreview } from "../components/Media/MediaPreview";
-import { MobileNavigation } from "../components/Navigation/MobileNavigation";
-import { Navigation } from "../components/Navigation/Navigation";
+import { VersionList } from "../components/Version/VersionList";
+import { VersionPreview } from "../components/Version/VersionPreview";
 import { useMediaList } from "../hooks/useMedia";
-import { useMenus } from "../hooks/useMenus";
-import "../styles/site.css";
+import { usePage } from "../hooks/usePage";
+import { usePageVersion, useVersions } from "../hooks/useVersions";
 
 export function SitePreview() {
-  const menu = useMenus();
+  const [params] = useSearchParams();
   const files = useMediaList();
+  const page = usePage(params.get("slug") ?? undefined);
+  const pageId = page.state.status === "success" ? page.state.data.page_id : null;
+  const versions = useVersions(pageId);
+  const [selected, setSelected] = useState<number | undefined>();
+  const current = usePageVersion(pageId, selected);
+
   return (
-    <div className="site-root">
-      <div className="site-container">
-        <h1>Vista de prueba</h1>
-        <p>Página temporal de desarrollo (Fases 2 y 3).</p>
+    <div className="site-container site-section">
+      <h1>Vista de prueba</h1>
+      <p>Página temporal de desarrollo (Fases 3 a 5).</p>
 
-        <h2>Menú</h2>
-        <AsyncView state={menu.state} onRetry={menu.reload} emptyMessage="Esta institución aún no tiene menús.">
-          {(tree) => (
-            <>
-              <div className="site-preview__desktop"><Navigation tree={tree} /></div>
-              <div className="site-preview__mobile"><MobileNavigation tree={tree} /></div>
-            </>
-          )}
-        </AsyncView>
+      <h2>Archivos públicos</h2>
+      <AsyncView state={files.state} onRetry={files.reload} emptyMessage="No hay archivos públicos.">
+        {(list) => (
+          <ul className="site-grid">
+            {list.map((a) => (
+              <li key={a.media_asset_id} className="site-card"><MediaPreview asset={a} /></li>
+            ))}
+          </ul>
+        )}
+      </AsyncView>
 
-        <h2>Archivos públicos</h2>
-        <AsyncView state={files.state} onRetry={files.reload} emptyMessage="No hay archivos públicos.">
-          {(list) => (
-            <ul className="site-grid">
-              {list.map((a) => (
-                <li key={a.media_asset_id} className="site-card"><MediaPreview asset={a} /></li>
-              ))}
-            </ul>
-          )}
-        </AsyncView>
-      </div>
+      <h2>Versiones de la página</h2>
+      <AsyncView
+        state={page.state}
+        onRetry={page.reload}
+        emptyTitle="No hay página publicada"
+        emptyMessage="Agrega ?slug=mi-pagina a la dirección o marca una página como inicio."
+      >
+        {(p) => (
+          <>
+            <p>Página: <strong>{p.title}</strong> ({p.slug})</p>
+            <AsyncView state={versions.state} onRetry={versions.reload} emptyTitle="Esta página aún no tiene versiones">
+              {(list) => <VersionList versions={list} selected={selected} onSelect={setSelected} />}
+            </AsyncView>
+            <AsyncView state={current.state} onRetry={current.reload} emptyTitle="No existe esa versión">
+              {(v) => <VersionPreview version={v} />}
+            </AsyncView>
+          </>
+        )}
+      </AsyncView>
     </div>
   );
 }

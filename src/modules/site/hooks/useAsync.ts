@@ -7,8 +7,8 @@ export function useAsync<T>(
   load: () => Promise<T>,
   deps: readonly unknown[],
   isEmpty: (data: T) => boolean = defaultIsEmpty,
-): { state: AsyncState<T>; reload: () => void } {
-  const [state, setState] = useState<AsyncState<T>>({ status: "loading" });
+): { state: AsyncState<NonNullable<T>>; reload: () => void } {
+  const [state, setState] = useState<AsyncState<NonNullable<T>>>({ status: "loading" });
   const [tick, setTick] = useState(0);
 
   useEffect(() => {
@@ -16,7 +16,8 @@ export function useAsync<T>(
     setState({ status: "loading" });
     load()
       .then((data) => {
-        if (!cancelled) setState(isEmpty(data) ? { status: "empty" } : { status: "success", data });
+        if (!cancelled)
+          setState(isEmpty(data) ? { status: "empty" } : { status: "success", data: data as NonNullable<T> });
       })
       .catch((err: unknown) => {
         if (!cancelled)
