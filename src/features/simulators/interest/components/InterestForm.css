@@ -1,0 +1,4 @@
+.interest-form input:focus, .interest-form select:focus { border-color: var(--accent); outline: 3px solid var(--accent-focus); }
+.segmented-control button:focus-visible { outline: 3px solid var(--accent-focus); outline-offset: 2px; }
+.simulator-field-error { color: #b3261e; font-size: 12px; font-weight: 500; line-height: 1.35; }
+.interest-form input[aria-invalid="true"] { border-color: #b3261e; }

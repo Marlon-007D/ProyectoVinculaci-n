@@ -1,0 +1,5 @@
+.invoice-card { border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+.form-grid input:focus, .form-grid select:focus, .table-row input:focus { border-color: var(--accent); outline: 3px solid var(--accent-focus); }
+.primary-button:focus-visible, .secondary-button:focus-visible, .text-button:focus-visible { outline: 3px solid var(--accent-focus); outline-offset: 2px; }
+.invoice-field-error { color: #b3261e; font-size: 12px; font-weight: 500; line-height: 1.35; }
+.form-grid input[aria-invalid="true"], .form-grid select[aria-invalid="true"], .table-row input[aria-invalid="true"] { border-color: #b3261e; }
