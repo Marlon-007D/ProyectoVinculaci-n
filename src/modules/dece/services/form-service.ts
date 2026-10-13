@@ -48,12 +48,183 @@ export type FormRuntime = {
   answers: Record<string, FormAnswerValue>
 }
 
+type StandardQuestion = {
+  code: string
+  label: string
+  type: QuestionType
+  section: string
+  required?: boolean
+  options?: string[]
+  help?: string
+}
+
+const standardFormSetupTasks = new Map<string, Promise<void>>()
+
+const standardQuestions: Record<'general' | 'authorization', StandardQuestion[]> = {
+  general: [
+    { code: 'school_year', label: 'Año lectivo', type: 'text', section: 'Identificación' },
+    { code: 'birth_place_date', label: 'Lugar y fecha de nacimiento', type: 'text', section: 'Identificación' },
+    { code: 'enrollment_number', label: 'Número de matrícula', type: 'text', section: 'Identificación' },
+    { code: 'student_age', label: 'Edad', type: 'number', section: 'Identificación' },
+    { code: 'home_address', label: 'Dirección del domicilio', type: 'textarea', section: 'Identificación' },
+    { code: 'home_sector', label: 'Sector', type: 'text', section: 'Identificación' },
+    { code: 'domicile_change', label: '¿Ha cambiado de domicilio?', type: 'boolean', section: 'Identificación' },
+    { code: 'mother_name', label: 'Nombre de la madre', type: 'text', section: 'Datos familiares' },
+    { code: 'mother_age', label: 'Edad de la madre', type: 'number', section: 'Datos familiares' },
+    { code: 'mother_marital_status', label: 'Estado civil de la madre', type: 'text', section: 'Datos familiares' },
+    { code: 'mother_education', label: 'Instrucción de la madre', type: 'text', section: 'Datos familiares' },
+    { code: 'mother_occupation', label: 'Profesión u ocupación de la madre', type: 'text', section: 'Datos familiares' },
+    { code: 'mother_workplace', label: 'Lugar de trabajo de la madre', type: 'text', section: 'Datos familiares' },
+    { code: 'father_name', label: 'Nombre del padre', type: 'text', section: 'Datos familiares' },
+    { code: 'father_age', label: 'Edad del padre', type: 'number', section: 'Datos familiares' },
+    { code: 'father_marital_status', label: 'Estado civil del padre', type: 'text', section: 'Datos familiares' },
+    { code: 'father_education', label: 'Instrucción del padre', type: 'text', section: 'Datos familiares' },
+    { code: 'father_occupation', label: 'Profesión u ocupación del padre', type: 'text', section: 'Datos familiares' },
+    { code: 'father_workplace', label: 'Lugar de trabajo del padre', type: 'text', section: 'Datos familiares' },
+    { code: 'family_phones', label: 'Teléfonos de contacto familiar', type: 'text', section: 'Datos familiares' },
+    { code: 'legal_representative', label: 'Representante legal, cuidador o tutor', type: 'text', section: 'Datos familiares' },
+    { code: 'representative_relation', label: 'Parentesco', type: 'text', section: 'Datos familiares' },
+    { code: 'representative_age', label: 'Edad del representante', type: 'number', section: 'Datos familiares' },
+    { code: 'representative_occupation', label: 'Profesión u ocupación del representante', type: 'text', section: 'Datos familiares' },
+    { code: 'representative_workplace', label: 'Lugar de trabajo del representante', type: 'text', section: 'Datos familiares' },
+    { code: 'representative_phone', label: 'Teléfono del representante', type: 'text', section: 'Datos familiares' },
+    { code: 'family_members', label: 'Personas con quienes vive el estudiante', type: 'textarea', section: 'Referencias familiares' },
+    { code: 'siblings_count_ages', label: 'Número de hermanos y edades', type: 'textarea', section: 'Referencias familiares' },
+    { code: 'family_birth_order', label: 'Lugar que ocupa en la familia', type: 'text', section: 'Referencias familiares' },
+    { code: 'siblings_at_school', label: 'Hermanos que estudian en la institución y edades', type: 'textarea', section: 'Referencias familiares' },
+    { code: 'family_structure', label: 'Descripción de la estructura familiar', type: 'textarea', section: 'Referencias familiares' },
+    { code: 'family_disability', label: '¿Hay una persona con discapacidad en la familia?', type: 'boolean', section: 'Referencias familiares' },
+    { code: 'family_disability_who', label: '¿Quién?', type: 'text', section: 'Referencias familiares' },
+    { code: 'housing_type', label: 'Condición de la vivienda', type: 'single_select', options: ['Propia', 'Arrendada', 'Prestada', 'Compartida', 'Cedida'], section: 'Vivienda y servicios' },
+    { code: 'housing_description', label: 'Descripción de la vivienda', type: 'textarea', section: 'Vivienda y servicios' },
+    { code: 'housing_services', label: 'Servicios disponibles', type: 'multi_select', options: ['Luz', 'Agua potable', 'SSHH', 'Pozo séptico', 'Teléfono', 'Cable', 'Celular', 'Computadora', 'Internet'], section: 'Vivienda y servicios' },
+    { code: 'student_disability', label: '¿El estudiante tiene alguna discapacidad?', type: 'boolean', section: 'Salud' },
+    { code: 'student_disability_detail', label: 'Detalle de discapacidad', type: 'textarea', section: 'Salud' },
+    { code: 'medical_condition', label: '¿Tiene una condición médica específica?', type: 'boolean', section: 'Salud' },
+    { code: 'medical_condition_detail', label: 'Detalle de condición médica', type: 'textarea', section: 'Salud' },
+    { code: 'has_allergies', label: '¿Padece alergias?', type: 'boolean', section: 'Salud' },
+    { code: 'allergy_medications', label: 'Alergias y medicamentos que utiliza', type: 'textarea', section: 'Salud' },
+    { code: 'healthcare_place', label: 'Centro de salud donde recibe atención', type: 'single_select', options: ['Centro de salud', 'Subcentro de salud', 'Hospital público', 'Hospital privado'], section: 'Salud' },
+    { code: 'regular_doctor', label: 'Nombre del médico que le atiende regularmente', type: 'text', section: 'Salud' },
+    { code: 'school_entry_date', label: 'Fecha de ingreso a la institución', type: 'date', section: 'Datos académicos' },
+    { code: 'previous_school', label: 'Institución educativa de procedencia', type: 'text', section: 'Datos académicos' },
+  ],
+  authorization: [
+    { code: 'school_amie', label: 'Código AMIE de la institución', type: 'text', section: 'Datos generales', help: 'Ingrese el código correspondiente a esta institución.' },
+    { code: 'student_birth_date', label: 'Fecha de nacimiento', type: 'date', section: 'Datos generales' },
+    { code: 'student_address', label: 'Dirección del domicilio', type: 'textarea', section: 'Datos generales' },
+    { code: 'school_year', label: 'Año lectivo', type: 'text', section: 'Datos generales' },
+    { code: 'responsible_name', label: 'Representante o familiar responsable', type: 'text', section: 'Datos generales' },
+    { code: 'school_name', label: 'Nombre de la institución educativa', type: 'text', section: 'Datos generales', required: true },
+    { code: 'responsible_relation', label: 'Parentesco', type: 'text', section: 'Datos generales' },
+    { code: 'responsible_landline', label: 'Teléfono fijo', type: 'text', section: 'Datos generales' },
+    { code: 'responsible_mobile', label: 'Teléfono celular', type: 'text', section: 'Datos generales' },
+    { code: 'has_insurance', label: '¿El estudiante posee seguro médico?', type: 'boolean', section: 'Datos generales' },
+    { code: 'insurance_name', label: 'Nombre del seguro (IESS, ISSFA, ISSPOL u otro)', type: 'text', section: 'Datos generales' },
+    { code: 'usual_healthcare', label: 'Establecimiento de salud al que acude', type: 'text', section: 'Datos generales' },
+    { code: 'can_swim', label: '¿El estudiante sabe nadar?', type: 'boolean', section: 'Datos generales' },
+    { code: 'blood_type', label: 'Grupo sanguíneo y factor RH', type: 'text', section: 'Datos generales' },
+    { code: 'emergency_contact_1', label: 'Contacto de emergencia 1: nombre, parentesco, teléfono fijo y celular', type: 'textarea', section: 'Contactos de emergencia', required: true, help: 'Indique al menos un número fijo de contacto.' },
+    { code: 'emergency_contact_2', label: 'Contacto de emergencia 2: nombre, parentesco, teléfono fijo y celular', type: 'textarea', section: 'Contactos de emergencia' },
+    { code: 'prior_surgeries', label: '¿Ha sido sometido a cirugías previas?', type: 'boolean', section: 'Información importante' },
+    { code: 'surgery_details', label: 'Detalle de cirugías', type: 'textarea', section: 'Información importante' },
+    { code: 'has_allergies', label: '¿Tiene alergias?', type: 'boolean', section: 'Información importante' },
+    { code: 'allergy_details', label: 'Detalle de alergias', type: 'textarea', section: 'Información importante' },
+    { code: 'diagnosed_conditions', label: '¿Tiene enfermedades diagnosticadas?', type: 'boolean', section: 'Información importante' },
+    { code: 'condition_details', label: 'Detalle de enfermedades o condiciones', type: 'textarea', section: 'Información importante' },
+    { code: 'medications', label: 'Medicamentos que usa', type: 'textarea', section: 'Información importante' },
+    { code: 'special_therapy', label: 'Tratamiento médico específico que considera importante', type: 'textarea', section: 'Información importante' },
+    { code: 'treatment_restrictions', label: 'Tratamiento que no autoriza por razones culturales o religiosas', type: 'textarea', section: 'Información importante' },
+    { code: 'healthcare_authorization', label: 'Confirmo la autorización para atención médica escolar y traslado en caso de urgencia', type: 'boolean', section: 'Autorización', required: true, help: 'Lea la autorización y consulte con la institución si necesita registrar una restricción.' },
+    { code: 'authorization_truth_declaration', label: 'Declaro que la información es correcta y comunicaré cualquier modificación a la institución', type: 'boolean', section: 'Autorización', required: true },
+    { code: 'authorization_signer_name', label: 'Nombres y apellidos de quien autoriza', type: 'text', section: 'Autorización', required: true },
+    { code: 'guardian_national_id', label: 'Cédula del representante legal', type: 'text', section: 'Autorización', required: true },
+    { code: 'authorization_date', label: 'Fecha de autorización', type: 'date', section: 'Autorización' },
+    { code: 'authorization_observations', label: 'Observaciones', type: 'textarea', section: 'Autorización' },
+  ],
+}
+
 /**
  * Servicio del módulo. Recibe el cliente autenticado del contenedor de la app
  * y nunca crea una sesión propia; así reutiliza la autenticación del equipo.
  */
 export function createDeceFormService(client: SupabaseClient) {
-  async function loadForm(institutionId: string, code: string, studentId: string) {
+  async function setupStandardForms(institutionId: string) {
+    const { data: initialDefinitions, error: initialError } = await client.from('form_definitions')
+      .select('form_definition_id, code, is_active, form_versions(form_version_id, version_number, status)')
+      .eq('institution_id', institutionId).in('code', ['general', 'authorization'])
+    if (initialError) throw initialError
+    const complete = ['general', 'authorization'].every(code => (initialDefinitions ?? []).some(definition =>
+      definition.code === code && definition.is_active && (definition.form_versions ?? []).some((version: { status: string }) => version.status === 'published'),
+    ))
+    if (!complete) {
+      const { error: createError } = await client.rpc('create_dece_default_forms', { target_institution: institutionId })
+      if (createError) throw createError
+    }
+
+    const { data: definitions, error: definitionsError } = await client.from('form_definitions')
+      .select('form_definition_id, code, form_versions(form_version_id, version_number, status)')
+      .eq('institution_id', institutionId).eq('is_active', true).in('code', ['general', 'authorization'])
+    if (definitionsError) throw definitionsError
+
+    for (const definition of (definitions ?? []) as Array<{ code: string; form_versions: Array<{ form_version_id: string; version_number: number; status: string }> }>) {
+      if (definition.code !== 'general' && definition.code !== 'authorization') continue
+      const version = definition.form_versions.filter(item => item.status === 'published' || item.status === 'draft')
+        .sort((a, b) => b.version_number - a.version_number)[0]
+      if (!version) continue
+      const { data: existing, error: existingError } = await client.from('form_questions')
+        .select('form_question_id, code, position, form_question_options(question_option_id)')
+        .eq('form_version_id', version.form_version_id)
+      if (existingError) throw existingError
+      const rows = (existing ?? []) as Array<{ form_question_id: string; code: string; position: number; form_question_options: Array<{ question_option_id: string }> }>
+      const rowsByCode = new Map(rows.map(row => [row.code, row]))
+      const missing = standardQuestions[definition.code].filter(question => !rowsByCode.has(question.code))
+      const firstPosition = Math.max(0, ...rows.map(row => row.position))
+      if (missing.length) {
+        const { data: inserted, error: insertError } = await client.from('form_questions').insert(missing.map((question, index) => ({
+          form_version_id: version.form_version_id,
+          code: question.code,
+          label: question.label,
+          help_text: question.help ?? null,
+          data_type: question.type,
+          is_required: question.required ?? false,
+          is_system: false,
+          is_active: true,
+          position: firstPosition + index + 1,
+          display_config: { section: question.section },
+        }))).select('form_question_id, code')
+        if (insertError) throw insertError
+        for (const row of inserted ?? []) rowsByCode.set(row.code, { ...row, position: 0, form_question_options: [] })
+      }
+      const optionsToInsert = standardQuestions[definition.code].flatMap(question => {
+        if (!question.options?.length) return []
+        const existingRow = rowsByCode.get(question.code)
+        if (!existingRow || existingRow.form_question_options.length) return []
+        return question.options.map((option, index) => ({
+          form_question_id: existingRow.form_question_id, value: option, label: option, position: index + 1,
+        }))
+      })
+      if (optionsToInsert.length) {
+        const { error: optionsError } = await client.from('form_question_options').insert(optionsToInsert)
+        if (optionsError) throw optionsError
+      }
+    }
+  }
+
+  async function ensureStandardForms(institutionId: string) {
+    const pending = standardFormSetupTasks.get(institutionId)
+    if (pending) return pending
+    const task = setupStandardForms(institutionId)
+    standardFormSetupTasks.set(institutionId, task)
+    try {
+      await task
+    } catch (error) {
+      if (standardFormSetupTasks.get(institutionId) === task) standardFormSetupTasks.delete(institutionId)
+      throw error
+    }
+  }
+
+  async function loadForm(institutionId: string, code: string, studentId: string, allowDraft = true) {
     const { data: definition, error: definitionError } = await client
       .from('form_definitions')
       .select('form_definition_id, name, form_versions(form_version_id, version_number, status, created_at)')
@@ -63,7 +234,7 @@ export function createDeceFormService(client: SupabaseClient) {
       .maybeSingle()
 
     if (definitionError) throw definitionError
-    if (!definition) throw new Error(`No existe la ficha activa «${code}» para esta institución.`)
+    if (!definition) throw new Error('No tienes permiso para ver esta ficha o todavía no se ha publicado en tu institución.')
 
     const versions = (definition.form_versions ?? []) as Array<{
       form_version_id: string
@@ -72,10 +243,10 @@ export function createDeceFormService(client: SupabaseClient) {
       created_at: string
     }>
     const version = versions
-      .filter(item => item.status === 'published' || item.status === 'draft')
+      .filter(item => item.status === 'published' || (allowDraft && item.status === 'draft'))
       .sort((left, right) => right.version_number - left.version_number)[0]
 
-    if (!version) throw new Error(`La ficha «${code}» todavía no tiene una versión publicada.`)
+    if (!version) throw new Error('La institución todavía no ha publicado esta ficha.')
 
     const { data: questionRows, error: questionsError } = await client
       .from('form_questions')
@@ -111,8 +282,9 @@ export function createDeceFormService(client: SupabaseClient) {
           const selectedIds = ((row.form_answer_options ?? []) as Array<{ question_option_id: string }>).map(option => option.question_option_id)
           return [row.form_question_id, question.form_question_options.filter(option => selectedIds.includes(option.question_option_id)).map(option => option.value)]
         }
-        const selected = row.form_question_options as { value: string } | null
-        return [row.form_question_id, selected?.value ?? value ?? null]
+        const selected = row.form_question_options as { value: string } | Array<{ value: string }> | null
+        const selectedValue = Array.isArray(selected) ? selected[0]?.value : selected?.value
+        return [row.form_question_id, selectedValue ?? value ?? null]
       }))
     }
 
@@ -136,6 +308,13 @@ export function createDeceFormService(client: SupabaseClient) {
     questions: FormQuestion[],
   ) {
     let currentSubmissionId = submissionId
+
+    if (currentSubmissionId) {
+      const { data: existing, error: statusError } = await client.from('form_submissions')
+        .select('status').eq('form_submission_id', currentSubmissionId).single()
+      if (statusError) throw statusError
+      if (existing.status !== 'draft') throw new Error('La ficha ya fue enviada y no se puede editar.')
+    }
 
     if (!currentSubmissionId) {
       const { data, error } = await client
@@ -187,19 +366,95 @@ export function createDeceFormService(client: SupabaseClient) {
       }
     }
 
-    const { error: submissionError } = await client
+    const { data: updatedSubmission, error: submissionError } = await client
       .from('form_submissions')
       .update({ status: 'draft', updated_at: new Date().toISOString() })
       .eq('form_submission_id', currentSubmissionId)
       .eq('student_id', studentId)
+      .eq('status', 'draft')
+      .select('form_submission_id')
+      .maybeSingle()
 
     if (submissionError) throw submissionError
+    if (!updatedSubmission) throw new Error('Sin permiso para guardar esta ficha o la ficha ya fue enviada.')
+    if (!currentSubmissionId) throw new Error('No se pudo crear la ficha.')
     return currentSubmissionId
+  }
+
+  async function submit(submissionId: string) {
+    const { data, error } = await client.from('form_submissions')
+      .update({ status: 'submitted', updated_at: new Date().toISOString() })
+      .eq('form_submission_id', submissionId).eq('status', 'draft')
+      .select('form_submission_id').maybeSingle()
+    if (error) throw error
+    if (!data) throw new Error('Sin permiso para enviar esta ficha o el borrador ya no está disponible.')
+  }
+
+  async function markReviewed(submissionId: string) {
+    const { data, error } = await client.from('form_submissions')
+      .update({ status: 'reviewed', updated_at: new Date().toISOString() })
+      .eq('form_submission_id', submissionId).eq('status', 'submitted')
+      .select('form_submission_id').maybeSingle()
+    if (error) throw error
+    if (!data) throw new Error('Sin permiso para revisar esta ficha o ya fue revisada.')
+  }
+
+  async function loadOwnSubmission(submissionId: string, studentId: string) {
+    const { data: submission, error: submissionError } = await client.from('form_submissions')
+      .select('form_submission_id, student_id, form_version_id, status, updated_at')
+      .eq('form_submission_id', submissionId).eq('student_id', studentId).maybeSingle()
+    if (submissionError) throw submissionError
+    if (!submission) throw new Error('No tienes permiso para consultar este envío.')
+
+    const { data: version, error: versionError } = await client.from('form_versions')
+      .select('form_version_id, form_definition_id, version_number')
+      .eq('form_version_id', submission.form_version_id).maybeSingle()
+    if (versionError) throw versionError
+    if (!version) throw new Error('No tienes permiso para consultar la versión de esta ficha.')
+
+    const { data: definition, error: definitionError } = await client.from('form_definitions')
+      .select('name, code').eq('form_definition_id', version.form_definition_id).maybeSingle()
+    if (definitionError) throw definitionError
+    if (!definition) throw new Error('No tienes permiso para consultar esta ficha.')
+
+    const { data: questionRows, error: questionsError } = await client.from('form_questions')
+      .select('form_question_id, form_version_id, code, label, help_text, data_type, source_field, is_required, is_system, position, display_config, form_question_options(question_option_id, value, label, position)')
+      .eq('form_version_id', submission.form_version_id).order('position')
+    if (questionsError) throw questionsError
+
+    const { data: answerRows, error: answersError } = await client.from('form_answers')
+      .select('form_question_id, value_text, value_number, value_boolean, value_date, form_question_options!form_answer_selected_option_question_fk(value), form_answer_options(question_option_id)')
+      .eq('form_submission_id', submissionId)
+    if (answersError) throw answersError
+    const questions = (questionRows ?? []) as FormQuestion[]
+    const questionsById = new Map(questions.map(question => [question.form_question_id, question]))
+    const answers = Object.fromEntries((answerRows ?? []).map(row => {
+      const question = questionsById.get(row.form_question_id)
+      if (question?.data_type === 'multi_select') {
+        const ids = ((row.form_answer_options ?? []) as Array<{ question_option_id: string }>).map(option => option.question_option_id)
+        return [row.form_question_id, question.form_question_options.filter(option => ids.includes(option.question_option_id)).map(option => option.label)]
+      }
+      const selected = row.form_question_options as { value: string } | Array<{ value: string }> | null
+      const selectedValue = Array.isArray(selected) ? selected[0]?.value : selected?.value
+      return [row.form_question_id, selectedValue ?? row.value_text ?? row.value_number ?? row.value_boolean ?? row.value_date ?? null]
+    })) as Record<string, FormAnswerValue>
+
+    return {
+      submissionId: submission.form_submission_id,
+      status: submission.status as FormSubmission['status'],
+      updatedAt: submission.updated_at as string,
+      name: definition.name as string,
+      code: definition.code as string,
+      versionNumber: version.version_number as number,
+      questions,
+      answers,
+    }
   }
 
   async function addQuestion(
     versionId: string,
     input: Pick<FormQuestion, 'code' | 'label' | 'help_text' | 'data_type' | 'is_required' | 'display_config'>,
+    optionLabels: string[] = [],
   ) {
     const { data: current, error: readError } = await client
       .from('form_questions')
@@ -227,7 +482,16 @@ export function createDeceFormService(client: SupabaseClient) {
       .select('form_question_id')
       .single()
     if (error) throw error
-    return data.form_question_id as string
+    const options = optionLabels.filter(label => label.trim()).map(label => label.trim())
+    let insertedOptions: Array<{ question_option_id: string; value: string; label: string; position: number }> = []
+    if (options.length) {
+      const { data: optionRows, error: optionError } = await client.from('form_question_options').insert(options.map((label, index) => ({
+        form_question_id: data.form_question_id, value: label, label, position: index + 1,
+      }))).select('question_option_id, value, label, position')
+      if (optionError) throw optionError
+      insertedOptions = optionRows ?? []
+    }
+    return { id: data.form_question_id as string, options: insertedOptions }
   }
 
   async function removeQuestion(versionId: string, questionId: string) {
@@ -249,5 +513,5 @@ export function createDeceFormService(client: SupabaseClient) {
     if (error) throw error
   }
 
-  return { loadForm, saveDraft, addQuestion, removeQuestion }
+  return { ensureStandardForms, loadForm, saveDraft, submit, markReviewed, loadOwnSubmission, addQuestion, removeQuestion }
 }
