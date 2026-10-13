@@ -1,14 +1,22 @@
+import { useState, type FormEvent } from 'react';
+import { BrowserRouter, Routes, Route, useNavigate, Navigate } from 'react-router-dom';
 import { useEffect, useState, type FormEvent } from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import { AuthProvider, useAuth } from './core/AuthContext';
+import { TenantProvider } from './core/TenantContext';
 import { TenantProvider, useTenant } from './core/TenantContext';
 import { MfaEnrollment, SuperAdminPanel, UserManagement } from './modules/admin';
 import { ProjectsWorkspace } from './modules/projects/ProjectsWorkspace';
 import { DeceApp } from './modules/dece';
 import { SiteApp } from './modules/site';
 import { SimuladoresApp } from './app/SimuladoresApp';
+import { InstitutionalLayout } from './components/layout/InstitutionalLayout';
+import { InstitutionalPanel } from './pages/InstitutionalPanel';
+import { NotFoundPage } from './pages/NotFoundPage';
 import './App.css';
 
+export function AccessScreen({ onSuccess }: { onSuccess?: () => void }) {
+  const { login } = useAuth();
 type MainTab = 'proyectos' | 'portal' | 'dece' | 'simuladores' | 'admin';
 
 const roleNames: Record<string, string> = {
@@ -98,22 +106,60 @@ function AccessScreen() {
   }
 
   return (
-    <main className="grid min-h-[80vh] place-items-center bg-[radial-gradient(ellipse_at_50%_20%,#e6f1ef_0,transparent_55%),#f4f7f9] p-6">
+    <main className="grid min-h-[75vh] place-items-center bg-[radial-gradient(ellipse_at_50%_20%,#e6f1ef_0,transparent_55%),#f4f7f9] p-6">
       <section className="w-full max-w-[430px] rounded-[18px] border border-[#e4ebed] bg-white p-7 shadow-[0_16px_50px_#18384412] sm:p-[38px]">
+        <div aria-hidden="true" className="mb-6 grid size-12 place-items-center rounded-[15px] bg-brand font-bold text-white shadow-[0_6px_16px_#145b5825]">
+          V
+        </div>
+        <p className="mb-2 text-[10px] font-bold tracking-[0.16em] text-[#398278]">PLATAFORMA INSTITUCIONAL</p>
+        <h1 className="mb-2 font-sans text-[25px] font-bold leading-tight tracking-tight text-ink">Gestión y Autenticación</h1>
+        <p className="mb-6 text-sm leading-relaxed text-muted">Ingresa con tus credenciales institucionales para gestionar administración, seguridad y roles.</p>
+        <form onSubmit={submit} className="flex flex-col gap-2">
         <div aria-hidden="true" className="mb-6 grid size-12 place-items-center rounded-[15px] bg-brand font-bold text-white shadow-[0_6px_16px_#145b5825]">V</div>
         <p className="mb-2 text-[10px] font-bold tracking-[0.16em] text-[#398278]">ACCESO INSTITUCIONAL</p>
         <h1 className="mb-2 font-sans text-[25px] font-bold leading-tight tracking-tight text-ink">{registerMode ? 'Crear cuenta' : 'Iniciar sesión'}</h1>
         <p className="mb-6 text-sm leading-relaxed text-muted">{registerMode ? 'Registra tu cuenta. El acceso de administración se habilita cuando te asignen un rol.' : 'Ingresa con la cuenta que te asignó el responsable de tu institución.'}</p>
         <form onSubmit={registerMode ? submitRegistration : submit} className="flex flex-col gap-2">
           <label htmlFor="email" className="mt-2 text-[13px] font-semibold text-[#314953]">Correo electrónico</label>
-          <input id="email" type="email" autoComplete="username" value={email} onChange={event => setEmail(event.target.value)} required className="h-11 rounded-lg border border-[#d8e1e4] bg-white px-3 text-[#243c46] focus-visible:outline" placeholder="admin@institucion.edu.ec" />
+          <input
+            id="email"
+            type="email"
+            autoComplete="username"
+            value={email}
+            onChange={event => setEmail(event.target.value)}
+            required
+            className="h-11 rounded-lg border border-[#d8e1e4] bg-white px-3 text-[#243c46] focus-visible:outline"
+            placeholder="admin@institucion.edu.ec"
+          />
           <label htmlFor="password" className="mt-2 text-[13px] font-semibold text-[#314953]">Contraseña</label>
+          <input
+            id="password"
+            type="password"
+            autoComplete="current-password"
+            value={password}
+            onChange={event => setPassword(event.target.value)}
+            required
+            className="h-11 rounded-lg border border-[#d8e1e4] bg-white px-3 text-[#243c46]"
+            placeholder="••••••••"
+          />
           <input id="password" type="password" autoComplete={registerMode ? 'new-password' : 'current-password'} minLength={registerMode ? 8 : undefined} value={password} onChange={event => setPassword(event.target.value)} required className="h-11 rounded-lg border border-[#d8e1e4] bg-white px-3 text-[#243c46]" placeholder="••••••••" />
           {registerMode && <>
             <label htmlFor="confirm-register-password" className="mt-2 text-[13px] font-semibold text-[#314953]">Confirmar contraseña</label>
             <input id="confirm-register-password" type="password" autoComplete="new-password" minLength={8} value={confirmation} onChange={event => setConfirmation(event.target.value)} required className="h-11 rounded-lg border border-[#d8e1e4] bg-white px-3 text-[#243c46]" />
           </>}
           {error && <p role="alert" className="rounded-lg border border-[#f2d1ce] bg-[#fff1f0] px-4 py-3 text-[13px] text-[#9b3838]">{error}</p>}
+          <div className="flex items-center justify-between text-xs text-teal-700 py-1">
+            <button
+              type="button"
+              className="text-left underline hover:text-teal-900 font-medium cursor-pointer"
+              onClick={() => {
+                setEmail('admin@institucion.edu.ec');
+                setPassword('admin123');
+              }}
+            >
+              Cargar credenciales de demostración
+            </button>
+          </div>
           {expiredAuthLink && <p role="alert" className="rounded-lg border border-[#f2d1ce] bg-[#fff1f0] px-4 py-3 text-[13px] text-[#9b3838]">Ese enlace vencio o ya se uso. Solicita uno nuevo desde Recuperar contrasena.</p>}
           {resetSent && <p role="status" className="rounded-lg border border-[#cce7df] bg-[#f0faf6] px-4 py-3 text-[13px] text-[#286b58]">Si la cuenta existe, recibiras un enlace para crear una contrasena nueva. Revisa tambien spam; los enlaces anteriores pueden vencer al solicitar otro.</p>}
           {registered && <p role="status" className="rounded-lg border border-[#cce7df] bg-[#f0faf6] px-4 py-3 text-[13px] text-[#286b58]">Solicitud procesada. Si es una cuenta nueva, revisa tu correo y spam para confirmar. Si ya usaste este correo, inicia sesion o recupera la contrasena; el registro no crea otra cuenta ni garantiza un nuevo correo de confirmacion. Despues, el superadministrador puede asignarte un rol.</p>}
@@ -190,6 +236,8 @@ function PasswordRecoveryScreen() {
   );
 }
 
+export function AdminWorkspace() {
+  const { user, role, roleError, loading } = useAuth();
 function AdminWorkspace() {
   const { user, role, roleError, loading, isPasswordRecovery } = useAuth();
 
@@ -209,7 +257,7 @@ function AdminWorkspace() {
   }
 
   return (
-    <div className="mx-auto max-w-[1180px] px-4 py-6 sm:px-[30px]">
+    <div className="mx-auto max-w-[1180px] px-4 py-8 sm:px-[30px]">
       <section className="py-[16px] sm:pb-[18px]">
         <p className="mb-2 text-[10px] font-bold tracking-[0.16em] text-[#398278]">ESPACIO DE ADMINISTRACIÓN</p>
         <h1 className="mb-2 text-[26px] font-bold tracking-tight text-ink sm:text-3xl">Panel de gestión</h1>
@@ -274,6 +322,12 @@ function MfaChallengeScreen() {
   );
 }
 
+function ProjectsPageWrapper() {
+  const navigate = useNavigate();
+  return <ProjectsWorkspace onLogin={() => navigate('/panel/admin')} />;
+}
+
+export function AppRoutes() {
 function MainLayout() {
   const [activeTab, setActiveTab] = useState<MainTab>('proyectos');
   const { user, role, logout, mfaRequired, mfaEnrollmentRequired, completeMfaEnrollment, isPasswordRecovery } = useAuth();
@@ -284,6 +338,24 @@ function MainLayout() {
   if (user && mfaEnrollmentRequired) return <MfaEnrollment onEnrolled={completeMfaEnrollment} />;
 
   return (
+    <Routes>
+      <Route element={<InstitutionalLayout />}>
+        <Route index element={<Navigate to="/panel" replace />} />
+        <Route path="inicio" element={<Navigate to="/panel" replace />} />
+        <Route path="panel" element={<InstitutionalPanel />} />
+        <Route path="panel/proyectos" element={<ProjectsPageWrapper />} />
+        <Route path="panel/dece" element={<DeceApp />} />
+        <Route path="panel/simuladores" element={<SimuladoresApp />} />
+        <Route path="panel/portal/*" element={<SiteApp />} />
+        <Route path="panel/admin" element={<AdminWorkspace />} />
+        <Route path="proyectos" element={<Navigate to="/panel/proyectos" replace />} />
+        <Route path="dece" element={<Navigate to="/panel/dece" replace />} />
+        <Route path="simuladores" element={<Navigate to="/panel/simuladores" replace />} />
+        <Route path="portal/*" element={<SiteApp />} />
+        <Route path="admin" element={<Navigate to="/panel/admin" replace />} />
+        <Route path="*" element={<NotFoundPage />} />
+      </Route>
+    </Routes>
     <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
       {/* Barra de navegación superior institucional */}
       <header className="sticky top-0 z-40 bg-white border-b border-gray-200 shadow-xs">
@@ -398,7 +470,7 @@ export default function App() {
     <BrowserRouter>
       <AuthProvider>
         <TenantProvider>
-          <MainLayout />
+          <AppRoutes />
         </TenantProvider>
       </AuthProvider>
     </BrowserRouter>
