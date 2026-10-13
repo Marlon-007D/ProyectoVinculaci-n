@@ -4,6 +4,7 @@ import { DeceApp, DeceDataProvider } from '../../modules/dece'
 import ConfigurableForm from '../../modules/dece/pages/student-form/configurable-form'
 import type { Student } from '../../modules/dece/types/student'
 import { createDeceFormService } from '../../modules/dece/services/form-service'
+import './student-portal.css'
 
 type Membership = { institution_id: string; role: { name: string } | { name: string }[] | null; institution: { name: string; slug: string } | { name: string; slug: string }[] | null }
 type ActiveSession = { userId: string; email: string; institutionId: string; institutionName: string; slug: string; role: string }
@@ -194,26 +195,26 @@ function StudentFicha({ session }: { session: ActiveSession }) {
     } finally { setHistoryDetailLoading(false) }
   }
 
-  return <DeceDataProvider value={integration}><main className="container py-4">
-    <div className="d-flex justify-content-between align-items-center"><h1>Mis fichas</h1><button className="btn btn-outline-secondary" onClick={() => void signOut()}>Cerrar sesión</button></div>
-    {loading ? <p role="status">Cargando ficha…</p> : error ? <p role="alert">{error}</p> : student && <>
-      <nav className="nav nav-tabs mb-3" aria-label="Fichas y envíos"><button type="button" className={`nav-link${activeTab === 'forms' ? ' active' : ''}`} onClick={() => setActiveTab('forms')}>Completar fichas</button><button type="button" className={`nav-link${activeTab === 'history' ? ' active' : ''}`} onClick={() => { setActiveTab('history'); setHistoryRefresh(value => value + 1); setSelectedHistory(null) }}>Mi historial</button></nav>
+  return <div className="studentPortal"><DeceDataProvider value={integration}><main className="container studentPortal__main py-4">
+    <header className="studentPortal__header"><div><span className="studentPortal__eyebrow">ESPACIO DEL ESTUDIANTE</span><h1>Mis fichas</h1><p>Completa tus formularios y consulta tus envíos.</p></div><button className="btn btn-outline-secondary" onClick={() => void signOut()}>Cerrar sesión</button></header>
+    {loading ? <p role="status">Cargando ficha…</p> : error ? <p role="alert" className="studentPortal__message">{error}</p> : student && <>
+      <nav className="studentPortal__tabs" aria-label="Fichas y envíos"><button type="button" className={activeTab === 'forms' ? 'active' : ''} onClick={() => setActiveTab('forms')}>Completar fichas</button><button type="button" className={activeTab === 'history' ? 'active' : ''} onClick={() => { setActiveTab('history'); setHistoryRefresh(value => value + 1); setSelectedHistory(null) }}>Mi historial</button></nav>
       {activeTab === 'forms' ? <>
-        <nav className="nav nav-pills mb-3" aria-label="Formularios"><button type="button" className={`nav-link${formCode === 'general' ? ' active' : ''}`} onClick={() => { setFormCode('general'); setSection(0) }}>Ficha general</button><button type="button" className={`nav-link${formCode === 'authorization' ? ' active' : ''}`} onClick={() => { setFormCode('authorization'); setSection(0) }}>Autorización</button></nav>
-        <nav className="nav nav-pills mb-3" aria-label="Secciones de la ficha">{sections.map((item, index) => <button type="button" className={`nav-link${section === index ? ' active' : ''}`} key={item} onClick={() => setSection(index)}>{item}</button>)}</nav>
-        <ConfigurableForm key={formCode} integration={integration} student={student} code={formCode} section={section} onSectionsChange={syncSections} audience="student" />
+        <nav className="studentPortal__formTabs" aria-label="Formularios"><button type="button" className={formCode === 'general' ? 'active' : ''} onClick={() => { setFormCode('general'); setSection(0) }}>Ficha general</button><button type="button" className={formCode === 'authorization' ? 'active' : ''} onClick={() => { setFormCode('authorization'); setSection(0) }}>Autorización</button></nav>
+        <nav className="studentPortal__sections" aria-label="Secciones de la ficha">{sections.map((item, index) => <button type="button" className={section === index ? 'active' : ''} key={item} onClick={() => setSection(index)}>{String(index + 1).padStart(2, '0')} · {item}</button>)}</nav>
+        <section className="studentPortal__formSurface"><header className="studentPortal__formHeading"><span>FORMULARIO ESTUDIANTIL</span><h2>{formCode === 'general' ? 'Registro general acumulativo estudiantil' : 'Ficha de autorización para atención y emergencias'}</h2><p>{student.name} · {student.grade}</p></header><ConfigurableForm key={formCode} integration={integration} student={student} code={formCode} section={section} onSectionsChange={syncSections} audience="student" /></section>
       </> : <section aria-labelledby="history-heading"><h2 id="history-heading">Historial de mis fichas</h2>
         {historyLoading && <p role="status">Cargando historial…</p>}{historyError && <p role="alert">{historyError}</p>}
         {!historyLoading && !historyError && history.length === 0 && <p>No hay fichas visibles todavía. Puede deberse a permisos o a que aún no guardaste un borrador.</p>}
-        <ul className="list-group mb-3">{history.map(item => <li className="list-group-item d-flex justify-content-between align-items-center" key={item.id}><span><strong>{item.name}</strong><br /><small>Versión {item.versionNumber} · {new Date(item.updatedAt).toLocaleString('es-EC')}</small></span><span className="d-flex align-items-center gap-2"><span className="badge text-bg-secondary">{item.status === 'draft' ? 'Borrador' : item.status === 'submitted' ? 'Enviada' : 'Revisada'}</span><button type="button" className="btn btn-outline-primary btn-sm" onClick={() => void openHistory(item)}>Ver respuestas</button></span></li>)}</ul>
-        {historyDetailLoading && <p role="status">Cargando respuestas…</p>}{selectedHistory && <article className="card card-body"><div className="d-flex justify-content-between"><h3>{selectedHistory.name} · versión {selectedHistory.versionNumber}</h3><button className="btn btn-sm btn-outline-secondary" onClick={() => setSelectedHistory(null)}>Cerrar</button></div>{selectedHistory.questions.map(question => {
+        <ul className="studentPortal__historyList">{history.map(item => <li key={item.id}><span><strong>{item.name}</strong><small>Versión {item.versionNumber} · {new Date(item.updatedAt).toLocaleString('es-EC')}</small></span><span className="studentPortal__historyActions"><span className={`studentPortal__badge ${item.status}`}>{item.status === 'draft' ? 'Borrador' : item.status === 'submitted' ? 'Enviada' : 'Revisada'}</span><button type="button" className="btn btn-outline-primary btn-sm" onClick={() => void openHistory(item)}>Ver respuestas</button></span></li>)}</ul>
+        {historyDetailLoading && <p role="status">Cargando respuestas…</p>}{selectedHistory && <article className="studentPortal__historyDetail"><div className="studentPortal__historyTitle"><h3>{selectedHistory.name} · versión {selectedHistory.versionNumber}</h3><button className="btn btn-sm btn-outline-secondary" onClick={() => setSelectedHistory(null)}>Cerrar</button></div>{selectedHistory.questions.map(question => {
           const value = question.is_system ? question.source_field === 'students.first_name' ? student.name : question.source_field === 'students.grade_level' ? student.grade : question.source_field === 'students.national_id' ? student.id : '' : selectedHistory.answers[question.form_question_id]
           const display = Array.isArray(value) ? value.join(', ') : typeof value === 'boolean' ? value ? 'Sí' : 'No' : value === null || value === undefined || value === '' ? 'Sin respuesta' : String(value)
           return <div className="mb-3" key={question.form_question_id}><strong>{question.label}</strong><div>{display}</div></div>
         })}</article>}
       </section>}
     </>}
-  </main></DeceDataProvider>
+  </main></DeceDataProvider></div>
 }
 
 function DeceStaffModule({ session }: { session: ActiveSession }) {
