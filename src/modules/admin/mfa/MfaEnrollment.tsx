@@ -76,7 +76,7 @@ export const MfaEnrollment: React.FC<{ onEnrolled: () => void }> = ({ onEnrolled
     <main className="grid min-h-[80vh] place-items-center bg-[radial-gradient(ellipse_at_50%_20%,#e6f1ef_0,transparent_55%),#f4f7f9] p-6">
       <section className="w-full max-w-[480px] rounded-[18px] border border-[#e4ebed] bg-white p-7 shadow-[0_16px_50px_#18384412] sm:p-[38px]">
         <div aria-hidden="true" className="mb-6 grid size-12 place-items-center rounded-[15px] bg-brand font-bold text-white">V</div>
-        <p className="mb-2 text-[10px] font-bold tracking-[0.16em] text-[#398278]">PROTECCIÓN DE LA CUENTA</p>
+        <p className="mb-2 text-[10px] font-bold tracking-[0.16em] text-[#245b88]">PROTECCIÓN DE LA CUENTA</p>
         <h1 className="mb-2 text-2xl font-bold tracking-tight text-ink">Activa la verificación en dos pasos</h1>
         <p className="mb-5 text-sm leading-relaxed text-muted">Como administrador, configura una aplicación autenticadora antes de continuar. La necesitarás al iniciar sesión.</p>
         {!qrCode ? (

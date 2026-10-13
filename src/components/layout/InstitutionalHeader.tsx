@@ -101,7 +101,7 @@ export function InstitutionalHeader() {
               to="/panel/admin"
               className={`px-3 py-2 rounded-lg text-xs font-semibold tracking-wide transition-colors whitespace-nowrap ${
                 isAdmin
-                  ? 'text-teal-900 bg-teal-50 border border-teal-200 shadow-2xs font-bold'
+                    ? 'text-sky-900 bg-sky-50 border border-sky-200 shadow-2xs font-bold'
                   : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
               }`}
             >
@@ -188,13 +188,13 @@ export function InstitutionalHeader() {
               onClick={() => setMobileMenuOpen(false)}
               className={`flex items-center justify-between px-3 py-2 rounded-lg text-sm font-semibold ${
                 isAdmin
-                  ? 'bg-teal-50 text-teal-900 border border-teal-200 font-bold'
+                  ? 'bg-sky-50 text-sky-900 border border-sky-200 font-bold'
                   : 'text-gray-700 hover:bg-gray-50'
               }`}
             >
               <span>Administración</span>
               {isAdmin && (
-                <span className="text-[10px] bg-teal-200 text-teal-900 px-2 py-0.5 rounded">
+                <span className="text-[10px] bg-sky-200 text-sky-900 px-2 py-0.5 rounded">
                   Activo
                 </span>
               )}

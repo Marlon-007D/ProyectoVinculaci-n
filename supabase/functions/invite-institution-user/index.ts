@@ -35,8 +35,13 @@ Deno.serve(async (request) => {
 
     const body = await request.json();
     const email = String(body.email ?? '').trim().toLowerCase();
+    const firstName = String(body.firstName ?? '').trim();
+    const lastName = String(body.lastName ?? '').trim();
     const roleId = String(body.roleId ?? '');
     const institutionId = String(body.institutionId ?? '');
+    if (!firstName || !lastName) {
+      return respond({ error: 'Los nombres y apellidos son obligatorios para crear el perfil.' }, 400);
+    }
     if (!email || !roleId || !institutionId) {
       return respond({ error: 'Correo, rol e institución son obligatorios.' }, 400);
     }
@@ -80,7 +85,9 @@ Deno.serve(async (request) => {
       return respond({ error: 'La institución no existe o está inactiva.' }, 400);
     }
 
-    const { data: invitation, error: inviteError } = await admin.auth.admin.inviteUserByEmail(email);
+    const { data: invitation, error: inviteError } = await admin.auth.admin.inviteUserByEmail(email, {
+      data: { first_name: firstName, last_name: lastName },
+    });
     if (inviteError || !invitation.user) {
       console.error('No se pudo crear la invitación:', inviteError);
       return respond({ error: inviteError?.message ?? 'No se pudo crear la cuenta invitada.' }, 400);
@@ -89,8 +96,8 @@ Deno.serve(async (request) => {
     const invitedUser = invitation.user;
     const { error: profileError } = await admin.from('profiles').upsert({
       profile_id: invitedUser.id,
-      first_name: invitedUser.user_metadata?.first_name || email.split('@')[0],
-      last_name: invitedUser.user_metadata?.last_name || 'Institucional',
+      first_name: firstName,
+      last_name: lastName,
       email,
       mfa_required: true,
     }, { onConflict: 'profile_id' });

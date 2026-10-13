@@ -29,7 +29,7 @@
 }
 
 .btnSave {
-  background-color: #2563eb;
+  background-color: #0a233f;
   color: white;
   padding: 0.5rem 1.25rem;
   border: none;
@@ -51,12 +51,61 @@
 }
 
 .btnSelect {
-  background-color: #4f46e5;
+  background-color: #0a233f;
   color: white;
   padding: 0.4rem 0.8rem;
   border: none;
   border-radius: 4px;
   cursor: pointer;
+}
+
+.btnSave:hover, .btnSelect:hover { background-color: #17446f; }
+
+.table td:last-child { white-space: nowrap; }
+.btnDelete {
+  margin-left: .5rem;
+  background: #fff;
+  color: #a83232;
+  border: 1px solid #e6b8b8;
+  padding: .4rem .8rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.btnDelete:hover { background: #fff1f1; }
+
+.modalBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(8, 24, 41, .62);
+  backdrop-filter: blur(3px);
+}
+.confirmModal {
+  width: min(100%, 32rem);
+  padding: 1.75rem;
+  border: 1px solid #dce4eb;
+  border-radius: 16px;
+  background: white;
+  box-shadow: 0 24px 70px rgba(4, 20, 38, .28);
+}
+.confirmModal h2 { margin: 0 0 .75rem; color: #0a233f; font-size: 1.35rem; }
+.confirmModal > p:not(.modalEyebrow):not(.modalError) { color: #526579; line-height: 1.65; }
+.modalEyebrow { margin: 0 0 .55rem; color: #245b88; font-size: .68rem; font-weight: 800; letter-spacing: .13em; }
+.modalError { padding: .75rem; border: 1px solid #f3c8c5; border-radius: 8px; background: #fff5f4; color: #a83232; font-size: .9rem; }
+.modalActions { display: flex; justify-content: flex-end; gap: .65rem; margin-top: 1.5rem; }
+.btnCancel, .btnDeleteConfirm { padding: .65rem 1rem; border-radius: 8px; font-weight: 700; cursor: pointer; }
+.btnCancel { border: 1px solid #d3dde6; background: white; color: #31485d; }
+.btnDeleteConfirm { border: 1px solid #a83232; background: #a83232; color: white; }
+.btnCancel:disabled, .btnDeleteConfirm:disabled { opacity: .6; cursor: wait; }
+
+@media (max-width: 680px) {
+  .panelContainer { padding: 1rem; }
+  .formInline { flex-direction: column; }
+  .table { display: block; overflow-x: auto; white-space: nowrap; }
+  .btnDelete { margin: .45rem 0 0; }
 }
 
 .moduleGrid {
@@ -77,7 +126,7 @@
 }
 
 .btnActive {
-  background-color: #10b981;
+  background-color: #17446f;
   color: white;
   border: none;
   padding: 0.4rem 0.8rem;

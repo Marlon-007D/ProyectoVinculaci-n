@@ -1,9 +1,6 @@
-import { useState, type FormEvent } from 'react';
-import { BrowserRouter, Routes, Route, useNavigate, Navigate } from 'react-router-dom';
-import { useEffect, useState, type FormEvent } from 'react';
-import { BrowserRouter } from 'react-router-dom';
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
+import { BrowserRouter, Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './core/AuthContext';
-import { TenantProvider } from './core/TenantContext';
 import { TenantProvider, useTenant } from './core/TenantContext';
 import { MfaEnrollment, SuperAdminPanel, UserManagement } from './modules/admin';
 import { ProjectsWorkspace } from './modules/projects/ProjectsWorkspace';
@@ -15,22 +12,11 @@ import { InstitutionalPanel } from './pages/InstitutionalPanel';
 import { NotFoundPage } from './pages/NotFoundPage';
 import './App.css';
 
-export function AccessScreen({ onSuccess }: { onSuccess?: () => void }) {
-  const { login } = useAuth();
-type MainTab = 'proyectos' | 'portal' | 'dece' | 'simuladores' | 'admin';
-
-const roleNames: Record<string, string> = {
-  super_admin: 'Superadministrador',
-  institution_admin: 'Administrador institucional',
-  dece_staff: 'Equipo DECE',
-  project_manager: 'Gestor de proyectos',
-  editor: 'Editor',
-  viewer: 'Consulta',
-};
-
 function AccessScreen() {
   const { login, register, requestPasswordReset } = useAuth();
   const [email, setEmail] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -39,6 +25,7 @@ function AccessScreen() {
   const [confirmation, setConfirmation] = useState('');
   const [registered, setRegistered] = useState(false);
   const [expiredAuthLink, setExpiredAuthLink] = useState(false);
+  const [registrationNotice, setRegistrationNotice] = useState('');
 
   useEffect(() => {
     const hash = window.location.hash;
@@ -70,14 +57,29 @@ function AccessScreen() {
     event.preventDefault();
     setError('');
     setRegistered(false);
+    setRegistrationNotice('');
+    if (!firstName.trim() || !lastName.trim()) return setError('Escribe tus nombres y apellidos.');
     if (password.length < 8) return setError('La contraseña debe tener al menos 8 caracteres.');
     if (password !== confirmation) return setError('Las contraseñas no coinciden.');
     setBusy(true);
     try {
-      const result = await register(email.trim().toLowerCase(), password);
-      if (result.error) setError('No se pudo crear la cuenta. Revisa el correo e inténtalo de nuevo.');
+      const result = await register(email.trim().toLowerCase(), password, firstName, lastName);
+      if (result.error) {
+        const detail = result.error.message;
+        const normalizedDetail = detail.toLowerCase();
+        if (normalizedDetail.includes('already registered') || normalizedDetail.includes('already been registered')) {
+          setError('Ya existe una cuenta con este correo. Inicia sesión o recupera tu contraseña.');
+        } else {
+          setError(`No se pudo completar el registro: ${detail}`);
+        }
+      }
       else {
         setRegistered(true);
+        setRegistrationNotice(result.existingAccount
+          ? result.confirmationRequired
+            ? 'La cuenta ya existe y su correo todavía está pendiente de confirmación. Revisa tu bandeja y spam.'
+            : 'La cuenta ya existe y la contraseña es correcta. Puedes iniciar sesión.'
+          : 'Cuenta registrada. Confirma el correo recibido; después, el superadministrador podrá asignarte un rol.');
       }
     } catch {
       setError('No fue posible conectar con el servicio de registro.');
@@ -106,63 +108,31 @@ function AccessScreen() {
   }
 
   return (
-    <main className="grid min-h-[75vh] place-items-center bg-[radial-gradient(ellipse_at_50%_20%,#e6f1ef_0,transparent_55%),#f4f7f9] p-6">
+    <main className="grid min-h-[80vh] place-items-center bg-[radial-gradient(ellipse_at_50%_20%,#e6f1ef_0,transparent_55%),#f4f7f9] p-6">
       <section className="w-full max-w-[430px] rounded-[18px] border border-[#e4ebed] bg-white p-7 shadow-[0_16px_50px_#18384412] sm:p-[38px]">
-        <div aria-hidden="true" className="mb-6 grid size-12 place-items-center rounded-[15px] bg-brand font-bold text-white shadow-[0_6px_16px_#145b5825]">
-          V
-        </div>
-        <p className="mb-2 text-[10px] font-bold tracking-[0.16em] text-[#398278]">PLATAFORMA INSTITUCIONAL</p>
-        <h1 className="mb-2 font-sans text-[25px] font-bold leading-tight tracking-tight text-ink">Gestión y Autenticación</h1>
-        <p className="mb-6 text-sm leading-relaxed text-muted">Ingresa con tus credenciales institucionales para gestionar administración, seguridad y roles.</p>
-        <form onSubmit={submit} className="flex flex-col gap-2">
         <div aria-hidden="true" className="mb-6 grid size-12 place-items-center rounded-[15px] bg-brand font-bold text-white shadow-[0_6px_16px_#145b5825]">V</div>
         <p className="mb-2 text-[10px] font-bold tracking-[0.16em] text-[#398278]">ACCESO INSTITUCIONAL</p>
         <h1 className="mb-2 font-sans text-[25px] font-bold leading-tight tracking-tight text-ink">{registerMode ? 'Crear cuenta' : 'Iniciar sesión'}</h1>
         <p className="mb-6 text-sm leading-relaxed text-muted">{registerMode ? 'Registra tu cuenta. El acceso de administración se habilita cuando te asignen un rol.' : 'Ingresa con la cuenta que te asignó el responsable de tu institución.'}</p>
         <form onSubmit={registerMode ? submitRegistration : submit} className="flex flex-col gap-2">
+          {registerMode && <>
+            <label htmlFor="register-first-name" className="mt-2 text-[13px] font-semibold text-[#314953]">Nombres</label>
+            <input id="register-first-name" type="text" autoComplete="given-name" value={firstName} onChange={event => setFirstName(event.target.value)} required className="h-11 rounded-lg border border-[#d8e1e4] bg-white px-3 text-[#243c46]" placeholder="Nombres" />
+            <label htmlFor="register-last-name" className="mt-2 text-[13px] font-semibold text-[#314953]">Apellidos</label>
+            <input id="register-last-name" type="text" autoComplete="family-name" value={lastName} onChange={event => setLastName(event.target.value)} required className="h-11 rounded-lg border border-[#d8e1e4] bg-white px-3 text-[#243c46]" placeholder="Apellidos" />
+          </>}
           <label htmlFor="email" className="mt-2 text-[13px] font-semibold text-[#314953]">Correo electrónico</label>
-          <input
-            id="email"
-            type="email"
-            autoComplete="username"
-            value={email}
-            onChange={event => setEmail(event.target.value)}
-            required
-            className="h-11 rounded-lg border border-[#d8e1e4] bg-white px-3 text-[#243c46] focus-visible:outline"
-            placeholder="admin@institucion.edu.ec"
-          />
+          <input id="email" type="email" autoComplete="username" value={email} onChange={event => setEmail(event.target.value)} required className="h-11 rounded-lg border border-[#d8e1e4] bg-white px-3 text-[#243c46] focus-visible:outline" placeholder="admin@institucion.edu.ec" />
           <label htmlFor="password" className="mt-2 text-[13px] font-semibold text-[#314953]">Contraseña</label>
-          <input
-            id="password"
-            type="password"
-            autoComplete="current-password"
-            value={password}
-            onChange={event => setPassword(event.target.value)}
-            required
-            className="h-11 rounded-lg border border-[#d8e1e4] bg-white px-3 text-[#243c46]"
-            placeholder="••••••••"
-          />
           <input id="password" type="password" autoComplete={registerMode ? 'new-password' : 'current-password'} minLength={registerMode ? 8 : undefined} value={password} onChange={event => setPassword(event.target.value)} required className="h-11 rounded-lg border border-[#d8e1e4] bg-white px-3 text-[#243c46]" placeholder="••••••••" />
           {registerMode && <>
             <label htmlFor="confirm-register-password" className="mt-2 text-[13px] font-semibold text-[#314953]">Confirmar contraseña</label>
             <input id="confirm-register-password" type="password" autoComplete="new-password" minLength={8} value={confirmation} onChange={event => setConfirmation(event.target.value)} required className="h-11 rounded-lg border border-[#d8e1e4] bg-white px-3 text-[#243c46]" />
           </>}
           {error && <p role="alert" className="rounded-lg border border-[#f2d1ce] bg-[#fff1f0] px-4 py-3 text-[13px] text-[#9b3838]">{error}</p>}
-          <div className="flex items-center justify-between text-xs text-teal-700 py-1">
-            <button
-              type="button"
-              className="text-left underline hover:text-teal-900 font-medium cursor-pointer"
-              onClick={() => {
-                setEmail('admin@institucion.edu.ec');
-                setPassword('admin123');
-              }}
-            >
-              Cargar credenciales de demostración
-            </button>
-          </div>
           {expiredAuthLink && <p role="alert" className="rounded-lg border border-[#f2d1ce] bg-[#fff1f0] px-4 py-3 text-[13px] text-[#9b3838]">Ese enlace vencio o ya se uso. Solicita uno nuevo desde Recuperar contrasena.</p>}
           {resetSent && <p role="status" className="rounded-lg border border-[#cce7df] bg-[#f0faf6] px-4 py-3 text-[13px] text-[#286b58]">Si la cuenta existe, recibiras un enlace para crear una contrasena nueva. Revisa tambien spam; los enlaces anteriores pueden vencer al solicitar otro.</p>}
-          {registered && <p role="status" className="rounded-lg border border-[#cce7df] bg-[#f0faf6] px-4 py-3 text-[13px] text-[#286b58]">Solicitud procesada. Si es una cuenta nueva, revisa tu correo y spam para confirmar. Si ya usaste este correo, inicia sesion o recupera la contrasena; el registro no crea otra cuenta ni garantiza un nuevo correo de confirmacion. Despues, el superadministrador puede asignarte un rol.</p>}
+          {registered && <p role="status" className="rounded-lg border border-[#d5e2ee] bg-[#f3f8fc] px-4 py-3 text-[13px] text-[#245b88]">{registrationNotice}</p>}
           <button disabled={busy} className="mt-1 h-[45px] rounded-lg bg-brand font-bold text-white transition-colors hover:bg-brand-dark disabled:cursor-wait disabled:opacity-65">
             {busy ? 'Procesando…' : registerMode ? 'Crear cuenta' : 'Iniciar sesión'}
           </button>
@@ -237,8 +207,6 @@ function PasswordRecoveryScreen() {
 }
 
 export function AdminWorkspace() {
-  const { user, role, roleError, loading } = useAuth();
-function AdminWorkspace() {
   const { user, role, roleError, loading, isPasswordRecovery } = useAuth();
 
   if (isPasswordRecovery) return <PasswordRecoveryScreen />;
@@ -257,7 +225,7 @@ function AdminWorkspace() {
   }
 
   return (
-    <div className="mx-auto max-w-[1180px] px-4 py-8 sm:px-[30px]">
+    <div className="mx-auto max-w-[1180px] px-4 py-6 sm:px-[30px]">
       <section className="py-[16px] sm:pb-[18px]">
         <p className="mb-2 text-[10px] font-bold tracking-[0.16em] text-[#398278]">ESPACIO DE ADMINISTRACIÓN</p>
         <h1 className="mb-2 text-[26px] font-bold tracking-tight text-ink sm:text-3xl">Panel de gestión</h1>
@@ -327,11 +295,18 @@ function ProjectsPageWrapper() {
   return <ProjectsWorkspace onLogin={() => navigate('/panel/admin')} />;
 }
 
-export function AppRoutes() {
-function MainLayout() {
-  const [activeTab, setActiveTab] = useState<MainTab>('proyectos');
-  const { user, role, logout, mfaRequired, mfaEnrollmentRequired, completeMfaEnrollment, isPasswordRecovery } = useAuth();
-  const { activeInstitution } = useTenant();
+function ModuleGate({ moduleName, children }: { moduleName: string; children: ReactNode }) {
+  const { activeInstitution, loadingTenant } = useTenant();
+  if (loadingTenant) return <div className="mx-auto max-w-3xl p-8 text-sm text-slate-600">Cargando permisos de la institucion...</div>;
+  if (!activeInstitution) return <div className="mx-auto max-w-3xl p-8 text-sm text-slate-600">No hay una institucion activa disponible para esta cuenta.</div>;
+  if (!activeInstitution.enabled_modules?.includes(moduleName)) {
+    return <div className="mx-auto max-w-3xl p-8"><section className="rounded-xl border border-amber-200 bg-white p-6 text-sm text-amber-900">Este modulo no esta habilitado para {activeInstitution.name}. Solicita al superadministrador que lo active.</section></div>;
+  }
+  return <>{children}</>;
+}
+
+function AppRoutes() {
+  const { user, isPasswordRecovery, mfaRequired, mfaEnrollmentRequired, completeMfaEnrollment } = useAuth();
 
   if (isPasswordRecovery) return <PasswordRecoveryScreen />;
   if (user && mfaRequired) return <MfaChallengeScreen />;
@@ -343,125 +318,19 @@ function MainLayout() {
         <Route index element={<Navigate to="/panel" replace />} />
         <Route path="inicio" element={<Navigate to="/panel" replace />} />
         <Route path="panel" element={<InstitutionalPanel />} />
-        <Route path="panel/proyectos" element={<ProjectsPageWrapper />} />
-        <Route path="panel/dece" element={<DeceApp />} />
-        <Route path="panel/simuladores" element={<SimuladoresApp />} />
-        <Route path="panel/portal/*" element={<SiteApp />} />
+        <Route path="panel/proyectos" element={<ModuleGate moduleName="projects"><ProjectsPageWrapper /></ModuleGate>} />
+        <Route path="panel/dece" element={<ModuleGate moduleName="dece"><DeceApp /></ModuleGate>} />
+        <Route path="panel/simuladores" element={<ModuleGate moduleName="simuladores"><SimuladoresApp /></ModuleGate>} />
+        <Route path="panel/portal/*" element={<ModuleGate moduleName="portal"><SiteApp /></ModuleGate>} />
         <Route path="panel/admin" element={<AdminWorkspace />} />
         <Route path="proyectos" element={<Navigate to="/panel/proyectos" replace />} />
         <Route path="dece" element={<Navigate to="/panel/dece" replace />} />
         <Route path="simuladores" element={<Navigate to="/panel/simuladores" replace />} />
-        <Route path="portal/*" element={<SiteApp />} />
+        <Route path="portal/*" element={<ModuleGate moduleName="portal"><SiteApp /></ModuleGate>} />
         <Route path="admin" element={<Navigate to="/panel/admin" replace />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>
-    <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
-      {/* Barra de navegación superior institucional */}
-      <header className="sticky top-0 z-40 bg-white border-b border-gray-200 shadow-xs">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between h-16">
-          {/* Logo y título de la plataforma */}
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => setActiveTab('proyectos')}
-              className="flex items-center gap-3 text-left focus:outline-none"
-            >
-              <div className="size-10 rounded-xl bg-brand font-extrabold text-white text-lg flex items-center justify-center shadow-sm">
-                G
-              </div>
-              <div className="hidden sm:block">
-                <span className="font-bold text-gray-900 leading-tight block text-base">Portal de gestión</span>
-                {role === 'super_admin'
-                  ? <span className="text-[11px] font-medium text-gray-500 tracking-normal block">Administración global</span>
-                  : activeInstitution && <span className="text-[11px] font-medium text-gray-500 tracking-normal block">{activeInstitution.name}</span>}
-              </div>
-            </button>
-
-          </div>
-
-          {/* Menu de pestanas principales */}
-          <nav className="flex items-center gap-1 sm:gap-2">
-            <button
-              onClick={() => setActiveTab('proyectos')}
-              className={`px-3 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all ${activeTab === 'proyectos'
-                ? 'bg-blue-600 text-white shadow-xs'
-                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                }`}
-            >
-              Proyectos
-            </button>
-            <button
-              onClick={() => setActiveTab('portal')}
-              className={`px-3 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all ${activeTab === 'portal'
-                ? 'bg-blue-600 text-white shadow-xs'
-                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                }`}
-            >
-              Portal Web
-            </button>
-            <button
-              onClick={() => setActiveTab('dece')}
-              className={`px-3 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all ${activeTab === 'dece'
-                ? 'bg-blue-600 text-white shadow-xs'
-                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                }`}
-            >
-              DECE
-            </button>
-            <button
-              onClick={() => setActiveTab('simuladores')}
-              className={`px-3 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all ${activeTab === 'simuladores'
-                ? 'bg-blue-600 text-white shadow-xs'
-                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                }`}
-            >
-              Simuladores
-            </button>
-            <button
-              onClick={() => setActiveTab('admin')}
-              className={`px-3 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all ${activeTab === 'admin'
-                ? 'bg-teal-700 text-white shadow-xs'
-                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                }`}
-            >
-              Administración
-            </button>
-          </nav>
-
-          {/* Zona de usuario / autenticación */}
-          <div className="flex items-center gap-2 sm:gap-3">
-            {user ? (
-              <div className="flex items-center gap-2">
-                <div className="hidden lg:block text-right">
-                  <span className="block text-xs font-semibold text-gray-800 leading-tight">{user.email}</span>
-                  <span className="block text-[10px] text-teal-700 font-medium">{role ? roleNames[role] ?? role : 'Usuario'}</span>
-                </div>
-                <button
-                  onClick={() => { void logout(); setActiveTab('proyectos'); }}
-                  className="px-2.5 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
-                >
-                  Salir
-                </button>
-              </div>
-            ) : null}
-          </div>
-        </div>
-      </header>
-
-      {/* Contenido del módulo activo */}
-      <main className="flex-1">
-        {activeTab === 'proyectos' && <ProjectsWorkspace onLogin={() => setActiveTab('admin')} />}
-        {activeTab === 'portal' && <SiteApp />}
-        {activeTab === 'dece' && <DeceApp />}
-        {activeTab === 'simuladores' && <SimuladoresApp />}
-        {activeTab === 'admin' && <AdminWorkspace />}
-      </main>
-
-      {/* Pie de página institucional unificado */}
-      <footer className="bg-white border-t border-gray-200 py-4 px-6 text-center text-xs text-gray-500">
-        <div className="max-w-7xl mx-auto text-gray-400">Acceso seguro</div>
-      </footer>
-    </div>
   );
 }
 

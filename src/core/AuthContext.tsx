@@ -10,7 +10,7 @@ interface AuthContextType {
   institutionId: string | null;
   loading: boolean;
   login: (email: string, pass: string) => Promise<{ error: Error | null }>;
-  register: (email: string, password: string) => Promise<{ error: Error | null; confirmationRequired: boolean }>;
+  register: (email: string, password: string, firstName: string, lastName: string) => Promise<{ error: Error | null; confirmationRequired: boolean; existingAccount: boolean }>;
   isPasswordRecovery: boolean;
   mfaRequired: boolean;
   mfaEnrollmentRequired: boolean;
@@ -204,14 +204,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { error };
   };
 
-  const register = async (email: string, password: string) => {
+  const register = async (email: string, password: string, firstName: string, lastName: string) => {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { emailRedirectTo: window.location.origin },
+      options: {
+        emailRedirectTo: window.location.origin,
+        data: { first_name: firstName.trim(), last_name: lastName.trim() },
+      },
     });
-    if (!error && data.session) await supabase.auth.signOut();
-    return { error, confirmationRequired: !error && !data.session };
+    if (!error) {
+      if (data.session) await supabase.auth.signOut();
+      return { error: null, confirmationRequired: !data.session, existingAccount: false };
+    }
+
+    // A retry can encounter an account created by a previous request even when
+    // the confirmation email request returned an error. Check using the
+    // password the person just entered before reporting registration failure.
+    const { data: priorSession } = await supabase.auth.getSession();
+    if (priorSession.session) return { error, confirmationRequired: false, existingAccount: false };
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+    if (!signInError) {
+      await supabase.auth.signOut();
+      return { error: null, confirmationRequired: false, existingAccount: true };
+    }
+    if (signInError.code === 'email_not_confirmed') {
+      return { error: null, confirmationRequired: true, existingAccount: true };
+    }
+    return { error, confirmationRequired: false, existingAccount: false };
   };
 
   const verifyMfa = async (code: string) => {

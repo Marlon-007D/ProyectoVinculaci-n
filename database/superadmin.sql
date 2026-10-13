@@ -22,11 +22,14 @@ ALTER TABLE public.profiles
 -- Eliminar una posible versión anterior para registrar exactamente
 -- los nombres de parámetros que envía la interfaz.
 DROP FUNCTION IF EXISTS public.assign_institution_role(TEXT, UUID, UUID);
+DROP FUNCTION IF EXISTS public.assign_institution_role(TEXT, UUID, UUID, TEXT, TEXT);
 
 CREATE FUNCTION public.assign_institution_role(
   target_email TEXT,
   target_institution_id UUID,
-  target_role_id UUID
+  target_role_id UUID,
+  target_first_name TEXT,
+  target_last_name TEXT
 )
 RETURNS VOID
 LANGUAGE plpgsql
@@ -83,10 +86,12 @@ BEGIN
   SELECT
     u.id,
     COALESCE(
+      NULLIF(trim(target_first_name), ''),
       NULLIF(u.raw_user_meta_data->>'first_name', ''),
-      'Usuario'
+      split_part(u.email, '@', 1)
     ),
     COALESCE(
+      NULLIF(trim(target_last_name), ''),
       NULLIF(u.raw_user_meta_data->>'last_name', ''),
       'Institucional'
     ),
@@ -97,6 +102,8 @@ BEGIN
   ON CONFLICT (profile_id)
   DO UPDATE SET
     email = EXCLUDED.email,
+    first_name = EXCLUDED.first_name,
+    last_name = EXCLUDED.last_name,
     mfa_required = NOT existing_profile.mfa_enabled;
 
   INSERT INTO public.memberships (
@@ -193,11 +200,11 @@ WHERE p.mfa_enabled = FALSE
   AND EXISTS (SELECT 1 FROM public.memberships AS m WHERE m.profile_id = p.profile_id);
 
 REVOKE ALL
-  ON FUNCTION public.assign_institution_role(TEXT, UUID, UUID)
+  ON FUNCTION public.assign_institution_role(TEXT, UUID, UUID, TEXT, TEXT)
   FROM PUBLIC;
 
 GRANT EXECUTE
-  ON FUNCTION public.assign_institution_role(TEXT, UUID, UUID)
+  ON FUNCTION public.assign_institution_role(TEXT, UUID, UUID, TEXT, TEXT)
   TO authenticated;
 
 -- Permite quitar una membresía dentro del alcance del administrador actual.
@@ -249,5 +256,33 @@ $$;
 
 REVOKE ALL ON FUNCTION public.remove_institution_role(UUID, UUID) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.remove_institution_role(UUID, UUID) TO authenticated;
+
+-- Elimina una institución y todos sus datos asociados (FK con ON DELETE CASCADE).
+-- Solo el superadministrador global puede ejecutar esta operación irreversible.
+CREATE OR REPLACE FUNCTION public.delete_institution(
+  target_institution_id UUID
+)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  IF NOT public.is_super_admin() THEN
+    RAISE EXCEPTION 'Solo el superadministrador global puede eliminar instituciones.'
+      USING ERRCODE = '42501';
+  END IF;
+
+  DELETE FROM public.institutions
+  WHERE institution_id = target_institution_id;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'La institución seleccionada no existe.';
+  END IF;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.delete_institution(UUID) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.delete_institution(UUID) TO authenticated;
 
 NOTIFY pgrst, 'reload schema';

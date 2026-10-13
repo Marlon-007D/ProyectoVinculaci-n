@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../../core/supabaseClient';
 import { logAuditEvent } from '../../../core/auditLogger';
+import { useTenant } from '../../../core/TenantContext';
 import styles from './SuperAdminPanel.module.css';
 
 interface Institution {
@@ -26,6 +27,9 @@ export const SuperAdminPanel: React.FC = () => {
   const [loadError, setLoadError] = useState('');
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
+  const [institutionToDelete, setInstitutionToDelete] = useState<Institution | null>(null);
+  const [deletingInstitution, setDeletingInstitution] = useState(false);
+  const { reloadInstitutions } = useTenant();
 
   const fetchInstitutions = async () => {
     const { data, error } = await supabase
@@ -96,6 +100,36 @@ export const SuperAdminPanel: React.FC = () => {
     }
   };
 
+  const handleDeleteInstitution = async () => {
+    if (!institutionToDelete || deletingInstitution) return;
+    setDeletingInstitution(true);
+    setMessage('');
+    const target = institutionToDelete;
+    const { error } = await supabase.rpc('delete_institution', {
+      target_institution_id: target.institution_id,
+    });
+    if (error) {
+      setMessage(`No se pudo eliminar la institución. ${error.message}`);
+      setDeletingInstitution(false);
+      return;
+    }
+    await logAuditEvent({
+      action: 'DELETE_INSTITUTION',
+      entity: 'institutions',
+      entityId: target.institution_id,
+      details: { name: target.name, slug: target.slug },
+    });
+    if (selectedInstId === target.institution_id) {
+      setSelectedInstId(null);
+      setModuleSettings([]);
+    }
+    setInstitutionToDelete(null);
+    setMessage(`Se eliminó ${target.name} y sus datos asociados.`);
+    setDeletingInstitution(false);
+    await fetchInstitutions();
+    reloadInstitutions();
+  };
+
   return (
     <div className={styles.panelContainer}>
       <h1>Panel de Control del Superadministrador</h1>
@@ -154,6 +188,14 @@ export const SuperAdminPanel: React.FC = () => {
                   >
                     Gestionar Módulos
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => setInstitutionToDelete(inst)}
+                    className={styles.btnDelete}
+                    aria-label={`Eliminar ${inst.name}`}
+                  >
+                    Eliminar
+                  </button>
                 </td>
               </tr>
             ))}
@@ -179,6 +221,25 @@ export const SuperAdminPanel: React.FC = () => {
             ))}
           </div>
         </section>
+      )}
+
+      {institutionToDelete && (
+        <div className={styles.modalBackdrop} role="presentation" onMouseDown={(event) => {
+          if (event.target === event.currentTarget && !deletingInstitution) setInstitutionToDelete(null);
+        }}>
+          <section className={styles.confirmModal} role="dialog" aria-modal="true" aria-labelledby="delete-institution-title">
+            <p className={styles.modalEyebrow}>ELIMINACIÓN PERMANENTE</p>
+            <h2 id="delete-institution-title">¿Eliminar esta unidad educativa?</h2>
+            <p>Se eliminará <strong>{institutionToDelete.name}</strong>, incluidas sus membresías, módulos y demás datos asociados. Esta acción no se puede deshacer.</p>
+            {message && <p className={styles.modalError} role="alert">{message}</p>}
+            <div className={styles.modalActions}>
+              <button type="button" className={styles.btnCancel} disabled={deletingInstitution} onClick={() => setInstitutionToDelete(null)}>Cancelar</button>
+              <button type="button" className={styles.btnDeleteConfirm} disabled={deletingInstitution} onClick={() => void handleDeleteInstitution()}>
+                {deletingInstitution ? 'Eliminando…' : 'Sí, eliminar unidad'}
+              </button>
+            </div>
+          </section>
+        </div>
       )}
     </div>
   );

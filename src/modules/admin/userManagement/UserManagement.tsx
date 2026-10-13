@@ -22,6 +22,8 @@ export const UserManagement: React.FC = () => {
   const { role: currentRole, institutionId: currentInstitutionId } = useAuth();
   const isPlatformAdmin = currentRole === 'super_admin';
   const [email, setEmail] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [roleId, setRoleId] = useState('');
   const [institutionId, setInstitutionId] = useState('');
   const [institutions, setInstitutions] = useState<InstitutionOption[]>([]);
@@ -87,7 +89,13 @@ export const UserManagement: React.FC = () => {
     event.preventDefault();
     setMsg('');
     const normalizedEmail = email.trim().toLowerCase();
+    const normalizedFirstName = firstName.trim();
+    const normalizedLastName = lastName.trim();
     const selectedRole = roles.find((item) => item.role_id === roleId);
+    if (!normalizedFirstName || !normalizedLastName) {
+      setMsg('Escribe el nombre y apellido reales de la persona. El rol se guarda por separado.');
+      return;
+    }
     if (!institutionId || !selectedRole) {
       setMsg('Selecciona la institución y el rol que vas a asignar.');
       return;
@@ -105,12 +113,14 @@ export const UserManagement: React.FC = () => {
       target_email: normalizedEmail,
       target_role_id: roleId,
       target_institution_id: institutionId,
+      target_first_name: normalizedFirstName,
+      target_last_name: normalizedLastName,
     });
     if (error) {
       const missingAccount = error.message.includes('No existe una cuenta registrada');
       if (missingAccount && isPlatformAdmin) {
         const { data, error: inviteError } = await supabase.functions.invoke('invite-institution-user', {
-          body: { email: normalizedEmail, roleId, institutionId },
+          body: { email: normalizedEmail, roleId, institutionId, firstName: normalizedFirstName, lastName: normalizedLastName },
         });
         if (inviteError) {
           const details = typeof inviteError.context?.json === 'function'
@@ -122,6 +132,8 @@ export const UserManagement: React.FC = () => {
         await logAuditEvent({ action: 'INVITE_AND_ASSIGN_ROLE', entity: 'memberships', details: { email: normalizedEmail, roleId, institutionId }, institutionId });
         setMsg(data?.message ?? 'Invitación enviada y rol asignado. La persona recibirá un correo para activar su cuenta.');
         setEmail('');
+        setFirstName('');
+        setLastName('');
         await loadData();
         return;
       }
@@ -133,6 +145,8 @@ export const UserManagement: React.FC = () => {
     await logAuditEvent({ action: 'ASSIGN_ROLE', entity: 'memberships', details: { email: normalizedEmail, roleId, institutionId }, institutionId });
     setMsg('Rol asignado correctamente a la institución.');
     setEmail('');
+    setFirstName('');
+    setLastName('');
     await loadData();
   };
 
@@ -172,6 +186,12 @@ export const UserManagement: React.FC = () => {
       <form onSubmit={handleAssignUser} className={styles.form}>
         <label className={styles.field} htmlFor="member-email">Correo de la cuenta
           <input id="member-email" type="email" placeholder="persona@institucion.edu.ec" value={email} onChange={(event) => setEmail(event.target.value)} required className={styles.input} />
+        </label>
+        <label className={styles.field} htmlFor="member-first-name">Nombres
+          <input id="member-first-name" type="text" placeholder="Nombres de la persona" value={firstName} onChange={(event) => setFirstName(event.target.value)} required className={styles.input} />
+        </label>
+        <label className={styles.field} htmlFor="member-last-name">Apellidos
+          <input id="member-last-name" type="text" placeholder="Apellidos de la persona" value={lastName} onChange={(event) => setLastName(event.target.value)} required className={styles.input} />
         </label>
         <label className={styles.field} htmlFor="member-role">Rol
           <select id="member-role" value={roleId} onChange={(event) => setRoleId(event.target.value)} required className={styles.select}>
