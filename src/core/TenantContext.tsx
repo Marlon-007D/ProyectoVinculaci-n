@@ -9,6 +9,7 @@ export interface Institution {
   is_active: boolean;
   role: string;
   projects_enabled: boolean;
+  enabled_modules?: string[];
 }
 interface TenantContextType {
   activeInstitution: Institution | null;
@@ -20,12 +21,12 @@ interface TenantContextType {
 }
 const TenantContext = createContext<TenantContextType | undefined>(undefined);
 export function TenantProvider({ children }: { children: ReactNode }) {
-  const { user, role, loading } = useAuth();
+  const { user, role, loading, mfaRequired } = useAuth();
   const [state, setState] = useState<{ owner: string; institutions: Institution[]; error: string | null } | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [revision, setRevision] = useState(0);
   useEffect(() => {
-    if (!user || loading) return;
+    if (!user || loading || mfaRequired) return;
     let cancelled = false;
 
     const loadInstitutions = async () => {
@@ -86,12 +87,12 @@ export function TenantProvider({ children }: { children: ReactNode }) {
 
     void loadInstitutions();
     return () => { cancelled = true; };
-  }, [user, role, loading, revision]);
+  }, [user, role, loading, mfaRequired, revision]);
   const current = !loading && user && state?.owner === user.id ? state : null;
   const institutions = current?.institutions ?? [];
   const activeInstitution = institutions.find(item => item.institution_id === selectedId) ?? institutions[0] ?? null;
   return <TenantContext.Provider value={{
-    institutions, activeInstitution, loadingTenant: loading || Boolean(user && !current),
+    institutions, activeInstitution, loadingTenant: loading || mfaRequired || Boolean(user && !current),
     tenantError: current?.error ?? null,
     setActiveInstitution: institution => setSelectedId(institution?.institution_id ?? null),
     reloadInstitutions: () => { setState(null); setRevision(value => value + 1); },

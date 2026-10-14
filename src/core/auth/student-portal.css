@@ -1,0 +1,331 @@
+.studentPortal {
+  min-height: 100vh;
+  padding: 28px 0 56px;
+  background: #f3f4f7;
+  color: #292638;
+}
+
+.studentPortal__main {
+  max-width: 1080px;
+}
+
+.studentPortal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 24px;
+  padding: 22px 26px;
+  border: 1px solid #d8d8e0;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 5px 18px rgb(37 30 63 / 5%);
+}
+
+.studentPortal__header h1 {
+  margin: 5px 0 2px;
+  color: #292638;
+  font-size: 25px;
+  font-weight: 700;
+}
+
+.studentPortal__header p {
+  margin: 0;
+  color: #737180;
+  font-size: 14px;
+}
+
+.studentPortal__eyebrow {
+  color: #70658f;
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: .09em;
+}
+
+.studentPortal__tabs,
+.studentPortal__formTabs,
+.studentPortal__sections {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.studentPortal__tabs {
+  margin-bottom: 18px;
+  border-bottom: 1px solid #d6d5de;
+}
+
+.studentPortal__tabs button,
+.studentPortal__formTabs button,
+.studentPortal__sections button {
+  min-height: 40px;
+  padding: 9px 15px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: #5c5969;
+  font-size: 13px;
+  font-weight: 650;
+  transition: background-color .15s ease, border-color .15s ease, color .15s ease, box-shadow .15s ease;
+}
+
+.studentPortal__tabs button:hover,
+.studentPortal__formTabs button:hover,
+.studentPortal__sections button:hover {
+  border-color: #c9c6d2;
+  background: #fff;
+  color: #393545;
+}
+
+.studentPortal__tabs button.active,
+.studentPortal__formTabs button.active,
+.studentPortal__sections button.active {
+  border-color: #aaa4bd;
+  background: #fff;
+  color: #554786;
+  box-shadow: 0 2px 7px rgb(37 30 63 / 7%);
+}
+
+.studentPortal__formTabs {
+  margin-bottom: 14px;
+  padding: 5px;
+  border: 1px solid #d3d1dc;
+  border-radius: 11px;
+  background: #e9e8ee;
+}
+
+.studentPortal__sections {
+  margin-bottom: 14px;
+}
+
+.studentPortal__sections button {
+  min-height: 36px;
+  padding: 7px 11px;
+  border-color: #d2d0da;
+  background: #fafafd;
+  font-size: 12px;
+}
+
+.studentPortal__formSurface {
+  padding: 20px;
+  border: 1px solid #d1cfd9;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 6px 20px rgb(37 30 63 / 5%);
+}
+
+.studentPortal__formHeading {
+  margin-bottom: 17px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #dedce5;
+}
+
+.studentPortal__formHeading > span {
+  color: #70658f;
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: .08em;
+}
+
+.studentPortal__formHeading h2 {
+  margin: 5px 0 3px;
+  color: #302d3a;
+  font-size: 19px;
+  font-weight: 700;
+}
+
+.studentPortal__formHeading p { margin: 0; color: #747180; font-size: 13px; }
+
+.studentPortal__formSurface .field-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin: 12px 0 18px;
+}
+
+.studentPortal__formSurface .custom-question {
+  min-width: 0;
+  padding: 15px;
+  border: 1px solid #dad8e1;
+  border-radius: 10px;
+  background: #fff;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+
+.studentPortal__formSurface .custom-question:hover {
+  border-color: #aaa6b5;
+  box-shadow: 0 3px 10px rgb(37 30 63 / 6%);
+}
+
+.studentPortal__formSurface .field {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 8px;
+  color: #373442;
+  font-size: 13px;
+}
+
+.studentPortal__formSurface .field > span,
+.studentPortal__formSurface .check-group legend {
+  color: #34313e;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.studentPortal__formSurface .field input,
+.studentPortal__formSurface .field select,
+.studentPortal__formSurface .field textarea {
+  width: 100%;
+  min-height: 43px;
+  padding: 10px 12px;
+  border: 1px solid #bcb9c6;
+  border-radius: 8px;
+  outline: none;
+  background: #fff;
+  color: #292638;
+  font-size: 14px;
+  transition: border-color .15s ease, box-shadow .15s ease, background-color .15s ease;
+}
+
+.studentPortal__formSurface .field textarea {
+  min-height: 104px;
+  resize: vertical;
+}
+
+.studentPortal__formSurface .field input:hover,
+.studentPortal__formSurface .field select:hover,
+.studentPortal__formSurface .field textarea:hover {
+  border-color: #888493;
+}
+
+.studentPortal__formSurface .field input:focus,
+.studentPortal__formSurface .field select:focus,
+.studentPortal__formSurface .field textarea:focus {
+  border-color: #71659a;
+  box-shadow: 0 0 0 3px rgb(102 86 165 / 14%);
+}
+
+.studentPortal__formSurface .field input:disabled,
+.studentPortal__formSurface .field select:disabled,
+.studentPortal__formSurface .field textarea:disabled {
+  background: #f1f0f4;
+  color: #555260;
+  opacity: 1;
+}
+
+.studentPortal__formSurface .check-group {
+  margin: 10px 0 18px;
+  padding: 16px;
+  border: 1px solid #c8c5d0;
+  border-radius: 10px;
+  background: #fafafd;
+}
+
+.studentPortal__formSurface .check-group > div {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.studentPortal__formSurface .check-group label {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: #454250;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.studentPortal__formSurface .question-builder,
+.studentPortal__formSurface .notice {
+  padding: 15px;
+  border: 1px solid #d0ced8;
+  border-radius: 10px;
+  background: #f8f7fa;
+}
+
+.studentPortal__formSurface .form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid #dedce5;
+}
+
+.studentPortal__formSurface button:focus-visible,
+.studentPortal__tabs button:focus-visible,
+.studentPortal__formTabs button:focus-visible,
+.studentPortal__sections button:focus-visible {
+  outline: 3px solid rgb(102 86 165 / 28%);
+  outline-offset: 2px;
+}
+
+.studentPortal__historyList {
+  display: grid;
+  gap: 10px;
+  margin: 14px 0;
+  padding: 0;
+  list-style: none;
+}
+
+.studentPortal__historyList li,
+.studentPortal__historyDetail {
+  padding: 17px;
+  border: 1px solid #d3d1db;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.studentPortal__historyList li,
+.studentPortal__historyActions,
+.studentPortal__historyTitle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.studentPortal__historyList li > span:first-child {
+  display: grid;
+  gap: 4px;
+}
+
+.studentPortal__historyList small {
+  color: #747180;
+}
+
+.studentPortal__badge {
+  padding: 5px 9px;
+  border: 1px solid #cbc8d2;
+  border-radius: 999px;
+  background: #f5f4f7;
+  color: #454250;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.studentPortal__badge.submitted { border-color: #b9d5c6; background: #edf7f1; color: #316548; }
+.studentPortal__badge.reviewed { border-color: #c7c1dc; background: #f2eff9; color: #564b81; }
+.studentPortal__historyDetail { margin-top: 14px; }
+.studentPortal__historyTitle { margin-bottom: 14px; }
+.studentPortal__historyTitle h3 { margin: 0; font-size: 18px; }
+.studentPortal__message { padding: 14px; border: 1px solid #d1cfd9; border-radius: 9px; background: #fff; }
+
+@media (max-width: 720px) {
+  .studentPortal { padding-top: 14px; }
+  .studentPortal__header { align-items: flex-start; padding: 17px; }
+  .studentPortal__header h1 { font-size: 22px; }
+  .studentPortal__header p { max-width: 230px; font-size: 12px; }
+  .studentPortal__header .btn { flex: 0 0 auto; font-size: 12px; }
+  .studentPortal__formSurface { padding: 13px; }
+  .studentPortal__formSurface .field-grid { grid-template-columns: 1fr; gap: 11px; }
+  .studentPortal__formSurface .custom-question { padding: 12px; }
+  .studentPortal__historyList li { align-items: flex-start; flex-direction: column; }
+  .studentPortal__historyActions { width: 100%; justify-content: space-between; }
+  .studentPortal__historyTitle { align-items: flex-start; }
+  .studentPortal__historyTitle h3 { font-size: 16px; }
+}

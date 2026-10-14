@@ -26,7 +26,7 @@ export function InstitutionalFooter() {
 
   return (
     <>
-      <footer className="w-full text-slate-100 relative border-t bg-[#0a233f] border-slate-700">
+      <footer className="w-full text-slate-100 relative border-t bg-[#0a233f] border-slate-700 mt-auto">
         <div className="border-b border-white/10 py-5 px-4">
           <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-center md:text-left">
             <div className="flex items-center gap-3">
@@ -168,8 +168,6 @@ export function InstitutionalFooter() {
               2026 Plataforma Institucional de Vinculación y Educación. Todos los derechos reservados.
             </p>
             <div className="flex items-center gap-2 text-[11px] text-slate-400">
-              <span>Versión 3.8.0</span>
-              <span>·</span>
               <span>Portal Multicentro</span>
             </div>
           </div>
