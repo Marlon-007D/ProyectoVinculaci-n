@@ -1,15 +1,21 @@
 import { Route, Routes } from "react-router-dom";
 import { InstitutionProvider } from "./context/InstitutionContext";
+import { EmbeddedLayout } from "./components/Layout/EmbeddedLayout";
 import { SiteLayout } from "./components/Layout/SiteLayout";
 import { NotFound } from "./pages/NotFound";
 import { SitePreview } from "./pages/SitePreview";
 import "./styles/site.css";
 
-export function SiteApp() {
+interface Props {
+  institutionId?: string;
+  embedded?: boolean;
+}
+
+export function SiteApp({ institutionId, embedded = false }: Props) {
   return (
-    <InstitutionProvider>
+    <InstitutionProvider institutionId={institutionId}>
       <Routes>
-        <Route element={<SiteLayout />}>
+        <Route element={embedded ? <EmbeddedLayout /> : <SiteLayout />}>
           <Route index element={<SitePreview />} />
           <Route path="*" element={<NotFound />} />
         </Route>
