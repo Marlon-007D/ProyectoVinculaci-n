@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './core/AuthContext';
 import { TenantProvider, useTenant } from './core/TenantContext';
-import { MfaEnrollment, SuperAdminPanel, UserManagement } from './modules/admin';
+import { SuperAdminPanel, UserManagement } from './modules/admin';
 import { ProjectsWorkspace } from './modules/projects/ProjectsWorkspace';
 import { DeceApp } from './modules/dece';
 import { SiteApp } from './modules/site';
@@ -257,60 +257,29 @@ export function AdminWorkspace() {
   );
 }
 
-function MfaChallengeScreen() {
-  const { user, verifyMfa, logout, mfaChallengeReady } = useAuth();
-  const [code, setCode] = useState('');
-  const [error, setError] = useState('');
-  const [busy, setBusy] = useState(false);
-
-  async function submit(event: FormEvent) {
-    event.preventDefault();
-    setBusy(true);
-    setError('');
-    const result = await verifyMfa(code.replace(/\s/g, ''));
-    setBusy(false);
-    if (result.error) setError('El código no es válido o venció. Revisa tu aplicación e inténtalo de nuevo.');
-  }
-
-  return (
-    <main className="grid min-h-screen place-items-center bg-[#f4f7f9] p-5">
-      <section className="w-full max-w-[430px] rounded-[18px] border border-[#e4ebed] bg-white p-7 shadow-[0_16px_50px_#18384412] sm:p-[38px]">
-        <p className="mb-2 text-[10px] font-bold tracking-[0.16em] text-[#398278]">VERIFICACIÓN DE CUENTA</p>
-        <h1 className="mb-2 text-2xl font-bold tracking-tight text-ink">Confirma tu identidad</h1>
-        <p className="mb-5 text-sm leading-relaxed text-muted">Escribe el código temporal de seis dígitos de tu aplicación autenticadora para continuar como {user?.email}.</p>
-        {mfaChallengeReady ? <form onSubmit={submit} className="flex flex-col gap-3">
-          <label htmlFor="login-totp" className="text-[13px] font-semibold text-[#314953]">Código de verificación</label>
-          <input id="login-totp" type="text" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} value={code} onChange={event => setCode(event.target.value.replace(/\D/g, '').slice(0, 6))} required className="h-12 rounded-lg border border-[#d8e1e4] px-3 text-center text-lg tracking-[.3em]" />
-          {error && <p role="alert" className="rounded-lg border border-[#f2d1ce] bg-[#fff1f0] px-4 py-3 text-[13px] text-[#9b3838]">{error}</p>}
-          <button disabled={busy || code.length !== 6} className="h-[45px] rounded-lg bg-brand font-bold text-white hover:bg-brand-dark disabled:opacity-60">{busy ? 'Verificando…' : 'Verificar y continuar'}</button>
-        </form> : <p role="alert" className="rounded-lg border border-[#f2d1ce] bg-[#fff1f0] px-4 py-3 text-[13px] text-[#9b3838]">No fue posible iniciar la verificación ahora. Cierra sesión e inténtalo de nuevo.</p>}
-        <button type="button" onClick={() => void logout()} className="mt-4 w-full text-center text-sm font-semibold text-brand underline-offset-4 hover:underline">Cerrar sesión</button>
-      </section>
-    </main>
-  );
-}
-
 function ProjectsPageWrapper() {
   const navigate = useNavigate();
   return <ProjectsWorkspace onLogin={() => navigate('/panel/admin')} />;
 }
 
-function ModuleGate({ moduleName, children }: { moduleName: string; children: ReactNode }) {
+function ModuleGate({ moduleName, children, allowWithoutInstitution = false }: { moduleName: string; children: ReactNode; allowWithoutInstitution?: boolean }) {
   const { activeInstitution, loadingTenant } = useTenant();
   if (loadingTenant) return <div className="mx-auto max-w-3xl p-8 text-sm text-slate-600">Cargando permisos de la institucion...</div>;
-  if (!activeInstitution) return <div className="mx-auto max-w-3xl p-8 text-sm text-slate-600">No hay una institucion activa disponible para esta cuenta.</div>;
-  if (!activeInstitution.enabled_modules?.includes(moduleName)) {
+  if (!activeInstitution) {
+    return allowWithoutInstitution ? <>{children}</> : <div className="mx-auto max-w-3xl p-8 text-sm text-slate-600">No hay una institucion activa disponible para esta cuenta.</div>;
+  }
+  // La RPC de instituciones solo expone projects_enabled. Los demás módulos
+  // todavía no tienen un catálogo de permisos en el contrato del frontend.
+  if (moduleName === 'projects' && !activeInstitution.projects_enabled) {
     return <div className="mx-auto max-w-3xl p-8"><section className="rounded-xl border border-amber-200 bg-white p-6 text-sm text-amber-900">Este modulo no esta habilitado para {activeInstitution.name}. Solicita al superadministrador que lo active.</section></div>;
   }
   return <>{children}</>;
 }
 
 function AppRoutes() {
-  const { user, isPasswordRecovery, mfaRequired, mfaEnrollmentRequired, completeMfaEnrollment } = useAuth();
+  const { isPasswordRecovery } = useAuth();
 
   if (isPasswordRecovery) return <PasswordRecoveryScreen />;
-  if (user && mfaRequired) return <MfaChallengeScreen />;
-  if (user && mfaEnrollmentRequired) return <MfaEnrollment onEnrolled={completeMfaEnrollment} />;
 
   return (
     <Routes>
@@ -318,9 +287,9 @@ function AppRoutes() {
         <Route index element={<Navigate to="/panel" replace />} />
         <Route path="inicio" element={<Navigate to="/panel" replace />} />
         <Route path="panel" element={<InstitutionalPanel />} />
-        <Route path="panel/proyectos" element={<ModuleGate moduleName="projects"><ProjectsPageWrapper /></ModuleGate>} />
-        <Route path="panel/dece" element={<ModuleGate moduleName="dece"><DeceApp /></ModuleGate>} />
-        <Route path="panel/simuladores" element={<ModuleGate moduleName="simuladores"><SimuladoresApp /></ModuleGate>} />
+        <Route path="panel/proyectos" element={<ProjectsPageWrapper />} />
+        <Route path="panel/dece" element={<ModuleGate moduleName="dece" allowWithoutInstitution><DeceApp /></ModuleGate>} />
+        <Route path="panel/simuladores" element={<ModuleGate moduleName="simuladores" allowWithoutInstitution><SimuladoresApp /></ModuleGate>} />
         <Route path="panel/portal/*" element={<ModuleGate moduleName="portal"><SiteApp /></ModuleGate>} />
         <Route path="panel/admin" element={<AdminWorkspace />} />
         <Route path="proyectos" element={<Navigate to="/panel/proyectos" replace />} />

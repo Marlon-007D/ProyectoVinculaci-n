@@ -94,6 +94,7 @@ export const ProjectsDashboard = ({ institution }: { institution: Institution })
       });
 
       setProjects(prev => [res.data, ...prev]);
+      setSource(res.source);
       setIsModalOpen(false);
       setNewProject({ name: '', description: '', budget_total: '', start_date: '', end_date: '' });
     } catch (cause) {
@@ -160,7 +161,7 @@ export const ProjectsDashboard = ({ institution }: { institution: Institution })
               }`}
             >
               <span className={`size-1.5 rounded-full ${source === 'supabase' ? 'bg-emerald-500' : 'bg-amber-500'}`} />
-              {loading ? 'Consultando…' : loadError ? 'Consulta fallida' : source === 'supabase' ? 'Datos de Supabase' : ''}
+              {loading ? 'Consultando…' : loadError ? 'Consulta fallida' : source === 'supabase' ? 'Datos de Supabase' : 'Guardado en este navegador'}
             </span>
           </div>
           <p className="text-xs text-gray-500 mt-1">

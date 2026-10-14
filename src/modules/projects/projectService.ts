@@ -69,7 +69,7 @@ export function createProjectService(institutionId: string) {
   }
 
   return {
-    async getProjects(): Promise<{ data: Project[]; source: 'supabase' }> {
+    async getProjects(): Promise<{ data: Project[]; source: 'supabase' | 'local' }> {
       try {
         const { data, error } = await supabase
           .from('projects')
@@ -87,7 +87,7 @@ export function createProjectService(institutionId: string) {
       }
 
       const stored = getStoredProjects();
-      return { data: stored, source: 'supabase' };
+      return { data: stored, source: 'local' };
     },
 
     async createProject(input: {
@@ -138,7 +138,7 @@ export function createProjectService(institutionId: string) {
 
         const current = getStoredProjects();
         saveStoredProjects([newProj, ...current]);
-        return { data: newProj, source: 'supabase' as const };
+        return { data: newProj, source: 'local' as const };
       }
     },
 

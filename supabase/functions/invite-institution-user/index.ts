@@ -120,7 +120,7 @@ Deno.serve(async (request) => {
       return respond({ error: 'No se pudo asignar el rol. Revisa la configuración de memberships y vuelve a intentarlo.' }, 500);
     }
 
-    return respond({ message: `Invitación enviada a ${email}; el rol ya quedó asignado a ${institution.name}.` });
+    return respond({ message: `Invitación enviada a ${email}; el rol ya quedó asignado a ${institution.name}. Al iniciar sesión, deberá configurar la verificación en dos pasos.` });
   } catch (error) {
     console.error('Error inesperado al invitar usuario:', error);
     return respond({ error: 'Ocurrió un error al invitar al usuario. Inténtalo nuevamente.' }, 500);

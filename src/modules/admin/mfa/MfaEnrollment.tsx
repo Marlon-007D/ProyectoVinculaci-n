@@ -35,7 +35,9 @@ export const MfaEnrollment: React.FC<{ onEnrolled: () => void }> = ({ onEnrolled
         return;
       }
     }
-    const { data, error } = await supabase.auth.mfa.enroll({ factorType: 'totp' });
+    // Unique name prevents collisions with abandoned factors that used an empty name.
+    const friendlyName = `Portal institucional ${Date.now()}`;
+    const { data, error } = await supabase.auth.mfa.enroll({ factorType: 'totp', friendlyName });
     setBusy(false);
     if (error) {
       setMessage(`Supabase rechazó la configuración: ${error.message}`);
@@ -78,13 +80,17 @@ export const MfaEnrollment: React.FC<{ onEnrolled: () => void }> = ({ onEnrolled
         <div aria-hidden="true" className="mb-6 grid size-12 place-items-center rounded-[15px] bg-brand font-bold text-white">V</div>
         <p className="mb-2 text-[10px] font-bold tracking-[0.16em] text-[#245b88]">PROTECCIÓN DE LA CUENTA</p>
         <h1 className="mb-2 text-2xl font-bold tracking-tight text-ink">Activa la verificación en dos pasos</h1>
-        <p className="mb-5 text-sm leading-relaxed text-muted">Como administrador, configura una aplicación autenticadora antes de continuar. La necesitarás al iniciar sesión.</p>
+        <p className="mb-5 text-sm leading-relaxed text-muted">Tu cuenta recibió un rol institucional. Configura una aplicación autenticadora antes de continuar; la necesitarás al iniciar sesión.</p>
+        <p className="mb-5 -mt-4 text-xs leading-relaxed text-muted">Los códigos TOTP se actualizan automáticamente cada 30 segundos. Ese intervalo estándar no se puede reducir a 15 segundos desde el portal.</p>
         {!qrCode ? (
           <button type="button" onClick={() => void handleStartEnroll()} disabled={busy} className={styles.btnPrimary}>
             {busy ? 'Preparando…' : 'Configurar aplicación autenticadora'}
           </button>
         ) : (
           <div className={styles.qrSection}>
+            {!hasExistingFactor && <button type="button" onClick={() => void handleStartEnroll()} disabled={busy} className={styles.btnSecondary}>
+              Regenerar código QR
+            </button>}
             <p>{hasExistingFactor ? 'Ya hay una aplicación autenticadora vinculada. Confirma que la controlas con el código temporal.' : 'Escanea el código QR con Google Authenticator, Microsoft Authenticator o una aplicación compatible. Luego escribe el código de seis dígitos.'}</p>
             {!hasExistingFactor && <img src={qrCode} alt="Código QR para configurar la aplicación autenticadora" className={styles.qrImage} />}
             <input type="text" aria-label="Código de seis dígitos" placeholder="000000" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} value={code} onChange={event => setCode(event.target.value.replace(/\D/g, '').slice(0, 6))} className={styles.input} />

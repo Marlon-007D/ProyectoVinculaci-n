@@ -17,9 +17,8 @@ export function InstitutionalHeader() {
   const isDece = pathname === '/panel/dece' || pathname === '/dece';
   const isSimulators = pathname === '/panel/simuladores' || pathname === '/simuladores';
   const isSite = pathname.startsWith('/panel/portal') || pathname.startsWith('/portal');
-  const isAdmin = pathname === '/panel/admin' || pathname === '/admin';
 
-  const navLinks = [
+  const navLinks = role === 'super_admin' ? [] : [
     { label: 'Inicio', path: '/panel', isActive: isPanel },
     { label: 'Proyectos', path: '/panel/proyectos', isActive: isProjects },
     { label: 'DECE', path: '/panel/dece', isActive: isDece },
@@ -45,7 +44,7 @@ export function InstitutionalHeader() {
           </div>
 
           <div className="ml-auto text-xs">
-            {institutions && institutions.length > 1 ? (
+            {role === 'super_admin' && institutions && institutions.length > 1 ? (
               <select
                 value={activeInstitution?.institution_id || ''}
                 onChange={(e) => {
@@ -97,16 +96,6 @@ export function InstitutionalHeader() {
               </Link>
             ))}
 
-            <Link
-              to="/panel/admin"
-              className={`px-3 py-2 rounded-lg text-xs font-semibold tracking-wide transition-colors whitespace-nowrap ${
-                isAdmin
-                    ? 'text-sky-900 bg-sky-50 border border-sky-200 shadow-2xs font-bold'
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-              }`}
-            >
-              <span>Admin</span>
-            </Link>
           </nav>
 
           <div className="hidden sm:flex items-center gap-3 shrink-0">
@@ -182,23 +171,6 @@ export function InstitutionalHeader() {
                 )}
               </Link>
             ))}
-
-            <Link
-              to="/panel/admin"
-              onClick={() => setMobileMenuOpen(false)}
-              className={`flex items-center justify-between px-3 py-2 rounded-lg text-sm font-semibold ${
-                isAdmin
-                  ? 'bg-sky-50 text-sky-900 border border-sky-200 font-bold'
-                  : 'text-gray-700 hover:bg-gray-50'
-              }`}
-            >
-              <span>Administración</span>
-              {isAdmin && (
-                <span className="text-[10px] bg-sky-200 text-sky-900 px-2 py-0.5 rounded">
-                  Activo
-                </span>
-              )}
-            </Link>
           </div>
 
           <div className="pt-3 border-t border-gray-100">

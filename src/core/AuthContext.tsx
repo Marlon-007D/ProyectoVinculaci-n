@@ -38,67 +38,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [mfaChallengeId, setMfaChallengeId] = useState<string | null>(null);
   const mfaChallengeRef = useRef<{ factorId: string; challengeId: string } | null>(null);
 
-  const checkMfaSession = async (nextSession: Session | null): Promise<boolean> => {
-    if (!nextSession) {
-      setMfaRequired(false);
-      setMfaFactorId(null);
-      setMfaChallengeId(null);
-      mfaChallengeRef.current = null;
-      return false;
-    }
-    const { data: mfaEnabledForAssignedUser, error: eligibilityError } = await supabase.rpc('own_mfa_enabled_for_assigned_user');
-    if (eligibilityError || !mfaEnabledForAssignedUser) {
-      setMfaRequired(false);
-      setMfaFactorId(null);
-      setMfaChallengeId(null);
-      mfaChallengeRef.current = null;
-      return false;
-    }
-    const { data: assurance, error: assuranceError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-    if (assuranceError) {
-      setMfaRequired(true);
-      setMfaFactorId(null);
-      setMfaChallengeId(null);
-      mfaChallengeRef.current = null;
-      return true;
-    }
-    if (assurance.currentLevel === 'aal2' || assurance.nextLevel !== 'aal2') {
-      setMfaRequired(false);
-      setMfaFactorId(null);
-      setMfaChallengeId(null);
-      mfaChallengeRef.current = null;
-      return false;
-    }
-    const { data: factors, error: factorsError } = await supabase.auth.mfa.listFactors();
-    if (factorsError) {
-      setMfaRequired(true);
-      setMfaFactorId(null);
-      setMfaChallengeId(null);
-      mfaChallengeRef.current = null;
-      return true;
-    }
-    const factor = factors.totp.find((item) => item.status === 'verified');
-    if (!factor) {
-      setMfaRequired(false);
-      setMfaFactorId(null);
-      setMfaChallengeId(null);
-      mfaChallengeRef.current = null;
-      return false;
-    }
-    if (mfaChallengeRef.current?.factorId === factor.id) return true;
-    const { data: challenge, error: challengeError } = await supabase.auth.mfa.challenge({ factorId: factor.id });
-    if (challengeError) {
-      setMfaRequired(true);
-      setMfaFactorId(factor.id);
-      setMfaChallengeId(null);
-      mfaChallengeRef.current = null;
-      return true;
-    }
-    setMfaFactorId(factor.id);
-    setMfaChallengeId(challenge.id);
-    mfaChallengeRef.current = { factorId: factor.id, challengeId: challenge.id };
-    setMfaRequired(true);
-    return true;
+  const checkMfaSession = async (_nextSession: Session | null): Promise<boolean> => {
+    setMfaRequired(false);
+    setMfaFactorId(null);
+    setMfaChallengeId(null);
+    mfaChallengeRef.current = null;
+    return false;
   };
 
   const fetchUserRoleAndTenant = async (userId: string) => {
@@ -138,9 +83,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setRole(assignedRole);
     setInstitutionId(membership?.institution_id ?? null);
 
-    // Solo se pide configurar TOTP cuando el flujo de asignación dejó la marca pendiente.
-    const { data: enrollmentRequired, error: mfaStatusError } = await supabase.rpc('own_mfa_enrollment_required');
-    setMfaEnrollmentRequired(!mfaStatusError && enrollmentRequired === true);
+    setMfaEnrollmentRequired(false);
   };
 
   useEffect(() => {
@@ -197,10 +140,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, pass: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password: pass });
-    if (!error) {
-      const { data: assurance } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-      if (assurance?.nextLevel === 'aal2' && assurance.currentLevel !== 'aal2') await checkMfaSession((await supabase.auth.getSession()).data.session);
-    }
     return { error };
   };
 

@@ -15,6 +15,7 @@ const roleLabels: Record<string, string> = {
   project_manager: 'Gestor de proyectos',
   editor: 'Editor de contenidos',
   viewer: 'Consulta',
+  student: 'Estudiante',
 };
 const formatRole = (role: string) => roleLabels[role] ?? role.replaceAll('_', ' ');
 
@@ -143,7 +144,7 @@ export const UserManagement: React.FC = () => {
       return;
     }
     await logAuditEvent({ action: 'ASSIGN_ROLE', entity: 'memberships', details: { email: normalizedEmail, roleId, institutionId }, institutionId });
-    setMsg('Rol asignado correctamente a la institución.');
+    setMsg('Rol asignado correctamente. Si la cuenta aún no configuró la verificación en dos pasos, se le solicitará al iniciar sesión.');
     setEmail('');
     setFirstName('');
     setLastName('');
@@ -199,12 +200,12 @@ export const UserManagement: React.FC = () => {
             {roles.filter((item) => item.name !== 'super_admin').map((item) => <option key={item.role_id} value={item.role_id}>{formatRole(item.name)}</option>)}
           </select>
         </label>
-        <label className={styles.field} htmlFor="member-institution">Institución
-          <select id="member-institution" value={institutionId} onChange={(event) => setInstitutionId(event.target.value)} required disabled={!isPlatformAdmin} className={styles.select}>
+        {isPlatformAdmin && <label className={styles.field} htmlFor="member-institution">Institución
+          <select id="member-institution" value={institutionId} onChange={(event) => setInstitutionId(event.target.value)} required className={styles.select}>
             <option value="">Seleccionar institución</option>
             {institutions.map((institution) => <option key={institution.institution_id} value={institution.institution_id}>{institution.name}</option>)}
           </select>
-        </label>
+        </label>}
         <button type="submit" className={styles.btnSubmit}>Asignar rol</button>
       </form>
       {msg && <p role="status">{msg}</p>}

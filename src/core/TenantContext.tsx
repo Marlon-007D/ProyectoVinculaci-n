@@ -20,12 +20,12 @@ interface TenantContextType {
 }
 const TenantContext = createContext<TenantContextType | undefined>(undefined);
 export function TenantProvider({ children }: { children: ReactNode }) {
-  const { user, role, loading, mfaRequired } = useAuth();
+  const { user, role, loading } = useAuth();
   const [state, setState] = useState<{ owner: string; institutions: Institution[]; error: string | null } | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [revision, setRevision] = useState(0);
   useEffect(() => {
-    if (!user || loading || mfaRequired) return;
+    if (!user || loading) return;
     let cancelled = false;
 
     const loadInstitutions = async () => {
@@ -38,45 +38,55 @@ export function TenantProvider({ children }: { children: ReactNode }) {
           return;
         }
       } catch {
-        // Continuar con fallback
+        // Si la RPC falla, no se infieren instituciones desde la tabla completa.
       }
 
-      // Compatibilidad con instalaciones que aún no aplican la RPC. RLS limita
-      // esta consulta a los tenants visibles para la sesión.
       try {
-        const { data: instList, error: instError } = await supabase
-          .from('institutions')
-          .select('institution_id, name, slug, is_active')
-          .eq('is_active', true);
+        if (role === 'super_admin') {
+          const { data, error } = await supabase
+            .from('institutions')
+            .select('institution_id, name, slug, is_active')
+            .eq('is_active', true);
+          if (!error && data) {
+            const institutions: Institution[] = data.map((item) => ({ ...item, role, projects_enabled: true }));
+            if (!cancelled) setState({ owner: user.id, institutions, error: null });
+            return;
+          }
+        } else {
+          const { data, error } = await supabase
+            .from('memberships')
+            .select('institution_id, institutions!fk_memberships_institution(institution_id, name, slug, is_active), roles!fk_memberships_role(name)')
+            .eq('profile_id', user.id);
 
-        if (!instError && instList && instList.length > 0) {
-          const mapped: Institution[] = instList.map(inst => ({
-            institution_id: inst.institution_id,
-            name: inst.name,
-            slug: inst.slug,
-            is_active: inst.is_active,
-            role: role ?? 'institution_admin',
-            projects_enabled: true,
-          }));
-          if (!cancelled) setState({ owner: user.id, institutions: mapped, error: null });
-          return;
+          if (!error && data) {
+            const institutions: Institution[] = data.flatMap((membership: any) => {
+              const institution = membership.institutions;
+              const assignedRole = membership.roles?.name;
+              if (!institution?.is_active || !assignedRole) return [];
+              return [{ ...institution, role: assignedRole, projects_enabled: true }];
+            });
+            if (institutions.length > 0) {
+              if (!cancelled) setState({ owner: user.id, institutions, error: null });
+              return;
+            }
+          }
         }
       } catch {
-        // Continuar con fallback
+        // Reportar el error de asignación debajo.
       }
 
       if (!cancelled) {
         setState({
           owner: user.id,
           institutions: [],
-          error: 'No hay instituciones disponibles para esta cuenta. Verifica su membresía y las políticas RLS en Supabase.',
+          error: 'No se pudieron cargar las instituciones asignadas a esta cuenta. Verifica la función project_institutions y sus permisos en Supabase.',
         });
       }
     };
 
     void loadInstitutions();
     return () => { cancelled = true; };
-  }, [user, role, loading, mfaRequired, revision]);
+  }, [user, role, loading, revision]);
   const current = !loading && user && state?.owner === user.id ? state : null;
   const institutions = current?.institutions ?? [];
   const activeInstitution = institutions.find(item => item.institution_id === selectedId) ?? institutions[0] ?? null;
