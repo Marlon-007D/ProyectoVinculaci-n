@@ -4,19 +4,19 @@
   --site-paper: #ffffff;
   --site-surface: #f3f5f7;
   --site-line: #d5dbe1;
-  --site-accent: #1d4e89;
+  --site-accent: var(--color-primary, #1d4e89);
   --site-accent-ink: #ffffff;
   --site-danger: #9b1c1c;
   --site-focus: #b45309;
   --site-radius: 6px;
-  --site-font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --site-font: var(--font-family, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif);
   --site-max: 72rem;
   --site-header-h: 4.5rem;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --site-ink: #e8ecf0; --site-muted: #aab4be; --site-paper: #12181f; --site-surface: #1b232c;
-    --site-line: #2e3a46; --site-accent: #7fb2ee; --site-accent-ink: #0c1218; --site-danger: #f3a3a3; --site-focus: #f5b862;
+    --site-line: #2e3a46; --site-accent: var(--color-primary, #7fb2ee); --site-accent-ink: #0c1218; --site-danger: #f3a3a3; --site-focus: #f5b862;
   }
 }
 
@@ -97,3 +97,9 @@
   .site-preview__desktop { display: block; }
   .site-preview__mobile { display: none; }
 }
+
+.site-root--embedded { min-height: 0; }
+:where(.site-root) :is(h1, h2, h3) { margin: 0 0 .75rem; }
+:where(.site-root) h1 { font-size: clamp(1.75rem, 4vw, 2.5rem); }
+:where(.site-root) h2 { font-size: clamp(1.4rem, 3vw, 1.9rem); }
+:where(.site-root) h3 { font-size: 1.15rem; }

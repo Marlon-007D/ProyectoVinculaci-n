@@ -1,5 +1,7 @@
 import { NavLink } from "react-router-dom";
+import { useInstitution } from "../../context/InstitutionContext";
 import type { MenuNode } from "../../types/menu";
+import { joinBase } from "../../utils/basePath";
 import { isSafeExternalUrl } from "../../utils/url";
 
 interface Props {
@@ -9,6 +11,7 @@ interface Props {
 }
 
 export function MenuLink({ node, className, onClick }: Props) {
+  const { basePath } = useInstitution();
   if (node.is_external) {
     if (!isSafeExternalUrl(node.url)) return <span className={className} aria-disabled="true">{node.label}</span>;
     return (
@@ -20,7 +23,7 @@ export function MenuLink({ node, className, onClick }: Props) {
     );
   }
   return (
-    <NavLink to={node.url} end={node.url === "/"} className={className} onClick={onClick}>
+    <NavLink to={joinBase(basePath, node.url)} end={node.url === "/"} className={className} onClick={onClick}>
       {node.label}
     </NavLink>
   );

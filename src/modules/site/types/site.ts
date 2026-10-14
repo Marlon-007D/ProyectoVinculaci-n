@@ -12,18 +12,6 @@ export interface SiteSettingsRow {
   social_links: Json;
 }
 
-export interface ThemeRow {
-  theme_id: string;
-  institution_id: string;
-  name: string;
-  primary_color: string;
-  secondary_color: string;
-  tertiary_color: string | null;
-  font_family: string;
-  base_font_size: number;
-  visual_scale: number;
-}
-
 export interface SocialLink {
   label: string;
   url: string;
