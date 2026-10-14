@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { CalendarDays, CreditCard, FileText, IdCard, Plus, ShoppingBag, Trash2, UserRound } from 'lucide-react'
-import type { InvoiceDraft } from '../types/invoice.types'
+import type { InvoiceDraft, InvoiceLine } from '../types/invoice.types'
 import './InvoiceForm.css'
 
 interface Props {
@@ -15,6 +15,7 @@ interface Props {
 
 export function InvoiceForm({ draft, onField, onUpdate, onAdd, onRemove, onSubmit, onReset }: Props) {
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const setError = (key: string, message: string) => setErrors(current => ({ ...current, [key]: message }))
   const clearError = (key: string) => setErrors(current => {
     const next = { ...current }
     delete next[key]
