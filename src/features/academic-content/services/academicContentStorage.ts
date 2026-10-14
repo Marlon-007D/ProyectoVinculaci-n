@@ -5,6 +5,7 @@ import { tenantInstitution } from '../../../core/config/tenant'
 const storageKey = 'simulaedu.academic-content.v1'
 const newsSeedMigrationKey = `${storageKey}.news-sources-v3`
 const honorSeedMigrationKey = `${storageKey}.honor-group-seed-v2`
+const draftSeedMigrationKey = `${storageKey}.publication-drafts-v2`
 
 export function getAcademicContent(): AcademicContentEntry[] {
   try {
@@ -36,6 +37,13 @@ export function getAcademicContent(): AcademicContentEntry[] {
       entries = [...honorSeeds.filter(entry => !existingIds.has(entry.id) && !existingHonorKeys.has(`${entry.periodId}:${entry.studentName.trim().toLocaleLowerCase()}`)), ...entries]
       localStorage.setItem(storageKey, JSON.stringify(entries))
       localStorage.setItem(honorSeedMigrationKey, 'complete')
+    }
+    if (!localStorage.getItem(draftSeedMigrationKey)) {
+      const draftSeeds = sampleAcademicContent.filter(entry => entry.institutionId === tenantInstitution.id && (entry.kind === 'news' || entry.kind === 'event') && entry.status === 'draft')
+      const existingIds = new Set(entries.map(entry => entry.id))
+      entries = [...draftSeeds.filter(entry => !existingIds.has(entry.id)), ...entries]
+      localStorage.setItem(storageKey, JSON.stringify(entries))
+      localStorage.setItem(draftSeedMigrationKey, 'complete')
     }
     return entries
   } catch {

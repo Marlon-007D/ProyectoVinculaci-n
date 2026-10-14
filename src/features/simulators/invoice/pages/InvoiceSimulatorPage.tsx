@@ -23,7 +23,7 @@ export function InvoiceSimulatorPage() {
   }
   return <section className="page-content invoice-page">
     <div className="workspace"><div className="invoice-form-column" ref={formColumnRef}>
-      <InvoiceForm draft={invoice.draft} onField={invoice.updateField} onUpdate={invoice.updateLine} onAdd={invoice.addLine} onRemove={invoice.removeLine} onReset={invoice.reset} onSubmit={invoice.persist} />
+      <InvoiceForm draft={invoice.draft} products={invoice.products} catalogNotice={invoice.catalogNotice} onField={invoice.updateField} onUpdate={invoice.updateLine} onAdd={invoice.addLine} onRemove={invoice.removeLine} onReset={invoice.reset} onSubmit={invoice.persist} />
       {invoice.notice && <p className="success-message" role="status">{invoice.notice}</p>}
       {editToast && <div className="edit-toast" role="status">Factura cargada para editar.</div>}
     </div><InvoiceResult totals={invoice.totals} /></div>

@@ -1,6 +1,16 @@
-import type { InvoiceDraft, InvoiceLine, SavedInvoice } from '../types/invoice.types'
+import type { InvoiceDraft, InvoiceLine, InvoiceProduct, SavedInvoice } from '../types/invoice.types'
 
 export const invoiceTaxRate = 0.15
+
+export const sampleInvoiceProducts: InvoiceProduct[] = [
+  { id: 'notebook', description: 'Cuaderno universitario 1 línea, 100 hojas', unitPrice: 1.2, sourceName: 'Donald Papelería', sourceUrl: 'https://donald.ec/products/escribe-cuaderno-universitario-1-linea-100h' },
+  { id: 'marker', description: 'Marcador permanente punta biselada', unitPrice: 0.63, sourceName: 'Materiales de Arte PRECISE', sourceUrl: 'https://arteprecise.com/tienda/categoria-producto/marcadores/' },
+  { id: 'bond-paper', description: 'Resma papel bond blanco A4, 75 g', unitPrice: 4.65, sourceName: 'Super Paco en Rappi', sourceUrl: 'https://www.rappi.com.ec/p/resma-de-papel-bond-blanco-075grs-a-142702' },
+  { id: 'loose-sheets', description: 'Paquete de hojas A4, 50 hojas', unitPrice: 0.59, sourceName: 'Donald Papelería', sourceUrl: 'https://donald.ec/collections/escribe' },
+  { id: 'folder-pack', description: 'Folder de cartulina manila, paquete x5', unitPrice: 1.29, sourceName: 'Super Paco en Rappi', sourceUrl: 'https://www.rappi.com.ec/p/resma-de-papel-bond-blanco-075grs-a-142702' },
+]
+
+export const sampleInvoiceQuantities = Array.from({ length: 10 }, (_, index) => index + 1)
 
 export const sampleInvoiceDraft: InvoiceDraft = {
   customer: 'Alejandra Rodriguez Pallo',
@@ -8,8 +18,8 @@ export const sampleInvoiceDraft: InvoiceDraft = {
   date: '2026-10-03',
   paymentMethod: 'Efectivo',
   lines: [
-    { id: 'notebook', description: 'Cuaderno universitario A4', quantity: 2, unitPrice: 3.5 },
-    { id: 'marker', description: 'Marcador permanente', quantity: 1, unitPrice: 1.25 },
+    { id: 'line-notebook', productId: 'notebook', description: 'Cuaderno universitario 1 línea, 100 hojas', quantity: 2, unitPrice: 1.2 },
+    { id: 'line-marker', productId: 'marker', description: 'Marcador permanente punta biselada', quantity: 1, unitPrice: 0.63 },
   ],
 }
 

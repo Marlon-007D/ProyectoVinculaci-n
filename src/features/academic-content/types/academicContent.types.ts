@@ -19,5 +19,7 @@ export interface AcademicContentEntry {
   isCurrent: boolean
   sourceName?: string
   sourceUrl?: string
+  imageUrl?: string
+  author?: string
   updatedAt: string
 }
