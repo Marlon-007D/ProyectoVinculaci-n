@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import styles from './dece.module.css'
 import { ProvisionalShell } from './components/provisional-shell'
 import { dashboardStats } from './data'
@@ -6,9 +6,13 @@ import { AuthorizationFormPage } from './pages/authorization-form'
 import { DashboardPage } from './pages/dashboard'
 import { GeneralFormPage } from './pages/general-form'
 import { StudentDirectoryPage } from './pages/student-directory'
+import FormManagementPage from './pages/form-management-page'
+import ConfigurableForm from './pages/student-form/configurable-form'
+import FormSubmissionsPage from './pages/form-submissions-page'
 import { useDeceData } from './services/dece-data-context'
 import { createDeceFormService } from './services/form-service'
 import type { DeceScreen, Student } from './types'
+type FormTemplate = { code: string; name: string }
 
 export default function DeceApp() {
   const integration = useDeceData()
@@ -23,6 +27,13 @@ export default function DeceApp() {
   const [query, setQuery] = useState('')
   const [grade, setGrade] = useState('Todos los grados')
   const [section, setSection] = useState(0)
+  const [selectedFormCode, setSelectedFormCode] = useState('')
+  const [formTemplates, setFormTemplates] = useState<FormTemplate[]>([])
+  const [customSections, setCustomSections] = useState<string[]>([])
+  const syncCustomSections = useCallback((names: string[]) => {
+    setCustomSections(current => current.length === names.length && current.every((name, index) => name === names[index]) ? current : names)
+    setSection(current => current >= names.length ? 0 : current)
+  }, [])
 
   useEffect(() => {
     if (!integration) return
@@ -39,6 +50,15 @@ export default function DeceApp() {
       .finally(() => { if (current) setFormSetupLoading(false) })
     return () => { current = false }
   }, [integration, formSetupRetry])
+
+  useEffect(() => {
+    if (!integration || (screen !== 'home' && screen !== 'students')) return
+    let current = true
+    void createDeceFormService(integration.client).listFormTemplates(integration.institutionId)
+      .then(templates => { if (current) setFormTemplates(templates.map(({ code, name }) => ({ code, name }))) })
+      .catch(() => { if (current) setFormTemplates([]) })
+    return () => { current = false }
+  }, [integration, screen])
 
   useEffect(() => {
     let current = true
@@ -83,6 +103,18 @@ export default function DeceApp() {
     setScreen(target)
   }
 
+  const openCustomForm = (student: Student, code: string) => {
+    setSelectedStudent(student)
+    setSelectedFormCode(code)
+    setSection(0)
+    setScreen('custom-form')
+  }
+
+  const openSubmissionForm = (student: Student, code: string) => {
+    if (code === 'general' || code === 'authorization') openForm(student, code)
+    else openCustomForm(student, code)
+  }
+
   const formProps = selectedStudent ? {
     student: selectedStudent,
     section,
@@ -121,8 +153,17 @@ export default function DeceApp() {
             grade={grade}
             setGrade={setGrade}
             onOpen={openForm}
+            customForms={formTemplates.filter(form => !['general', 'authorization'].includes(form.code))}
+            onOpenCustomForm={openCustomForm}
           />
         )}
+        {screen === 'forms' && <FormManagementPage />}
+        {screen === 'submissions' && <FormSubmissionsPage onOpen={openSubmissionForm} />}
+        {screen === 'custom-form' && selectedStudent && <div className="page-content container-fluid">
+          <div className="welcome-row"><div><h1>{formTemplates.find(form => form.code === selectedFormCode)?.name ?? 'Ficha personalizada'}</h1><p>{selectedStudent.name} · {selectedStudent.grade}</p></div><button className="button btn secondary" onClick={() => setScreen('students')}>Volver al directorio</button></div>
+          <nav className="studentPortal__sections mb-3" aria-label="Secciones de la ficha">{customSections.map((name, index) => <button type="button" key={name} className={section === index ? 'active' : ''} onClick={() => setSection(index)}>{String(index + 1).padStart(2, '0')} · {name}</button>)}</nav>
+          <ConfigurableForm key={`${selectedStudent.recordId}-${selectedFormCode}`} integration={integration} student={selectedStudent} code={selectedFormCode} section={section} onSectionsChange={syncCustomSections} audience="staff" />
+        </div>}
         {screen === 'general' && formProps && <GeneralFormPage {...formProps} />}
         {screen === 'authorization' && formProps && <AuthorizationFormPage {...formProps} />}
       </ProvisionalShell>

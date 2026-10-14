@@ -10,6 +10,7 @@ type Membership = { institution_id: string; role: { name: string } | { name: str
 type ActiveSession = { userId: string; email: string; institutionId: string; institutionName: string; slug: string; role: string }
 type OwnSubmission = Awaited<ReturnType<ReturnType<typeof createDeceFormService>['loadOwnSubmission']>>
 type HistoryItem = { id: string; versionId: string; status: 'draft' | 'submitted' | 'reviewed'; updatedAt: string; name: string; versionNumber: number }
+type PortalForm = { code: string; name: string }
 type SessionContextValue = { session: ActiveSession | null; signOut: () => Promise<void> }
 const SessionContext = createContext<SessionContextValue | null>(null)
 
@@ -105,7 +106,8 @@ function StudentFicha({ session }: { session: ActiveSession }) {
   const [error, setError] = useState('')
   const [section, setSection] = useState(0)
   const [sections, setSections] = useState<string[]>(['Ficha general'])
-  const [formCode, setFormCode] = useState<'general' | 'authorization'>('general')
+  const [formCode, setFormCode] = useState('general')
+  const [availableForms, setAvailableForms] = useState<PortalForm[]>([])
   const [activeTab, setActiveTab] = useState<'forms' | 'history'>('forms')
   const [history, setHistory] = useState<HistoryItem[]>([])
   const [historyLoading, setHistoryLoading] = useState(false)
@@ -115,6 +117,14 @@ function StudentFicha({ session }: { session: ActiveSession }) {
   const [historyDetailLoading, setHistoryDetailLoading] = useState(false)
   const integration = useMemo(() => ({ client: supabase, institutionId: session.institutionId, getStudentId: (row: Student) => row.recordId ?? null }), [session.institutionId])
   const syncSections = useCallback((next: string[]) => setSections(current => current.length === next.length && current.every((item, index) => item === next[index]) ? current : next), [])
+
+  useEffect(() => {
+    let live = true
+    void formService.listFormTemplates(session.institutionId)
+      .then(forms => { if (live) setAvailableForms(forms.map(form => ({ code: form.code, name: form.name }))) })
+      .catch(() => { if (live) setAvailableForms([]) })
+    return () => { live = false }
+  }, [formService, session.institutionId])
 
   useEffect(() => {
     let live = true
@@ -200,9 +210,9 @@ function StudentFicha({ session }: { session: ActiveSession }) {
     {loading ? <p role="status">Cargando ficha…</p> : error ? <p role="alert" className="studentPortal__message">{error}</p> : student && <>
       <nav className="studentPortal__tabs" aria-label="Fichas y envíos"><button type="button" className={activeTab === 'forms' ? 'active' : ''} onClick={() => setActiveTab('forms')}>Completar fichas</button><button type="button" className={activeTab === 'history' ? 'active' : ''} onClick={() => { setActiveTab('history'); setHistoryRefresh(value => value + 1); setSelectedHistory(null) }}>Mi historial</button></nav>
       {activeTab === 'forms' ? <>
-        <nav className="studentPortal__formTabs" aria-label="Formularios"><button type="button" className={formCode === 'general' ? 'active' : ''} onClick={() => { setFormCode('general'); setSection(0) }}>Ficha general</button><button type="button" className={formCode === 'authorization' ? 'active' : ''} onClick={() => { setFormCode('authorization'); setSection(0) }}>Autorización</button></nav>
+        <nav className="studentPortal__formTabs" aria-label="Formularios">{availableForms.map(form => <button type="button" key={form.code} className={formCode === form.code ? 'active' : ''} onClick={() => { setFormCode(form.code); setSection(0) }}>{form.name}</button>)}</nav>
         <nav className="studentPortal__sections" aria-label="Secciones de la ficha">{sections.map((item, index) => <button type="button" className={section === index ? 'active' : ''} key={item} onClick={() => setSection(index)}>{String(index + 1).padStart(2, '0')} · {item}</button>)}</nav>
-        <section className="studentPortal__formSurface"><header className="studentPortal__formHeading"><span>FORMULARIO ESTUDIANTIL</span><h2>{formCode === 'general' ? 'Registro general acumulativo estudiantil' : 'Ficha de autorización para atención y emergencias'}</h2><p>{student.name} · {student.grade}</p></header><ConfigurableForm key={formCode} integration={integration} student={student} code={formCode} section={section} onSectionsChange={syncSections} audience="student" /></section>
+        <section className="studentPortal__formSurface"><header className="studentPortal__formHeading"><span>FORMULARIO ESTUDIANTIL</span><h2>{availableForms.find(form => form.code === formCode)?.name ?? 'Ficha'}</h2><p>{student.name} · {student.grade}</p></header><ConfigurableForm key={formCode} integration={integration} student={student} code={formCode} section={section} onSectionsChange={syncSections} audience="student" /></section>
       </> : <section aria-labelledby="history-heading"><h2 id="history-heading">Historial de mis fichas</h2>
         {historyLoading && <p role="status">Cargando historial…</p>}{historyError && <p role="alert">{historyError}</p>}
         {!historyLoading && !historyError && history.length === 0 && <p>No hay fichas visibles todavía. Puede deberse a permisos o a que aún no guardaste un borrador.</p>}
