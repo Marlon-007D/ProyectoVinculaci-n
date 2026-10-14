@@ -42,3 +42,25 @@
 .appShell :global(.form-actions) .save-message { flex: 1; margin-right: 12px; }
 @media (max-width: 720px) { .appShell :global(.question-builder) { grid-template-columns: 1fr; } }
 @media (max-width: 720px) { .appShell :global(.student-table-view) { display: none; } .appShell :global(.student-card-view) { display: block; } .appShell :global(.table-card) table { min-width: 0; } }
+
+/* Higher-contrast, consistent controls for the DECE forms. */
+.appShell :global(.form-card) { border-color: #d3d1db; }
+.appShell :global(.form-card-head) { border-bottom-color: #dedce4; }
+.appShell :global(.form-fields) { padding: 22px; }
+.appShell :global(.field-grid) { gap: 17px; }
+.appShell :global(.custom-question) { padding: 14px; border: 1px solid #dad8e1; border-radius: 10px; background: #fff; transition: border-color .15s ease, box-shadow .15s ease; }
+.appShell :global(.custom-question):hover { border-color: #aaa6b5; box-shadow: 0 3px 10px rgb(37 30 63 / 6%); }
+.appShell :global(.field) { gap: 8px; color: #373442; font-size: 12px; }
+.appShell :global(.field)>span, .appShell :global(.check-group) legend { color: #34313e; font-weight: 700; line-height: 1.45; }
+.appShell :global(.field) input, .appShell :global(.field) select, .appShell :global(.field) textarea { border-color: #bcb9c6; border-radius: 8px; font-size: 13px; transition: border-color .15s ease, box-shadow .15s ease; }
+.appShell :global(.field) input, .appShell :global(.field) select { height: 42px; }
+.appShell :global(.field) textarea { min-height: 92px; }
+.appShell :global(.field) input:hover, .appShell :global(.field) select:hover, .appShell :global(.field) textarea:hover { border-color: #888493; }
+.appShell :global(.field) input:focus, .appShell :global(.field) select:focus, .appShell :global(.field) textarea:focus { border-color: #71659a; box-shadow: 0 0 0 3px rgb(102 86 165 / 14%); }
+.appShell :global(.check-group) { border-color: #c8c5d0; background: #fafafd; }
+.appShell :global(.check-group) label { font-size: 12px; line-height: 1.4; }
+.appShell :global(.button):focus-visible, .appShell :global(.text-button):focus-visible, .appShell :global(.form-switch) button:focus-visible { outline: 3px solid rgb(102 86 165 / 28%); outline-offset: 2px; }
+.appShell :global(.button).secondary { border: 1px solid #d1ced9; background: #f7f6f9; transition: border-color .15s ease, background-color .15s ease; }
+.appShell :global(.button).secondary:hover { border-color: #aaa6b5; background: #eeedf2; }
+.appShell :global(.question-builder) { border-color: #d0ced8; background: #f8f7fa; }
+@media (max-width: 720px) { .appShell :global(.form-fields) { padding: 15px; } .appShell :global(.custom-question) { padding: 12px; } }

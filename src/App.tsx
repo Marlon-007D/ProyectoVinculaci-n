@@ -1,10 +1,11 @@
-import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './core/AuthContext';
 import { TenantProvider, useTenant } from './core/TenantContext';
+import { supabase } from './core/supabaseClient';
 import { MfaEnrollment, SuperAdminPanel, UserManagement } from './modules/admin';
 import { ProjectsWorkspace } from './modules/projects/ProjectsWorkspace';
-import { DeceApp } from './modules/dece';
+import { DeceApp, DeceDataProvider } from './modules/dece';
 import { SiteApp } from './modules/site';
 import { SimuladoresApp } from './app/SimuladoresApp';
 import { InstitutionalLayout } from './components/layout/InstitutionalLayout';
@@ -305,6 +306,32 @@ function ModuleGate({ moduleName, children }: { moduleName: string; children: Re
   return <>{children}</>;
 }
 
+function DecePageWrapper() {
+  const { activeInstitution } = useTenant();
+  const integration = useMemo(() => {
+    if (!activeInstitution) return null;
+    return {
+      client: supabase,
+      institutionId: activeInstitution.institution_id,
+      getStudentId: (student: { recordId?: string }) => student.recordId ?? null,
+    };
+  }, [activeInstitution]);
+
+  if (!integration) {
+    return (
+      <div className="mx-auto max-w-3xl p-8 text-sm text-slate-600">
+        No hay una institución activa disponible para esta cuenta.
+      </div>
+    );
+  }
+
+  return (
+    <DeceDataProvider value={integration}>
+      <DeceApp />
+    </DeceDataProvider>
+  );
+}
+
 function AppRoutes() {
   const { user, isPasswordRecovery, mfaRequired, mfaEnrollmentRequired, completeMfaEnrollment } = useAuth();
 
@@ -319,7 +346,7 @@ function AppRoutes() {
         <Route path="inicio" element={<Navigate to="/panel" replace />} />
         <Route path="panel" element={<InstitutionalPanel />} />
         <Route path="panel/proyectos" element={<ModuleGate moduleName="projects"><ProjectsPageWrapper /></ModuleGate>} />
-        <Route path="panel/dece" element={<ModuleGate moduleName="dece"><DeceApp /></ModuleGate>} />
+        <Route path="panel/dece" element={<ModuleGate moduleName="dece"><DecePageWrapper /></ModuleGate>} />
         <Route path="panel/simuladores" element={<ModuleGate moduleName="simuladores"><SimuladoresApp /></ModuleGate>} />
         <Route path="panel/portal/*" element={<ModuleGate moduleName="portal"><SiteApp /></ModuleGate>} />
         <Route path="panel/admin" element={<AdminWorkspace />} />
