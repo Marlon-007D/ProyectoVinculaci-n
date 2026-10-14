@@ -9,7 +9,7 @@ export function ThemeUser({ theme, collapsed, open, onChange, onToggle }: Props)
   return <div className={`theme-user${open ? ' is-open' : ''}${collapsed ? ' is-collapsed' : ''}`}>
     <button className="theme-trigger" type="button" aria-expanded={open} aria-controls="theme-user-options" onClick={onToggle}>
       <Palette size={19} />
-      {!collapsed && <><span>Tema</span><ChevronDown className="theme-chevron" size={16} /></>}
+      {!collapsed && <><span className="theme-trigger-label">Tema</span><ChevronDown className="theme-chevron" size={16} /></>}
       <span className="theme-trigger-swatch" style={{ backgroundColor: themeOptions.find(option => option.id === theme)?.swatch }} aria-hidden="true" />
     </button>
     {open && <div className="theme-options" id="theme-user-options" role="group" aria-label="Selecciona un tema">

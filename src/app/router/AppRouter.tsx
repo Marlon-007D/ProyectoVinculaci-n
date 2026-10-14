@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { ChevronRight, Home } from 'lucide-react'
 import { Sidebar } from '../../shared/components/Sidebar/Sidebar'
 import { AppHeader } from '../../shared/components/AppHeader/AppHeader'
 import { InvoiceSimulatorPage } from '../../features/simulators/invoice/pages/InvoiceSimulatorPage'
@@ -10,6 +9,10 @@ import { NewsPage } from '../../features/news/pages/NewsPage'
 import { EventsPage } from '../../features/events/pages/EventsPage'
 import { HonorsPage } from '../../features/honors/pages/HonorsPage'
 import { AcademicPeriodsPage } from '../../features/academic-periods/pages/AcademicPeriodsPage'
+import { SchoolCoursesPage } from '../../features/courses/pages/SchoolCoursesPage'
+import { schoolModulesMock } from '../../features/courses/mocks/schoolModulesMock'
+import { schoolCoursesMock } from '../../features/courses/mocks/schoolCoursesMock'
+import type { BreadcrumbItem } from '../../shared/components/AppHeader/AppHeader'
 import { InvoicePageSkeleton } from '../../features/simulators/invoice/pages/InvoicePageSkeleton'
 import { ConverterPageSkeleton } from '../../features/simulators/converter/pages/ConverterPageSkeleton'
 import { InterestPageSkeleton } from '../../features/simulators/interest/pages/InterestPageSkeleton'
@@ -19,7 +22,7 @@ import type { AcademicContentEntry } from '../../features/academic-content/types
 import type { ThemeName } from '../../features/themeUser/types/themeUser.types'
 
 export type SimulatorRoute = 'invoice' | 'converter' | 'interest'
-export type AppRoute = SimulatorRoute | 'news' | 'events' | 'honors' | 'academic-periods'
+export type AppRoute = SimulatorRoute | 'school-courses' | 'news' | 'events' | 'honors' | 'academic-periods'
 
 interface Props { collapsed: boolean; theme: ThemeName; onThemeChange: (theme: ThemeName, origin: { x: number; y: number }) => void; onToggleSidebar: () => void }
 
@@ -27,6 +30,7 @@ const pages = {
   invoice: { Component: InvoiceSimulatorPage },
   converter: { Component: ConverterPage },
   interest: { Component: InterestSimulatorPage },
+  'school-courses': { Component: SchoolCoursesPage },
   news: { Component: NewsPage },
   events: { Component: EventsPage },
   honors: { Component: HonorsPage },
@@ -35,6 +39,7 @@ const pages = {
 
 const routeLabels: Record<AppRoute, string> = {
   invoice: 'Facturación electrónica', converter: 'Unidades y monedas', interest: 'Interés financiero',
+  'school-courses': 'Cursos de colegio',
   news: 'Noticias', events: 'Eventos', honors: 'Cuadro de honor', 'academic-periods': 'Período académico',
 }
 
@@ -42,6 +47,7 @@ const routeSkeletons: Record<AppRoute, () => ReactNode> = {
   invoice: InvoicePageSkeleton,
   converter: ConverterPageSkeleton,
   interest: InterestPageSkeleton,
+  'school-courses': () => <SchoolCoursesPage />,
   news: () => <AcademicContentSkeleton kind="news" title="Noticias" />,
   events: () => <AcademicContentSkeleton kind="event" title="Eventos" />,
   honors: () => <AcademicContentSkeleton kind="honor" title="Cuadro de honor" />,
@@ -50,6 +56,10 @@ const routeSkeletons: Record<AppRoute, () => ReactNode> = {
 
 export function AppRouter({ collapsed, theme, onThemeChange, onToggleSidebar }: Props) {
   const [route, setRoute] = useState<AppRoute>('invoice')
+  const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null)
+  const [selectedModuleId, setSelectedModuleId] = useState<string | null>(null)
+  const [courseTopicName, setCourseTopicName] = useState<string | null>(null)
+  const [evaluationActive, setEvaluationActive] = useState(false)
   const [loadingRoute, setLoadingRoute] = useState<AppRoute | null>(null)
   const [previewEntry, setPreviewEntry] = useState<AcademicContentEntry | null>(null)
   const navigationTimer = useRef<number | null>(null)
@@ -67,20 +77,38 @@ export function AppRouter({ collapsed, theme, onThemeChange, onToggleSidebar }: 
       navigationTimer.current = null
     }, 360)
   }
-  const showPostPreview = (entry: AcademicContentEntry) => setPreviewEntry(entry)
+  const selectCourse = (courseId: string) => {
+    setSelectedCourseId(courseId)
+    setCourseTopicName(schoolCoursesMock.find(course => course.id === courseId)?.units[0]?.title ?? null)
+    setEvaluationActive(false)
+    navigateTo('school-courses')
+  }
+  const selectModule = (moduleId: string) => {
+    setSelectedModuleId(moduleId)
+    setSelectedCourseId(null)
+    setCourseTopicName(null)
+    setEvaluationActive(false)
+    navigateTo('school-courses')
+  }
   useEffect(() => () => {
     if (navigationTimer.current !== null) window.clearTimeout(navigationTimer.current)
   }, [])
+  const showPostPreview = (entry: AcademicContentEntry) => setPreviewEntry(entry)
+  const selectedCourse = schoolCoursesMock.find(course => course.id === selectedCourseId)
+  const selectedModule = schoolModulesMock.find(module => module.id === selectedModuleId)
+  const openCourses = () => { setSelectedCourseId(null); setSelectedModuleId(null); setCourseTopicName(null); setEvaluationActive(false); navigateTo('school-courses') }
+  const breadcrumbs: BreadcrumbItem[] = displayedRoute === 'school-courses' ? [
+    { label: 'Cursos', onClick: selectedModule || selectedCourse ? openCourses : undefined },
+    ...(selectedModule ? [{ label: selectedModule.name, onClick: selectedCourse ? () => { setSelectedCourseId(null); setEvaluationActive(false); setCourseTopicName(null); navigateTo('school-courses') } : undefined }] : []),
+    ...(selectedCourse ? [{ label: selectedCourse.name, onClick: evaluationActive ? () => setEvaluationActive(false) : () => { setSelectedCourseId(null); setCourseTopicName(null); navigateTo('school-courses') } }] : []),
+    ...(selectedCourse && courseTopicName ? [{ label: courseTopicName, onClick: evaluationActive ? () => setEvaluationActive(false) : undefined }] : []),
+    ...(evaluationActive ? [{ label: 'Evaluaciones' }] : []),
+  ] : []
   return <>
-    <AppHeader />
-    <Sidebar active={displayedRoute} collapsed={collapsed} theme={theme} onThemeChange={onThemeChange} onSelect={navigateTo} onToggle={onToggleSidebar} />
+    <AppHeader breadcrumbs={breadcrumbs} />
+    <Sidebar active={displayedRoute} activeModuleId={selectedModuleId} collapsed={collapsed} theme={theme} onThemeChange={onThemeChange} onSelect={navigateTo} onSelectModule={selectModule} onToggle={onToggleSidebar} />
     <main className="main">
-      <nav className="breadcrumbs" aria-label="Migas de pan">
-        <span className="breadcrumb-home"><Home size={15} aria-hidden="true" /> SimulaEdu</span>
-        <ChevronRight size={15} aria-hidden="true" />
-        <span aria-current="page">{previewEntry ? `${routeLabels[displayedRoute]} / Vista previa` : routeLabels[displayedRoute]}</span>
-      </nav>
-      {loadingRoute ? <Skeleton /> : previewEntry ? <AcademicPostPreviewPage entry={previewEntry} /> : <Component onPreview={showPostPreview} />}
+      {loadingRoute ? <Skeleton /> : previewEntry ? <AcademicPostPreviewPage entry={previewEntry} /> : displayedRoute === 'school-courses' ? <SchoolCoursesPage selectedModuleId={selectedModuleId} selectedCourseId={selectedCourseId} evaluationActive={evaluationActive} onSelectCourse={selectCourse} onTopicChange={setCourseTopicName} onEvaluationChange={setEvaluationActive} /> : <Component onPreview={showPostPreview} />}
     </main>
   </>
 }
