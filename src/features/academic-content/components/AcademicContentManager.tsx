@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import type { ReactNode } from 'react'
-import { ArrowLeft, ArrowRight, CalendarDays, Check, ChevronDown, CirclePlus, Eye, Pencil, Trash2, UsersRound } from 'lucide-react'
+import { ArrowLeft, ArrowRight, CalendarDays, Check, ChevronDown, CirclePlus, Eye, ImagePlus, Pencil, Trash2, UsersRound } from 'lucide-react'
 import { Button } from '../../../shared/components/Button/Button'
 import { Modal } from '../../../shared/components/Modal/Modal'
 import { useAcademicContent } from '../hooks/useAcademicContent'
@@ -9,7 +9,7 @@ import type { AcademicContentEntry, AcademicContentKind } from '../types/academi
 import { tenantInstitution } from '../../../core/config/tenant'
 import './AcademicContentManager.css'
 
-interface Props { kind: AcademicContentKind; title: string; singular: string }
+interface Props { kind: AcademicContentKind; title: string; singular: string; onPreview?: (entry: AcademicContentEntry) => void }
 
 const emptyEntry = (kind: AcademicContentKind, institutionId: string): AcademicContentEntry => ({
   id: crypto.randomUUID(), institutionId, kind, title: '', description: '', periodId: '', status: 'draft', date: '', location: '',
@@ -17,13 +17,15 @@ const emptyEntry = (kind: AcademicContentKind, institutionId: string): AcademicC
 })
 
 const pageSize = 5
+const defaultCover = 'https://futuresocsci.mcmaster.ca/app/uploads/2024/07/Thubnail-photo-2-1400x600.jpg'
+const eventCover = 'https://socialsciences.careers.mcmaster.ca/app/uploads/2025/10/Untitled-design-27.png'
 
 function dateLabel(value: string) {
   if (!value) return ''
   return new Intl.DateTimeFormat('es-EC', { dateStyle: 'medium', timeZone: 'UTC' }).format(new Date(`${value}T12:00:00Z`))
 }
 
-export function AcademicContentManager({ kind, title, singular }: Props) {
+export function AcademicContentManager({ kind, title, singular, onPreview }: Props) {
   const { entries, save, remove } = useAcademicContent()
   const [editing, setEditing] = useState<AcademicContentEntry | null>(null)
   const [notice, setNotice] = useState('')
@@ -141,7 +143,10 @@ export function AcademicContentManager({ kind, title, singular }: Props) {
         const linkedPeriod = periods.find(period => period.id === entry.periodId)
         const mainText = entry.title
         const subText = entry.description
-        return <article className="academic-entry" key={entry.id}>
+        return (kind === 'news' || kind === 'event') ? <article className="publication-post" key={entry.id}>
+          <img className="publication-post-image" src={entry.imageUrl || (kind === 'event' ? eventCover : defaultCover)} alt="" loading="lazy" />
+          <div className="publication-post-body"><div className="academic-entry-title"><h3>{mainText}</h3><span className={`entry-status ${entry.status === 'published' ? 'is-published' : ''}`}>{entry.status === 'published' ? 'Publicado' : 'Borrador'}</span></div><p>{subText}</p><small>{dateLabel(entry.date)}{kind === 'event' && entry.location ? ` · ${entry.location}` : ''}</small><div className="academic-entry-actions"><button type="button" className="academic-icon-button is-preview" onClick={() => onPreview?.(entry)} aria-label={`Ver vista previa de ${mainText}`} title="Vista previa"><Eye size={18} /></button><button type="button" className="academic-icon-button" onClick={() => beginEdit(entry)} aria-label={`Editar ${mainText}`} title="Editar"><Pencil size={17} /></button><button type="button" className="academic-icon-button is-danger" onClick={() => deleteEntry(entry)} aria-label={`Eliminar ${mainText}`} title="Eliminar"><Trash2 size={17} /></button></div></div>
+        </article> : <article className="academic-entry" key={entry.id}>
           <div className="academic-entry-copy"><div className="academic-entry-title"><h3>{mainText}</h3>{kind === 'period' ? <span className={entry.isCurrent ? 'entry-status is-current' : 'entry-status'}>{entry.isCurrent ? 'Vigente' : 'Histórico'}</span> : <span className={`entry-status ${entry.status === 'published' ? 'is-published' : ''}`}>{entry.status === 'published' ? 'Publicado' : 'Borrador'}</span>}</div>
             {subText && <p>{subText}</p>}
             <small>{kind === 'period' ? `${dateLabel(entry.startDate)} – ${dateLabel(entry.endDate)}` : kind === 'event' ? `${dateLabel(entry.date)}${entry.location ? ` · ${entry.location}` : ''}` : `${entry.date ? dateLabel(entry.date) : 'Sin fecha'} · ${linkedPeriod?.title ?? 'Sin período académico'}`}</small>
@@ -162,15 +167,18 @@ export function AcademicContentManager({ kind, title, singular }: Props) {
               <label>Título<input required maxLength={120} {...fieldProps('title')} value={editing.title} onChange={event => update('title', event.target.value)} />{fieldError('title')}</label>
               <label>{kind === 'news' ? 'Fecha de publicación' : 'Fecha'}<input required type="date" {...fieldProps('date')} value={editing.date} onChange={event => update('date', event.target.value)} />{fieldError('date')}</label>
             </div>
-            <label>{kind === 'news' ? 'Noticia' : 'Descripción'}<textarea required rows={kind === 'news' ? 4 : 2} {...fieldProps('description')} value={editing.description} onChange={event => update('description', event.target.value)} />{fieldError('description')}</label>
+            <label>{kind === 'news' ? 'Redacción completa' : 'Descripción del evento'}<textarea required rows={kind === 'news' ? 8 : 5} {...fieldProps('description')} value={editing.description} onChange={event => update('description', event.target.value)} placeholder="Escribe la publicación. Puedes separar los párrafos con una línea en blanco." />{fieldError('description')}</label>
+            <label>Autor<input maxLength={100} value={editing.author ?? ''} onChange={event => update('author', event.target.value)} placeholder="Equipo editorial" /></label>
+            <label>Foto de portada<input type="url" placeholder="https://…" value={editing.imageUrl ?? ''} onChange={event => update('imageUrl', event.target.value)} /><small className="academic-help-text">Puedes pegar un enlace de imagen. Si lo dejas vacío, se usará una foto de estudiantes.</small></label>
+            <div className="cover-choice"><span>Foto sugerida</span><button type="button" onClick={() => update('imageUrl', defaultCover)}><ImagePlus size={16} /> Usar foto de estudiantes</button></div>
             {kind === 'event' && <label>Lugar<input required {...fieldProps('location')} value={editing.location} onChange={event => update('location', event.target.value)} />{fieldError('location')}</label>}
           </div> : <div className="academic-form-step">
             <h3>Revisa y publica</h3>
-            <div className="academic-publication-preview"><strong>{editing.title}</strong><p>{editing.description}</p><small>{editing.date ? dateLabel(editing.date) : ''}{kind === 'event' && editing.location ? ` · ${editing.location}` : ''}</small></div>
+            <article className="publication-preview-card"><img src={editing.imageUrl || (kind === 'event' ? eventCover : defaultCover)} alt="Vista previa de portada" /><div><small>{kind === 'news' ? 'NOTICIA' : 'EVENTO'} · {editing.date ? dateLabel(editing.date) : 'Fecha'}</small><strong>{editing.title || 'Título de la publicación'}</strong><p>{editing.description || 'Aquí aparecerá el texto de la publicación.'}</p>{kind === 'event' && editing.location && <small>{editing.location}</small>}</div></article>
             <div className="academic-form-grid">
               <label>Año lectivo<select required {...fieldProps('periodId')} value={editing.periodId} onChange={event => update('periodId', event.target.value)}><option value="">Selecciona un año</option>{periods.map(period => <option key={period.id} value={period.id}>{period.title}{period.isCurrent ? ' · Vigente' : ''}</option>)}</select>{fieldError('periodId')}</label>
-              <label>Estado<select value={editing.status} onChange={event => update('status', event.target.value)}><option value="draft">Borrador</option><option value="published">Publicado</option></select></label>
             </div>
+            <fieldset className="publication-status"><legend>Estado de la publicación</legend><label className={editing.status === 'draft' ? 'is-selected' : ''}><input type="radio" name="publication-status" value="draft" checked={editing.status === 'draft'} onChange={() => update('status', 'draft')} /><span><b>Guardar como borrador</b><small>Solo visible en administración</small></span></label><label className={editing.status === 'published' ? 'is-selected' : ''}><input type="radio" name="publication-status" value="published" checked={editing.status === 'published'} onChange={() => update('status', 'published')} /><span><b>Publicar</b><small>Visible en la página institucional</small></span></label></fieldset>
           </div>
         : kind === 'honor' ? <>
           <label>Estudiante<input required {...fieldProps('studentName')} value={editing.studentName} onChange={event => update('studentName', event.target.value)} />{fieldError('studentName')}</label>

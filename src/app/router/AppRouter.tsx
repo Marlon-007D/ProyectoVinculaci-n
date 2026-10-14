@@ -14,6 +14,8 @@ import { InvoicePageSkeleton } from '../../features/simulators/invoice/pages/Inv
 import { ConverterPageSkeleton } from '../../features/simulators/converter/pages/ConverterPageSkeleton'
 import { InterestPageSkeleton } from '../../features/simulators/interest/pages/InterestPageSkeleton'
 import { AcademicContentSkeleton } from '../../features/academic-content/components/AcademicContentSkeleton'
+import { AcademicPostPreviewPage } from '../../features/academic-content/pages/AcademicPostPreviewPage'
+import type { AcademicContentEntry } from '../../features/academic-content/types/academicContent.types'
 import type { ThemeName } from '../../features/themeUser/types/themeUser.types'
 
 export type SimulatorRoute = 'invoice' | 'converter' | 'interest'
@@ -29,7 +31,7 @@ const pages = {
   events: { Component: EventsPage },
   honors: { Component: HonorsPage },
   'academic-periods': { Component: AcademicPeriodsPage },
-} satisfies Record<AppRoute, { Component: () => ReactNode }>
+} satisfies Record<AppRoute, { Component: (props: { onPreview: (entry: AcademicContentEntry) => void }) => ReactNode }>
 
 const routeLabels: Record<AppRoute, string> = {
   invoice: 'Facturación electrónica', converter: 'Unidades y monedas', interest: 'Interés financiero',
@@ -49,12 +51,14 @@ const routeSkeletons: Record<AppRoute, () => ReactNode> = {
 export function AppRouter({ collapsed, theme, onThemeChange, onToggleSidebar }: Props) {
   const [route, setRoute] = useState<AppRoute>('invoice')
   const [loadingRoute, setLoadingRoute] = useState<AppRoute | null>(null)
+  const [previewEntry, setPreviewEntry] = useState<AcademicContentEntry | null>(null)
   const navigationTimer = useRef<number | null>(null)
   const displayedRoute = loadingRoute ?? route
   const { Component } = pages[displayedRoute]
   const Skeleton = routeSkeletons[displayedRoute]
   const navigateTo = (nextRoute: AppRoute) => {
-    if (nextRoute === displayedRoute) return
+    if (nextRoute === displayedRoute) { setPreviewEntry(null); return }
+    setPreviewEntry(null)
     if (navigationTimer.current !== null) window.clearTimeout(navigationTimer.current)
     setLoadingRoute(nextRoute)
     navigationTimer.current = window.setTimeout(() => {
@@ -63,6 +67,7 @@ export function AppRouter({ collapsed, theme, onThemeChange, onToggleSidebar }: 
       navigationTimer.current = null
     }, 360)
   }
+  const showPostPreview = (entry: AcademicContentEntry) => setPreviewEntry(entry)
   useEffect(() => () => {
     if (navigationTimer.current !== null) window.clearTimeout(navigationTimer.current)
   }, [])
@@ -73,9 +78,9 @@ export function AppRouter({ collapsed, theme, onThemeChange, onToggleSidebar }: 
       <nav className="breadcrumbs" aria-label="Migas de pan">
         <span className="breadcrumb-home"><Home size={15} aria-hidden="true" /> SimulaEdu</span>
         <ChevronRight size={15} aria-hidden="true" />
-        <span aria-current="page">{routeLabels[displayedRoute]}</span>
+        <span aria-current="page">{previewEntry ? `${routeLabels[displayedRoute]} / Vista previa` : routeLabels[displayedRoute]}</span>
       </nav>
-      {loadingRoute ? <Skeleton /> : <Component />}
+      {loadingRoute ? <Skeleton /> : previewEntry ? <AcademicPostPreviewPage entry={previewEntry} /> : <Component onPreview={showPostPreview} />}
     </main>
   </>
 }
