@@ -9,6 +9,7 @@ export interface Institution {
   is_active: boolean;
   role: string;
   projects_enabled: boolean;
+  enabled_modules?: string[];
 }
 interface TenantContextType {
   activeInstitution: Institution | null;

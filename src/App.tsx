@@ -299,7 +299,7 @@ function ModuleGate({ moduleName, children }: { moduleName: string; children: Re
   const { activeInstitution, loadingTenant } = useTenant();
   if (loadingTenant) return <div className="mx-auto max-w-3xl p-8 text-sm text-slate-600">Cargando permisos de la institucion...</div>;
   if (!activeInstitution) return <div className="mx-auto max-w-3xl p-8 text-sm text-slate-600">No hay una institucion activa disponible para esta cuenta.</div>;
-  if (!activeInstitution.enabled_modules?.includes(moduleName)) {
+  if (activeInstitution.enabled_modules && !activeInstitution.enabled_modules.includes(moduleName)) {
     return <div className="mx-auto max-w-3xl p-8"><section className="rounded-xl border border-amber-200 bg-white p-6 text-sm text-amber-900">Este modulo no esta habilitado para {activeInstitution.name}. Solicita al superadministrador que lo active.</section></div>;
   }
   return <>{children}</>;
