@@ -57,7 +57,7 @@ export default function FormSubmissionsPage({ onOpen }: { onOpen: (student: Stud
         if (!submissions.length) { if (live) setRows([]); return }
         const studentIds = [...new Set(submissions.map(row => row.student_id))]
         const { data: studentRows, error: studentsError } = await integration.client.from('students')
-          .select('student_id, national_id, first_name, grade_level').in('student_id', studentIds)
+          .select('student_id, national_id, first_name, last_name, grade_level').in('student_id', studentIds)
         if (studentsError) throw studentsError
         const students = new Map((studentRows ?? []).map(row => [row.student_id, row]))
         const forms = new Map(definitions.map(definition => [definition.form_definition_id, definition]))
@@ -70,7 +70,9 @@ export default function FormSubmissionsPage({ onOpen }: { onOpen: (student: Stud
           const student: Student = {
             recordId: studentRow.student_id,
             id: studentRow.national_id ?? 'Sin identificación',
-            name: studentRow.first_name,
+            name: `${studentRow.first_name} ${studentRow.last_name}`.trim(),
+            firstName: studentRow.first_name,
+            lastName: studentRow.last_name,
             grade: studentRow.grade_level ?? 'Sin grado',
             initials: studentRow.first_name.split(/\s+/).slice(0, 2).map((part: string) => part[0]).join('').toUpperCase(),
             color: 'lavender',

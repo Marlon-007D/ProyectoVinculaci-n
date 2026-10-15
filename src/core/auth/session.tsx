@@ -115,7 +115,7 @@ function StudentFicha({ session }: { session: ActiveSession }) {
   const [historyError, setHistoryError] = useState('')
   const [selectedHistory, setSelectedHistory] = useState<OwnSubmission | null>(null)
   const [historyDetailLoading, setHistoryDetailLoading] = useState(false)
-  const integration = useMemo(() => ({ client: supabase, institutionId: session.institutionId, getStudentId: (row: Student) => row.recordId ?? null }), [session.institutionId])
+  const integration = useMemo(() => ({ client: supabase, institutionId: session.institutionId, profileId: session.userId, slug: session.slug, getStudentId: (row: Student) => row.recordId ?? null }), [session.institutionId, session.slug, session.userId])
   const syncSections = useCallback((next: string[]) => setSections(current => current.length === next.length && current.every((item, index) => item === next[index]) ? current : next), [])
 
   useEffect(() => {
@@ -128,15 +128,17 @@ function StudentFicha({ session }: { session: ActiveSession }) {
 
   useEffect(() => {
     let live = true
-    void supabase.from('students').select('student_id, national_id, first_name, grade_level')
+    void supabase.from('students').select('student_id, national_id, first_name, last_name, grade_level')
       .eq('profile_id', session.userId).eq('institution_id', session.institutionId).maybeSingle()
       .then(({ data, error: queryError }) => {
         if (!live) return
         if (queryError) setError(queryError.code === '42501' ? 'No tienes permiso para consultar tu ficha.' : 'No se pudo cargar tu ficha.')
         else if (!data) setError('No tienes permiso para consultar una ficha, o no hay una ficha vinculada a tu cuenta.')
         else {
-          const name = data.first_name as string
-          setStudent({ recordId: data.student_id as string, id: (data.national_id as string | null) ?? '', name, grade: (data.grade_level as string | null) ?? '', initials: name.split(/\s+/).slice(0, 2).map(part => part[0]).join('').toUpperCase(), color: 'lavender' })
+          const firstName = data.first_name as string
+          const lastName = (data.last_name as string | null) ?? ''
+          const name = `${firstName} ${lastName}`.trim()
+          setStudent({ recordId: data.student_id as string, id: (data.national_id as string | null) ?? '', name, firstName, lastName, grade: (data.grade_level as string | null) ?? '', initials: name.split(/\s+/).slice(0, 2).map(part => part[0]).join('').toUpperCase(), color: 'lavender' })
         }
         setLoading(false)
       })
@@ -229,7 +231,7 @@ function StudentFicha({ session }: { session: ActiveSession }) {
 
 function DeceStaffModule({ session }: { session: ActiveSession }) {
   const { signOut } = useActiveSession()
-  const integration = useMemo(() => ({ client: supabase, institutionId: session.institutionId, getStudentId: (student: { recordId?: string }) => student.recordId ?? null }), [session.institutionId])
+  const integration = useMemo(() => ({ client: supabase, institutionId: session.institutionId, profileId: session.userId, slug: session.slug, getStudentId: (student: { recordId?: string }) => student.recordId ?? null }), [session.institutionId, session.slug, session.userId])
   return <DeceDataProvider value={integration}><main className="container py-3"><div className="d-flex justify-content-between align-items-center"><span>{session.institutionName} · DECE</span><button className="btn btn-outline-secondary" onClick={() => void signOut()}>Cerrar sesión</button></div><DeceApp /></main></DeceDataProvider>
 }
 
