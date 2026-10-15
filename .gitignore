@@ -10,7 +10,6 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
-tmp/
 *.local
 .env
 .env.*
@@ -26,17 +25,3 @@ tmp/
 *.njsproj
 *.sln
 *.sw?
-
-# TypeScript incremental output and local data
-*.tsbuildinfo
-*.sqlite
-*.sqlite3
-*.db
-*.swp
-*.swo
-Thumbs.db
-desktop.ini
-.npm-cache/
-.cache/
-.vite/
-coverage/
