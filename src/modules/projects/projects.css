@@ -1,0 +1,10 @@
+.projects-workspace button:focus-visible, .projects-workspace input:focus-visible,
+.projects-workspace select:focus-visible { outline: 3px solid #0f766e; outline-offset: 3px; }
+.projects-workspace fieldset { min-width: 0; }
+.projects-workspace fieldset:disabled button { opacity: .6; cursor: wait; }
+@media print {
+  body:has(.project-report) * { visibility: hidden; }
+  body:has(.project-report) .project-report, body:has(.project-report) .project-report * { visibility: visible; }
+  .project-report { position: absolute; inset: 0; padding: 20px; background: white; }
+  .project-report button { display: none; }
+}
