@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { CalendarDays, CreditCard, FileText, IdCard, Plus, ShoppingBag, Trash2, UserRound } from 'lucide-react'
-import type { InvoiceDraft, InvoiceLine, InvoiceProduct } from '../types/invoice.types'
+import type { InvoiceDraft, InvoiceProduct } from '../types/invoice.types'
 import { sampleInvoiceQuantities } from '../mocks/invoiceMock'
 import './InvoiceForm.css'
 
@@ -19,7 +19,6 @@ interface Props {
 export function InvoiceForm({ draft, products, catalogNotice, onField, onUpdate, onAdd, onRemove, onSubmit, onReset }: Props) {
   const [errors, setErrors] = useState<Record<string, string>>({})
   const availableProducts = products.filter(product => !draft.lines.some(line => line.productId === product.id))
-  const setError = (key: string, message: string) => setErrors(current => ({ ...current, [key]: message }))
   const clearError = (key: string) => setErrors(current => {
     const next = { ...current }
     delete next[key]

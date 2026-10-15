@@ -99,15 +99,53 @@ CREATE TABLE profiles (
     first_name VARCHAR(100) NOT NULL,
     last_name VARCHAR(100) NOT NULL,
     email VARCHAR(255) NOT NULL UNIQUE,
-    phone VARCHAR(20),
+    phone VARCHAR(10) NOT NULL,
     mfa_enabled BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_profiles_auth_users
         FOREIGN KEY (profile_id)
         REFERENCES auth.users(id)
-        ON DELETE CASCADE
+        ON DELETE CASCADE,
+    CONSTRAINT profiles_phone_ec_mobile_check
+        CHECK (phone ~ '^09[0-9]{8}$')
 );
+
+-- Los datos personales se reciben en metadata durante el registro de Auth.
+CREATE OR REPLACE FUNCTION public.handle_new_auth_profile()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+    metadata_phone TEXT := NEW.raw_user_meta_data->>'phone';
+    metadata_first_name TEXT := NEW.raw_user_meta_data->>'first_name';
+    metadata_last_name TEXT := NEW.raw_user_meta_data->>'last_name';
+BEGIN
+    -- Usuarios creados manualmente sin datos personales pueden completar el perfil
+    -- cuando el administrador les asigne un rol.
+    IF NULLIF(trim(metadata_first_name), '') IS NULL
+       OR NULLIF(trim(metadata_last_name), '') IS NULL
+       OR COALESCE(metadata_phone, '') !~ '^09[0-9]{8}$' THEN
+        RETURN NEW;
+    END IF;
+
+    INSERT INTO public.profiles (profile_id, first_name, last_name, email, phone)
+    VALUES (NEW.id, trim(metadata_first_name), trim(metadata_last_name), NEW.email, metadata_phone)
+    ON CONFLICT (profile_id) DO UPDATE
+      SET first_name = EXCLUDED.first_name,
+          last_name = EXCLUDED.last_name,
+          email = EXCLUDED.email,
+          phone = EXCLUDED.phone;
+    RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS on_auth_user_created_profile ON auth.users;
+CREATE TRIGGER on_auth_user_created_profile
+AFTER INSERT ON auth.users
+FOR EACH ROW EXECUTE FUNCTION public.handle_new_auth_profile();
 
 CREATE TABLE roles (
     role_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),

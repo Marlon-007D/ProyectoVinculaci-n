@@ -30,18 +30,11 @@ const pages = {
   invoice: { Component: InvoiceSimulatorPage },
   converter: { Component: ConverterPage },
   interest: { Component: InterestSimulatorPage },
-  'school-courses': { Component: SchoolCoursesPage },
   news: { Component: NewsPage },
   events: { Component: EventsPage },
   honors: { Component: HonorsPage },
   'academic-periods': { Component: AcademicPeriodsPage },
-} satisfies Record<AppRoute, { Component: (props: { onPreview: (entry: AcademicContentEntry) => void }) => ReactNode }>
-
-const routeLabels: Record<AppRoute, string> = {
-  invoice: 'Facturación electrónica', converter: 'Unidades y monedas', interest: 'Interés financiero',
-  'school-courses': 'Cursos de colegio',
-  news: 'Noticias', events: 'Eventos', honors: 'Cuadro de honor', 'academic-periods': 'Período académico',
-}
+} satisfies Record<Exclude<AppRoute, 'school-courses'>, { Component: (props: { onPreview: (entry: AcademicContentEntry) => void }) => ReactNode }>
 
 const routeSkeletons: Record<AppRoute, () => ReactNode> = {
   invoice: InvoicePageSkeleton,
@@ -64,7 +57,7 @@ export function AppRouter({ collapsed, theme, onThemeChange, onToggleSidebar }: 
   const [previewEntry, setPreviewEntry] = useState<AcademicContentEntry | null>(null)
   const navigationTimer = useRef<number | null>(null)
   const displayedRoute = loadingRoute ?? route
-  const { Component } = pages[displayedRoute]
+  const Component = displayedRoute === 'school-courses' ? null : pages[displayedRoute].Component
   const Skeleton = routeSkeletons[displayedRoute]
   const navigateTo = (nextRoute: AppRoute) => {
     if (nextRoute === displayedRoute) { setPreviewEntry(null); return }
@@ -108,7 +101,7 @@ export function AppRouter({ collapsed, theme, onThemeChange, onToggleSidebar }: 
     <AppHeader breadcrumbs={breadcrumbs} />
     <Sidebar active={displayedRoute} activeModuleId={selectedModuleId} collapsed={collapsed} theme={theme} onThemeChange={onThemeChange} onSelect={navigateTo} onSelectModule={selectModule} onToggle={onToggleSidebar} />
     <main className="main">
-      {loadingRoute ? <Skeleton /> : previewEntry ? <AcademicPostPreviewPage entry={previewEntry} /> : displayedRoute === 'school-courses' ? <SchoolCoursesPage selectedModuleId={selectedModuleId} selectedCourseId={selectedCourseId} evaluationActive={evaluationActive} onSelectCourse={selectCourse} onTopicChange={setCourseTopicName} onEvaluationChange={setEvaluationActive} /> : <Component onPreview={showPostPreview} />}
+      {loadingRoute ? <Skeleton /> : previewEntry ? <AcademicPostPreviewPage entry={previewEntry} /> : displayedRoute === 'school-courses' ? <SchoolCoursesPage selectedModuleId={selectedModuleId} selectedCourseId={selectedCourseId} evaluationActive={evaluationActive} onSelectCourse={selectCourse} onTopicChange={setCourseTopicName} onEvaluationChange={setEvaluationActive} /> : Component && <Component onPreview={showPostPreview} />}
     </main>
   </>
 }

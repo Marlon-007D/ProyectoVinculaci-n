@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './core/AuthContext';
-import { TenantProvider, useTenant } from './core/TenantContext';
+import { TenantProvider, useTenant, type InstitutionModuleName } from './core/TenantContext';
 import { supabase } from './core/supabaseClient';
 import { MfaEnrollment, SuperAdminPanel, UserManagement } from './modules/admin';
 import { ProjectsWorkspace } from './modules/projects/ProjectsWorkspace';
@@ -14,14 +14,18 @@ import { NotFoundPage } from './pages/NotFoundPage';
 import './App.css';
 
 function AccessScreen() {
-  const { login, register, requestPasswordReset } = useAuth();
+  const { login, register, requestLoginLink, requestPasswordReset } = useAuth();
+  const [accessType, setAccessType] = useState<'superadmin' | 'institutional'>('institutional');
+  const [loginMethod, setLoginMethod] = useState<'password' | 'email_totp'>('password');
   const [email, setEmail] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [resetSent, setResetSent] = useState(false);
+  const [loginLinkSent, setLoginLinkSent] = useState(false);
   const [registerMode, setRegisterMode] = useState(false);
   const [confirmation, setConfirmation] = useState('');
   const [registered, setRegistered] = useState(false);
@@ -43,6 +47,12 @@ function AccessScreen() {
     setBusy(true);
     setError('');
     try {
+      if (!registerMode && loginMethod === 'email_totp') {
+        const result = await requestLoginLink(email.trim().toLowerCase());
+        if (result.error) setError(`No se pudo enviar el enlace de acceso: ${result.error.message}`);
+        else setLoginLinkSent(true);
+        return;
+      }
       const result = await login(email.trim(), password);
       if (result.error) {
         setError('No se pudo iniciar sesión. Verifica tus credenciales e inténtalo de nuevo.');
@@ -109,12 +119,71 @@ function AccessScreen() {
   }
 
   return (
-    <main className="grid min-h-[80vh] place-items-center bg-[radial-gradient(ellipse_at_50%_20%,#e6f1ef_0,transparent_55%),#f4f7f9] p-6">
-      <section className="w-full max-w-[430px] rounded-[18px] border border-[#e4ebed] bg-white p-7 shadow-[0_16px_50px_#18384412] sm:p-[38px]">
-        <div aria-hidden="true" className="mb-6 grid size-12 place-items-center rounded-[15px] bg-brand font-bold text-white shadow-[0_6px_16px_#145b5825]">V</div>
-        <p className="mb-2 text-[10px] font-bold tracking-[0.16em] text-[#398278]">ACCESO INSTITUCIONAL</p>
-        <h1 className="mb-2 font-sans text-[25px] font-bold leading-tight tracking-tight text-ink">{registerMode ? 'Crear cuenta' : 'Iniciar sesión'}</h1>
-        <p className="mb-6 text-sm leading-relaxed text-muted">{registerMode ? 'Registra tu cuenta. El acceso de administración se habilita cuando te asignen un rol.' : 'Ingresa con la cuenta que te asignó el responsable de tu institución.'}</p>
+    <main className="relative isolate grid min-h-[82vh] place-items-center overflow-hidden bg-[radial-gradient(ellipse_at_18%_12%,#dff0ee_0,transparent_34%),radial-gradient(ellipse_at_88%_84%,#e4edfa_0,transparent_32%),#f4f7f9] px-4 py-8 sm:px-6 lg:py-12">
+      <div aria-hidden="true" className="pointer-events-none absolute -left-20 top-1/3 size-64 rounded-full bg-[#62b8a8]/10 blur-3xl" />
+      <div className="relative mx-auto grid w-full max-w-6xl overflow-hidden rounded-[28px] border border-white/80 bg-white shadow-[0_32px_100px_rgba(10,35,63,0.14)] lg:min-h-[690px] lg:grid-cols-[0.92fr_1.08fr]">
+      <aside className="relative hidden overflow-hidden bg-[linear-gradient(145deg,#0a233f_0%,#103d5d_58%,#14665f_130%)] p-10 text-white lg:flex lg:flex-col lg:justify-between xl:p-12">
+        <div aria-hidden="true" className="absolute -right-24 -top-24 size-80 rounded-full border border-white/10" />
+        <div aria-hidden="true" className="absolute -bottom-36 -left-28 size-96 rounded-full border border-white/10" />
+        <div className="relative">
+          <div className="mb-12 flex items-center gap-3">
+            <div className="grid size-12 place-items-center rounded-2xl border border-white/15 bg-white/10 text-sm font-black tracking-wide shadow-lg">UE</div>
+            <div><p className="text-sm font-bold tracking-wide">Plataforma Institucional</p><p className="mt-0.5 text-[10px] font-medium uppercase tracking-[0.18em] text-sky-200">Educación · Vinculación</p></div>
+          </div>
+          <p className="mb-4 text-[10px] font-bold tracking-[0.2em] text-teal-200">UN ESPACIO, CADA INSTITUCIÓN</p>
+          <h2 className="max-w-md text-4xl font-semibold leading-[1.12] tracking-tight xl:text-[42px]">Conecta la gestión educativa con cada comunidad.</h2>
+          <p className="mt-5 max-w-md text-sm leading-7 text-slate-300">Accede a las herramientas de tu institución con permisos claros, una experiencia unificada y protección para cada cuenta.</p>
+        </div>
+        <div className="relative mt-10 rounded-2xl border border-white/10 bg-white/[0.07] p-5 shadow-[0_18px_45px_rgba(0,0,0,0.12)] backdrop-blur-sm">
+          <div className="flex items-start gap-4">
+            <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-teal-300/15 text-teal-200">
+              <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M12 3 19 6v5c0 4.8-3 8.2-7 10-4-1.8-7-5.2-7-10V6l7-3Z"/><path strokeLinecap="round" strokeLinejoin="round" d="m9 12 2 2 4-4"/></svg>
+            </div>
+            <div><p className="text-sm font-semibold">Acceso protegido por roles</p><p className="mt-1 text-xs leading-5 text-slate-300">Cada cuenta entra únicamente a las funciones que tiene asignadas.</p></div>
+          </div>
+          <div className="mt-5 flex flex-wrap gap-2 border-t border-white/10 pt-4">
+            {['Proyectos', 'DECE', 'Simuladores', 'Portal web'].map(item => <span key={item} className="rounded-full border border-white/10 bg-white/[0.06] px-3 py-1.5 text-[10px] font-medium text-slate-200">{item}</span>)}
+          </div>
+        </div>
+        <p className="relative mt-8 text-[10px] tracking-wide text-slate-400">PLATAFORMA INSTITUCIONAL EDUCATIVA</p>
+      </aside>
+      <section className="relative w-full bg-white p-6 sm:p-10 lg:px-12 lg:py-11">
+        <div className="mb-7 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 lg:hidden">
+            <div className="grid size-10 place-items-center rounded-xl bg-[#0a233f] text-xs font-black text-white">UE</div>
+            <div><p className="text-xs font-bold text-[#173247]">Plataforma Institucional</p><p className="text-[9px] uppercase tracking-[0.14em] text-[#78909a]">Acceso seguro</p></div>
+          </div>
+          <span className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-[#dcebe5] bg-[#f3faf6] px-3 py-1.5 text-[10px] font-semibold text-[#31735e]">
+            <span className="size-1.5 rounded-full bg-[#48a77c]" /> Conexión protegida
+          </span>
+        </div>
+        <div className="mb-6">
+          <p className="mb-2 text-[10px] font-bold tracking-[0.16em] text-[#398278]">PORTAL INSTITUCIONAL</p>
+          <h1 className="font-sans text-[27px] font-semibold leading-tight tracking-[-0.035em] text-[#102d42] sm:text-[30px]">{registerMode ? 'Crea tu cuenta' : accessType === 'superadmin' ? 'Ingreso de superadministrador' : 'Bienvenido de nuevo'}</h1>
+          <p className="mt-2 max-w-md text-[13px] leading-6 text-[#73848d]">{registerMode ? 'Registra tus datos; los permisos se habilitan cuando te asignen un rol.' : accessType === 'superadmin' ? 'Administra instituciones y asigna roles desde el acceso global.' : 'Ingresa de forma segura al espacio y las herramientas de tu institución.'}</p>
+        </div>
+        <div className="mb-6 grid grid-cols-2 gap-2 rounded-xl bg-[#f3f7f8] p-1.5">
+          <button type="button" aria-pressed={accessType === 'superadmin'} onClick={() => { setAccessType('superadmin'); setRegisterMode(false); setError(''); }} className={`rounded-lg px-3 py-3 text-left transition ${accessType === 'superadmin' ? 'bg-white text-[#0a233f] shadow-sm ring-1 ring-[#dce6ea]' : 'text-[#657981] hover:bg-white/70'}`}>
+            <span className="block text-xs font-bold">Superadministrador</span>
+            <span className="mt-1 block text-[10px] leading-relaxed">Acceso global</span>
+          </button>
+          <button type="button" aria-pressed={accessType === 'institutional'} onClick={() => { setAccessType('institutional'); setError(''); }} className={`rounded-lg px-3 py-3 text-left transition ${accessType === 'institutional' ? 'bg-white text-[#0a233f] shadow-sm ring-1 ring-[#dce6ea]' : 'text-[#657981] hover:bg-white/70'}`}>
+            <span className="block text-xs font-bold">Acceso institucional</span>
+            <span className="mt-1 block text-[10px] leading-relaxed">Ingreso por rol asignado</span>
+          </button>
+        </div>
+        {!registerMode && <>
+          <p className="mb-2 text-[10px] font-bold tracking-[0.12em] text-[#647b84]">ELIGE CÓMO INICIAR SESIÓN</p>
+          <div className="mb-4 grid grid-cols-2 gap-2">
+            <button type="button" aria-pressed={loginMethod === 'password'} onClick={() => { setLoginMethod('password'); setLoginLinkSent(false); setError(''); }} className={`rounded-xl border p-3 text-left transition ${loginMethod === 'password' ? 'border-[#6a91b5] bg-[#f3f8fc] text-[#0a233f] shadow-[0_4px_14px_rgba(10,35,63,0.06)]' : 'border-[#dce6ea] text-[#657981] hover:bg-[#f8fafb]'}`}>
+              <span className="block text-xs font-bold">Contraseña</span><span className="mt-1 block text-[10px] leading-4 opacity-75">Ingreso directo</span>
+            </button>
+            <button type="button" aria-pressed={loginMethod === 'email_totp'} onClick={() => { setLoginMethod('email_totp'); setLoginLinkSent(false); setError(''); }} className={`rounded-xl border p-3 text-left transition ${loginMethod === 'email_totp' ? 'border-[#6a91b5] bg-[#f3f8fc] text-[#0a233f] shadow-[0_4px_14px_rgba(10,35,63,0.06)]' : 'border-[#dce6ea] text-[#657981] hover:bg-[#f8fafb]'}`}>
+              <span className="block text-xs font-bold">Correo + TOTP</span><span className="mt-1 block text-[10px] leading-4 opacity-75">Enlace seguro y app</span>
+            </button>
+          </div>
+          {loginMethod === 'email_totp' && <p className="mb-3 rounded-lg border border-[#d5e2ee] bg-[#f4f8fc] px-3 py-2.5 text-xs leading-relaxed text-[#526b82]">Te enviaremos un enlace al correo. Al abrirlo, confirmarás el primer paso y luego ingresarás el código de tu app autenticadora.</p>}
+        </>}
         <form onSubmit={registerMode ? submitRegistration : submit} className="flex flex-col gap-2">
           {registerMode && <>
             <label htmlFor="register-first-name" className="mt-2 text-[13px] font-semibold text-[#314953]">Nombres</label>
@@ -124,8 +193,15 @@ function AccessScreen() {
           </>}
           <label htmlFor="email" className="mt-2 text-[13px] font-semibold text-[#314953]">Correo electrónico</label>
           <input id="email" type="email" autoComplete="username" value={email} onChange={event => setEmail(event.target.value)} required className="h-11 rounded-lg border border-[#d8e1e4] bg-white px-3 text-[#243c46] focus-visible:outline" placeholder="admin@institucion.edu.ec" />
+          {(registerMode || loginMethod === 'password') && <>
           <label htmlFor="password" className="mt-2 text-[13px] font-semibold text-[#314953]">Contraseña</label>
-          <input id="password" type="password" autoComplete={registerMode ? 'new-password' : 'current-password'} minLength={registerMode ? 8 : undefined} value={password} onChange={event => setPassword(event.target.value)} required className="h-11 rounded-lg border border-[#d8e1e4] bg-white px-3 text-[#243c46]" placeholder="••••••••" />
+          <div className="relative">
+            <input id="password" type={showPassword ? 'text' : 'password'} autoComplete={registerMode ? 'new-password' : 'current-password'} minLength={registerMode ? 8 : undefined} value={password} onChange={event => setPassword(event.target.value)} required className="h-11 w-full rounded-lg border border-[#d8e1e4] bg-white px-3 pr-12 text-[#243c46]" placeholder="••••••••" />
+            <button type="button" aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'} aria-pressed={showPassword} onClick={() => setShowPassword(value => !value)} className="absolute inset-y-0 right-0 grid w-11 place-items-center text-[#647b84] hover:text-[#0a233f] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#398278]">
+              <svg viewBox="0 0 24 24" aria-hidden="true" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M2.5 12s3.4-6 9.5-6 9.5 6 9.5 6-3.4 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.6"/><path strokeLinecap="round" d="m4 4 16 16" className={showPassword ? 'hidden' : ''}/></svg>
+            </button>
+          </div>
+          </>}
           {registerMode && <>
             <label htmlFor="confirm-register-password" className="mt-2 text-[13px] font-semibold text-[#314953]">Confirmar contraseña</label>
             <input id="confirm-register-password" type="password" autoComplete="new-password" minLength={8} value={confirmation} onChange={event => setConfirmation(event.target.value)} required className="h-11 rounded-lg border border-[#d8e1e4] bg-white px-3 text-[#243c46]" />
@@ -134,16 +210,18 @@ function AccessScreen() {
           {expiredAuthLink && <p role="alert" className="rounded-lg border border-[#f2d1ce] bg-[#fff1f0] px-4 py-3 text-[13px] text-[#9b3838]">Ese enlace vencio o ya se uso. Solicita uno nuevo desde Recuperar contrasena.</p>}
           {resetSent && <p role="status" className="rounded-lg border border-[#cce7df] bg-[#f0faf6] px-4 py-3 text-[13px] text-[#286b58]">Si la cuenta existe, recibiras un enlace para crear una contrasena nueva. Revisa tambien spam; los enlaces anteriores pueden vencer al solicitar otro.</p>}
           {registered && <p role="status" className="rounded-lg border border-[#d5e2ee] bg-[#f3f8fc] px-4 py-3 text-[13px] text-[#245b88]">{registrationNotice}</p>}
+          {loginLinkSent && <p role="status" className="rounded-lg border border-[#cce7df] bg-[#f0faf6] px-4 py-3 text-[13px] text-[#286b58]">Enlace enviado. Revisa tu correo y abre el enlace en este navegador; después escribe el código actual de tu app autenticadora.</p>}
           <button disabled={busy} className="mt-1 h-[45px] rounded-lg bg-brand font-bold text-white transition-colors hover:bg-brand-dark disabled:cursor-wait disabled:opacity-65">
-            {busy ? 'Procesando…' : registerMode ? 'Crear cuenta' : 'Iniciar sesión'}
+            {busy ? 'Procesando…' : registerMode ? 'Crear cuenta' : loginMethod === 'email_totp' ? 'Enviar enlace de acceso' : 'Iniciar sesión'}
           </button>
         </form>
         {!registerMode && <button type="button" disabled={busy} onClick={() => void sendResetLink()} className="mt-4 w-full text-center text-sm font-semibold text-brand underline-offset-4 hover:underline disabled:opacity-60">¿Olvidaste tu contraseña? Recuperar por correo</button>}
-        <button type="button" disabled={busy} onClick={() => { setRegisterMode(value => !value); setError(''); setRegistered(false); setResetSent(false); setConfirmation(''); }} className="mt-3 w-full text-center text-sm font-semibold text-brand underline-offset-4 hover:underline disabled:opacity-60">
+        {accessType === 'institutional' && <button type="button" disabled={busy} onClick={() => { setRegisterMode(value => !value); setLoginMethod('password'); setLoginLinkSent(false); setError(''); setRegistered(false); setResetSent(false); setConfirmation(''); }} className="mt-3 w-full text-center text-sm font-semibold text-brand underline-offset-4 hover:underline disabled:opacity-60">
           {registerMode ? 'Ya tengo cuenta; iniciar sesión' : '¿Aún no tienes cuenta? Regístrate'}
-        </button>
-        <p className="mb-0 mt-5 text-center text-[11px] text-[#8b989d]">El registro no asigna permisos automáticamente.</p>
+        </button>}
+        {accessType === 'institutional' && <p className="mb-0 mt-5 text-center text-[11px] text-[#8b989d]">El registro no asigna permisos automáticamente.</p>}
       </section>
+      </div>
     </main>
   );
 }
@@ -227,11 +305,13 @@ export function AdminWorkspace() {
 
   return (
     <div className="mx-auto max-w-[1180px] px-4 py-6 sm:px-[30px]">
-      <section className="py-[16px] sm:pb-[18px]">
-        <p className="mb-2 text-[10px] font-bold tracking-[0.16em] text-[#398278]">ESPACIO DE ADMINISTRACIÓN</p>
-        <h1 className="mb-2 text-[26px] font-bold tracking-tight text-ink sm:text-3xl">Panel de gestión</h1>
-        <p className="mb-0 text-sm text-muted">Administra las instituciones y los permisos de acceso.</p>
-      </section>
+      {role !== 'super_admin' && (
+        <section className="py-[16px] sm:pb-[18px]">
+          <p className="mb-2 text-[10px] font-bold tracking-[0.16em] text-[#398278]">ESPACIO DE ADMINISTRACIÓN</p>
+          <h1 className="mb-2 text-[26px] font-bold tracking-tight text-ink sm:text-3xl">Panel de gestión</h1>
+          <p className="mb-0 text-sm text-muted">Administra los permisos de acceso de tu institución.</p>
+        </section>
+      )}
 
       {role === 'super_admin' ? (
         <div className="space-y-6">
@@ -296,11 +376,12 @@ function ProjectsPageWrapper() {
   return <ProjectsWorkspace onLogin={() => navigate('/panel/admin')} />;
 }
 
-function ModuleGate({ moduleName, children }: { moduleName: string; children: ReactNode }) {
-  const { activeInstitution, loadingTenant } = useTenant();
+function ModuleGate({ moduleName, children }: { moduleName: InstitutionModuleName; children: ReactNode }) {
+  const { activeInstitution, loadingTenant, modulePermissionError, hasModuleAccess } = useTenant();
   if (loadingTenant) return <div className="mx-auto max-w-3xl p-8 text-sm text-slate-600">Cargando permisos de la institucion...</div>;
   if (!activeInstitution) return <div className="mx-auto max-w-3xl p-8 text-sm text-slate-600">No hay una institucion activa disponible para esta cuenta.</div>;
-  if (activeInstitution.enabled_modules && !activeInstitution.enabled_modules.includes(moduleName)) {
+  if (modulePermissionError) return <div className="mx-auto max-w-3xl p-8"><section role="alert" className="rounded-xl border border-rose-200 bg-white p-6 text-sm text-rose-800">{modulePermissionError}</section></div>;
+  if (!hasModuleAccess(moduleName)) {
     return <div className="mx-auto max-w-3xl p-8"><section className="rounded-xl border border-amber-200 bg-white p-6 text-sm text-amber-900">Este modulo no esta habilitado para {activeInstitution.name}. Solicita al superadministrador que lo active.</section></div>;
   }
   return <>{children}</>;
@@ -344,7 +425,7 @@ function AppRoutes() {
       <Route element={<InstitutionalLayout />}>
         <Route index element={<Navigate to="/panel" replace />} />
         <Route path="inicio" element={<Navigate to="/panel" replace />} />
-        <Route path="panel" element={<InstitutionalPanel />} />
+        <Route path="panel" element={<ModuleGate moduleName="inicio"><InstitutionalPanel /></ModuleGate>} />
         <Route path="panel/proyectos" element={<ModuleGate moduleName="projects"><ProjectsPageWrapper /></ModuleGate>} />
         <Route path="panel/dece" element={<ModuleGate moduleName="dece"><DecePageWrapper /></ModuleGate>} />
         <Route path="panel/simuladores" element={<ModuleGate moduleName="simuladores"><SimuladoresApp /></ModuleGate>} />

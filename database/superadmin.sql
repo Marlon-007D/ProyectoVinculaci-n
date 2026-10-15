@@ -19,17 +19,45 @@ GRANT SELECT, INSERT, UPDATE ON public.memberships, public.profiles TO service_r
 ALTER TABLE public.profiles
   ADD COLUMN IF NOT EXISTS mfa_required BOOLEAN NOT NULL DEFAULT FALSE;
 
+-- Los perfiles históricos sin teléfono deben poder actualizar su estado MFA.
+-- Los números se exigen al crear perfil o al cambiar explícitamente el teléfono.
+ALTER TABLE public.profiles
+  DROP CONSTRAINT IF EXISTS profiles_phone_ec_mobile_check;
+ALTER TABLE public.profiles
+  ADD CONSTRAINT profiles_phone_ec_mobile_check
+  CHECK (phone IS NULL OR phone ~ '^09[0-9]{8}$') NOT VALID;
+
+CREATE OR REPLACE FUNCTION public.enforce_profile_phone_on_write()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  IF NEW.phone IS NULL OR NEW.phone !~ '^09[0-9]{8}$' THEN
+    RAISE EXCEPTION 'El perfil requiere un celular de 10 dígitos que empiece con 09.';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS profiles_phone_required_trigger ON public.profiles;
+CREATE TRIGGER profiles_phone_required_trigger
+BEFORE INSERT OR UPDATE OF phone ON public.profiles
+FOR EACH ROW EXECUTE FUNCTION public.enforce_profile_phone_on_write();
+
 -- Eliminar una posible versión anterior para registrar exactamente
 -- los nombres de parámetros que envía la interfaz.
 DROP FUNCTION IF EXISTS public.assign_institution_role(TEXT, UUID, UUID);
 DROP FUNCTION IF EXISTS public.assign_institution_role(TEXT, UUID, UUID, TEXT, TEXT);
+DROP FUNCTION IF EXISTS public.assign_institution_role(TEXT, UUID, UUID, TEXT, TEXT, TEXT);
 
 CREATE FUNCTION public.assign_institution_role(
   target_email TEXT,
   target_institution_id UUID,
   target_role_id UUID,
   target_first_name TEXT,
-  target_last_name TEXT
+  target_last_name TEXT,
+  target_phone TEXT
 )
 RETURNS VOID
 LANGUAGE plpgsql
@@ -63,6 +91,15 @@ BEGIN
       USING ERRCODE = '42501';
   END IF;
 
+  IF NULLIF(trim(target_first_name), '') IS NULL
+     OR NULLIF(trim(target_last_name), '') IS NULL THEN
+    RAISE EXCEPTION 'Escribe los nombres y apellidos reales de la persona.';
+  END IF;
+
+  IF target_phone IS NULL OR trim(target_phone) !~ '^09[0-9]{8}$' THEN
+    RAISE EXCEPTION 'El teléfono debe tener 10 dígitos y empezar con 09.';
+  END IF;
+
   IF NOT EXISTS (
     SELECT 1
     FROM public.institutions AS i
@@ -82,20 +119,13 @@ BEGIN
       'No existe una cuenta registrada en Authentication con ese correo.';
   END IF;
 
-  INSERT INTO public.profiles AS existing_profile (profile_id, first_name, last_name, email, mfa_required)
+  INSERT INTO public.profiles AS existing_profile (profile_id, first_name, last_name, email, phone, mfa_required)
   SELECT
     u.id,
-    COALESCE(
-      NULLIF(trim(target_first_name), ''),
-      NULLIF(u.raw_user_meta_data->>'first_name', ''),
-      split_part(u.email, '@', 1)
-    ),
-    COALESCE(
-      NULLIF(trim(target_last_name), ''),
-      NULLIF(u.raw_user_meta_data->>'last_name', ''),
-      'Institucional'
-    ),
+    trim(target_first_name),
+    trim(target_last_name),
     u.email,
+    trim(target_phone),
     TRUE
   FROM auth.users AS u
   WHERE u.id = target_profile_id
@@ -104,6 +134,7 @@ BEGIN
     email = EXCLUDED.email,
     first_name = EXCLUDED.first_name,
     last_name = EXCLUDED.last_name,
+    phone = EXCLUDED.phone,
     mfa_required = NOT existing_profile.mfa_enabled;
 
   INSERT INTO public.memberships (
@@ -200,11 +231,11 @@ WHERE p.mfa_enabled = FALSE
   AND EXISTS (SELECT 1 FROM public.memberships AS m WHERE m.profile_id = p.profile_id);
 
 REVOKE ALL
-  ON FUNCTION public.assign_institution_role(TEXT, UUID, UUID, TEXT, TEXT)
+  ON FUNCTION public.assign_institution_role(TEXT, UUID, UUID, TEXT, TEXT, TEXT)
   FROM PUBLIC;
 
 GRANT EXECUTE
-  ON FUNCTION public.assign_institution_role(TEXT, UUID, UUID, TEXT, TEXT)
+  ON FUNCTION public.assign_institution_role(TEXT, UUID, UUID, TEXT, TEXT, TEXT)
   TO authenticated;
 
 -- Permite quitar una membresía dentro del alcance del administrador actual.
