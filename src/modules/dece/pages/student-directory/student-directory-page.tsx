@@ -5,6 +5,7 @@ import {
 } from '@fortawesome/free-solid-svg-icons'
 import type { DeceScreen, Student } from '../../types'
 import { StudentName } from '../../components/student-name'
+type FormTemplate = { code: string; name: string }
 
 type Props = {
   data: Student[]
@@ -13,6 +14,8 @@ type Props = {
   grade: string
   setGrade: (grade: string) => void
   onOpen: (student: Student, target: DeceScreen) => void
+  customForms?: FormTemplate[]
+  onOpenCustomForm?: (student: Student, code: string) => void
 }
 
 const grades = ['7.º EGB', '8.º EGB', '9.º EGB', '10.º EGB']
@@ -24,6 +27,8 @@ export default function StudentDirectoryPage({
   grade,
   setGrade,
   onOpen,
+  customForms = [],
+  onOpenCustomForm,
 }: Props) {
   return (
     <div className="page-content container-fluid">
@@ -71,6 +76,7 @@ export default function StudentDirectoryPage({
                 <th scope="col">GRADO / NIVEL</th>
                 <th scope="col">FICHA GENERAL</th>
                 <th scope="col">AUTORIZACIÓN</th>
+                {customForms.length > 0 && <th scope="col">OTRAS FICHAS</th>}
               </tr>
             </thead>
             <tbody>
@@ -95,6 +101,7 @@ export default function StudentDirectoryPage({
                       Ver ficha <FontAwesomeIcon icon={faArrowUpRightFromSquare} aria-hidden="true" />
                     </button>
                   </td>
+                  {customForms.length > 0 && <td><div className="d-flex flex-wrap gap-2">{customForms.map(form => <button key={form.code} className="table-link" onClick={() => onOpenCustomForm?.(student, form.code)}>{form.name}</button>)}</div></td>}
                 </tr>
               ))}
             </tbody>
@@ -120,6 +127,7 @@ export default function StudentDirectoryPage({
                 <button type="button" className="table-link" onClick={() => onOpen(student, 'authorization')}>
                   Abrir autorización
                 </button>
+                {customForms.map(form => <button key={form.code} type="button" className="table-link" onClick={() => onOpenCustomForm?.(student, form.code)}>{form.name}</button>)}
               </div>
             </article>
           ))}
