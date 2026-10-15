@@ -9,6 +9,7 @@ import StudentManagementPage from './pages/student-management-page'
 import FormManagementPage from './pages/form-management-page'
 import ConfigurableForm from './pages/student-form/configurable-form'
 import FormSubmissionsPage from './pages/form-submissions-page'
+import CasesPage from './pages/cases-page'
 import { useDeceData } from './services/dece-data-context'
 import { createDeceFormService } from './services/form-service'
 import type { DeceScreen, Student } from './types'
@@ -22,8 +23,10 @@ export default function DeceApp() {
   const [formSetupError, setFormSetupError] = useState('')
   const [formSetupRetry, setFormSetupRetry] = useState(0)
   const [formSetupLoading, setFormSetupLoading] = useState(true)
-  const [screen, setScreen] = useState<DeceScreen>(() => location.pathname.split('/').filter(Boolean)[2] === 'estudiantes' ? 'students' : 'home')
+  const [screen, setScreen] = useState<DeceScreen>(() => location.pathname.split('/').filter(Boolean)[2] === 'estudiantes' ? 'students' : location.pathname.split('/').filter(Boolean)[2] === 'casos' ? 'cases' : 'home')
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
+  const [caseStudentId, setCaseStudentId] = useState('')
+  const [openCases, setOpenCases] = useState('—')
   const [section, setSection] = useState(0)
   const [selectedFormCode, setSelectedFormCode] = useState('')
   const [formTemplates, setFormTemplates] = useState<FormTemplate[]>([])
@@ -32,6 +35,7 @@ export default function DeceApp() {
     setCustomSections(current => current.length === names.length && current.every((name, index) => name === names[index]) ? current : names)
     setSection(current => current >= names.length ? 0 : current)
   }, [])
+  const clearCaseStudent = useCallback(() => setCaseStudentId(''), [])
 
   useEffect(() => {
     if (!integration) return
@@ -50,13 +54,13 @@ export default function DeceApp() {
   }, [integration, formSetupRetry])
 
   useEffect(() => {
-    const syncRoute = () => setScreen(location.pathname.split('/').filter(Boolean)[2] === 'estudiantes' ? 'students' : 'home')
+    const syncRoute = () => { const section = location.pathname.split('/').filter(Boolean)[2]; setScreen(section === 'estudiantes' ? 'students' : section === 'casos' ? 'cases' : 'home') }
     window.addEventListener('popstate', syncRoute)
     return () => window.removeEventListener('popstate', syncRoute)
   }, [])
 
   useEffect(() => {
-    if (!integration || (screen !== 'home' && screen !== 'students')) return
+    if (!integration || (screen !== 'home' && screen !== 'students' && screen !== 'cases')) return
     let current = true
     void createDeceFormService(integration.client).listFormTemplates(integration.institutionId)
       .then(templates => { if (current) setFormTemplates(templates.map(({ code, name }) => ({ code, name }))) })
@@ -97,6 +101,16 @@ export default function DeceApp() {
     return () => { current = false }
   }, [integration])
 
+  useEffect(() => {
+    if (!integration) return
+    let live = true
+    void integration.client.from('dece_cases').select('dece_case_id', { count: 'exact', head: true }).eq('institution_id', integration.institutionId).neq('status', 'closed').then(({ count, error }) => {
+      if (!live) return
+      setOpenCases(error ? '—' : String(count ?? 0))
+    })
+    return () => { live = false }
+  }, [integration])
+
   const syncSavedStudent = useCallback((saved: Student) => {
     setStudents(current => {
       const exists = current.some(student => student.recordId === saved.recordId)
@@ -110,7 +124,7 @@ export default function DeceApp() {
   }, [])
 
   const routeTo = (target: DeceScreen) => {
-    if (integration?.slug) history.pushState(null, '', target === 'students' ? `/${integration.slug}/dece/estudiantes` : `/${integration.slug}/dece`)
+    if (integration?.slug) history.pushState(null, '', target === 'students' ? `/${integration.slug}/dece/estudiantes` : target === 'cases' ? `/${integration.slug}/dece/casos` : `/${integration.slug}/dece`)
     setScreen(target)
   }
 
@@ -144,8 +158,9 @@ export default function DeceApp() {
   if (loadError && !students.length && screen !== 'students') return <div className="container py-5" role="alert">{loadError}</div>
   if (!integration) return <div className="container py-5" role="alert">No hay una institución activa en la sesión.</div>
 
-  const stats = dashboardStats.map((item, index) => index === 0
+  const stats = dashboardStats.map(item => item.label === 'Estudiantes registrados'
     ? { ...item, value: String(students.length), hint: 'En esta institución' }
+    : item.label === 'Casos abiertos' ? { ...item, value: openCases, hint: 'En esta institución' }
     : { ...item, value: '—', hint: 'Sin datos disponibles' })
 
   return (
@@ -162,7 +177,8 @@ export default function DeceApp() {
             onOpen={openForm}
           />
         )}
-        {screen === 'students' && <StudentManagementPage onOpenForm={openSubmissionForm} onStudentSaved={syncSavedStudent} />}
+        {screen === 'students' && <StudentManagementPage onOpenForm={openSubmissionForm} onStudentSaved={syncSavedStudent} onOpenCases={studentId => { setCaseStudentId(studentId); routeTo('cases') }} />}
+        {screen === 'cases' && <CasesPage initialStudentId={caseStudentId} onInitialStudentUsed={clearCaseStudent} />}
         {screen === 'forms' && <FormManagementPage />}
         {screen === 'submissions' && <FormSubmissionsPage onOpen={openSubmissionForm} />}
         {screen === 'custom-form' && selectedStudent && <div className="page-content container-fluid">

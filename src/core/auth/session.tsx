@@ -10,11 +10,37 @@ type Membership = { institution_id: string; role: { name: string } | { name: str
 type ActiveSession = { userId: string; email: string; institutionId: string; institutionName: string; slug: string; role: string }
 type OwnSubmission = Awaited<ReturnType<ReturnType<typeof createDeceFormService>['loadOwnSubmission']>>
 type HistoryItem = { id: string; versionId: string; status: 'draft' | 'submitted' | 'reviewed'; updatedAt: string; name: string; versionNumber: number }
+type StudentCaseItem = { caseNumber: string; status: string; actionDescription: string | null; actionDate: string | null; nextVisit: string | null }
 type PortalForm = { code: string; name: string }
 type SessionContextValue = { session: ActiveSession | null; signOut: () => Promise<void> }
 const SessionContext = createContext<SessionContextValue | null>(null)
 
 function one<T>(value: T | T[] | null): T | null { return Array.isArray(value) ? value[0] ?? null : value as T | null }
+const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value)
+function portalSummaryEntries(data: unknown): unknown[] {
+  return Array.isArray(data) ? data : isRecord(data) && Array.isArray(data.cases) ? data.cases : data == null ? [] : [data]
+}
+function portalSummaryRows(data: unknown): StudentCaseItem[] {
+  const rows = portalSummaryEntries(data)
+  return rows.flatMap(value => {
+    if (!isRecord(value)) return []
+    const action = isRecord(value.next_action) ? value.next_action : isRecord(value.pending_action) ? value.pending_action : null
+    const stringValue = (...items: unknown[]) => items.find(item => typeof item === 'string' && item.trim()) as string | undefined
+    const caseNumber = stringValue(value.case_number, value.caseNumber)
+    const status = stringValue(value.case_status, value.status)
+    if (!caseNumber || !status) return []
+    return [{
+      caseNumber,
+      status,
+      actionDescription: stringValue(value.next_pending_action, value.next_action_description, value.pending_action_description, value.action_description, value.next_action_text, value.next_action, value.pending_action, action?.description) ?? null,
+      actionDate: stringValue(value.next_action_date, value.next_action_due_date, value.pending_action_due_date, value.action_due_date, value.due_date, action?.due_date) ?? null,
+      nextVisit: stringValue(value.next_visit_date, value.next_visit_future, value.next_visit_at, value.upcoming_visit, value.next_visit) ?? null,
+    }]
+  })
+}
+function debugPortalSummary(kind: 'rpc_error' | 'empty_response' | 'unmapped_rows' | 'mapped_rows', details: Record<string, unknown>) {
+  if (import.meta.env.DEV) console.debug('[student-case-summary]', kind, details)
+}
 function routeFor(session: ActiveSession) {
   if (session.role === 'dece_staff') return `/${session.slug}/dece`
   if (session.role === 'student') return `/${session.slug}/mi-ficha`
@@ -108,13 +134,16 @@ function StudentFicha({ session }: { session: ActiveSession }) {
   const [sections, setSections] = useState<string[]>(['Ficha general'])
   const [formCode, setFormCode] = useState('general')
   const [availableForms, setAvailableForms] = useState<PortalForm[]>([])
-  const [activeTab, setActiveTab] = useState<'forms' | 'history'>('forms')
+  const [activeTab, setActiveTab] = useState<'forms' | 'history' | 'cases'>('forms')
   const [history, setHistory] = useState<HistoryItem[]>([])
   const [historyLoading, setHistoryLoading] = useState(false)
   const [historyRefresh, setHistoryRefresh] = useState(0)
   const [historyError, setHistoryError] = useState('')
   const [selectedHistory, setSelectedHistory] = useState<OwnSubmission | null>(null)
   const [historyDetailLoading, setHistoryDetailLoading] = useState(false)
+  const [studentCases, setStudentCases] = useState<StudentCaseItem[]>([])
+  const [casesLoading, setCasesLoading] = useState(false)
+  const [casesError, setCasesError] = useState('')
   const integration = useMemo(() => ({ client: supabase, institutionId: session.institutionId, profileId: session.userId, slug: session.slug, getStudentId: (row: Student) => row.recordId ?? null }), [session.institutionId, session.slug, session.userId])
   const syncSections = useCallback((next: string[]) => setSections(current => current.length === next.length && current.every((item, index) => item === next[index]) ? current : next), [])
 
@@ -195,6 +224,36 @@ function StudentFicha({ session }: { session: ActiveSession }) {
     return () => { live = false }
   }, [historyRefresh, student?.recordId])
 
+  useEffect(() => {
+    if (activeTab !== 'cases' || !student?.recordId) return
+    let live = true
+    async function loadStudentCases() {
+      setCasesLoading(true); setCasesError('')
+      try {
+        const { data, error: queryError } = await supabase.rpc('dece_student_portal_summary')
+        if (queryError) throw queryError
+        const entries = portalSummaryEntries(data)
+        const items = portalSummaryRows(data)
+        if (entries.length === 0) debugPortalSummary('empty_response', { rowCount: 0 })
+        else if (items.length < entries.length) {
+          const columns = [...new Set(entries.flatMap(row => isRecord(row) ? Object.keys(row) : []))]
+          debugPortalSummary('unmapped_rows', { rowCount: entries.length, mappedCount: items.length, unmappedCount: entries.length - items.length, columns })
+        } else debugPortalSummary('mapped_rows', { rowCount: items.length })
+        if (live) setStudentCases(items)
+      } catch (cause) {
+        const issue = cause as { code?: string; message?: string }
+        debugPortalSummary('rpc_error', { code: issue.code ?? 'unknown' })
+        if (live) setCasesError(issue.code === '42501'
+          ? 'La sesión estudiantil no tiene permiso para ejecutar el resumen de sus casos.'
+          : issue.code === 'PGRST202' || issue.message?.includes('dece_student_portal_summary')
+            ? 'No se encontró la función de resumen de casos en Supabase. Verifica el despliegue de dece_student_portal_summary().'
+          : 'No se pudieron cargar tus casos de acompañamiento.')
+      } finally { if (live) setCasesLoading(false) }
+    }
+    void loadStudentCases()
+    return () => { live = false }
+  }, [activeTab, session.institutionId, student?.recordId])
+
   async function openHistory(item: HistoryItem) {
     if (!student?.recordId) return
     setSelectedHistory(null)
@@ -210,12 +269,12 @@ function StudentFicha({ session }: { session: ActiveSession }) {
   return <div className="studentPortal"><DeceDataProvider value={integration}><main className="container studentPortal__main py-4">
     <header className="studentPortal__header"><div><span className="studentPortal__eyebrow">ESPACIO DEL ESTUDIANTE</span><h1>Mis fichas</h1><p>Completa tus formularios y consulta tus envíos.</p></div><button className="btn btn-outline-secondary" onClick={() => void signOut()}>Cerrar sesión</button></header>
     {loading ? <p role="status">Cargando ficha…</p> : error ? <p role="alert" className="studentPortal__message">{error}</p> : student && <>
-      <nav className="studentPortal__tabs" aria-label="Fichas y envíos"><button type="button" className={activeTab === 'forms' ? 'active' : ''} onClick={() => setActiveTab('forms')}>Completar fichas</button><button type="button" className={activeTab === 'history' ? 'active' : ''} onClick={() => { setActiveTab('history'); setHistoryRefresh(value => value + 1); setSelectedHistory(null) }}>Mi historial</button></nav>
+      <nav className="studentPortal__tabs" aria-label="Fichas, historial y casos"><button type="button" className={activeTab === 'forms' ? 'active' : ''} onClick={() => setActiveTab('forms')}>Completar fichas</button><button type="button" className={activeTab === 'history' ? 'active' : ''} onClick={() => { setActiveTab('history'); setHistoryRefresh(value => value + 1); setSelectedHistory(null) }}>Historial de fichas</button><button type="button" className={activeTab === 'cases' ? 'active' : ''} onClick={() => setActiveTab('cases')}>Mis casos de acompañamiento</button></nav>
       {activeTab === 'forms' ? <>
         <nav className="studentPortal__formTabs" aria-label="Formularios">{availableForms.map(form => <button type="button" key={form.code} className={formCode === form.code ? 'active' : ''} onClick={() => { setFormCode(form.code); setSection(0) }}>{form.name}</button>)}</nav>
         <nav className="studentPortal__sections" aria-label="Secciones de la ficha">{sections.map((item, index) => <button type="button" className={section === index ? 'active' : ''} key={item} onClick={() => setSection(index)}>{String(index + 1).padStart(2, '0')} · {item}</button>)}</nav>
         <section className="studentPortal__formSurface"><header className="studentPortal__formHeading"><span>FORMULARIO ESTUDIANTIL</span><h2>{availableForms.find(form => form.code === formCode)?.name ?? 'Ficha'}</h2><p>{student.name} · {student.grade}</p></header><ConfigurableForm key={formCode} integration={integration} student={student} code={formCode} section={section} onSectionsChange={syncSections} audience="student" /></section>
-      </> : <section aria-labelledby="history-heading"><h2 id="history-heading">Historial de mis fichas</h2>
+      </> : activeTab === 'history' ? <section aria-labelledby="history-heading"><h2 id="history-heading">Historial de mis fichas</h2>
         {historyLoading && <p role="status">Cargando historial…</p>}{historyError && <p role="alert">{historyError}</p>}
         {!historyLoading && !historyError && history.length === 0 && <p>No hay fichas visibles todavía. Puede deberse a permisos o a que aún no guardaste un borrador.</p>}
         <ul className="studentPortal__historyList">{history.map(item => <li key={item.id}><span><strong>{item.name}</strong><small>Versión {item.versionNumber} · {new Date(item.updatedAt).toLocaleString('es-EC')}</small></span><span className="studentPortal__historyActions"><span className={`studentPortal__badge ${item.status}`}>{item.status === 'draft' ? 'Borrador' : item.status === 'submitted' ? 'Enviada' : 'Revisada'}</span><button type="button" className="btn btn-outline-primary btn-sm" onClick={() => void openHistory(item)}>Ver respuestas</button></span></li>)}</ul>
@@ -224,7 +283,7 @@ function StudentFicha({ session }: { session: ActiveSession }) {
           const display = Array.isArray(value) ? value.join(', ') : typeof value === 'boolean' ? value ? 'Sí' : 'No' : value === null || value === undefined || value === '' ? 'Sin respuesta' : String(value)
           return <div className="mb-3" key={question.form_question_id}><strong>{question.label}</strong><div>{display}</div></div>
         })}</article>}
-      </section>}
+      </section> : <section aria-labelledby="student-cases-heading"><h2 id="student-cases-heading">Mis casos de acompañamiento</h2><p>Consulta el estado y las acciones pendientes relacionadas contigo. Esta sección es independiente de tus fichas.</p>{casesLoading && <p role="status">Cargando tus casos…</p>}{casesError && <p role="alert">{casesError}</p>}{!casesLoading && !casesError && studentCases.length === 0 && <p>No tienes casos de acompañamiento registrados.</p>}<div className="row g-3">{studentCases.map((item, index) => { const statusLabel: Record<string, string> = { registered: 'Registrado', in_progress: 'En atención', under_monitoring: 'En seguimiento', closed: 'Cerrado' }; return <article className="col-12 col-lg-6" key={`${item.caseNumber}-${index}`}><div className="studentPortal__historyDetail h-100"><h3>Caso {item.caseNumber}</h3><p><strong>Estado:</strong> {statusLabel[item.status] ?? item.status}</p><h4>Próxima acción</h4>{item.actionDescription ? <><p>{item.actionDescription}</p><p><strong>Fecha:</strong> {item.actionDate ? new Date(`${item.actionDate.slice(0, 10)}T12:00:00-05:00`).toLocaleDateString('es-EC', { timeZone: 'America/Guayaquil' }) : 'Sin fecha definida'}</p></> : <p>No tienes acciones pendientes.</p>}<h4>Próxima visita</h4>{item.nextVisit ? <p>{new Date(item.nextVisit).toLocaleString('es-EC', { timeZone: 'America/Guayaquil' })}</p> : <p>No hay visitas futuras programadas.</p>}</div></article> })}</div></section>}
     </>}
   </main></DeceDataProvider></div>
 }

@@ -49,9 +49,10 @@ function toStudent(record: StudentRecord): Student {
   return { recordId: record.student_id, id: record.national_id, name, firstName: record.first_name, lastName: record.last_name, grade: record.grade_level ?? 'Sin grado', initials: name.split(/\s+/).slice(0, 2).map(part => part[0]).join('').toUpperCase(), color: 'lavender' }
 }
 
-export default function StudentManagementPage({ onOpenForm, onStudentSaved }: {
+export default function StudentManagementPage({ onOpenForm, onStudentSaved, onOpenCases }: {
   onOpenForm: (student: Student, code: string) => void
   onStudentSaved: (student: Student) => void
+  onOpenCases?: (studentId: string) => void
 }) {
   const integration = useDeceData()
   const formService = useMemo(() => integration ? createDeceFormService(integration.client) : null, [integration?.client])
@@ -257,6 +258,7 @@ export default function StudentManagementPage({ onOpenForm, onStudentSaved }: {
       <section className="table-card p-3"><h2>Fichas del estudiante</h2><p>Abre una ficha para consultar o completar sus respuestas.</p><div className="d-flex flex-wrap gap-2">
         {templates.map(template => <button type="button" key={template.code} className="button btn secondary" onClick={() => onOpenForm(toStudent(record), template.code)}>{template.name}</button>)}
       </div></section>
+      <StudentCases studentId={record.student_id} institutionId={integration?.institutionId ?? ''} slug={integration?.slug ?? ''} onNew={() => onOpenCases?.(record.student_id)} />
     </>}
     {!record && !creating && <>
       <label className="search-box mb-3"><span className="visually-hidden">Buscar por nombres, apellidos, cédula o grado</span><input className="form-control" aria-label="Buscar estudiantes por nombres, apellidos, cédula o grado" value={search} onChange={event => setSearch(event.target.value)} placeholder="Buscar nombres, apellidos, cédula o grado…" /></label>
@@ -271,6 +273,24 @@ export default function StudentManagementPage({ onOpenForm, onStudentSaved }: {
     </>}
     {loading && <p role="status">Cargando estudiantes…</p>}
   </div>
+}
+
+function StudentCases({ studentId, institutionId, slug, onNew }: { studentId: string; institutionId: string; slug: string; onNew: () => void }) {
+  const integration = useDeceData()
+  const [rows, setRows] = useState<Array<{ dece_case_id: string; case_number: string; status: string }>>([])
+  const [error, setError] = useState('')
+  useEffect(() => {
+    let live = true
+    if (!integration) return
+    void integration.client.from('dece_cases').select('dece_case_id,case_number,status').eq('institution_id', institutionId).eq('student_id', studentId).order('updated_at', { ascending: false }).then(({ data, error: queryError }) => {
+      if (!live) return
+      if (queryError) setError(queryError.code === '42501' ? 'No tienes permiso para consultar los casos de este estudiante.' : 'No se pudieron cargar los casos.')
+      else setRows(data ?? [])
+    })
+    return () => { live = false }
+  }, [integration, institutionId, studentId])
+  const statusLabel: Record<string, string> = { registered: 'Registrado', in_progress: 'En atención', under_monitoring: 'En seguimiento', closed: 'Cerrado' }
+  return <section className="table-card p-3 mt-3" aria-labelledby="student-cases-heading"><div className="d-flex justify-content-between align-items-center"><h2 id="student-cases-heading">Casos de acompañamiento</h2><button type="button" className="btn btn-primary btn-sm" onClick={onNew}>Nuevo caso</button></div>{error && <p role="alert">{error}</p>}{rows.length ? <ul>{rows.map(row => <li key={row.dece_case_id}><a href={`/${slug}/dece/casos/${row.dece_case_id}`}>{row.case_number} · {statusLabel[row.status] ?? row.status}</a></li>)}</ul> : !error && <p>No hay casos visibles para este estudiante.</p>}</section>
 }
 
 function StudentFieldsForm({ values, setValues, onSubmit, saving, error, onCancel }: {

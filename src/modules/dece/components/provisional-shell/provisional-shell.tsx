@@ -6,6 +6,7 @@ import {
   faUsers,
   faFileLines,
   faInbox,
+  faHeart,
 } from '@fortawesome/free-solid-svg-icons'
 import type { ReactNode } from 'react'
 import type { DeceScreen } from '../../types/screen'
@@ -54,6 +55,10 @@ export default function ProvisionalShell({ screen, onNavigate, children }: Props
           >
             <FontAwesomeIcon icon={faUsers} aria-hidden="true" />
             Estudiantes
+          </button>
+          <button type="button" className={`nav-item ${screen === 'cases' ? 'active' : ''}`} aria-current={screen === 'cases' ? 'page' : undefined} onClick={() => onNavigate('cases')}>
+            <FontAwesomeIcon icon={faHeart} aria-hidden="true" />
+            Casos de acompañamiento
           </button>
         </nav>
         <div className="sidebar-note">
