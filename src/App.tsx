@@ -10,6 +10,7 @@ import { SiteApp } from './modules/site';
 import { SimuladoresApp } from './app/SimuladoresApp';
 import { InstitutionalLayout } from './components/layout/InstitutionalLayout';
 import { InstitutionalPanel } from './pages/InstitutionalPanel';
+import { InstitutionalEntryPage } from './pages/InstitutionalEntryPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import './App.css';
 
@@ -379,7 +380,10 @@ function ProjectsPageWrapper() {
 function ModuleGate({ moduleName, children }: { moduleName: InstitutionModuleName; children: ReactNode }) {
   const { activeInstitution, loadingTenant, modulePermissionError, hasModuleAccess } = useTenant();
   if (loadingTenant) return <div className="mx-auto max-w-3xl p-8 text-sm text-slate-600">Cargando permisos de la institucion...</div>;
-  if (!activeInstitution) return <div className="mx-auto max-w-3xl p-8 text-sm text-slate-600">No hay una institucion activa disponible para esta cuenta.</div>;
+  if (!activeInstitution) {
+    if (moduleName === 'inicio') return <InstitutionalEntryPage />;
+    return <div className="mx-auto max-w-3xl p-8 text-sm text-slate-600">No hay una institución activa disponible para esta cuenta.</div>;
+  }
   if (modulePermissionError) return <div className="mx-auto max-w-3xl p-8"><section role="alert" className="rounded-xl border border-rose-200 bg-white p-6 text-sm text-rose-800">{modulePermissionError}</section></div>;
   if (!hasModuleAccess(moduleName)) {
     return <div className="mx-auto max-w-3xl p-8"><section className="rounded-xl border border-amber-200 bg-white p-6 text-sm text-amber-900">Este modulo no esta habilitado para {activeInstitution.name}. Solicita al superadministrador que lo active.</section></div>;
