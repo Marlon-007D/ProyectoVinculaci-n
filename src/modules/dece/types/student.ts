@@ -4,6 +4,8 @@ export type Student = {
   /** UUID de public.students; lo entrega el adaptador de datos real. */
   recordId?: string
   name: string
+  firstName?: string
+  lastName?: string
   grade: string
   initials: string
   color: string

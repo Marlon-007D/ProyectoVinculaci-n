@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
-import { BrowserRouter, Navigate, Route, Routes, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './core/AuthContext';
 import { TenantProvider, useTenant, type InstitutionModuleName } from './core/TenantContext';
 import { supabase } from './core/supabaseClient';
 import { MfaEnrollment, SuperAdminPanel, UserManagement } from './modules/admin';
 import { ProjectsWorkspace } from './modules/projects/ProjectsWorkspace';
 import { DeceApp, DeceDataProvider } from './modules/dece';
+import { SessionProvider } from './core/auth/session';
 import { SiteApp } from './modules/site';
 import { SimuladoresApp } from './app/SimuladoresApp';
 import { InstitutionalLayout } from './components/layout/InstitutionalLayout';
@@ -384,6 +385,9 @@ function ModuleGate({ moduleName, children }: { moduleName: InstitutionModuleNam
     if (moduleName === 'inicio') return <InstitutionalEntryPage />;
     return <div className="mx-auto max-w-3xl p-8 text-sm text-slate-600">No hay una institución activa disponible para esta cuenta.</div>;
   }
+  if (moduleName === 'dece' && activeInstitution.role === 'student') {
+    return <Navigate to={`/${activeInstitution.slug}/mi-ficha`} replace />;
+  }
   if (modulePermissionError) return <div className="mx-auto max-w-3xl p-8"><section role="alert" className="rounded-xl border border-rose-200 bg-white p-6 text-sm text-rose-800">{modulePermissionError}</section></div>;
   if (!hasModuleAccess(moduleName)) {
     return <div className="mx-auto max-w-3xl p-8"><section className="rounded-xl border border-amber-200 bg-white p-6 text-sm text-amber-900">Este modulo no esta habilitado para {activeInstitution.name}. Solicita al superadministrador que lo active.</section></div>;
@@ -449,11 +453,36 @@ function AppRoutes() {
 export default function App() {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <TenantProvider>
-          <AppRoutes />
-        </TenantProvider>
-      </AuthProvider>
+      <ApplicationRoutes />
     </BrowserRouter>
+  );
+}
+
+const RESERVED_TOP_LEVEL_SEGMENTS = new Set([
+  'admin', 'panel', 'inicio', 'proyectos', 'dece', 'simuladores', 'portal',
+]);
+const SLUG_SESSION_SEGMENTS = new Set(['login', 'dece', 'mi-ficha', 'admin', 'sin-modulos']);
+
+function ApplicationRoutes() {
+  const { pathname } = useLocation();
+  const segments = pathname.split('/').filter(Boolean);
+  const [firstSegment, secondSegment] = segments;
+  const hasSlugSessionRoute = Boolean(
+    firstSegment
+    && secondSegment
+    && !RESERVED_TOP_LEVEL_SEGMENTS.has(firstSegment.toLowerCase())
+    && SLUG_SESSION_SEGMENTS.has(secondSegment.toLowerCase())
+    && (['dece', 'mi-ficha', 'admin'].includes(secondSegment.toLowerCase())
+      || segments.length === 2),
+  );
+
+  return (
+    <AuthProvider>
+      <TenantProvider>
+        {hasSlugSessionRoute
+          ? <InstitutionalLayout><SessionProvider /></InstitutionalLayout>
+          : <AppRoutes />}
+      </TenantProvider>
+    </AuthProvider>
   );
 }

@@ -64,3 +64,103 @@
 .appShell :global(.button).secondary:hover { border-color: #aaa6b5; background: #eeedf2; }
 .appShell :global(.question-builder) { border-color: #d0ced8; background: #f8f7fa; }
 @media (max-width: 720px) { .appShell :global(.form-fields) { padding: 15px; } .appShell :global(.custom-question) { padding: 12px; } }
+
+/* The DECE workspace stays inside its parent layout, below the shared header. */
+.appShell {
+  --dece-header-height: 0px;
+  min-height: calc(100vh - var(--dece-header-height));
+}
+
+.appShell :global(.sidebar) {
+  position: sticky;
+  inset: auto;
+  top: var(--dece-header-height);
+  align-self: flex-start;
+  flex: 0 0 250px;
+  width: 250px;
+  height: auto;
+  max-height: calc(100vh - var(--dece-header-height));
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  z-index: 30;
+}
+
+.appShell :global(.main-area) {
+  flex: 1 1 0;
+  width: auto;
+  min-width: 0;
+  min-height: 0;
+  margin-left: 0;
+}
+
+.appShell :global(.sidebar-heading) { display: block; }
+.appShell :global(.menu-toggle) { display: none; }
+.appShell :global(.sidebar button:focus-visible) {
+  outline: 3px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+@media (max-width: 900px) {
+  .appShell { display: block; }
+  .appShell :global(.sidebar) {
+    position: relative;
+    inset: auto;
+    top: auto;
+    width: 100%;
+    height: auto;
+    max-height: none;
+    overflow: visible;
+    padding: 12px 16px;
+    border-right: 0;
+    border-bottom: 1px solid var(--color-border);
+  }
+  .appShell :global(.sidebar-heading) {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .appShell :global(.brand) { min-width: 0; padding: 0; }
+  .appShell :global(.menu-toggle) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 44px;
+    padding: 8px 12px;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    background: var(--color-surface);
+    color: var(--color-sidebar-text);
+    font: inherit;
+    cursor: pointer;
+  }
+  .appShell :global(.sidebar nav) {
+    display: none;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 2px;
+    padding-top: 12px;
+  }
+  .appShell :global(.sidebar nav).open { display: flex; }
+  .appShell :global(.sidebar) :global(.nav-item) {
+    display: flex;
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+    margin: 0;
+    white-space: normal;
+  }
+  .appShell :global(.main-area) { width: 100%; margin: 0; }
+  .appShell :global(.sidebar-note),
+  .appShell :global(.profile) { display: none; }
+  .appShell :global(.topbar) {
+    height: auto;
+    min-height: 52px;
+    gap: 8px;
+    padding: 10px 16px;
+  }
+  .appShell :global(.crumb) { min-width: 0; }
+  .appShell :global(.top-actions) { min-width: 0; }
+}
