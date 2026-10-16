@@ -9,6 +9,7 @@ export async function getVersions(pageId: string): Promise<PublicationVersion[]>
     .from(TABLE)
     .select("*")
     .eq("page_id", pageId)
+    .or("content_snapshot->>publication_state.is.null,content_snapshot->>publication_state.eq.published")
     .order("version_number", { ascending: false });
   if (error) throw toServiceError(error, "No se pudieron cargar las versiones de la página.");
   return (data ?? []) as PublicationVersion[];
@@ -19,6 +20,7 @@ export async function getLastVersion(pageId: string): Promise<PublicationVersion
     .from(TABLE)
     .select("*")
     .eq("page_id", pageId)
+    .or("content_snapshot->>publication_state.is.null,content_snapshot->>publication_state.eq.published")
     .order("version_number", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -31,6 +33,7 @@ export async function getVersion(pageId: string, versionNumber: number): Promise
     .from(TABLE)
     .select("*")
     .eq("page_id", pageId)
+    .or("content_snapshot->>publication_state.is.null,content_snapshot->>publication_state.eq.published")
     .eq("version_number", versionNumber)
     .maybeSingle();
   if (error) throw toServiceError(error, "No se pudo cargar la versión solicitada.");
@@ -39,7 +42,9 @@ export async function getVersion(pageId: string, versionNumber: number): Promise
 
 export async function createVersion(input: NewPublicationVersionInput): Promise<PublicationVersion> {
   for (let attempt = 0; attempt < 2; attempt++) {
-    const latest = await getLastVersion(input.page_id);
+    const revisionQuery = await getSupabase().from(TABLE).select("version_number").eq("page_id", input.page_id).order("version_number", { ascending: false }).limit(1).maybeSingle();
+    if (revisionQuery.error) throw toServiceError(revisionQuery.error, "No se pudo consultar la revisión de la página.");
+    const latest = revisionQuery.data;
     const { data, error } = await getSupabase()
       .from(TABLE)
       .insert({

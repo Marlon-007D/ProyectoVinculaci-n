@@ -112,13 +112,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       .eq('profile_id', userId);
 
     if (error) {
-      setRoleError('No se pudo consultar tu rol. Verifica que esté aplicada la migración de acceso de superadministrador.');
+      setRoleError('No se pudo consultar tu membresía con esta sesión. Reintenta o pide al responsable de accesos que revise tu cuenta.');
       return;
     }
 
     const memberships = data ?? [];
     if (memberships.length === 0) {
-      setRoleError('No se encontró una membresía visible para esta cuenta. Ejecuta database/superadmin.sql en Supabase y confirma que profile_id coincida con el ID de autenticación.');
+      setRoleError('No se encontró una membresía visible para esta cuenta. La invitación al panel de Supabase no asigna una institución dentro de la aplicación; el responsable de accesos debe comprobar tu membresía.');
       return;
     }
 

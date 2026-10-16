@@ -1,12 +1,16 @@
-import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './core/AuthContext';
 import { TenantProvider, useTenant } from './core/TenantContext';
+import { ModuleGate } from './core/ModuleGate';
 import { supabase } from './core/supabaseClient';
 import { MfaEnrollment, SuperAdminPanel, UserManagement } from './modules/admin';
 import { ProjectsWorkspace } from './modules/projects/ProjectsWorkspace';
 import { DeceApp, DeceDataProvider } from './modules/dece';
-import { SiteApp } from './modules/site';
+import { PortalEditor } from './modules/portal-editor/PortalEditor';
+import { PublishedPortal } from './modules/portal-editor/PublishedPortal';
+import { PublicLearning } from './modules/portal-editor/PublicLearning';
+import { PublicProjects } from './modules/projects/PublicProjects';
 import { SimuladoresApp } from './app/SimuladoresApp';
 import { InstitutionalLayout } from './components/layout/InstitutionalLayout';
 import { InstitutionalPanel } from './pages/InstitutionalPanel';
@@ -296,16 +300,6 @@ function ProjectsPageWrapper() {
   return <ProjectsWorkspace onLogin={() => navigate('/panel/admin')} />;
 }
 
-function ModuleGate({ moduleName, children }: { moduleName: string; children: ReactNode }) {
-  const { activeInstitution, loadingTenant } = useTenant();
-  if (loadingTenant) return <div className="mx-auto max-w-3xl p-8 text-sm text-slate-600">Cargando permisos de la institucion...</div>;
-  if (!activeInstitution) return <div className="mx-auto max-w-3xl p-8 text-sm text-slate-600">No hay una institucion activa disponible para esta cuenta.</div>;
-  if (activeInstitution.enabled_modules && !activeInstitution.enabled_modules.includes(moduleName)) {
-    return <div className="mx-auto max-w-3xl p-8"><section className="rounded-xl border border-amber-200 bg-white p-6 text-sm text-amber-900">Este modulo no esta habilitado para {activeInstitution.name}. Solicita al superadministrador que lo active.</section></div>;
-  }
-  return <>{children}</>;
-}
-
 function DecePageWrapper() {
   const { activeInstitution } = useTenant();
   const integration = useMemo(() => {
@@ -341,6 +335,9 @@ function AppRoutes() {
 
   return (
     <Routes>
+      <Route path="portal/*" element={<PublishedPortal />} />
+      <Route path="proyectos" element={<PublicProjects />} />
+      <Route path="simuladores" element={<PublicLearning />} />
       <Route element={<InstitutionalLayout />}>
         <Route index element={<Navigate to="/panel" replace />} />
         <Route path="inicio" element={<Navigate to="/panel" replace />} />
@@ -348,12 +345,9 @@ function AppRoutes() {
         <Route path="panel/proyectos" element={<ModuleGate moduleName="projects"><ProjectsPageWrapper /></ModuleGate>} />
         <Route path="panel/dece" element={<ModuleGate moduleName="dece"><DecePageWrapper /></ModuleGate>} />
         <Route path="panel/simuladores" element={<ModuleGate moduleName="simuladores"><SimuladoresApp /></ModuleGate>} />
-        <Route path="panel/portal/*" element={<ModuleGate moduleName="portal"><SiteApp /></ModuleGate>} />
+        <Route path="panel/portal/*" element={<ModuleGate moduleName="portal"><PortalEditor /></ModuleGate>} />
         <Route path="panel/admin" element={<AdminWorkspace />} />
-        <Route path="proyectos" element={<Navigate to="/panel/proyectos" replace />} />
         <Route path="dece" element={<Navigate to="/panel/dece" replace />} />
-        <Route path="simuladores" element={<Navigate to="/panel/simuladores" replace />} />
-        <Route path="portal/*" element={<ModuleGate moduleName="portal"><SiteApp /></ModuleGate>} />
         <Route path="admin" element={<Navigate to="/panel/admin" replace />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
