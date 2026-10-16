@@ -1,2 +1,20 @@
 .summary-card { border: 1px solid var(--line); border-radius: 14px; background: #fff; }
+.invoice-summary-card { cursor: pointer; }
+.invoice-summary-products { margin-top: 16px; }
+.invoice-summary-products-toggle { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 0 0 10px; border: 0; border-bottom: 1px solid var(--line); color: var(--muted); background: transparent; text-align: left; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+.invoice-summary-products-toggle svg { flex: none; color: var(--accent); transition: transform .18s ease; }
+.invoice-summary-products-toggle svg.is-open { transform: rotate(180deg); }
+.invoice-summary-products-toggle:focus-visible { outline: 3px solid var(--accent-focus); outline-offset: 3px; }
+.invoice-summary-products-count { font-weight: 500; }
+.invoice-summary-products ul { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
+.invoice-summary-products li { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 11px 0; border-top: 1px solid var(--line); }
+.invoice-summary-products li > div { display: grid; gap: 4px; min-width: 0; }
+.invoice-summary-products li strong { color: #342d39; font-size: 14px; }
+.invoice-summary-products li > strong { flex: none; }
+.invoice-summary-products li span { color: var(--muted); font-size: 12px; }
+.summary-card > dl { margin-top: 12px; }
 .summary-card .grand-total dd { color: var(--accent); }
+
+@media (prefers-reduced-motion: reduce) {
+  .invoice-summary-products-toggle svg { transition: none; }
+}

@@ -19,7 +19,7 @@ interface Props {
 export function InvoiceForm({ activeStep, draft, products, onField, onUpdate, onAdd, onSetQuantity, onRemove, onNext, onPrevious }: Props) {
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [productPage, setProductPage] = useState(0)
-  const productsPerPage = 5
+  const productsPerPage = 6
   const productPageCount = Math.max(1, Math.ceil(products.length / productsPerPage))
   const visibleProducts = products.slice(productPage * productsPerPage, (productPage + 1) * productsPerPage)
   const clearError = (key: string) => setErrors(current => {

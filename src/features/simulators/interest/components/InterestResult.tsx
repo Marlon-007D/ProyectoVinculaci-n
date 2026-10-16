@@ -1,12 +1,34 @@
-import { ChartNoAxesCombined, RotateCcw } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import type { InterestMode } from '../types/interest.types'
+import { PenguinMascot } from '../../../courses/components/PenguinMascot'
 import './InterestResult.css'
 
-interface Props { principal: number | ''; amount: number; isValid: boolean; onReset: () => void }
+interface Props { mode: InterestMode; principal: number | ''; annualRate: number | ''; years: number | ''; frequency: number; amount: number; isValid: boolean }
+const simpleTips = [
+  'Interés simple: siempre se calcula sobre el capital inicial.',
+  'La tasa anual ayuda a comparar escenarios con el mismo plazo.',
+  'Más tiempo puede aumentar el interés total de este modelo.',
+  'Ensayar distintas metas también ayuda a aprender a ahorrar.',
+  'Comprender las tasas ayuda a decidir con más confianza.',
+]
+const compoundTips = [
+  'Interés compuesto: los intereses se suman al saldo.',
+  'La frecuencia indica cuántas veces se actualiza el saldo al año.',
+  'Con el tiempo, los intereses también pueden generar intereses.',
+  'Prueba varios plazos y observa el efecto acumulado.',
+  'Comparar opciones fortalece tus decisiones financieras.',
+]
 
-export function InterestResult({ principal, amount, isValid, onReset }: Props) {
-  return <aside className="result-card"><div className="simulator-result-icon"><ChartNoAxesCombined size={22} aria-hidden="true" /></div><p className="step-label">PROYECCIÓN</p>{isValid ? <><span className="result-value">{usd.format(amount)}</span><p>Monto estimado al finalizar el período</p>
+export function InterestResult({ mode, principal, annualRate, years, frequency, amount, isValid }: Props) {
+  const animationKey = `${mode}-${principal}-${annualRate}-${years}-${frequency}-${amount}`
+  const tips = mode === 'simple' ? simpleTips : compoundTips
+  const [tipIndex, setTipIndex] = useState(() => Math.floor(Math.random() * tips.length))
+  useEffect(() => {
+    setTipIndex(current => (current + 1 + Math.floor(Math.random() * (tips.length - 1))) % tips.length)
+  }, [animationKey, tips.length])
+  const insight = isValid ? tips[tipIndex] : 'Completa capital, tasa y plazo para calcular la proyección.'
+  return <aside className="result-card interest-result-card" aria-live="polite"><div className="interest-result-heading"><PenguinMascot key={animationKey} expression={isValid ? 'excited' : 'curious'} /><div className="interest-penguin-speech">{insight}</div></div>{isValid ? <><span className="result-value interest-result-value" key={animationKey}>{usd.format(amount)}</span><p>Monto estimado al finalizar el período</p>
     <dl className="result-breakdown"><div><dt>Capital inicial</dt><dd>{usd.format(Number(principal))}</dd></div><div><dt>Interés generado</dt><dd>{usd.format(amount - Number(principal))}</dd></div></dl></> : <p>Completa los campos para ver la proyección.</p>}
-    <button className="reset-button" onClick={onReset}><span className="reset-button-icon"><RotateCcw size={17} aria-hidden="true" /></span><span>Usar ejemplo</span></button>
   </aside>
 }
 

@@ -3,6 +3,9 @@
 .invoice-page.page-content { padding-top: 16px; }
 .invoice-summary-panel .summary-card { width: 100%; }
 .invoice-history-panel .invoice-history { margin-top: 0; }
+.invoice-history-layout { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(280px, .85fr); gap: 24px; align-items: start; }
+.invoice-history-layout .invoice-history { min-width: 0; }
+@media (max-width: 960px) { .invoice-history-layout { grid-template-columns: minmax(0, 1fr); gap: 16px; }.invoice-history-guide { max-width: 480px; margin-left: auto; } }
 .invoice-stepper { overflow-x: auto; margin: 0 0 20px; }
 .invoice-stepper ol { display: flex; align-items: center; min-width: max-content; margin: 0; padding: 0; list-style: none; }
 .invoice-stepper li { display: flex; align-items: center; }
@@ -16,12 +19,20 @@
 .invoice-stepper li.is-complete .invoice-step-number { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
 .invoice-stepper button:focus-visible { border-radius: 6px; outline: 3px solid var(--accent-focus); outline-offset: 4px; }
 .invoice-step-actions { display: flex; justify-content: flex-end; align-items: center; margin-top: 16px; }
-.invoice-step-navigation { display: grid; grid-template-columns: 1fr 1fr; width: min(100%, 248px); min-height: 40px; overflow: hidden; border: 1px solid #ad4b78; border-radius: 999px; background: #a94476; }
-.invoice-step-navigation button { min-width: 0; border: 0; color: #fff; background: #a94476; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; transition: background-color .16s ease; }
-.invoice-step-navigation button:first-child { border-right: 1px solid rgba(255,255,255,.2); background: #bd7194; }
-.invoice-step-navigation button:disabled { color: #f2d8e4; cursor: default; }
-.invoice-step-navigation button:not(:disabled):hover { background: #92355f; }
-.invoice-step-navigation button:focus-visible { position: relative; z-index: 1; outline: 3px solid #713253; outline-offset: -4px; }
+.invoice-step-navigation { display: grid; grid-template-columns: 1fr 1fr; width: min(100%, 248px); min-height: 40px; overflow: hidden; border: 1px solid var(--accent); border-radius: 999px; background: var(--accent); }
+.invoice-total-navigation { display: flex; width: min(100%, 280px); min-height: 40px; margin-left: auto; overflow: hidden; border: 1px solid var(--accent); border-radius: 999px; background: var(--accent); }
+.invoice-total-navigation button { flex: 1; min-width: 0; min-height: 40px; padding: 0 10px; border: 0; color: #fff; background: var(--accent); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; transition: background-color .16s ease; }
+.invoice-total-navigation button:first-child { border-right: 1px solid color-mix(in srgb, var(--accent) 24%, transparent); color: var(--accent); background: var(--accent-soft); }
+.invoice-total-navigation button:not(:disabled):hover { background: var(--accent-hover); }
+.invoice-total-navigation button:first-child:not(:disabled):hover { color: var(--accent-hover); background: var(--accent-container); }
+.invoice-total-navigation button:disabled { color: var(--muted); background: color-mix(in srgb, var(--accent-soft) 55%, var(--surface)); cursor: default; }
+.invoice-total-navigation button:focus-visible { position: relative; z-index: 1; outline: 3px solid var(--accent-focus); outline-offset: -4px; }
+.invoice-step-navigation button { min-width: 0; border: 0; color: #fff; background: var(--accent); font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; transition: background-color .16s ease; }
+.invoice-step-navigation button:first-child { border-right: 1px solid color-mix(in srgb, var(--accent) 20%, transparent); color: var(--accent); background: var(--accent-soft); }
+.invoice-step-navigation button:disabled { color: var(--muted); background: color-mix(in srgb, var(--accent-soft) 55%, var(--surface)); cursor: default; }
+.invoice-step-navigation button:not(:disabled):hover { background: var(--accent-hover); }
+.invoice-step-navigation button:first-child:not(:disabled):hover { color: var(--accent-hover); background: var(--accent-container); }
+.invoice-step-navigation button:focus-visible { position: relative; z-index: 1; outline: 3px solid var(--accent-focus); outline-offset: -4px; }
 .invoice-step-action-group { display: flex; justify-content: flex-end; gap: 12px; }
 .invoice-total-step { display: grid; gap: 18px; max-width: 760px; }
 .invoice-total-step .summary-card { width: 100%; }
@@ -189,6 +200,7 @@
   .invoice-product-pagination { margin: 8px 0 0; }
   .invoice-step-actions { position: fixed; z-index: 9; right: 0; bottom: calc(76px + env(safe-area-inset-bottom)); left: 0; justify-content: center; margin: 0; padding: 8px 12px; border-top: 1px solid var(--line); background: var(--canvas); }
   .invoice-step-navigation { width: min(100%, 560px); min-height: 44px; margin: 0 auto; border-radius: 14px; }
+  .invoice-total-navigation { width: min(100%, 280px); min-height: 40px; margin-left: auto; }
   .invoice-step-navigation { gap: 8px; overflow: visible; border: 0; background: transparent; }
   .invoice-step-navigation button { min-height: 42px; border: 1px solid var(--accent); border-radius: 12px; font-size: 13px; }
   .invoice-step-navigation button:first-child { border-right: 1px solid var(--accent); color: var(--accent); background: var(--surface); }
@@ -196,6 +208,5 @@
   .invoice-step-navigation button:last-child { color: #fff; background: var(--accent); }
   .invoice-step-navigation button:not(:disabled):hover { background: var(--accent-hover); }
   .invoice-step-navigation button:first-child:not(:disabled):hover { color: var(--accent-hover); background: var(--accent-soft); }
-  .invoice-total-step .invoice-step-actions { gap: 8px; }
-  .invoice-total-step .invoice-step-actions > button { flex: 1; min-width: 0; padding: 0 10px; font-size: 12px; }
+  .invoice-total-navigation button { min-height: 40px; padding: 0 8px; font-size: 12px; }
 }

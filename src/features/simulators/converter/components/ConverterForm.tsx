@@ -9,7 +9,7 @@ interface Props {
 }
 
 export function ConverterForm({ kind, amount, from, to, options, onKind, onAmount, onFrom, onTo, onSwap }: Props) {
-  return <section className="simulator-card">
+  return <section className="converter-form-content">
     <div className="converter-title"><span className="simulator-title-icon"><ArrowRightLeft size={21} aria-hidden="true" /></span><h2>¿Qué deseas convertir?</h2></div>
     <div className="segmented-control"><button className={kind === 'currency' ? 'selected' : ''} onClick={() => onKind('currency')}><Coins size={16} aria-hidden="true" />Monedas</button><button className={kind === 'length' ? 'selected' : ''} onClick={() => onKind('length')}><Ruler size={16} aria-hidden="true" />Longitud</button></div>
     <div className="conversion-form">

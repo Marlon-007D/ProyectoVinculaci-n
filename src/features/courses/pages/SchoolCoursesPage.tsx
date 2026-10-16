@@ -50,15 +50,18 @@ export function SchoolCoursesPage({ selectedModuleId = null, selectedCourseId = 
       .slice(0, 5)
     return <section className="page-content school-courses-page">
       <header className="school-courses-header module-courses-header">
-        <div><span className="school-courses-kicker"><GraduationCap size={17} /> Módulo</span><h1>{selectedModule.name}</h1><p>{selectedModule.description}</p></div>
+        <div><h1>{selectedModule.name}</h1><p>{selectedModule.description}</p></div>
         <span className="module-course-total">{moduleCourses.length} {moduleCourses.length === 1 ? 'curso' : 'cursos'}</span>
       </header>
       <div className="school-subject-grid" aria-label={`Cursos del módulo ${selectedModule.name}`}>
         {moduleCourses.map(subject => {
           const Icon = subjectIcons[subject.id as keyof typeof subjectIcons]
           return <article className="school-subject-card" key={subject.id} role="button" tabIndex={0} aria-label={`Entrar al curso ${subject.name}`} onClick={() => onSelectCourse(subject.id)} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onSelectCourse(subject.id) } }}>
-            <div className="school-subject-heading"><span className="school-subject-icon"><Icon size={21} /></span><span className="school-unit-count">{subject.units.length} temas</span></div>
-            <h2>{subject.name}</h2><p>{subject.description}</p>
+            <img className="school-subject-cover" src={subject.coverImage} alt="" loading="lazy" />
+            <div className="school-subject-copy">
+              <div className="school-subject-heading"><span className="school-subject-icon"><Icon size={21} /></span><span className="school-unit-count">{subject.units.length} temas</span></div>
+              <h2 title={subject.name}>{subject.name}</h2><p title={subject.description}>{subject.description}</p>
+            </div>
           </article>
         })}
       </div>

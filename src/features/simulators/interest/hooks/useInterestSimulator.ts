@@ -13,6 +13,5 @@ export function useInterestSimulator() {
     ? simpleInterest(Number(principal) || 0, Number(annualRate) || 0, Number(years) || 0)
     : compoundInterest(Number(principal) || 0, Number(annualRate) || 0, Number(years) || 0, frequency), [mode, principal, annualRate, years, frequency])
   const isValid = principal !== '' && annualRate !== '' && years !== ''
-  const reset = () => { setMode('simple'); setPrincipal(500); setAnnualRate(8); setYears(2); setFrequency(12) }
-  return { mode, setMode, principal, setPrincipal, annualRate, setAnnualRate, years, setYears, frequency, setFrequency, amount, isValid, reset }
+  return { mode, setMode, principal, setPrincipal, annualRate, setAnnualRate, years, setYears, frequency, setFrequency, amount, isValid }
 }

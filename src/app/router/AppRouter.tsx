@@ -12,6 +12,7 @@ import { EventsPage } from '../../features/events/pages/EventsPage'
 import { HonorsPage } from '../../features/honors/pages/HonorsPage'
 import { AcademicPeriodsPage } from '../../features/academic-periods/pages/AcademicPeriodsPage'
 import { SchoolCoursesPage } from '../../features/courses/pages/SchoolCoursesPage'
+import { SchoolModuleSkeleton } from '../../features/courses/components/SchoolModuleSkeleton'
 import { schoolModulesMock } from '../../features/courses/mocks/schoolModulesMock'
 import { schoolCoursesMock } from '../../features/courses/mocks/schoolCoursesMock'
 import type { BreadcrumbItem } from '../../shared/components/AppHeader/AppHeader'
@@ -78,8 +79,8 @@ export function AppRouter({ collapsed, theme, onThemeChange, onToggleSidebar }: 
   const displayedRoute = loadingRoute ?? route
   const { Component } = pages[displayedRoute]
   const Skeleton = routeSkeletons[displayedRoute]
-  const navigateTo = (nextRoute: AppRoute) => {
-    if (nextRoute === displayedRoute) { setPreviewEntry(null); return }
+  const navigateTo = (nextRoute: AppRoute, forceLoading = false) => {
+    if (nextRoute === displayedRoute && !forceLoading) { setPreviewEntry(null); return }
     setPreviewEntry(null)
     if (navigationTimer.current !== null) window.clearTimeout(navigationTimer.current)
     setLoadingRoute(nextRoute)
@@ -100,7 +101,7 @@ export function AppRouter({ collapsed, theme, onThemeChange, onToggleSidebar }: 
     setSelectedCourseId(null)
     setCourseTopicName(null)
     setEvaluationActive(false)
-    navigateTo('school-courses')
+    navigateTo('school-courses', true)
   }
   useEffect(() => () => {
     if (navigationTimer.current !== null) window.clearTimeout(navigationTimer.current)
@@ -124,7 +125,7 @@ export function AppRouter({ collapsed, theme, onThemeChange, onToggleSidebar }: 
     <AppHeader breadcrumbs={breadcrumbs} navigation={invoiceNavigation} theme={theme} onThemeChange={onThemeChange} />
     <Sidebar active={displayedRoute} activeModuleId={selectedModuleId} collapsed={collapsed} onSelect={nextRoute => nextRoute === 'school-courses' ? openCourses() : navigateTo(nextRoute)} onSelectModule={selectModule} onToggle={onToggleSidebar} />
     <main className="main">
-      {loadingRoute ? <Skeleton /> : previewEntry ? <AcademicPostPreviewPage entry={previewEntry} /> : displayedRoute === 'school-courses' ? <SchoolCoursesPage selectedModuleId={selectedModuleId} selectedCourseId={selectedCourseId} evaluationActive={evaluationActive} onSelectModule={selectModule} onSelectCourse={selectCourse} onTopicChange={setCourseTopicName} onEvaluationChange={setEvaluationActive} /> : displayedRoute === 'simulator-hub' ? <SimulatorHubPage onSelect={navigateTo} /> : displayedRoute === 'reports-hub' ? <ReportsHubPage onSelect={navigateTo} /> : displayedRoute === 'invoice' ? <InvoiceSimulatorPage activeSection={invoiceSection} onSectionChange={setInvoiceSection} onInvoiceCountChange={setInvoiceCount} /> : <Component onPreview={showPostPreview} />}
+      {loadingRoute === 'school-courses' && selectedModuleId && !selectedCourseId ? <SchoolModuleSkeleton courseCount={selectedModule?.courseIds.length ?? 1} /> : loadingRoute ? <Skeleton /> : previewEntry ? <AcademicPostPreviewPage entry={previewEntry} /> : displayedRoute === 'school-courses' ? <SchoolCoursesPage selectedModuleId={selectedModuleId} selectedCourseId={selectedCourseId} evaluationActive={evaluationActive} onSelectModule={selectModule} onSelectCourse={selectCourse} onTopicChange={setCourseTopicName} onEvaluationChange={setEvaluationActive} /> : displayedRoute === 'simulator-hub' ? <SimulatorHubPage onSelect={navigateTo} /> : displayedRoute === 'reports-hub' ? <ReportsHubPage onSelect={navigateTo} /> : displayedRoute === 'invoice' ? <InvoiceSimulatorPage activeSection={invoiceSection} onSectionChange={setInvoiceSection} onInvoiceCountChange={setInvoiceCount} /> : <Component onPreview={showPostPreview} />}
     </main>
   </>
 }
