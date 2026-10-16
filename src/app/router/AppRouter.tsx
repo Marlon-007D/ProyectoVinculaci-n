@@ -121,8 +121,8 @@ export function AppRouter({ collapsed, theme, onThemeChange, onToggleSidebar }: 
     <button className="invoice-navbar-tab" id="invoice-tab-history" type="button" role="tab" aria-controls="invoice-panel-history" aria-selected={invoiceSection === 'history'} onClick={() => setInvoiceSection('history')}><FolderOpen size={18} aria-hidden="true" />Facturas<span className="invoice-section-count">{invoiceCount}</span></button>
   </nav> : undefined
   return <>
-    <AppHeader breadcrumbs={breadcrumbs} navigation={invoiceNavigation} />
-    <Sidebar active={displayedRoute} activeModuleId={selectedModuleId} collapsed={collapsed} theme={theme} onThemeChange={onThemeChange} onSelect={nextRoute => nextRoute === 'school-courses' ? openCourses() : navigateTo(nextRoute)} onSelectModule={selectModule} onToggle={onToggleSidebar} />
+    <AppHeader breadcrumbs={breadcrumbs} navigation={invoiceNavigation} theme={theme} onThemeChange={onThemeChange} />
+    <Sidebar active={displayedRoute} activeModuleId={selectedModuleId} collapsed={collapsed} onSelect={nextRoute => nextRoute === 'school-courses' ? openCourses() : navigateTo(nextRoute)} onSelectModule={selectModule} onToggle={onToggleSidebar} />
     <main className="main">
       {loadingRoute ? <Skeleton /> : previewEntry ? <AcademicPostPreviewPage entry={previewEntry} /> : displayedRoute === 'school-courses' ? <SchoolCoursesPage selectedModuleId={selectedModuleId} selectedCourseId={selectedCourseId} evaluationActive={evaluationActive} onSelectModule={selectModule} onSelectCourse={selectCourse} onTopicChange={setCourseTopicName} onEvaluationChange={setEvaluationActive} /> : displayedRoute === 'simulator-hub' ? <SimulatorHubPage onSelect={navigateTo} /> : displayedRoute === 'reports-hub' ? <ReportsHubPage onSelect={navigateTo} /> : displayedRoute === 'invoice' ? <InvoiceSimulatorPage activeSection={invoiceSection} onSectionChange={setInvoiceSection} onInvoiceCountChange={setInvoiceCount} /> : <Component onPreview={showPostPreview} />}
     </main>

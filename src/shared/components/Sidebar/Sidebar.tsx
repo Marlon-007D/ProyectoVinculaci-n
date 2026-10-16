@@ -2,12 +2,10 @@ import { ArrowLeftRight, Award, BarChart3, BookOpen, CalendarDays, CalendarRange
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { AppRoute, SimulatorRoute } from '../../../app/router/AppRouter'
-import { ThemeUser } from '../../../features/themeUser/components/ThemeUser'
 import { schoolModulesMock } from '../../../features/courses/mocks/schoolModulesMock'
-import type { ThemeName } from '../../../features/themeUser/types/themeUser.types'
 import './Sidebar.css'
 
-interface Props { active: AppRoute; activeModuleId: string | null; collapsed: boolean; theme: ThemeName; onThemeChange: (theme: ThemeName, origin: { x: number; y: number }) => void; onSelect: (route: AppRoute) => void; onSelectModule: (moduleId: string) => void; onToggle: () => void }
+interface Props { active: AppRoute; activeModuleId: string | null; collapsed: boolean; onSelect: (route: AppRoute) => void; onSelectModule: (moduleId: string) => void; onToggle: () => void }
 const items: { id: SimulatorRoute; label: string; Icon: typeof ReceiptText }[] = [
   { id: 'invoice', label: 'Facturación electrónica', Icon: ReceiptText },
   { id: 'converter', label: 'Unidades y monedas', Icon: ArrowLeftRight },
@@ -22,10 +20,9 @@ const publications: { id: Exclude<AppRoute, SimulatorRoute>; label: string; Icon
 type Group = 'courses' | 'reports'
 type Subgroup = 'school-courses' | 'simulators' | 'publications' | null
 
-export function Sidebar({ active, activeModuleId, collapsed, theme, onThemeChange, onSelect, onSelectModule, onToggle }: Props) {
+export function Sidebar({ active, activeModuleId, collapsed, onSelect, onSelectModule, onToggle }: Props) {
   const [openGroup, setOpenGroup] = useState<Group | null>(null)
   const [openSubgroup, setOpenSubgroup] = useState<Subgroup>(null)
-  const [themeOpen, setThemeOpen] = useState(false)
   useEffect(() => {
     if (active === 'invoice' || active === 'converter' || active === 'interest') {
       setOpenGroup('courses')
@@ -45,18 +42,12 @@ export function Sidebar({ active, activeModuleId, collapsed, theme, onThemeChang
   }, [active])
   const toggleGroup = (group: Group) => {
     if (collapsed) onToggle()
-    setThemeOpen(false)
     setOpenSubgroup(null)
     setOpenGroup(current => current === group ? null : group)
   }
   const toggleSubgroup = (group: Subgroup) => {
     if (collapsed) onToggle()
-    setThemeOpen(false)
     setOpenSubgroup(current => current === group ? null : group)
-  }
-  const toggleTheme = () => {
-    setOpenSubgroup(null)
-    setThemeOpen(open => !open)
   }
   const renderNavGroup = (group: Group, label: string, Icon: typeof ReceiptText, children: ReactNode) => <div className={`nav-group${openGroup === group ? ' is-open' : ''}`}>
     <button className="nav-group-toggle" type="button" aria-expanded={openGroup === group} onClick={() => toggleGroup(group)}>
@@ -90,7 +81,6 @@ export function Sidebar({ active, activeModuleId, collapsed, theme, onThemeChang
         {openSubgroup === 'publications' && <div className="nav-group-items publication-items">{publications.map(({ id, label, Icon: ItemIcon }) => <button key={id} data-tooltip={label} className={active === id ? 'nav-item active' : 'nav-item'} onClick={() => selectRoute(id)} aria-label={label}><ItemIcon size={19} />{!collapsed && <span>{label}</span>}</button>)}</div>}
       </div>)}
     </nav>
-    <ThemeUser theme={theme} collapsed={collapsed} open={themeOpen} onChange={onThemeChange} onToggle={toggleTheme} />
   </aside>
   <nav className="mobile-bottom-navigation" aria-label="Navegación principal móvil">
     <button type="button" className={activeMobileTab === 'courses' ? 'is-active' : ''} onClick={openCoursesPage}><BookOpen size={18} /><span>Cursos</span></button>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { BookOpen, Check, Circle, CircleHelp, Clock3, ListChecks, Search } from 'lucide-react'
 import { getSchoolQuestionSet } from '../mocks/schoolQuestionMock'
@@ -69,6 +69,9 @@ export function QuestionBank({ courseId, courseName, topicTitle, mode, onEnter =
   const [started] = useState(mode === 'assessment')
   const [finished, setFinished] = useState(false)
   const [questionIndex, setQuestionIndex] = useState(0)
+  const [danceSequence, setDanceSequence] = useState(0)
+  const [danceActive, setDanceActive] = useState(false)
+  const previousQuestionIndex = useRef(questionIndex)
   const [secondsLeft, setSecondsLeft] = useState(LIMIT_SECONDS)
   const [answers, setAnswers] = useState<Record<number, number>>({})
   const [multiAnswers, setMultiAnswers] = useState<Record<number, number[]>>({})
@@ -99,6 +102,20 @@ export function QuestionBank({ courseId, courseName, topicTitle, mode, onEnter =
     return () => window.clearTimeout(timer)
   }, [started, finished, secondsLeft])
 
+  useEffect(() => {
+    if (!danceActive) return
+    const timer = window.setTimeout(() => setDanceActive(false), 1100)
+    return () => window.clearTimeout(timer)
+  }, [danceActive, danceSequence])
+
+  useEffect(() => {
+    if (questionIndex > previousQuestionIndex.current) {
+      setDanceSequence(sequence => sequence + 1)
+      setDanceActive(true)
+    }
+    previousQuestionIndex.current = questionIndex
+  }, [questionIndex])
+
   const score = questionKinds.reduce((total, kind, index) => {
     if (kind === 'multiple-choice') {
       const question = questions.multipleChoiceVersions[occurrenceOfKind(index, kind)]
@@ -120,6 +137,14 @@ export function QuestionBank({ courseId, courseName, topicTitle, mode, onEnter =
     return total + (correct / questions.matching.pairs.length) * POINTS_PER_QUESTION
   }, 0)
   const timeLabel = `${String(Math.floor(secondsLeft / 60)).padStart(2, '0')}:${String(secondsLeft % 60).padStart(2, '0')}`
+  const goToNextQuestion = () => {
+    if (questionIndex === QUESTION_COUNT - 1) {
+      setFinished(true)
+      return
+    }
+    setQuestionIndex(index => index + 1)
+    setSelectedImage(null)
+  }
   if (finished) return <section className="course-evaluations-panel" aria-labelledby="evaluation-result-title">
     <header className="question-bank-header"><span className="question-bank-icon"><Check size={22} /></span><div><span className="question-activity-course">{courseName} · {topicTitle}</span><h2 id="evaluation-result-title">Evaluación finalizada</h2><p>Tu resultado para este tema</p></div></header>
     <article className="question-card evaluation-result"><strong>{Number(score.toFixed(1))}<span> / 20</span></strong><p>{score >= 14 ? 'Aprobado' : 'Sigue practicando este tema.'}</p><button className="evaluation-button" type="button" onClick={onExit}>Volver al resumen</button></article>
@@ -135,7 +160,7 @@ export function QuestionBank({ courseId, courseName, topicTitle, mode, onEnter =
     <div className="evaluation-layout">
       <aside className="evaluation-rail" aria-label="Progreso de la evaluación">
         <div className="question-encouragement" role="status">
-          <PenguinMascot expression={penguinExpressions[questionIndex % penguinExpressions.length]} />
+          <PenguinMascot key={danceSequence} expression={penguinExpressions[questionIndex % penguinExpressions.length]} dance={danceActive} />
           <span key={questionIndex} className="question-encouragement-copy"><strong><BookOpen size={16} aria-hidden="true" /> {encouragement.title}</strong><span>{encouragement.detail}</span></span>
         </div>
         <div className={`evaluation-timer${secondsLeft <= 60 ? ' is-low' : ''}`} style={{ '--timer-progress': `${(secondsLeft / LIMIT_SECONDS) * 360}deg` } as CSSProperties}>
@@ -155,7 +180,7 @@ export function QuestionBank({ courseId, courseName, topicTitle, mode, onEnter =
         })}</nav>
         <div className="evaluation-navigation evaluation-rail-navigation">
           <button className="evaluation-button secondary" type="button" disabled={questionIndex === 0} onClick={() => { setQuestionIndex(index => Math.max(0, index - 1)); setSelectedImage(null) }}>Anterior</button>
-          <button className="evaluation-button" type="button" onClick={() => { if (questionIndex === QUESTION_COUNT - 1) setFinished(true); else { setQuestionIndex(index => index + 1); setSelectedImage(null) } }}>{questionIndex === QUESTION_COUNT - 1 ? 'Finalizar' : 'Siguiente'}</button>
+          <button className="evaluation-button" type="button" onClick={goToNextQuestion}>{questionIndex === QUESTION_COUNT - 1 ? 'Finalizar' : 'Siguiente'}</button>
         </div>
       </aside>
       <div className="evaluation-question-area">
