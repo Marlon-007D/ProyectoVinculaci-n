@@ -11,4 +11,4 @@ Proyecto de vinculación con la sociedad.
 
 ## Tecnologías
 - React
-- TypeScript
+- TypeScript.
