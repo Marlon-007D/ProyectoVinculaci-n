@@ -1,6 +1,5 @@
 import { jsPDF } from 'jspdf'
 import type { AcademicContentEntry } from '../../academic-content/types/academicContent.types'
-import { OFFICIAL_DISTINCTIONS } from '../utils/honorRules'
 
 type Color = [number, number, number]
 type RecognitionPerson = Pick<AcademicContentEntry, 'studentName' | 'grade' | 'distinction'>
@@ -26,6 +25,97 @@ function fitLines(pdf: jsPDF, text: string, width: number, maxLines = 2): string
   return [...lines.slice(0, maxLines - 1), `${lastLine.slice(0, Math.max(0, lastLine.length - 3)).trimEnd()}…`]
 }
 
+function drawSparkle(pdf: jsPDF, x: number, y: number, size: number, color: Color) {
+  pdf.setDrawColor(...color)
+  pdf.setLineWidth(0.55)
+  pdf.line(x, y - size, x, y + size)
+  pdf.line(x - size, y, x + size, y)
+  pdf.line(x - size * 0.65, y - size * 0.65, x + size * 0.65, y + size * 0.65)
+  pdf.line(x - size * 0.65, y + size * 0.65, x + size * 0.65, y - size * 0.65)
+}
+
+function drawMedal(pdf: jsPDF, centerX: number, centerY: number, size: number, accent: Color, paleAccent: Color) {
+  const ribbonTop = centerY + size * 0.15
+  pdf.setFillColor(...paleAccent)
+  pdf.triangle(centerX - size * 0.42, ribbonTop, centerX - size * 0.03, ribbonTop, centerX - size * 0.34, centerY + size * 0.9, 'F')
+  pdf.triangle(centerX + size * 0.03, ribbonTop, centerX + size * 0.42, ribbonTop, centerX + size * 0.34, centerY + size * 0.9, 'F')
+  pdf.setFillColor(...accent)
+  pdf.circle(centerX, centerY, size * 0.48, 'F')
+  pdf.setFillColor(255, 255, 255)
+  pdf.circle(centerX, centerY, size * 0.29, 'F')
+  drawSparkle(pdf, centerX, centerY, size * 0.16, accent)
+}
+
+function drawDistinctiveIcon(pdf: jsPDF, kind: number, centerX: number, centerY: number, accent: Color, paleAccent: Color) {
+  const x = centerX - 3
+  const y = centerY - 3
+  pdf.setDrawColor(...accent)
+  pdf.setFillColor(...paleAccent)
+  pdf.setLineWidth(0.65)
+
+  switch (kind % 9) {
+    case 0: // Bandera
+      pdf.line(x + 1, y, x + 1, y + 7)
+      pdf.triangle(x + 1, y, x + 6, y + 1.5, x + 1, y + 3, 'F')
+      pdf.line(x - 0.5, y + 7, x + 3, y + 7)
+      break
+    case 1: // Monumento
+      pdf.triangle(x, y + 2, x + 3, y, x + 6, y + 2, 'F')
+      pdf.line(x, y + 2, x + 6, y + 2)
+      pdf.line(x + 0.5, y + 6, x + 5.5, y + 6)
+      pdf.line(x, y + 7, x + 6, y + 7)
+      pdf.line(x + 1.2, y + 2.4, x + 1.2, y + 5.7)
+      pdf.line(x + 3, y + 2.4, x + 3, y + 5.7)
+      pdf.line(x + 4.8, y + 2.4, x + 4.8, y + 5.7)
+      break
+    case 2: // Birrete
+      pdf.triangle(x - 0.5, y + 2.5, x + 3, y + 0.5, x + 6.5, y + 2.5, 'F')
+      pdf.line(x + 1, y + 3.2, x + 1, y + 5)
+      pdf.line(x + 1, y + 5, x + 3, y + 6)
+      pdf.line(x + 3, y + 6, x + 5, y + 5)
+      pdf.line(x + 5, y + 2.5, x + 5, y + 5.8)
+      pdf.circle(x + 5, y + 6.3, 0.45, 'F')
+      break
+    case 3: // Estrella
+      drawSparkle(pdf, centerX, centerY, 2.8, accent)
+      pdf.circle(centerX, centerY, 0.8, 'F')
+      break
+    case 4: // Escudo
+      pdf.line(x + 0.5, y + 0.5, x + 5.5, y + 0.5)
+      pdf.line(x + 0.5, y + 0.5, x + 1, y + 4.5)
+      pdf.line(x + 5.5, y + 0.5, x + 5, y + 4.5)
+      pdf.line(x + 1, y + 4.5, x + 3, y + 7)
+      pdf.line(x + 5, y + 4.5, x + 3, y + 7)
+      pdf.line(x + 1.7, y + 2.7, x + 4.3, y + 2.7)
+      break
+    case 5: // Libro
+      pdf.roundedRect(x, y + 0.5, 2.8, 6, 0.5, 0.5, 'S')
+      pdf.roundedRect(x + 3.2, y + 0.5, 2.8, 6, 0.5, 0.5, 'S')
+      pdf.line(centerX, y + 1, centerX, y + 6.5)
+      break
+    case 6: // Antorcha
+      pdf.line(centerX, y + 3, centerX, y + 7)
+      pdf.line(x + 1.7, y + 3.5, x + 4.3, y + 3.5)
+      pdf.triangle(centerX, y - 0.5, x + 1.5, y + 3, x + 4.5, y + 3, 'F')
+      pdf.circle(centerX, y + 2, 0.65, 'F')
+      break
+    case 7: // Laurel
+      pdf.line(x + 3, y + 7, x + 3, y + 1)
+      pdf.ellipse(x + 1.4, y + 2, 0.8, 0.35, 'F')
+      pdf.ellipse(x + 4.6, y + 3, 0.8, 0.35, 'F')
+      pdf.ellipse(x + 1.4, y + 4.2, 0.8, 0.35, 'F')
+      pdf.ellipse(x + 4.6, y + 5.2, 0.8, 0.35, 'F')
+      break
+    default: // Diploma
+      pdf.roundedRect(x + 0.2, y + 0.5, 5.6, 4.6, 0.6, 0.6, 'S')
+      pdf.line(x + 1.2, y + 2, x + 4.8, y + 2)
+      pdf.line(x + 1.2, y + 3.2, x + 4.1, y + 3.2)
+      pdf.triangle(x + 3.2, y + 5.2, x + 4.3, y + 5.2, x + 3.4, y + 7, 'F')
+      pdf.triangle(x + 4.1, y + 5.2, x + 5.2, y + 5.2, x + 5, y + 7, 'F')
+      break
+  }
+}
+
 function drawHeader(pdf: jsPDF, institution: string, year: string, accent: Color, paleAccent: Color) {
   const pageWidth = pdf.internal.pageSize.getWidth()
   const centerX = pageWidth / 2
@@ -36,17 +126,16 @@ function drawHeader(pdf: jsPDF, institution: string, year: string, accent: Color
   pdf.rect(0, 0, pageWidth, pdf.internal.pageSize.getHeight(), 'F')
   pdf.setFillColor(...paleAccent)
   pdf.rect(0, 0, pageWidth, 34, 'F')
-  pdf.setFillColor(...accent)
-  pdf.roundedRect(15, 7, 1.4, 20, 0.7, 0.7, 'F')
   pdf.setTextColor(...accent)
   pdf.setFont('helvetica', 'bold')
   pdf.setFontSize(7.5)
   pdf.text('RECONOCIMIENTO ACADÉMICO', centerX, 8.5, { align: 'center' })
+  drawMedal(pdf, centerX - 25, 7.5, 4, accent, mixWithWhite(accent, 0.72))
   pdf.setTextColor(...ink)
   pdf.setFont('helvetica', 'bold')
   pdf.setFontSize(17)
   pdf.text('Cuadro de honor', centerX, 18, { align: 'center' })
-  pdf.setTextColor(...muted)
+  pdf.setTextColor(...accent)
   pdf.setFont('helvetica', 'normal')
   pdf.setFontSize(8.5)
   pdf.text(institution, centerX, 25, { align: 'center', maxWidth: pageWidth - 40 })
@@ -63,7 +152,7 @@ function drawHeader(pdf: jsPDF, institution: string, year: string, accent: Color
   pdf.setFont('helvetica', 'normal')
   pdf.setFontSize(8)
   pdf.text('Esfuerzo, trayectoria y participación estudiantil', centerX, 49, { align: 'center', maxWidth: pageWidth - 30 })
-  pdf.setDrawColor(...paleAccent)
+  pdf.setDrawColor(226, 224, 229)
   pdf.setLineWidth(0.45)
   pdf.line(15, 53, pageWidth - 15, 53)
   pdf.setDrawColor(...accent)
@@ -77,32 +166,17 @@ function drawGenericAvatar(pdf: jsPDF, centerX: number, centerY: number, size: n
   pdf.ellipse(centerX, centerY + size * 0.23, size * 0.28, size * 0.17, 'F')
 }
 
-function drawPersonCard(pdf: jsPDF, person: RecognitionPerson, accent: Color, paleAccent: Color, x: number, y: number, width: number, height: number) {
+function drawPersonCard(pdf: jsPDF, person: RecognitionPerson, iconKind: number, accent: Color, paleAccent: Color, x: number, y: number, width: number, height: number) {
   const ink: Color = [48, 42, 57]
   const muted: Color = [96, 105, 119]
-  const border: Color = [229, 225, 234]
   const centerX = x + width / 2
   pdf.setFillColor(255, 255, 255)
-  pdf.setDrawColor(...border)
-  pdf.setLineWidth(0.3)
-  pdf.roundedRect(x, y, width, height, 3, 3, 'FD')
+  pdf.roundedRect(x, y, width, height, 3, 3, 'F')
 
-  pdf.setFillColor(...paleAccent)
-  pdf.roundedRect(centerX - 9, y + 4, 18, 6.3, 3, 3, 'F')
-  pdf.setTextColor(...accent)
-  pdf.setFont('helvetica', 'bold')
-  pdf.setFontSize(7.5)
-  const distinctionIndex = OFFICIAL_DISTINCTIONS.indexOf(person.distinction as typeof OFFICIAL_DISTINCTIONS[number])
-  const positionLabel = distinctionIndex >= 0 ? `PUESTO ${distinctionIndex + 1}` : 'RECONOCIMIENTO'
-  pdf.text(positionLabel, centerX, y + 8.3, { align: 'center' })
+  drawDistinctiveIcon(pdf, iconKind, centerX, y + 53, accent, paleAccent)
 
   const avatarSize = 17
-  const avatarY = y + 20.5
-  pdf.setFillColor(255, 255, 255)
-  pdf.circle(centerX, avatarY, avatarSize / 2 + 1, 'F')
-  pdf.setDrawColor(...paleAccent)
-  pdf.setLineWidth(1)
-  pdf.circle(centerX, avatarY, avatarSize / 2 + 0.5, 'S')
+  const avatarY = y + 18
   drawGenericAvatar(pdf, centerX, avatarY, avatarSize, paleAccent, accent)
 
   const textWidth = width - 8
@@ -110,21 +184,22 @@ function drawPersonCard(pdf: jsPDF, person: RecognitionPerson, accent: Color, pa
   pdf.setFontSize(person.studentName.length > 28 ? 9 : 10)
   pdf.setTextColor(...ink)
   const nameLines = fitLines(pdf, person.studentName, textWidth)
-  const nameY = y + 34.5
+  const nameY = y + 32
   pdf.text(nameLines, centerX, nameY, { align: 'center', lineHeightFactor: 1.05 })
 
   pdf.setFont('helvetica', 'normal')
   pdf.setFontSize(7.8)
   pdf.setTextColor(...muted)
-  const distinctionLines = fitLines(pdf, person.distinction, textWidth)
-  const distinctionY = y + (nameLines.length > 1 ? 45.5 : 41.5)
+  const distinction = person.distinction.replace(/ciudad o cantón/gi, 'ciudad')
+  const distinctionLines = fitLines(pdf, distinction, textWidth)
+  const distinctionY = y + (nameLines.length > 1 ? 43 : 39)
   pdf.text(distinctionLines, centerX, distinctionY, { align: 'center', lineHeightFactor: 1.1 })
 
   const grade = person.grade
   pdf.setFont('helvetica', 'normal')
   pdf.setFontSize(7)
   pdf.setTextColor(...muted)
-  pdf.text(grade, centerX, y + height - 4.2, { align: 'center', maxWidth: textWidth })
+  pdf.text(grade, centerX, y + height - 4, { align: 'center', maxWidth: textWidth })
 }
 
 export async function createRecognitionPdf(
@@ -144,7 +219,7 @@ export async function createRecognitionPdf(
   const gapX = 4
   const gapY = 4
   const cardWidth = (pageWidth - marginX * 2 - gapX * (columns - 1)) / columns
-  const cardHeight = 58
+  const cardHeight = 66
   const gridTop = 57
   const gridHeight = rows * cardHeight + (rows - 1) * gapY
   const footerY = gridTop + gridHeight + 6
@@ -161,10 +236,10 @@ export async function createRecognitionPdf(
       const row = Math.floor(index / columns)
       const x = marginX + column * (cardWidth + gapX)
       const y = gridTop + row * (cardHeight + gapY)
-      drawPersonCard(pdf, person, accent, paleAccent, x, y, cardWidth, cardHeight)
+      drawPersonCard(pdf, person, pageIndex * pageCapacity + index, accent, paleAccent, x, y, cardWidth, cardHeight)
     })
 
-    pdf.setDrawColor(...paleAccent)
+    pdf.setDrawColor(226, 224, 229)
     pdf.setLineWidth(0.4)
     pdf.line(15, footerY, pageWidth - 15, footerY)
     pdf.setFont('helvetica', 'normal')

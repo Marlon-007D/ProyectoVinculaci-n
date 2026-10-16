@@ -9,7 +9,7 @@
 .theme-trigger:focus-visible, .theme-option:focus-visible { outline: 3px solid var(--accent-focus); outline-offset: 2px; }
 .theme-user.is-topbar { margin: 0 0 0 auto; padding: 0; border: 0; }
 .theme-user.is-topbar::before { display: none; }
-.theme-user.is-topbar .theme-trigger { width: auto; min-width: 116px; min-height: 40px; padding: 0 12px; border: 1px solid var(--line); color: var(--text); background: var(--surface); }
+.theme-user.is-topbar .theme-trigger { width: auto; min-width: 116px; min-height: 40px; padding: 0 12px; border: 0; color: var(--text); background: transparent; }
 .theme-user.is-topbar .theme-trigger:hover { color: var(--accent); background: var(--accent-soft); }
 .theme-user.is-topbar .theme-trigger > span:not(.theme-trigger-swatch) { color: var(--text); }
 .theme-user.is-topbar .theme-chevron { color: var(--muted); }
