@@ -1,3 +1,14 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand: #0a233f;
+  --color-brand-dark: #17446f;
+  --color-ink: #173843;
+  --color-muted: #70818a;
+  --color-line: #e2e9eb;
+  --color-page: #f4f7f9;
+}
+
 :root {
   --color-primary: #6656a5;
   --color-primary-hover: color-mix(in srgb, var(--color-primary), #000 15%);
@@ -29,27 +40,56 @@
   --bs-body-bg: var(--color-background);
   --bs-border-color: var(--color-border);
   --bs-link-color: var(--color-primary);
-  font-family: var(--font-family);
-  color: var(--color-text);
-  background: var(--color-background);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
 }
 
-* { box-sizing: border-box; }
-body {
-  margin: 0;
-  min-width: 320px;
-  min-height: 100vh;
-  font-family: var(--font-family);
-  font-size: var(--font-size-base);
-  color: var(--color-text);
-  background: var(--color-background);
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    min-width: 320px;
+    min-height: 100vh;
+    margin: 0;
+    background: var(--color-page);
+    color: #172b3b;
+    font-family: "DM Sans", Arial, sans-serif;
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
+
+  button {
+    cursor: pointer;
+  }
+
+  button:focus-visible,
+  input:focus-visible,
+  select:focus-visible {
+    outline: 3px solid #6a91b5;
+    outline-offset: 2px;
+  }
+
+  h1,
+  h2,
+  h3,
+  p {
+    margin-top: 0;
+  }
+
+  ::selection {
+    background: #d7e5f2;
+    color: #0a233f;
+  }
 }
-button, input, select, textarea { font: inherit; }
-button { cursor: pointer; }
-#root { min-height: 100vh; }
 
 .btn-primary {
   --bs-btn-bg: var(--color-primary);
@@ -59,14 +99,17 @@ button { cursor: pointer; }
   --bs-btn-active-bg: var(--color-primary-hover);
   --bs-btn-active-border-color: var(--color-primary-hover);
 }
+
 .form-control:focus, .form-select:focus {
   border-color: var(--color-primary);
   box-shadow: 0 0 0 .2rem color-mix(in srgb, var(--color-primary), transparent 78%);
 }
+
 .form-check-input:checked {
   background-color: var(--color-primary);
   border-color: var(--color-primary);
 }
+
 .form-check-input:focus {
   border-color: var(--color-primary);
   box-shadow: 0 0 0 .2rem color-mix(in srgb, var(--color-primary), transparent 78%);

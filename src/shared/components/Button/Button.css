@@ -1,0 +1,1 @@
+.shared-button { min-height: 42px; padding: 0 16px; border: 1px solid var(--line); border-radius: 22px; font: inherit; font-weight: 600; }.shared-button--primary { border-color: var(--accent); color: white; background: var(--accent); }.shared-button--secondary { color: var(--text); background: white; }
