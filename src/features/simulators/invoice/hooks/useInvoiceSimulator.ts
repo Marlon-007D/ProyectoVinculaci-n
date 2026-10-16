@@ -66,6 +66,15 @@ export function useInvoiceSimulator() {
     if (!product || !product.isAvailable || product.stock < 1) return current
     return { ...current, lines: [...current.lines, { id: crypto.randomUUID(), productId: product.id, description: product.description, quantity: 1, unitPrice: product.unitPrice }] }
   })
+  const setProductQuantity = (productId: string, value: number) => setDraft(current => {
+    const product = products.find(candidate => candidate.id === productId)
+    if (!product || !product.isAvailable) return current
+    const quantity = Math.min(product.stock, Math.max(0, Math.floor(Number(value) || 0)))
+    const line = current.lines.find(candidate => candidate.productId === productId)
+    if (quantity === 0) return line ? { ...current, lines: current.lines.filter(candidate => candidate.id !== line.id) } : current
+    if (line) return { ...current, lines: current.lines.map(candidate => candidate.id === line.id ? { ...candidate, quantity } : candidate) }
+    return { ...current, lines: [...current.lines, { id: crypto.randomUUID(), productId: product.id, description: product.description, quantity, unitPrice: product.unitPrice }] }
+  })
   const removeLine = (id: string) => setDraft(current => ({ ...current, lines: current.lines.filter(line => line.id !== id) }))
   const persist = () => {
     if (!draft.customer.trim()) return false
@@ -103,5 +112,5 @@ export function useInvoiceSimulator() {
     }
   }
 
-  return { draft, totals, historyNotice, savedInvoices, products, updateField, updateLine, addLine, removeLine, persist, load, removeSaved }
+  return { draft, totals, historyNotice, savedInvoices, products, updateField, updateLine, addLine, setProductQuantity, removeLine, persist, load, removeSaved }
 }

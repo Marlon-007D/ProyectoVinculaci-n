@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { BookOpen, ChevronRight, Dumbbell, FlaskConical, GraduationCap, Landmark, Languages, Laptop, Lightbulb, ListChecks, Palette, Sigma } from 'lucide-react'
+import { BookOpen, ChevronRight, Dumbbell, FlaskConical, GraduationCap, Landmark, Languages, Laptop, Lightbulb, Palette, Sigma } from 'lucide-react'
 import { schoolCoursesMock } from '../mocks/schoolCoursesMock'
 import { schoolModulesMock } from '../mocks/schoolModulesMock'
 import { QuestionBank } from '../components/QuestionBank'
@@ -18,14 +18,15 @@ const subjectIcons = {
   informatica: Laptop,
 }
 const noop = () => undefined
-interface Props { selectedModuleId?: string | null; selectedCourseId?: string | null; evaluationActive?: boolean; onSelectCourse?: (courseId: string) => void; onTopicChange?: (topicTitle: string) => void; onEvaluationChange?: (active: boolean) => void }
+interface Props { selectedModuleId?: string | null; selectedCourseId?: string | null; evaluationActive?: boolean; onSelectModule?: (moduleId: string) => void; onSelectCourse?: (courseId: string) => void; onTopicChange?: (topicTitle: string) => void; onEvaluationChange?: (active: boolean) => void }
 
-export function SchoolCoursesPage({ selectedModuleId = null, selectedCourseId = null, evaluationActive = false, onSelectCourse = noop, onTopicChange = noop, onEvaluationChange = noop }: Props) {
+export function SchoolCoursesPage({ selectedModuleId = null, selectedCourseId = null, evaluationActive = false, onSelectModule = noop, onSelectCourse = noop, onTopicChange = noop, onEvaluationChange = noop }: Props) {
   const [selectedTopic, setSelectedTopic] = useState(0)
   useEffect(() => { setSelectedTopic(0); const firstTopic = schoolCoursesMock.find(course => course.id === selectedCourseId)?.units[0]?.title; if (firstTopic) onTopicChange(firstTopic); onEvaluationChange(false) }, [selectedCourseId, onTopicChange, onEvaluationChange])
 
   const selectedCourse = schoolCoursesMock.find(course => course.id === selectedCourseId)
   const selectedModule = schoolModulesMock.find(module => module.id === selectedModuleId)
+  const moduleIcons = [Sigma, Laptop, Languages, FlaskConical, Palette]
   if (selectedCourse) {
     const topic = selectedCourse.units[selectedTopic]
     if (evaluationActive) return <section className="page-content school-courses-page course-evaluation-page">
@@ -66,8 +67,12 @@ export function SchoolCoursesPage({ selectedModuleId = null, selectedCourseId = 
 
   return <section className="page-content school-courses-page">
     <header className="school-courses-header">
-      <div><span className="school-courses-kicker"><GraduationCap size={17} /> Módulos de estudio</span><h1>Selecciona un módulo</h1><p>Elige un módulo desde el aside para ver sus cursos.</p><span className="school-course-total-label">Total de cursos <strong>{schoolCoursesMock.length}</strong></span></div>
+      <div><span className="school-courses-kicker"><GraduationCap size={17} /> Módulos de estudio</span><h1>Selecciona un módulo</h1><p className="desktop-module-help">Elige un módulo desde el aside para ver sus cursos.</p><p className="mobile-module-help">Selecciona un módulo para ver sus cursos.</p><span className="school-course-total-label">Total de cursos <strong>{schoolCoursesMock.length}</strong></span></div>
     </header>
     <div className="school-course-prompt"><BookOpen size={21} /><span>Abre <strong>Cursos → Módulos</strong> en el aside y selecciona un módulo.</span></div>
+    <div className="mobile-school-module-list" aria-label="Módulos de estudio">{schoolModulesMock.map((module, index) => {
+      const Icon = moduleIcons[index % moduleIcons.length]
+      return <button type="button" className="mobile-school-module-card" key={module.id} onClick={() => onSelectModule(module.id)}><span className="mobile-school-module-icon"><Icon size={21} /></span><span className="mobile-school-module-info"><strong>{module.name}</strong><span>{module.description}</span></span><span className="mobile-school-module-count">{module.courseIds.length} {module.courseIds.length === 1 ? 'curso' : 'cursos'}</span><ChevronRight size={18} /></button>
+    })}</div>
   </section>
 }

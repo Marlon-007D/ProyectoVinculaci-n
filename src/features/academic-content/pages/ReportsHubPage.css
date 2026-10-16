@@ -1,0 +1,16 @@
+@media(max-width:620px){
+  .reports-hub-page{width:100%;max-width:100%;min-width:0}
+  .reports-hub-header{margin:0 0 20px}
+  .reports-hub-header > span{display:inline-flex;align-items:center;gap:7px;color:var(--accent);font-size:13px;font-weight:700}
+  .reports-hub-header h1{margin:9px 0 6px;color:#342d39;font:600 clamp(24px,7vw,30px)/1.12 'Outfit',sans-serif}
+  .reports-hub-header p{margin:0;color:var(--muted);font-size:13px;line-height:1.4}
+  .reports-hub-list{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;width:100%}
+  .reports-hub-card{display:grid;grid-template-columns:42px minmax(0,1fr) 18px;align-items:center;gap:12px;width:100%;min-width:0;min-height:82px;padding:12px;border:1px solid var(--line);border-radius:16px;color:var(--text);background:var(--surface);text-align:left}
+  .reports-hub-icon{display:grid;place-items:center;width:40px;height:40px;border-radius:13px;color:var(--accent);background:var(--accent-soft)}
+  .reports-hub-info{display:grid;gap:4px;min-width:0}
+  .reports-hub-info strong,.reports-hub-info > span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .reports-hub-info strong{color:#342d39;font-size:14px;line-height:1.25}
+  .reports-hub-info > span{color:var(--muted);font-size:11px;line-height:1.35}
+  .reports-hub-card > svg{color:var(--accent)}
+  .reports-hub-card:focus-visible{outline:2px solid var(--accent-focus);outline-offset:2px}
+}

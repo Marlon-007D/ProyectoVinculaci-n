@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import type { CSSProperties } from 'react'
 import { Check, Circle, CircleHelp, Clock3, ListChecks, Search } from 'lucide-react'
 import { getSchoolQuestionSet } from '../mocks/schoolQuestionMock'
 import './QuestionBank.css'
@@ -95,7 +96,7 @@ export function QuestionBank({ courseId, courseName, topicTitle, mode, onEnter =
   return <section className="course-evaluations-panel" aria-label={`Evaluación de ${topicTitle}`}>
     <div className="evaluation-layout">
       <aside className="evaluation-rail" aria-label="Progreso de la evaluación">
-        <div className={`evaluation-timer${secondsLeft <= 60 ? ' is-low' : ''}`}>
+        <div className={`evaluation-timer${secondsLeft <= 60 ? ' is-low' : ''}`} style={{ '--timer-progress': `${(secondsLeft / LIMIT_SECONDS) * 360}deg` } as CSSProperties}>
           <div className="evaluation-timer-label"><Clock3 size={16} /><span>{timeLabel}</span></div>
           <div className="evaluation-timer-track" role="progressbar" aria-label="Tiempo restante" aria-valuemin={0} aria-valuemax={LIMIT_SECONDS} aria-valuenow={secondsLeft}><span style={{ width: `${(secondsLeft / LIMIT_SECONDS) * 100}%` }} /></div>
         </div>

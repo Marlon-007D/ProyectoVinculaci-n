@@ -45,19 +45,19 @@ export function InvoiceSimulatorPage({ activeSection, onSectionChange, onInvoice
     }
   }
   const steps = [
-    { id: 1, label: 'Productos' },
-    { id: 2, label: 'Datos de emisión' },
-    { id: 3, label: 'Total factura' },
+    { id: 1, label: 'Productos', shortLabel: 'Productos' },
+    { id: 2, label: 'Datos de emisión', shortLabel: 'Emisión' },
+    { id: 3, label: 'Total factura', shortLabel: 'Total' },
   ] as const
   return <section className="page-content invoice-page" ref={pageRef}>
     <div className="workspace workspace-single">
       {activeSection === 'emission' && <div className="invoice-emission-panel" id="invoice-panel-emission" role="tabpanel" aria-labelledby="invoice-tab-emission">
         <nav className="invoice-stepper" aria-label="Pasos de emisión de factura">
           <ol>{steps.map(step => <li key={step.id} className={activeStep === step.id ? 'is-current' : activeStep > step.id ? 'is-complete' : ''} aria-current={activeStep === step.id ? 'step' : undefined}>
-            <button type="button" onClick={() => step.id < activeStep && setActiveStep(step.id)} disabled={step.id > activeStep} aria-label={`Paso ${step.id}: ${step.label}`}><span className="invoice-step-number">{activeStep > step.id ? <Check size={14} aria-hidden="true" /> : step.id}</span><span className="invoice-step-name">{step.label}</span></button>
+            <button type="button" onClick={() => step.id < activeStep && setActiveStep(step.id)} disabled={step.id > activeStep} aria-label={`Paso ${step.id}: ${step.label}`}><span className="invoice-step-number">{activeStep > step.id ? <Check size={14} aria-hidden="true" /> : step.id}</span><span className="invoice-step-name">{step.label}</span><span className="invoice-step-name-short" aria-hidden="true">{step.shortLabel}</span></button>
           </li>)}</ol>
         </nav>
-        {activeStep < 3 && <div className="invoice-form-column"><InvoiceForm activeStep={activeStep as 1 | 2} draft={invoice.draft} products={invoice.products} onField={invoice.updateField} onUpdate={invoice.updateLine} onAdd={invoice.addLine} onRemove={invoice.removeLine} onNext={() => setActiveStep(current => Math.min(3, current + 1) as 1 | 2 | 3)} onPrevious={() => setActiveStep(1)} />
+        {activeStep < 3 && <div className="invoice-form-column"><InvoiceForm activeStep={activeStep as 1 | 2} draft={invoice.draft} products={invoice.products} onField={invoice.updateField} onUpdate={invoice.updateLine} onAdd={invoice.addLine} onSetQuantity={invoice.setProductQuantity} onRemove={invoice.removeLine} onNext={() => setActiveStep(current => Math.min(3, current + 1) as 1 | 2 | 3)} onPrevious={() => setActiveStep(1)} />
           {editToast && <div className="edit-toast" role="status">Factura cargada para editar.</div>}
         </div>}
         {activeStep === 3 && <div className="invoice-total-step"><InvoiceResult totals={invoice.totals} />

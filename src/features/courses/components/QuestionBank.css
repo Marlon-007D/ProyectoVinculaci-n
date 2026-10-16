@@ -200,3 +200,18 @@
 .matching-image-choice > i,.matching-answer-choice > i { width:13px; height:13px; border-width:1.5px; border-color:color-mix(in srgb,var(--accent) 55%,#fff); }
 .matching-image-choice > i { right:-7px; }.matching-answer-choice > i { left:-7px; }
 .matching-image-choice.is-selected > i { border-color:var(--accent); background:var(--accent); }
+@media(max-width:620px){
+  .course-evaluation-page .evaluation-layout{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"timer status" "question question" "questions questions" "navigation navigation";align-items:start;gap:14px 12px}
+  .course-evaluation-page .evaluation-rail{display:contents}
+  .course-evaluation-page .evaluation-timer{position:relative;grid-area:timer;display:grid;place-items:center;width:64px;height:64px;padding:4px;border-radius:50%;background:conic-gradient(var(--timer-color,var(--accent)) var(--timer-progress),color-mix(in srgb,var(--accent) 16%,transparent) 0)}
+  .course-evaluation-page .evaluation-timer::before{position:absolute;inset:4px;border-radius:50%;background:var(--canvas);content:''}
+  .course-evaluation-page .evaluation-timer.is-low{--timer-color:#9b4252;background:conic-gradient(var(--timer-color) var(--timer-progress),color-mix(in srgb,#9b4252 16%,transparent) 0)}
+  .course-evaluation-page .evaluation-timer-label{position:relative;z-index:1;display:block;color:var(--timer-color,var(--accent));font-size:12px;line-height:1;font-variant-numeric:tabular-nums}
+  .course-evaluation-page .evaluation-timer-label svg,.course-evaluation-page .evaluation-timer-track{display:none}
+  .course-evaluation-page .evaluation-rail > p{grid-area:status;align-self:center;justify-self:end;padding:0;white-space:nowrap;font-size:12px;line-height:16px}
+  .course-evaluation-page .evaluation-question-area{grid-area:question}
+  .course-evaluation-page .evaluation-question-list{grid-area:questions;grid-template-columns:repeat(5,minmax(0,1fr));gap:7px;margin-top:2px}
+  .course-evaluation-page .evaluation-question-list button{min-height:38px}
+  .course-evaluation-page .evaluation-rail-navigation{grid-area:navigation;justify-self:center;width:min(100%,300px);margin-top:-2px}
+  .course-evaluation-page .evaluation-rail-navigation .evaluation-button{min-height:46px;font-size:13px}
+}

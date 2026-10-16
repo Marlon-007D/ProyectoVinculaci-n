@@ -65,24 +65,38 @@ export function Sidebar({ active, activeModuleId, collapsed, theme, onThemeChang
     {openGroup === group && <div className="nav-group-items">{children}</div>}
   </div>
 
-  return <aside className={collapsed ? 'sidebar is-collapsed' : 'sidebar'} aria-label="Navegación principal">
+  const selectRoute = (route: AppRoute) => {
+    onSelect(route)
+  }
+  const openCoursesPage = () => {
+    onSelect('school-courses')
+  }
+  const activeMobileTab = active === 'school-courses' ? 'courses' : (['simulator-hub', 'invoice', 'converter', 'interest'] as AppRoute[]).includes(active) ? 'simulators' : (['reports-hub', 'news', 'events', 'honors', 'academic-periods'] as AppRoute[]).includes(active) ? 'reports' : null
+  return <>
+  <aside className={collapsed ? 'sidebar is-collapsed' : 'sidebar'} aria-label="Navegación principal">
     <div className="brand">{!collapsed && <><div className="brand-mark"><ReceiptText size={21} /></div><span>SimulaEdu</span></>}<button className="icon-button collapse-button" onClick={onToggle} aria-label={collapsed ? 'Expandir menú' : 'Contraer menú'}>{collapsed ? <PanelLeftOpen size={20} /> : <PanelLeftClose size={20} />}</button></div>
     <nav className="sidebar-navigation" aria-label="Secciones">
       <div className="nav-item future-item"><Home size={19} />{!collapsed && <span>Inicio</span>}</div>
       {renderNavGroup('courses', 'Cursos', BookOpen, <>
         <div className={`nav-group nested-nav-group${openSubgroup === 'school-courses' ? ' is-open' : ''}`}>
           <button className="nav-group-toggle" type="button" aria-expanded={openSubgroup === 'school-courses'} onClick={() => toggleSubgroup('school-courses')}><GraduationCap size={19} />{!collapsed && <><span>Módulos</span><ChevronDown className="nav-group-chevron" size={16} /></>}</button>
-          {openSubgroup === 'school-courses' && <div className="nav-group-items sidebar-course-list">{schoolModulesMock.map(module => <button key={module.id} data-tooltip={module.name} className={activeModuleId === module.id ? 'nav-item active' : 'nav-item'} onClick={() => onSelectModule(module.id)} aria-label={module.name}><BookOpen size={17} />{!collapsed && <span>{module.name}</span>}</button>)}</div>}
+      {openSubgroup === 'school-courses' && <div className="nav-group-items sidebar-course-list">{schoolModulesMock.map(module => <button key={module.id} data-tooltip={module.name} className={activeModuleId === module.id ? 'nav-item active' : 'nav-item'} onClick={() => onSelectModule(module.id)} aria-label={module.name}><BookOpen size={17} />{!collapsed && <span>{module.name}</span>}</button>)}</div>}
         </div>
         <div className={`nav-group nested-nav-group${openSubgroup === 'simulators' ? ' is-open' : ''}`}>
         <button className="nav-group-toggle" type="button" aria-expanded={openSubgroup === 'simulators'} onClick={() => toggleSubgroup('simulators')}><Calculator size={19} />{!collapsed && <><span>Simuladores</span><ChevronDown className="nav-group-chevron" size={16} /></>}</button>
-        {openSubgroup === 'simulators' && <div className="nav-group-items">{items.map(({ id, label, Icon: ItemIcon }) => <button key={id} data-tooltip={label} className={active === id ? 'nav-item active' : 'nav-item'} onClick={() => onSelect(id)} aria-label={label}><ItemIcon size={19} />{!collapsed && <span>{label}</span>}</button>)}</div>}
+        {openSubgroup === 'simulators' && <div className="nav-group-items">{items.map(({ id, label, Icon: ItemIcon }) => <button key={id} data-tooltip={label} className={active === id ? 'nav-item active' : 'nav-item'} onClick={() => selectRoute(id)} aria-label={label}><ItemIcon size={19} />{!collapsed && <span>{label}</span>}</button>)}</div>}
       </div></>)}
       {renderNavGroup('reports', 'Reportes', BarChart3, <div className={`nav-group nested-nav-group${openSubgroup === 'publications' ? ' is-open' : ''}`}>
         <button className="nav-group-toggle" type="button" aria-expanded={openSubgroup === 'publications'} onClick={() => toggleSubgroup('publications')}><Newspaper size={19} />{!collapsed && <><span>Publicaciones</span><ChevronDown className="nav-group-chevron" size={16} /></>}</button>
-        {openSubgroup === 'publications' && <div className="nav-group-items publication-items">{publications.map(({ id, label, Icon: ItemIcon }) => <button key={id} data-tooltip={label} className={active === id ? 'nav-item active' : 'nav-item'} onClick={() => onSelect(id)} aria-label={label}><ItemIcon size={19} />{!collapsed && <span>{label}</span>}</button>)}</div>}
+        {openSubgroup === 'publications' && <div className="nav-group-items publication-items">{publications.map(({ id, label, Icon: ItemIcon }) => <button key={id} data-tooltip={label} className={active === id ? 'nav-item active' : 'nav-item'} onClick={() => selectRoute(id)} aria-label={label}><ItemIcon size={19} />{!collapsed && <span>{label}</span>}</button>)}</div>}
       </div>)}
     </nav>
     <ThemeUser theme={theme} collapsed={collapsed} open={themeOpen} onChange={onThemeChange} onToggle={toggleTheme} />
   </aside>
+  <nav className="mobile-bottom-navigation" aria-label="Navegación principal móvil">
+    <button type="button" className={activeMobileTab === 'courses' ? 'is-active' : ''} onClick={openCoursesPage}><BookOpen size={18} /><span>Cursos</span></button>
+    <button type="button" className={activeMobileTab === 'simulators' ? 'is-active' : ''} onClick={() => selectRoute('simulator-hub')}><Calculator size={18} /><span>Simuladores</span></button>
+    <button type="button" className={activeMobileTab === 'reports' ? 'is-active' : ''} onClick={() => selectRoute('reports-hub')}><BarChart3 size={18} /><span>Reportes</span></button>
+  </nav>
+  </>
 }

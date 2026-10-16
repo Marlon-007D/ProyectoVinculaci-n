@@ -14,4 +14,4 @@
 .invoice-navbar-tab[aria-selected="true"]::after { position:absolute; right:0; bottom:0; left:0; height:3px; border-radius:3px 3px 0 0; background:var(--accent); content:''; }
 .invoice-navbar-tab:hover { color:var(--accent); }
 .invoice-navbar-tab:focus-visible { border-radius:5px; outline:3px solid var(--accent-focus); outline-offset:-3px; }
-@media(max-width:620px){.topbar{min-height:52px;padding:0 14px}.tenant-chip{gap:6px;font-size:12px}.tenant-icon{width:18px;height:18px}.student-chip p{display:none}}
+@media(max-width:620px){.topbar{min-height:52px;padding:0 12px}.topbar-breadcrumbs{display:none}.tenant-chip{gap:6px;font-size:12px}.tenant-icon{width:18px;height:18px}.student-chip p{display:none}.topbar:has(.invoice-navbar-tabs){gap:0;padding:0 12px}.invoice-navbar-tabs{flex:1 1 auto;width:100%;justify-content:stretch;gap:0}.invoice-navbar-tab{flex:1;justify-content:center;gap:6px;padding:0 8px;font-size:12px}.invoice-navbar-tab svg{width:16px;height:16px}.topbar:has(.invoice-navbar-tabs) .student-chip{display:none}}

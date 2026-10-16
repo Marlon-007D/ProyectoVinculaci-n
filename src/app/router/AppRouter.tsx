@@ -6,6 +6,7 @@ import { AppHeader } from '../../shared/components/AppHeader/AppHeader'
 import { InvoiceSimulatorPage } from '../../features/simulators/invoice/pages/InvoiceSimulatorPage'
 import { ConverterPage } from '../../features/simulators/converter/pages/ConverterPage'
 import { InterestSimulatorPage } from '../../features/simulators/interest/pages/InterestSimulatorPage'
+import { SimulatorHubPage } from '../../features/simulators/pages/SimulatorHubPage'
 import { NewsPage } from '../../features/news/pages/NewsPage'
 import { EventsPage } from '../../features/events/pages/EventsPage'
 import { HonorsPage } from '../../features/honors/pages/HonorsPage'
@@ -19,12 +20,13 @@ import { ConverterPageSkeleton } from '../../features/simulators/converter/pages
 import { InterestPageSkeleton } from '../../features/simulators/interest/pages/InterestPageSkeleton'
 import { AcademicContentSkeleton } from '../../features/academic-content/components/AcademicContentSkeleton'
 import { AcademicPostPreviewPage } from '../../features/academic-content/pages/AcademicPostPreviewPage'
+import { ReportsHubPage } from '../../features/academic-content/pages/ReportsHubPage'
 import type { AcademicContentEntry } from '../../features/academic-content/types/academicContent.types'
 import type { ThemeName } from '../../features/themeUser/types/themeUser.types'
 import { getSavedInvoices } from '../../features/simulators/invoice/services/invoiceStorageService'
 
 export type SimulatorRoute = 'invoice' | 'converter' | 'interest'
-export type AppRoute = SimulatorRoute | 'school-courses' | 'news' | 'events' | 'honors' | 'academic-periods'
+export type AppRoute = SimulatorRoute | 'simulator-hub' | 'reports-hub' | 'school-courses' | 'news' | 'events' | 'honors' | 'academic-periods'
 
 interface Props { collapsed: boolean; theme: ThemeName; onThemeChange: (theme: ThemeName, origin: { x: number; y: number }) => void; onToggleSidebar: () => void }
 
@@ -32,6 +34,8 @@ const pages = {
   invoice: { Component: InvoiceSimulatorPage },
   converter: { Component: ConverterPage },
   interest: { Component: InterestSimulatorPage },
+  'simulator-hub': { Component: SimulatorHubPage },
+  'reports-hub': { Component: ReportsHubPage },
   'school-courses': { Component: SchoolCoursesPage },
   news: { Component: NewsPage },
   events: { Component: EventsPage },
@@ -41,6 +45,8 @@ const pages = {
 
 const routeLabels: Record<AppRoute, string> = {
   invoice: 'Facturación electrónica', converter: 'Unidades y monedas', interest: 'Interés financiero',
+  'simulator-hub': 'Simuladores',
+  'reports-hub': 'Reportes',
   'school-courses': 'Cursos de colegio',
   news: 'Noticias', events: 'Eventos', honors: 'Cuadro de honor', 'academic-periods': 'Período académico',
 }
@@ -49,6 +55,8 @@ const routeSkeletons: Record<AppRoute, () => ReactNode> = {
   invoice: InvoicePageSkeleton,
   converter: ConverterPageSkeleton,
   interest: InterestPageSkeleton,
+  'simulator-hub': () => <SimulatorHubPage />,
+  'reports-hub': () => <ReportsHubPage />,
   'school-courses': () => <SchoolCoursesPage />,
   news: () => <AcademicContentSkeleton kind="news" title="Noticias" />,
   events: () => <AcademicContentSkeleton kind="event" title="Eventos" />,
@@ -114,9 +122,9 @@ export function AppRouter({ collapsed, theme, onThemeChange, onToggleSidebar }: 
   </nav> : undefined
   return <>
     <AppHeader breadcrumbs={breadcrumbs} navigation={invoiceNavigation} />
-    <Sidebar active={displayedRoute} activeModuleId={selectedModuleId} collapsed={collapsed} theme={theme} onThemeChange={onThemeChange} onSelect={navigateTo} onSelectModule={selectModule} onToggle={onToggleSidebar} />
+    <Sidebar active={displayedRoute} activeModuleId={selectedModuleId} collapsed={collapsed} theme={theme} onThemeChange={onThemeChange} onSelect={nextRoute => nextRoute === 'school-courses' ? openCourses() : navigateTo(nextRoute)} onSelectModule={selectModule} onToggle={onToggleSidebar} />
     <main className="main">
-      {loadingRoute ? <Skeleton /> : previewEntry ? <AcademicPostPreviewPage entry={previewEntry} /> : displayedRoute === 'school-courses' ? <SchoolCoursesPage selectedModuleId={selectedModuleId} selectedCourseId={selectedCourseId} evaluationActive={evaluationActive} onSelectCourse={selectCourse} onTopicChange={setCourseTopicName} onEvaluationChange={setEvaluationActive} /> : displayedRoute === 'invoice' ? <InvoiceSimulatorPage activeSection={invoiceSection} onSectionChange={setInvoiceSection} onInvoiceCountChange={setInvoiceCount} /> : <Component onPreview={showPostPreview} />}
+      {loadingRoute ? <Skeleton /> : previewEntry ? <AcademicPostPreviewPage entry={previewEntry} /> : displayedRoute === 'school-courses' ? <SchoolCoursesPage selectedModuleId={selectedModuleId} selectedCourseId={selectedCourseId} evaluationActive={evaluationActive} onSelectModule={selectModule} onSelectCourse={selectCourse} onTopicChange={setCourseTopicName} onEvaluationChange={setEvaluationActive} /> : displayedRoute === 'simulator-hub' ? <SimulatorHubPage onSelect={navigateTo} /> : displayedRoute === 'reports-hub' ? <ReportsHubPage onSelect={navigateTo} /> : displayedRoute === 'invoice' ? <InvoiceSimulatorPage activeSection={invoiceSection} onSectionChange={setInvoiceSection} onInvoiceCountChange={setInvoiceCount} /> : <Component onPreview={showPostPreview} />}
     </main>
   </>
 }

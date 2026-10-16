@@ -66,3 +66,22 @@
 .course-topic-course-info p { margin:0; color:#6d6473; font-size:13px; line-height:1.5; }
 .course-detail-page .course-evaluation-topic { margin-top:8px; border-top:1px solid var(--line); border-radius:0 0 11px 11px; padding-top:14px; }
 @media(max-width:620px){.course-detail-page .course-topics-section .course-topic-layout{grid-template-columns:1fr;grid-template-areas:"nav" "content"}}
+.mobile-module-help,.mobile-school-module-list{display:none}
+@media(max-width:620px){
+  .school-courses-page{width:100%;max-width:100%;min-width:0;overflow-wrap:anywhere}
+  .school-courses-page:not(.course-detail-page):not(.course-evaluation-page) .school-courses-header{width:100%;min-width:0;margin-bottom:18px}
+  .school-courses-header > div{width:100%;min-width:0}
+  .school-courses-header h1{max-width:100%;font-size:clamp(24px,7vw,30px);line-height:1.12}
+  .school-courses-page:not(.course-detail-page):not(.course-evaluation-page) .school-course-total-label,.school-courses-page:not(.course-detail-page):not(.course-evaluation-page) .school-course-prompt,.desktop-module-help{display:none}
+  .mobile-module-help{display:block;margin-top:7px!important;color:var(--muted)!important;font-size:13px!important;line-height:1.4}
+  .mobile-school-module-list{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;width:100%;min-width:0}
+  .mobile-school-module-card{display:grid;grid-template-columns:42px minmax(0,1fr) auto 18px;align-items:center;gap:10px;width:100%;max-width:100%;min-width:0;min-height:82px;padding:12px;border:1px solid var(--line);border-radius:16px;color:var(--text);background:var(--surface);text-align:left}
+  .mobile-school-module-icon{display:grid;place-items:center;width:40px;height:40px;border-radius:13px;color:var(--accent);background:var(--accent-soft)}
+  .mobile-school-module-info{display:grid;gap:4px;min-width:0}
+  .mobile-school-module-info strong{overflow:hidden;color:#342d39;font-size:14px;line-height:1.25;text-overflow:ellipsis;white-space:nowrap}
+  .mobile-school-module-info > span{overflow:hidden;color:var(--muted);font-size:11px;line-height:1.35;text-overflow:ellipsis;white-space:nowrap}
+  .mobile-school-module-count{color:var(--accent);font-size:10px;font-weight:700;white-space:nowrap}
+  .mobile-school-module-card > svg{color:var(--accent)}
+  .mobile-school-module-card:focus-visible{outline:2px solid var(--accent-focus);outline-offset:2px}
+}
+@media(max-width:360px){.mobile-school-module-card{grid-template-columns:38px minmax(0,1fr) auto 16px;gap:7px;padding:10px}.mobile-school-module-info strong{font-size:13px}.mobile-school-module-count{font-size:9px}}
