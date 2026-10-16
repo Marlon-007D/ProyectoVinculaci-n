@@ -1,18 +1,11 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import { supabase } from './supabaseClient';
+import { getUserInstitutions } from './institutionService';
 import { useAuth } from './AuthContext';
 
 export const INSTITUTION_MODULE_NAMES = ['inicio', 'projects', 'dece', 'simuladores', 'portal'] as const;
 export type InstitutionModuleName = (typeof INSTITUTION_MODULE_NAMES)[number];
 export type InstitutionModulePermissions = Record<InstitutionModuleName, boolean>;
 
-const noModulePermissions = (): InstitutionModulePermissions => ({
-  inicio: false,
-  projects: false,
-  dece: false,
-  simuladores: false,
-  portal: false,
-});
 
 export interface Institution {
   institution_id: string;
@@ -50,95 +43,12 @@ export function TenantProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
 
     const loadInstitutions = async () => {
-      const attachEnabledModules = async (items: Institution[]) => {
-        const { data, error } = await supabase.rpc('get_accessible_module_settings');
-        if (error || !Array.isArray(data)) {
-          return {
-            institutions: items.map((institution) => ({
-              ...institution,
-              enabled_modules: [],
-              module_permissions: noModulePermissions(),
-              projects_enabled: false,
-            })),
-            error: 'No se pudieron verificar los permisos de módulos. Aplica la migración de módulos por institución e inténtalo de nuevo.',
-          };
-        }
-
-        const institutions = items.map((institution) => {
-          const module_permissions = noModulePermissions();
-          data.forEach((setting: { institution_id: string; module_name: string; is_enabled: boolean }) => {
-            if (setting.institution_id === institution.institution_id
-              && INSTITUTION_MODULE_NAMES.includes(setting.module_name as InstitutionModuleName)) {
-              module_permissions[setting.module_name as InstitutionModuleName] = setting.is_enabled;
-            }
-          });
-          const enabled_modules = INSTITUTION_MODULE_NAMES.filter((moduleName) => module_permissions[moduleName]);
-          return {
-            ...institution,
-            module_permissions,
-            enabled_modules,
-            projects_enabled: module_permissions.projects,
-          };
-        });
-        return { institutions, error: null };
-      };
-
-      // La RPC entrega todas las instituciones al superadmin global y solo las
-      // membresías propias al resto de administradores.
       try {
-        const { data, error } = await supabase.rpc('project_institutions');
-        if (!error && Array.isArray(data) && data.length > 0) {
-          const result = await attachEnabledModules(data as Institution[]);
-          if (!cancelled) setState({ owner: user.id, institutions: result.institutions, error: null, modulePermissionError: result.error });
-          return;
-        }
-      } catch {
-        // Si la RPC falla, no se infieren instituciones desde la tabla completa.
-      }
-
-      try {
-        if (role === 'super_admin') {
-          const { data, error } = await supabase
-            .from('institutions')
-            .select('institution_id, name, slug, is_active')
-            .eq('is_active', true);
-          if (!error && data) {
-            const institutions = data.map((item) => ({ ...item, role, projects_enabled: true })) as Institution[];
-            const result = await attachEnabledModules(institutions);
-            if (!cancelled) setState({ owner: user.id, institutions: result.institutions, error: null, modulePermissionError: result.error });
-            return;
-          }
-        } else {
-          const { data, error } = await supabase
-            .from('memberships')
-            .select('institution_id, institutions!fk_memberships_institution(institution_id, name, slug, is_active), roles!fk_memberships_role(name)')
-            .eq('profile_id', user.id);
-
-          if (!error && data) {
-            const institutions: Institution[] = data.flatMap((membership: any) => {
-              const institution = membership.institutions;
-              const assignedRole = membership.roles?.name;
-              if (!institution?.is_active || !assignedRole) return [];
-              return [{ ...institution, role: assignedRole, projects_enabled: true } as Institution];
-            });
-            if (institutions.length > 0) {
-              const result = await attachEnabledModules(institutions);
-              if (!cancelled) setState({ owner: user.id, institutions: result.institutions, error: null, modulePermissionError: result.error });
-              return;
-            }
-          }
-        }
-      } catch {
-        // Reportar el error de asignación debajo.
-      }
-
-      if (!cancelled) {
-        setState({
-          owner: user.id,
-          institutions: [],
-          error: 'No se pudieron cargar las instituciones asignadas a esta cuenta. Verifica la función project_institutions y sus permisos en Supabase.',
-          modulePermissionError: null,
-        });
+        const institutions = await getUserInstitutions(user.id);
+        if (!cancelled) setState({ owner: user.id, institutions, error: null, modulePermissionError: null });
+      } catch (cause) {
+        if (!cancelled) setState({ owner: user.id, institutions: [], modulePermissionError: null, error:
+          cause instanceof Error?cause.message:'No se pudieron consultar tus instituciones y permisos con esta sesión. Comprueba tu acceso e inténtalo de nuevo.' });
       }
     };
 
