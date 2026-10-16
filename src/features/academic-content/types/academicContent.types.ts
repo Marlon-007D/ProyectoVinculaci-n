@@ -1,5 +1,6 @@
 export type AcademicContentKind = 'news' | 'event' | 'honor' | 'period'
 export type AcademicPublicationStatus = 'draft' | 'published'
+export type HonorCategory = 'official' | 'institutional'
 
 export interface AcademicContentEntry {
   id: string
@@ -14,6 +15,12 @@ export interface AcademicContentEntry {
   studentName: string
   grade: string
   distinction: string
+  honorCategory?: HonorCategory
+  officialOrder?: number
+  schedule?: string
+  modality?: string
+  campus?: string
+  isDemo?: boolean
   startDate: string
   endDate: string
   isCurrent: boolean

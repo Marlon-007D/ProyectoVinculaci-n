@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import type { CSSProperties } from 'react'
-import { Check, Circle, CircleHelp, Clock3, ListChecks, Search } from 'lucide-react'
+import { BookOpen, Check, Circle, CircleHelp, Clock3, ListChecks, Search } from 'lucide-react'
 import { getSchoolQuestionSet } from '../mocks/schoolQuestionMock'
+import { PenguinMascot } from './PenguinMascot'
 import './QuestionBank.css'
 
 interface Props { courseId: string; courseName: string; topicTitle: string; mode: 'entry' | 'assessment'; onEnter?: () => void; onExit?: () => void }
@@ -10,6 +11,40 @@ const QUESTION_COUNT = 10
 const POINTS_PER_QUESTION = 20 / QUESTION_COUNT
 type QuestionKind = 'multiple-choice' | 'multiple-select' | 'matching' | 'word-search'
 const questionKinds: QuestionKind[] = ['multiple-choice', 'matching', 'word-search', 'multiple-select', 'multiple-choice', 'word-search', 'multiple-select', 'multiple-choice', 'multiple-select', 'multiple-select']
+
+function getEncouragements(courseName: string, topicTitle: string) {
+  const subject = `${courseName} ${topicTitle}`.toLocaleLowerCase()
+  if (subject.includes('matem')) return [
+    { title: '¡A calcular!', detail: `En ${topicTitle}, cada razonamiento suma.` },
+    { title: '¡Vas muy bien!', detail: 'Resuelve una idea a la vez.' },
+    { title: '¡Sigue pensando!', detail: 'Tus estrategias te acercan a la respuesta.' },
+  ]
+  if (subject.includes('lengua') || subject.includes('literatura')) return [
+    { title: '¡Sigue leyendo!', detail: 'Cada palabra te ayuda a comprender mejor.' },
+    { title: '¡Muy bien!', detail: 'Tus ideas tienen mucho que decir.' },
+    { title: '¡Continúa!', detail: 'Leer con atención abre nuevas respuestas.' },
+  ]
+  if (subject.includes('ciencia')) return [
+    { title: '¡A explorar!', detail: 'Observa, piensa y descubre la respuesta.' },
+    { title: '¡Qué curioso!', detail: 'Cada pregunta te enseña algo nuevo.' },
+    { title: '¡Sigue investigando!', detail: 'Tu curiosidad te lleva más lejos.' },
+  ]
+  if (subject.includes('social')) return [
+    { title: '¡Conecta ideas!', detail: 'Entender nuestro entorno empieza con una pregunta.' },
+    { title: '¡Buen análisis!', detail: 'Cada respuesta te acerca a comprender la sociedad.' },
+    { title: '¡Sigue aprendiendo!', detail: 'Tu mirada ayuda a entender el mundo.' },
+  ]
+  if (subject.includes('art')) return [
+    { title: '¡Crea y explora!', detail: 'Cada idea también puede ser una obra.' },
+    { title: '¡Muy creativo!', detail: 'Tu mirada hace único cada detalle.' },
+    { title: '¡Sigue expresándote!', detail: 'El arte comienza con tu imaginación.' },
+  ]
+  return [
+    { title: '¡Tú puedes!', detail: `Cada paso en ${topicTitle} cuenta.` },
+    { title: '¡Vas muy bien!', detail: 'Mantén la curiosidad y sigue aprendiendo.' },
+    { title: '¡Continúa!', detail: 'Una pregunta a la vez, vas avanzando.' },
+  ]
+}
 
 function occurrenceOfKind(index: number, kind: QuestionKind): number {
   return questionKinds.slice(0, index).filter(questionKind => questionKind === kind).length
@@ -43,6 +78,9 @@ export function QuestionBank({ courseId, courseName, topicTitle, mode, onEnter =
   const [foundWordPaths, setFoundWordPaths] = useState<Record<number, Record<string, number[]>>>({})
   const [wordSelections, setWordSelections] = useState<Record<number, number[]>>({})
   const currentKind = questionKinds[questionIndex]
+  const encouragements = getEncouragements(courseName, topicTitle)
+  const encouragement = encouragements[questionIndex % encouragements.length]
+  const penguinExpressions = ['happy', 'wink', 'excited', 'curious'] as const
   const currentMultipleChoice = questions.multipleChoiceVersions[occurrenceOfKind(questionIndex, 'multiple-choice')]
   const currentMultipleSelect = questions.multipleSelectVersions[occurrenceOfKind(questionIndex, 'multiple-select')]
   const currentWordSearch = questions.wordSearchVersions[occurrenceOfKind(questionIndex, 'word-search')]
@@ -96,24 +134,36 @@ export function QuestionBank({ courseId, courseName, topicTitle, mode, onEnter =
   return <section className="course-evaluations-panel" aria-label={`Evaluación de ${topicTitle}`}>
     <div className="evaluation-layout">
       <aside className="evaluation-rail" aria-label="Progreso de la evaluación">
+        <div className="question-encouragement" role="status">
+          <PenguinMascot expression={penguinExpressions[questionIndex % penguinExpressions.length]} />
+          <span key={questionIndex} className="question-encouragement-copy"><strong><BookOpen size={16} aria-hidden="true" /> {encouragement.title}</strong><span>{encouragement.detail}</span></span>
+        </div>
         <div className={`evaluation-timer${secondsLeft <= 60 ? ' is-low' : ''}`} style={{ '--timer-progress': `${(secondsLeft / LIMIT_SECONDS) * 360}deg` } as CSSProperties}>
           <div className="evaluation-timer-label"><Clock3 size={16} /><span>{timeLabel}</span></div>
           <div className="evaluation-timer-track" role="progressbar" aria-label="Tiempo restante" aria-valuemin={0} aria-valuemax={LIMIT_SECONDS} aria-valuenow={secondsLeft}><span style={{ width: `${(secondsLeft / LIMIT_SECONDS) * 100}%` }} /></div>
         </div>
         <p>Pregunta {questionIndex + 1} de {QUESTION_COUNT}</p>
-        <nav className="evaluation-question-list" aria-label="Ir a una pregunta">{questionKinds.map((_, index) => <button type="button" key={index} className={questionIndex === index ? 'current' : ''} onClick={() => { setQuestionIndex(index); setSelectedImage(null) }} aria-current={questionIndex === index ? 'step' : undefined} aria-label={`Ir a la pregunta ${index + 1}`}><span>{String(index + 1).padStart(2, '0')}</span></button>)}</nav>
+        <nav className="evaluation-question-list" aria-label="Ir a una pregunta">{questionKinds.map((kind, index) => {
+          const answered = kind === 'multiple-choice'
+            ? answers[index] !== undefined
+            : kind === 'multiple-select'
+              ? (multiAnswers[index]?.length ?? 0) > 0
+              : kind === 'matching'
+                ? Object.keys(connectionsByQuestion[index] ?? {}).length === questions.matching.pairs.length
+                : (foundWords[index]?.length ?? 0) > 0
+          return <button type="button" key={index} className={`${questionIndex === index ? 'current ' : ''}${answered ? 'answered' : ''}`} onClick={() => { setQuestionIndex(index); setSelectedImage(null) }} aria-current={questionIndex === index ? 'step' : undefined} aria-label={`Pregunta ${index + 1}${answered ? ', respondida' : ''}`}><span>{String(index + 1).padStart(2, '0')}</span>{answered && <Check size={14} aria-hidden="true" />}</button>
+        })}</nav>
         <div className="evaluation-navigation evaluation-rail-navigation">
           <button className="evaluation-button secondary" type="button" disabled={questionIndex === 0} onClick={() => { setQuestionIndex(index => Math.max(0, index - 1)); setSelectedImage(null) }}>Anterior</button>
           <button className="evaluation-button" type="button" onClick={() => { if (questionIndex === QUESTION_COUNT - 1) setFinished(true); else { setQuestionIndex(index => index + 1); setSelectedImage(null) } }}>{questionIndex === QUESTION_COUNT - 1 ? 'Finalizar' : 'Siguiente'}</button>
         </div>
       </aside>
       <div className="evaluation-question-area">
-        <div className="evaluation-toolbar"><strong>Pregunta {questionIndex + 1}</strong><span>{currentKind === 'multiple-choice' ? 'Una respuesta' : currentKind === 'multiple-select' ? 'Varias respuestas' : currentKind === 'matching' ? 'Relacionar con fotografías' : 'Sopa de letras'}</span></div>
         <article className="question-card question-activity-card">
           <h3>{prompt}</h3>
           {currentKind === 'multiple-choice' && <div className="question-options">{currentMultipleChoice.options.map((option, index) => { const selected = answers[questionIndex] === index; return <button type="button" key={option} className={selected ? 'is-selected' : ''} onClick={() => setAnswers(current => ({ ...current, [questionIndex]: index }))} aria-pressed={selected}><span className="question-option-letter">{String.fromCharCode(65 + index)}</span><span>{option}</span></button> })}</div>}
           {currentKind === 'multiple-select' && <div className="question-options multiple-select-options" role="group" aria-label="Selecciona una o más opciones">{currentMultipleSelect.options.map((option, index) => { const selected = (multiAnswers[questionIndex] ?? []).includes(index); const image = currentMultipleSelect.optionImages[index]; return <label key={option} className={`multiple-select-option${selected ? ' is-selected' : ''}`}><input type="checkbox" checked={selected} onChange={() => setMultiAnswers(current => { const selectedOptions = current[questionIndex] ?? []; const next = selected ? selectedOptions.filter(item => item !== index) : [...selectedOptions, index]; return { ...current, [questionIndex]: next } })} /><img className="multiple-select-option-image" src={image.imageUrl} alt={image.imageAlt} loading="lazy" /><span className="question-option-letter">{String.fromCharCode(65 + index)}</span><span>{option}</span></label> })}</div>}
-          {currentKind === 'matching' && <><div className="matching-board"><svg className="matching-connections" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">{Object.entries(connections).map(([sourceIndex, value]) => { const from = Number(sourceIndex); const to = questions.matching.options.indexOf(value); const y1 = ((from + .5) / questions.matching.pairs.length) * 100; const y2 = ((to + .5) / questions.matching.options.length) * 100; return <path key={`${from}-${value}`} className="matching-connection-path" d={`M 43 ${y1} C 47 ${y1}, 53 ${y2}, 57 ${y2}`} /> })}</svg><div className="matching-image-list">{questions.matching.pairs.map((pair, index) => <button type="button" key={pair.imageAlt} className={`matching-image-choice${selectedImage === index ? ' is-selected' : ''}${connections[index] ? ' is-connected' : ''}`} onClick={() => setSelectedImage(index)} aria-pressed={selectedImage === index} aria-label={`Imagen ${index + 1}: ${pair.imageAlt}`}><img src={pair.imageUrl} alt={pair.imageAlt} loading="lazy" /><span>Imagen {String.fromCharCode(65 + index)}</span><i aria-hidden="true" /></button>)}</div><div className="matching-answer-list">{questions.matching.options.map((option, index) => <button type="button" key={option} className={`matching-answer-choice${Object.values(connections).includes(option) ? ' is-connected' : ''}`} onClick={() => { if (selectedImage === null) return; setConnectionsByQuestion(current => ({ ...current, [questionIndex]: { ...(current[questionIndex] ?? {}), [selectedImage]: option } })); setSelectedImage(null) }} aria-label={`Respuesta ${index + 1}: ${option}`}><span>{String.fromCharCode(65 + index)}.</span><strong>{option}</strong><i aria-hidden="true" /></button>)}</div></div><p className="matching-instruction">{selectedImage === null ? 'Selecciona una imagen para comenzar a unir.' : `Imagen ${String.fromCharCode(65 + selectedImage)} seleccionada · ahora elige su respuesta.`}</p></>}
+          {currentKind === 'matching' && <><div className="matching-board"><svg className="matching-connections" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">{Object.entries(connections).map(([sourceIndex, value]) => { const from = Number(sourceIndex); const to = questions.matching.options.indexOf(value); const y1 = ((from + .5) / questions.matching.pairs.length) * 100; const y2 = ((to + .5) / questions.matching.options.length) * 100; return <path key={`${from}-${value}`} className="matching-connection-path" d={`M 43 ${y1} C 47 ${y1}, 53 ${y2}, 57 ${y2}`} /> })}</svg><div className="matching-image-list">{questions.matching.pairs.map((pair, index) => <button type="button" key={pair.imageAlt} className={`matching-image-choice${selectedImage === index ? ' is-selected' : ''}${connections[index] ? ' is-connected' : ''}`} onClick={() => setSelectedImage(index)} aria-pressed={selectedImage === index} aria-label={`Opción ${String.fromCharCode(65 + index)}: ${pair.imageAlt}`}><img src={pair.imageUrl} alt={pair.imageAlt} loading="lazy" /><span>{String.fromCharCode(65 + index)}.</span><i aria-hidden="true" /></button>)}</div><div className="matching-answer-list">{questions.matching.options.map((option, index) => <button type="button" key={option} className={`matching-answer-choice${Object.values(connections).includes(option) ? ' is-connected' : ''}`} onClick={() => { if (selectedImage === null) return; setConnectionsByQuestion(current => ({ ...current, [questionIndex]: { ...(current[questionIndex] ?? {}), [selectedImage]: option } })); setSelectedImage(null) }} aria-label={`Respuesta ${index + 1}: ${option}`}><span>{String.fromCharCode(65 + index)}.</span><strong>{option}</strong><i aria-hidden="true" /></button>)}</div></div></>}
           {currentKind === 'word-search' && <>
             <div className="word-search-layout">
               <div className="word-search-grid" role="group" aria-label="Selecciona las letras de la sopa de letras">

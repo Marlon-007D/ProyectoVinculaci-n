@@ -17,8 +17,9 @@ Completa `vercel login` en el navegador. `vercel link` asocia esta carpeta local
 Desde la carpeta del proyecto:
 
 ```powershell
-npm run build
-vercel --prod
+npm run deploy
 ```
+
+Este comando compila la aplicación y luego la publica en producción con Vercel. Requiere haber instalado y configurado la CLI con los pasos anteriores.
 
 No hace falta conectar GitHub ni ejecutar GitHub Actions. El archivo `.env` y las credenciales locales no se publican. Supabase no es necesario para desplegar; si más adelante se activa, configura `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` como variables de entorno del proyecto en Vercel.

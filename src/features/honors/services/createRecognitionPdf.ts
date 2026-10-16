@@ -31,7 +31,7 @@ function mixWithWhite(color: Color, amount: number): Color {
 
 async function loadPortrait(url: string): Promise<string> {
   const response = await fetch(url)
-  if (!response.ok) throw new Error('No se pudo cargar un avatar de demostración.')
+  if (!response.ok) throw new Error('No se pudo cargar un retrato.')
   const blob = await response.blob()
   return new Promise((resolve, reject) => {
     const image = new Image()
@@ -284,7 +284,7 @@ export async function createRecognitionPdf(
     pdf.setFont('helvetica', 'normal')
     pdf.setTextColor(115, 109, 120)
     pdf.setFontSize(6.5)
-    pdf.text('Retratos de demostración - reemplazar por fotografías autorizadas.', pageWidth / 2, footerY + 5, { align: 'center' })
+    pdf.text('RECONOCIMIENTO INSTITUCIONAL', pageWidth / 2, footerY + 5, { align: 'center' })
     pdf.setFontSize(7)
     pdf.text(`${pageIndex + 1} / ${pageCount}`, pageWidth / 2, pageHeight - 14, { align: 'center' })
   }

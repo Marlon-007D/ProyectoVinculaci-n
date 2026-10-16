@@ -1,19 +1,20 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import type { ReactNode } from 'react'
 import { ArrowLeft, ArrowRight, CalendarDays, Check, ChevronDown, CirclePlus, Eye, ImagePlus, Pencil, Trash2, UsersRound } from 'lucide-react'
 import { Button } from '../../../shared/components/Button/Button'
 import { Modal } from '../../../shared/components/Modal/Modal'
 import { useAcademicContent } from '../hooks/useAcademicContent'
-import type { AcademicContentEntry, AcademicContentKind, AcademicPublicationStatus } from '../types/academicContent.types'
+import type { AcademicContentEntry, AcademicContentKind, AcademicPublicationStatus, HonorCategory } from '../types/academicContent.types'
 import { tenantInstitution } from '../../../core/config/tenant'
+import { getHonorCategory, OFFICIAL_DISTINCTIONS, sortOfficialDistinctions } from '../../honors/utils/honorRules'
 import './AcademicContentManager.css'
 
 interface Props { kind: AcademicContentKind; title: string; singular: string; onPreview?: (entry: AcademicContentEntry) => void }
 
 const emptyEntry = (kind: AcademicContentKind, institutionId: string): AcademicContentEntry => ({
   id: crypto.randomUUID(), institutionId, kind, title: '', description: '', periodId: '', status: 'draft', date: '', location: '',
-  studentName: '', grade: '', distinction: '', startDate: '', endDate: '', isCurrent: false, sourceName: '', sourceUrl: '', updatedAt: new Date().toISOString(),
+  studentName: '', grade: '', distinction: '', honorCategory: kind === 'honor' ? 'institutional' : undefined, startDate: '', endDate: '', isCurrent: false, sourceName: '', sourceUrl: '', updatedAt: new Date().toISOString(),
 })
 
 const pageSize = 5
@@ -34,6 +35,8 @@ export function AcademicContentManager({ kind, title, singular, onPreview }: Pro
   const [page, setPage] = useState(1)
   const [statusFilter, setStatusFilter] = useState<'all' | AcademicPublicationStatus>('all')
   const [expandedHonorPeriod, setExpandedHonorPeriod] = useState<string | null>(null)
+  const autoExpandedOfficialGroup = useRef(false)
+  const [previewLoading, setPreviewLoading] = useState(false)
   const periods = entries.filter(entry => entry.kind === 'period').sort((a, b) => b.startDate.localeCompare(a.startDate))
   const currentPeriod = periods.find(period => period.isCurrent)
   const visibleEntries = useMemo(() => entries.filter(entry => entry.kind === kind)
@@ -45,21 +48,39 @@ export function AcademicContentManager({ kind, title, singular, onPreview }: Pro
     if (kind !== 'honor') return []
     const groups = new Map<string, AcademicContentEntry[]>()
     visibleEntries.forEach(entry => {
-      const key = entry.periodId || 'no-period'
+      const category = getHonorCategory(entry)
+      const key = `${entry.periodId || 'no-period'}:${category}`
       groups.set(key, [...(groups.get(key) ?? []), entry])
     })
-    return [...groups.entries()].map(([periodId, people]) => ({
+    const result = [...groups.entries()].map(([key, people]) => {
+      const [periodId, category] = key.split(':')
+      return {
+      key,
       periodId,
-      people,
+      category: category as 'official' | 'institutional',
+      people: category === 'official' ? sortOfficialDistinctions(people) : people,
       year: periods.find(period => period.id === periodId)?.title ?? 'Año sin período',
-    }))
-  }, [kind, visibleEntries, periods])
-  const listCount = kind === 'honor' ? honorGroups.length : filteredEntries.length
-  const pageCount = Math.max(1, Math.ceil(listCount / pageSize))
+    }})
+    if (currentPeriod && !groups.has(`${currentPeriod.id}:official`)) {
+      result.push({ key: `${currentPeriod.id}:official`, periodId: currentPeriod.id, category: 'official', people: [], year: currentPeriod.title })
+    }
+    return result.sort((a, b) => b.year.localeCompare(a.year) || (a.category === 'official' ? -1 : 1))
+  }, [kind, visibleEntries, periods, currentPeriod])
+  const listCount = kind === 'honor' ? visibleEntries.length : filteredEntries.length
+  const paginationCount = kind === 'honor' ? honorGroups.length : listCount
+  const pageCount = Math.max(1, Math.ceil(paginationCount / pageSize))
   const pageEntries = filteredEntries.slice((page - 1) * pageSize, page * pageSize)
   const pageHonorGroups = honorGroups.slice((page - 1) * pageSize, page * pageSize)
   useEffect(() => { setPage(1) }, [kind, statusFilter])
   useEffect(() => { if (page > pageCount) setPage(pageCount) }, [page, pageCount])
+  useEffect(() => {
+    if (kind !== 'honor' || autoExpandedOfficialGroup.current) return
+    const currentGroup = honorGroups.find(group => group.category === 'official' && group.periodId === currentPeriod?.id)
+    if (currentGroup) {
+      setExpandedHonorPeriod(currentGroup.key)
+      autoExpandedOfficialGroup.current = true
+    }
+  }, [kind, honorGroups, currentPeriod])
 
   const update = (field: keyof AcademicContentEntry, value: string | boolean) => {
     setEditing(current => current ? { ...current, [field]: value } : current)
@@ -67,7 +88,11 @@ export function AcademicContentManager({ kind, title, singular, onPreview }: Pro
   }
   const fieldError = (field: keyof AcademicContentEntry): ReactNode => fieldErrors[field] && <span className="academic-field-error" id={`academic-error-${field}`} role="alert">{fieldErrors[field]}</span>
   const fieldProps = (field: keyof AcademicContentEntry) => ({ 'aria-invalid': Boolean(fieldErrors[field]), 'aria-describedby': fieldErrors[field] ? `academic-error-${field}` : undefined })
-  const beginCreate = () => { setNotice(''); setFieldErrors({}); setFormStep(1); setEditing(emptyEntry(kind, tenantInstitution.id)) }
+  const beginCreate = (officialDistinction?: typeof OFFICIAL_DISTINCTIONS[number], periodId = currentPeriod?.id ?? '') => {
+    setNotice(''); setFieldErrors({}); setFormStep(1)
+    const entry = emptyEntry(kind, tenantInstitution.id)
+    setEditing(officialDistinction ? { ...entry, honorCategory: 'official', grade: 'Tercero de Bachillerato', distinction: officialDistinction, periodId } : entry)
+  }
   const beginEdit = (entry: AcademicContentEntry) => { setNotice(''); setFieldErrors({}); setFormStep(1); setEditing({ ...entry }) }
   const validateFields = (requiredFields: (keyof AcademicContentEntry)[]) => {
     if (!editing) return false
@@ -86,10 +111,11 @@ export function AcademicContentManager({ kind, title, singular, onPreview }: Pro
       if (validateFields(contentFields)) setFormStep(2)
       return
     }
-    const requiredFields: (keyof AcademicContentEntry)[] = kind === 'news' || kind === 'event' ? contentFields : kind === 'honor' ? ['studentName', 'grade', 'distinction', 'periodId'] : ['title', 'startDate', 'endDate']
+    const category = kind === 'honor' ? getHonorCategory(editing) : 'institutional'
+    const requiredFields: (keyof AcademicContentEntry)[] = kind === 'news' || kind === 'event' ? contentFields : kind === 'honor' ? category === 'official' ? ['studentName', 'grade', 'distinction', 'periodId', 'schedule', 'modality'] : ['studentName', 'grade', 'distinction', 'periodId'] : ['title', 'startDate', 'endDate']
     if (!validateFields(requiredFields)) return
     try {
-      save(editing)
+      save(kind === 'honor' ? { ...editing, honorCategory: category, officialOrder: category === 'official' ? OFFICIAL_DISTINCTIONS.indexOf(editing.distinction as typeof OFFICIAL_DISTINCTIONS[number]) + 1 : undefined } : editing)
       setEditing(null)
       setNotice(`${singular} guardado.`)
     } catch (error) {
@@ -102,26 +128,35 @@ export function AcademicContentManager({ kind, title, singular, onPreview }: Pro
     catch (error) { setNotice(error instanceof Error ? error.message : 'No se pudo eliminar el registro.') }
   }
   const previewRecognition = async (entry: AcademicContentEntry) => {
-    const institutionName = tenantInstitution.name
-    const periodName = periods.find(period => period.id === entry.periodId)?.title ?? ''
-    const recognitionEntries = entries.filter(candidate => candidate.kind === 'honor' && candidate.periodId === entry.periodId)
-    const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim()
+    if (!entry || previewLoading) return
+    setPreviewLoading(true)
+    setNotice('')
     const previewWindow = window.open('about:blank', '_blank')
     if (!previewWindow) {
-      setNotice('El navegador bloqueó la pestaña del reconocimiento. Permite ventanas emergentes e inténtalo de nuevo.')
+      setNotice('El navegador bloqueó la pestaña del cuadro de honor. Permite ventanas emergentes e inténtalo de nuevo.')
+      setPreviewLoading(false)
       return
     }
     previewWindow.opener = null
-    previewWindow.document.title = `Cuadro de honor ${periodName}`
+    previewWindow.document.title = 'Cuadro de honor'
+    previewWindow.document.body.textContent = 'Preparando el cuadro de honor…'
+    const institutionName = tenantInstitution.name
+    const periodName = periods.find(period => period.id === entry.periodId)?.title ?? ''
+    const periodRecognitions = entries.filter(candidate => candidate.kind === 'honor' && candidate.periodId === entry.periodId)
+    const recognitionEntries = [...sortOfficialDistinctions(periodRecognitions.filter(candidate => getHonorCategory(candidate) === 'official')), ...periodRecognitions.filter(candidate => getHonorCategory(candidate) === 'institutional')]
+    const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim()
     try {
       const { createRecognitionPdf } = await import('../../honors/services/createRecognitionPdf')
-      previewWindow.location.href = await createRecognitionPdf(recognitionEntries, institutionName, periodName, accent)
+      const pdfUrl = await createRecognitionPdf(recognitionEntries, institutionName, periodName, accent)
+      previewWindow.location.replace(pdfUrl)
     } catch {
       previewWindow.close()
       setNotice('No se pudo generar el PDF del reconocimiento.')
+    } finally {
+      setPreviewLoading(false)
     }
   }
-  const renderPagination = (position: 'top' | 'bottom') => listCount > pageSize && <nav className={`academic-pagination is-${position}`} aria-label={`Paginación de ${title}`}><button type="button" onClick={() => setPage(current => Math.max(1, current - 1))} disabled={page === 1} aria-label="Página anterior"><ArrowLeft size={16} /></button><span>Página {page} de {pageCount}</span><button type="button" onClick={() => setPage(current => Math.min(pageCount, current + 1))} disabled={page === pageCount} aria-label="Página siguiente"><ArrowRight size={16} /></button></nav>
+  const renderPagination = (position: 'top' | 'bottom') => pageCount > 1 && <nav className={`academic-pagination is-${position}`} aria-label={`Paginación de ${title}`}><button type="button" onClick={() => setPage(current => Math.max(1, current - 1))} disabled={page === 1} aria-label="Página anterior"><ArrowLeft size={16} /></button><span>Página {page} de {pageCount}</span><button type="button" onClick={() => setPage(current => Math.min(pageCount, current + 1))} disabled={page === pageCount} aria-label="Página siguiente"><ArrowRight size={16} /></button></nav>
 
   return <section className="page-content academic-content-page">
     <header className="academic-page-heading"><div><h1>{title}</h1></div>
@@ -131,24 +166,27 @@ export function AcademicContentManager({ kind, title, singular, onPreview }: Pro
       <div className="current-period-icon"><CalendarDays size={20} /></div><div><span>PERÍODO VIGENTE</span><strong>{currentPeriod?.title ?? 'No hay un período vigente'}</strong>{currentPeriod && <small>{dateLabel(currentPeriod.startDate)} – {dateLabel(currentPeriod.endDate)}</small>}</div>
     </section>}
     <section className={`academic-list ${kind === 'news' || kind === 'event' ? 'is-publication-list' : ''}`} aria-label={title}>
-      {(kind !== 'news' && kind !== 'event') && <div className="academic-list-heading"><div><h2>{kind === 'period' ? 'Histórico de períodos' : `${title} de ${tenantInstitution.name}`}</h2><span>{listCount}</span></div><Button variant="primary" onClick={beginCreate}><CirclePlus size={18} />{`Nuevo ${singular.toLowerCase()}`}</Button></div>}
+      {(kind !== 'news' && kind !== 'event') && <div className="academic-list-heading"><div>{kind === 'period' && <h2>Histórico de períodos</h2>}<span aria-label={`${listCount} ${kind === 'honor' ? 'estudiantes registrados' : singular.toLowerCase()}`}>{listCount}</span></div><Button variant="primary" onClick={() => beginCreate()}><CirclePlus size={18} />{`Nuevo ${singular.toLowerCase()}`}</Button></div>}
       {(kind === 'news' || kind === 'event') && <div className="publication-toolbar"><div className="publication-filters" role="group" aria-label="Filtrar publicaciones por estado">
         {([
           { value: 'all', label: 'Todas', count: visibleEntries.length },
           { value: 'published', label: 'Publicadas', count: visibleEntries.filter(entry => entry.status === 'published').length },
           { value: 'draft', label: 'Borradores', count: visibleEntries.filter(entry => entry.status === 'draft').length },
         ] as const).map(option => <button key={option.value} type="button" className={statusFilter === option.value ? 'is-active' : ''} aria-pressed={statusFilter === option.value} onClick={() => setStatusFilter(option.value)}>{option.label}<span>{option.count}</span></button>)}
-      </div><Button variant="primary" onClick={beginCreate}><CirclePlus size={18} />{kind === 'news' ? 'Nueva noticia' : 'Nuevo evento'}</Button></div>}
+      </div><Button variant="primary" onClick={() => beginCreate()}><CirclePlus size={18} />{kind === 'news' ? 'Nueva noticia' : 'Nuevo evento'}</Button></div>}
       {renderPagination('top')}
-      {listCount === 0 ? <p className="academic-empty">{kind === 'honor' ? 'No hay personas registradas en el cuadro de honor.' : 'No hay registros para esta institución.'}</p> : kind === 'honor' ? <div className="academic-entry-list honor-period-list">{pageHonorGroups.map(group => {
-        const groupKey = group.periodId
+      {listCount === 0 && kind !== 'honor' ? <p className="academic-empty">No hay registros para esta institución.</p> : kind === 'honor' ? <div className="academic-entry-list honor-period-list">{pageHonorGroups.map(group => {
+        const groupKey = group.key
         const expanded = expandedHonorPeriod === groupKey
         return <article className="academic-honor-group" key={groupKey}>
           <div className="academic-entry honor-period-entry">
-            <div className="academic-entry-copy"><div className="academic-entry-title"><h3>Cuadro de honor</h3><span className="honor-people-count"><UsersRound size={14} />{group.people.length} {group.people.length === 1 ? 'persona' : 'personas'}</span></div><small>{group.year}</small></div>
-            <div className="academic-entry-actions"><button type="button" className="academic-icon-button is-preview" onClick={() => previewRecognition(group.people[0])} aria-label={`Ver cuadro de honor ${group.year} en PDF`} title="Ver cuadro de honor"><Eye size={18} /></button><button type="button" className="academic-icon-button honor-expand-button" onClick={() => setExpandedHonorPeriod(expanded ? null : groupKey)} aria-expanded={expanded} aria-label={expanded ? 'Ocultar personas' : 'Ver personas'} title={expanded ? 'Ocultar personas' : 'Ver personas'}><ChevronDown size={18} /></button></div>
+            <div className="academic-entry-copy"><div className="academic-entry-title"><h3>{group.category === 'official' ? 'Distinciones oficiales' : 'Reconocimientos institucionales'}</h3><span className="honor-people-count"><UsersRound size={14} />{group.people.length} {group.people.length === 1 ? 'estudiante' : 'estudiantes'}</span></div><small>{group.year}</small></div>
+            <div className="academic-entry-actions">{group.people.length > 0 && <button type="button" className="academic-icon-button is-preview" onClick={() => previewRecognition(group.people[0])} disabled={previewLoading} aria-label={`Ver cuadro de honor ${group.year} en PDF`} title={previewLoading ? 'Generando PDF…' : 'Ver cuadro de honor'}><Eye size={18} /></button>}<button type="button" className="academic-icon-button honor-expand-button" onClick={() => setExpandedHonorPeriod(expanded ? null : groupKey)} aria-expanded={expanded} aria-label={expanded ? 'Ocultar personas' : 'Ver personas'} title={expanded ? 'Ocultar personas' : 'Ver personas'}><ChevronDown size={18} /></button></div>
           </div>
-          {expanded && <div className="honor-people-list" aria-label={`Personas del cuadro de honor ${group.year}`}>{group.people.map(person => <article className="academic-entry honor-person-entry" key={person.id}><div className="academic-entry-copy"><div className="academic-entry-title"><h3>{person.studentName}</h3><span className={`entry-status ${person.status === 'published' ? 'is-published' : ''}`}>{person.status === 'published' ? 'Publicado' : 'Borrador'}</span></div><p>{person.distinction} · {person.grade}</p></div><div className="academic-entry-actions"><button type="button" className="academic-icon-button" onClick={() => beginEdit(person)} aria-label={`Editar ${person.studentName}`}><Pencil size={17} /></button><button type="button" className="academic-icon-button is-danger" onClick={() => deleteEntry(person)} aria-label={`Eliminar ${person.studentName}`}><Trash2 size={17} /></button></div></article>)}</div>}
+          {expanded && (group.category === 'official' ? <div className="honor-official-slots" aria-label={`Puestos oficiales ${group.year}`}>{OFFICIAL_DISTINCTIONS.map((distinction, index) => {
+            const person = group.people.find(entry => entry.distinction === distinction)
+            return <article className={`honor-official-slot${person ? ' is-assigned' : ''}`} key={distinction}><span className="honor-slot-number">{index + 1}</span><div className="honor-slot-copy"><strong>{distinction}</strong>{person ? <><span>{person.studentName} · {person.grade}</span><small>{[person.schedule, person.modality, person.campus].filter(Boolean).join(' · ')}</small></> : <span className="honor-slot-empty">Sin asignar</span>}</div>{person && <div className="honor-slot-status"><span className={`entry-status ${person.status === 'published' ? 'is-published' : ''}`}>{person.status === 'published' ? 'Publicado' : 'Borrador'}</span></div>}{person ? <div className="academic-entry-actions"><button type="button" className="academic-icon-button" onClick={() => beginEdit(person)} aria-label={`Editar ${distinction}`}><Pencil size={17} /></button><button type="button" className="academic-icon-button is-danger" onClick={() => deleteEntry(person)} aria-label={`Eliminar ${distinction}`}><Trash2 size={17} /></button></div> : <Button type="button" onClick={() => beginCreate(distinction, group.periodId)}><CirclePlus size={16} />Asignar</Button>}</article>
+          })}</div> : <div className="honor-people-list" aria-label={`Reconocimientos institucionales ${group.year}`}>{group.people.map(person => <article className="academic-entry honor-person-entry" key={person.id}><div className="academic-entry-copy"><div className="academic-entry-title"><h3>{person.studentName}</h3><span className={`entry-status ${person.status === 'published' ? 'is-published' : ''}`}>{person.status === 'published' ? 'Publicado' : 'Borrador'}</span></div><p>{person.distinction} · {person.grade}</p></div><div className="academic-entry-actions"><button type="button" className="academic-icon-button" onClick={() => beginEdit(person)} aria-label={`Editar ${person.studentName}`}><Pencil size={17} /></button><button type="button" className="academic-icon-button is-danger" onClick={() => deleteEntry(person)} aria-label={`Eliminar ${person.studentName}`}><Trash2 size={17} /></button></div></article>)}</div>)}
         </article>
       })}</div> : <div className="academic-entry-list">{pageEntries.map(entry => {
         const linkedPeriod = periods.find(period => period.id === entry.periodId)
@@ -192,9 +230,14 @@ export function AcademicContentManager({ kind, title, singular, onPreview }: Pro
             <fieldset className="publication-status"><legend>Estado de la publicación</legend><label className={editing.status === 'draft' ? 'is-selected' : ''}><input type="radio" name="publication-status" value="draft" checked={editing.status === 'draft'} onChange={() => update('status', 'draft')} /><span><b>Guardar como borrador</b><small>Solo visible en administración</small></span></label><label className={editing.status === 'published' ? 'is-selected' : ''}><input type="radio" name="publication-status" value="published" checked={editing.status === 'published'} onChange={() => update('status', 'published')} /><span><b>Publicar</b><small>Visible en la página institucional</small></span></label></fieldset>
           </div>
         : kind === 'honor' ? <>
-          <label>Estudiante<input required {...fieldProps('studentName')} value={editing.studentName} onChange={event => update('studentName', event.target.value)} />{fieldError('studentName')}</label>
-          <label>Curso o grado<input required {...fieldProps('grade')} value={editing.grade} onChange={event => update('grade', event.target.value)} />{fieldError('grade')}</label>
-          <label>Reconocimiento<input required {...fieldProps('distinction')} value={editing.distinction} onChange={event => update('distinction', event.target.value)} />{fieldError('distinction')}</label>
+          <label>Categoría<select value={getHonorCategory(editing)} onChange={event => { const category = event.target.value as HonorCategory; setEditing(current => current ? { ...current, honorCategory: category, grade: category === 'official' ? 'Tercero de Bachillerato' : current.grade === 'Tercero de Bachillerato' ? '' : current.grade, distinction: category === 'official' ? '' : current.distinction, officialOrder: undefined } : current); setFieldErrors({}) }}><option value="institutional">Reconocimiento institucional</option><option value="official">Distinción oficial</option></select></label>
+          <label>Estudiante<input required {...fieldProps('studentName')} value={editing.studentName} onChange={event => update('studentName', event.target.value)} placeholder="Nombres y apellidos" />{fieldError('studentName')}</label>
+          {getHonorCategory(editing) === 'official' ? <label>Nivel educativo<select required value={editing.grade} onChange={event => update('grade', event.target.value)}><option value="">Selecciona el nivel</option><option value="Tercero de Bachillerato">Tercero de Bachillerato</option></select>{fieldError('grade')}<small className="academic-help-text">El artículo 191 establece estas distinciones para estudiantes de tercer curso de Bachillerato.</small></label> : <label>Nivel educativo<input required {...fieldProps('grade')} value={editing.grade} onChange={event => update('grade', event.target.value)} placeholder="Ej. Noveno de EGB" />{fieldError('grade')}</label>}
+          {getHonorCategory(editing) === 'official' ? <>
+            <label>Distinción<select required {...fieldProps('distinction')} value={editing.distinction} onChange={event => update('distinction', event.target.value)}><option value="">Selecciona según la jerarquía</option>{OFFICIAL_DISTINCTIONS.map((distinction, index) => <option key={distinction} value={distinction}>{index + 1}. {distinction}</option>)}</select>{fieldError('distinction')}</label>
+            <div className="academic-form-grid"><label>Jornada<select required {...fieldProps('schedule')} value={editing.schedule ?? ''} onChange={event => update('schedule', event.target.value)}><option value="">Selecciona una jornada</option><option>Matutina</option><option>Vespertina</option><option>Nocturna</option></select>{fieldError('schedule')}</label><label>Modalidad<select required {...fieldProps('modality')} value={editing.modality ?? ''} onChange={event => update('modality', event.target.value)}><option value="">Selecciona una modalidad</option><option>Presencial</option><option>Semipresencial</option><option>A distancia</option></select>{fieldError('modality')}</label></div>
+            <label>Sede (si corresponde)<input value={editing.campus ?? ''} onChange={event => update('campus', event.target.value)} placeholder="Sede institucional" /></label>
+          </> : <label>Reconocimiento<input required {...fieldProps('distinction')} value={editing.distinction} onChange={event => update('distinction', event.target.value)} placeholder="Ej. Mérito científico" />{fieldError('distinction')}</label>}
           <label>Período lectivo<select required {...fieldProps('periodId')} value={editing.periodId} onChange={event => update('periodId', event.target.value)}><option value="">Selecciona un período</option>{periods.map(period => <option key={period.id} value={period.id}>{period.title}{period.isCurrent ? ' · Vigente' : ''}</option>)}</select>{fieldError('periodId')}</label>
         </> : <>
           <label>Nombre del período<input required {...fieldProps('title')} value={editing.title} onChange={event => update('title', event.target.value)} placeholder="2026–2027" />{fieldError('title')}</label>

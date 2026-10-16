@@ -1,4 +1,4 @@
-import { ArrowLeftRight, Award, BarChart3, BookOpen, CalendarDays, CalendarRange, Calculator, ChevronDown, GraduationCap, Home, Newspaper, PanelLeftClose, PanelLeftOpen, ReceiptText } from 'lucide-react'
+import { ArrowLeftRight, Award, BarChart3, BookOpen, CalendarDays, CalendarRange, Calculator, ChevronDown, GraduationCap, Newspaper, PanelLeftClose, PanelLeftOpen, ReceiptText } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { AppRoute, SimulatorRoute } from '../../../app/router/AppRouter'
@@ -76,7 +76,6 @@ export function Sidebar({ active, activeModuleId, collapsed, theme, onThemeChang
   <aside className={collapsed ? 'sidebar is-collapsed' : 'sidebar'} aria-label="Navegación principal">
     <div className="brand">{!collapsed && <><div className="brand-mark"><ReceiptText size={21} /></div><span>SimulaEdu</span></>}<button className="icon-button collapse-button" onClick={onToggle} aria-label={collapsed ? 'Expandir menú' : 'Contraer menú'}>{collapsed ? <PanelLeftOpen size={20} /> : <PanelLeftClose size={20} />}</button></div>
     <nav className="sidebar-navigation" aria-label="Secciones">
-      <div className="nav-item future-item"><Home size={19} />{!collapsed && <span>Inicio</span>}</div>
       {renderNavGroup('courses', 'Cursos', BookOpen, <>
         <div className={`nav-group nested-nav-group${openSubgroup === 'school-courses' ? ' is-open' : ''}`}>
           <button className="nav-group-toggle" type="button" aria-expanded={openSubgroup === 'school-courses'} onClick={() => toggleSubgroup('school-courses')}><GraduationCap size={19} />{!collapsed && <><span>Módulos</span><ChevronDown className="nav-group-chevron" size={16} /></>}</button>
