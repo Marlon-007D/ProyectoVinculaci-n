@@ -9,6 +9,7 @@ import {
   faHeart,
 } from '@fortawesome/free-solid-svg-icons'
 import type { ReactNode } from 'react'
+import { useState } from 'react'
 import type { DeceScreen } from '../../types/screen'
 
 type Props = {
@@ -18,17 +19,31 @@ type Props = {
 }
 
 export default function ProvisionalShell({ screen, onNavigate, children }: Props) {
+  const [menuOpen, setMenuOpen] = useState(false)
+
   return (
     <>
       <aside className="sidebar">
-        <div className="brand">
-          <div className="brand-mark">D</div>
-          <div>
-            <b>DECE</b>
-            <small>Bienestar estudiantil</small>
+        <div className="sidebar-heading">
+          <div className="brand">
+            <div className="brand-mark">D</div>
+            <div>
+              <b>DECE</b>
+              <small>Bienestar estudiantil</small>
+            </div>
           </div>
+          <button
+            type="button"
+            className="menu-toggle"
+            aria-expanded={menuOpen}
+            aria-controls="dece-workspace-navigation"
+            onClick={() => setMenuOpen(open => !open)}
+          >
+            <span>Menú DECE</span>
+            <span aria-hidden="true">{menuOpen ? '−' : '+'}</span>
+          </button>
         </div>
-        <nav aria-label="Navegación principal">
+        <nav id="dece-workspace-navigation" className={`workspace-nav ${menuOpen ? 'open' : ''}`} aria-label="Navegación principal">
           <div className="nav-caption">ESPACIO DE TRABAJO</div>
           <button
             type="button"

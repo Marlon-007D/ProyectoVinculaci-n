@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import styles from './dece.module.css'
 import { ProvisionalShell } from './components/provisional-shell'
 import { dashboardStats } from './data'
@@ -16,6 +16,7 @@ import type { DeceScreen, Student } from './types'
 type FormTemplate = { code: string; name: string }
 
 export default function DeceApp() {
+  const appShellRef = useRef<HTMLDivElement>(null)
   const integration = useDeceData()
   const [students, setStudents] = useState<Student[]>([])
   const [loading, setLoading] = useState(true)
@@ -36,6 +37,25 @@ export default function DeceApp() {
     setSection(current => current >= names.length ? 0 : current)
   }, [])
   const clearCaseStudent = useCallback(() => setCaseStudentId(''), [])
+
+  useEffect(() => {
+    const shell = appShellRef.current
+    const layout = shell?.closest('.min-h-screen')
+    const header = layout?.querySelector(':scope > header')
+    if (!shell || !(header instanceof HTMLElement)) return
+
+    const updateHeaderHeight = () => {
+      shell.style.setProperty('--dece-header-height', `${header.getBoundingClientRect().height}px`)
+    }
+    updateHeaderHeight()
+    const observer = new ResizeObserver(updateHeaderHeight)
+    observer.observe(header)
+    window.addEventListener('resize', updateHeaderHeight)
+    return () => {
+      observer.disconnect()
+      window.removeEventListener('resize', updateHeaderHeight)
+    }
+  }, [])
 
   useEffect(() => {
     if (!integration) return
@@ -164,7 +184,7 @@ export default function DeceApp() {
     : { ...item, value: '—', hint: 'Sin datos disponibles' })
 
   return (
-    <div className={styles.appShell}>
+    <div ref={appShellRef} className={styles.appShell}>
       <ProvisionalShell screen={screen} onNavigate={routeTo}>
         {formSetupLoading && <div className="notice" role="status">Preparando las fichas general y de autorización…</div>}
         {formSetupError && <div className="notice sensitive" role="alert">{formSetupError}<button className="button btn secondary ms-2" type="button" onClick={() => setFormSetupRetry(value => value + 1)}>Reintentar</button></div>}

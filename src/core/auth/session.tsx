@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase'
 import { DeceApp, DeceDataProvider } from '../../modules/dece'
 import ConfigurableForm from '../../modules/dece/pages/student-form/configurable-form'
@@ -55,6 +56,7 @@ export function useActiveSession() {
 }
 
 export function SessionProvider() {
+  const navigate = useNavigate()
   const [session, setSession] = useState<ActiveSession | null>(null)
   const [ready, setReady] = useState(false)
   const [error, setError] = useState('')
@@ -83,7 +85,10 @@ export function SessionProvider() {
           const pathParts = location.pathname.split('/').filter(Boolean)
           const requestedSlug = pathParts[0] ?? ''
           const active = requestedSlug ? options.find(item => item.slug === requestedSlug) : options.length === 1 ? options[0] : null
-          if (active && live) { setSession(active); if (!requestedSlug) history.replaceState(null, '', routeFor(active)) }
+          if (active && live) {
+            setSession(active)
+            if (!requestedSlug || pathParts[1] === 'login') navigate(routeFor(active), { replace: true })
+          }
           else if (!requestedSlug && live && options.length > 1) setChoices(options)
           else if (requestedSlug && live) { await supabase.auth.signOut(); setError('No tienes acceso a esta institución') }
         } catch { if (live) setError('No se pudo verificar tu acceso. Intenta iniciar sesión nuevamente.') }
@@ -92,18 +97,18 @@ export function SessionProvider() {
     })
     const { data: listener } = supabase.auth.onAuthStateChange(() => { /* La sesión se sincroniza al iniciar/cerrar sesión. */ })
     return () => { live = false; listener.subscription.unsubscribe() }
-  }, [])
+  }, [navigate])
 
-  async function signOut() { await supabase.auth.signOut(); setSession(null); setChoices([]); history.replaceState(null, '', '/') }
+  async function signOut() { await supabase.auth.signOut(); setSession(null); setChoices([]); navigate('/panel', { replace: true }) }
   const value = useMemo(() => ({ session, signOut }), [session])
   if (!ready) return <main className="container py-5" role="status">Cargando sesión…</main>
-  if (choices.length && !session) return <main className="container py-5"><h1>Selecciona tu institución</h1>{choices.map(item => <button className="btn btn-primary me-2" key={item.institutionId} onClick={() => { setSession(item); history.replaceState(null, '', routeFor(item)); setChoices([]) }}>{item.institutionName}</button>)}</main>
+  if (choices.length && !session) return <main className="container py-5"><h1>Selecciona tu institución</h1>{choices.map(item => <button className="btn btn-primary me-2" key={item.institutionId} onClick={() => { setSession(item); navigate(routeFor(item), { replace: true }); setChoices([]) }}>{item.institutionName}</button>)}</main>
   return <SessionContext.Provider value={value}><LoginOrRoute session={session} onAuthenticated={async (userId, email, slug) => {
     try {
       const options = await memberships(userId, email)
       const active = slug ? options.find(item => item.slug === slug) : options.length === 1 ? options[0] : null
       if (slug && !active) { await supabase.auth.signOut(); setError('No tienes acceso a esta institución'); return }
-      if (active) { setSession(active); history.replaceState(null, '', routeFor(active)); setError('') }
+      if (active) { setSession(active); navigate(routeFor(active), { replace: true }); setError('') }
       else if (options.length > 1) setChoices(options)
       else { await supabase.auth.signOut(); setError('Tu usuario no tiene una institución asignada.') }
     } catch { await supabase.auth.signOut(); setError('No se pudo verificar tu acceso. Intenta nuevamente.') }
