@@ -1,8 +1,10 @@
+import { isDemoMode, demoSettings } from "../lib/demo";
 import { getSupabase } from "../lib/supabase";
 import { toServiceError } from "../lib/errors";
 import type { SiteSettingsRow } from "../types/site";
 
 export async function getSiteSettings(institutionId: string): Promise<SiteSettingsRow | null> {
+  if (isDemoMode()) return demoSettings;
   const { data, error } = await getSupabase()
     .from("site_settings")
     .select("*")

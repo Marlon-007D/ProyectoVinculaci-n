@@ -1,9 +1,11 @@
+import { isDemoMode, demoMenus } from "../lib/demo";
 import { getSupabase } from "../lib/supabase";
 import { toServiceError } from "../lib/errors";
 import type { Menu, MenuNode } from "../types/menu";
 import { buildMenuTree } from "../utils/menuTree";
 
 export async function getMenus(institutionId: string): Promise<Menu[]> {
+  if (isDemoMode()) return demoMenus;
   const { data, error } = await getSupabase()
     .from("menus")
     .select("*")
