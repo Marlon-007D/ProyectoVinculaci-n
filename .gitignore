@@ -15,6 +15,7 @@ tmp/
 .env
 .env.*
 !.env.example
+supabase/.temp/
 
 # Editor directories and files
 .vscode/*
@@ -26,3 +27,17 @@ tmp/
 *.njsproj
 *.sln
 *.sw?
+
+# TypeScript incremental output and local data
+*.tsbuildinfo
+*.sqlite
+*.sqlite3
+*.db
+*.swp
+*.swo
+Thumbs.db
+desktop.ini
+.npm-cache/
+.cache/
+.vite/
+coverage/

@@ -37,10 +37,14 @@ Deno.serve(async (request) => {
     const email = String(body.email ?? '').trim().toLowerCase();
     const firstName = String(body.firstName ?? '').trim();
     const lastName = String(body.lastName ?? '').trim();
+    const phone = String(body.phone ?? '').trim();
     const roleId = String(body.roleId ?? '');
     const institutionId = String(body.institutionId ?? '');
     if (!firstName || !lastName) {
       return respond({ error: 'Los nombres y apellidos son obligatorios para crear el perfil.' }, 400);
+    }
+    if (!/^09\d{8}$/.test(phone)) {
+      return respond({ error: 'Ingresa un celular ecuatoriano de 10 dígitos que empiece con 09.' }, 400);
     }
     if (!email || !roleId || !institutionId) {
       return respond({ error: 'Correo, rol e institución son obligatorios.' }, 400);
@@ -86,7 +90,7 @@ Deno.serve(async (request) => {
     }
 
     const { data: invitation, error: inviteError } = await admin.auth.admin.inviteUserByEmail(email, {
-      data: { first_name: firstName, last_name: lastName },
+      data: { first_name: firstName, last_name: lastName, phone },
     });
     if (inviteError || !invitation.user) {
       console.error('No se pudo crear la invitación:', inviteError);
@@ -98,6 +102,7 @@ Deno.serve(async (request) => {
       profile_id: invitedUser.id,
       first_name: firstName,
       last_name: lastName,
+      phone,
       email,
       mfa_required: true,
     }, { onConflict: 'profile_id' });
@@ -120,7 +125,7 @@ Deno.serve(async (request) => {
       return respond({ error: 'No se pudo asignar el rol. Revisa la configuración de memberships y vuelve a intentarlo.' }, 500);
     }
 
-    return respond({ message: `Invitación enviada a ${email}; el rol ya quedó asignado a ${institution.name}.` });
+    return respond({ message: `Invitación enviada a ${email}; el rol ya quedó asignado a ${institution.name}. Al iniciar sesión, deberá configurar la verificación en dos pasos.` });
   } catch (error) {
     console.error('Error inesperado al invitar usuario:', error);
     return respond({ error: 'Ocurrió un error al invitar al usuario. Inténtalo nuevamente.' }, 500);

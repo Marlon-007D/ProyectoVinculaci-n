@@ -133,7 +133,7 @@ test('membresía sin rol visible informa el problema sin asignar un rol de reemp
  await assert.rejects(()=>service.getUserInstitutions('user-a'),/rol no está visible/);assert.equal(c.calls.length,2);
 });
 test('el control de acceso muestra el error real y ofrece reintentar sin abrir el módulo',()=>{
- const react=require('react');const {ModuleGate}=load('src/core/ModuleGate.tsx',{'./AuthContext':{useAuth:()=>({user:{id:'user-a'},loading:false})},'./TenantContext':{useTenant:()=>({activeInstitution:null,loadingTenant:false,tenantError:'Consulta de roles rechazada: 42501',reloadInstitutions:()=>{}})},'react/jsx-runtime':require('react/jsx-runtime')});
+ const react=require('react');const {ModuleGate}=load('src/core/ModuleGate.tsx',{'react-router-dom':{Navigate:()=>null},'../pages/InstitutionalEntryPage':{InstitutionalEntryPage:()=>null},'./AuthContext':{useAuth:()=>({user:{id:'user-a'},loading:false})},'./TenantContext':{useTenant:()=>({activeInstitution:null,loadingTenant:false,tenantError:'Consulta de roles rechazada: 42501',reloadInstitutions:()=>{}})},'react/jsx-runtime':require('react/jsx-runtime')});
  const html=require('react-dom/server').renderToStaticMarkup(react.createElement(ModuleGate,{moduleName:'projects'},'CONTENIDO PRIVADO'));
  assert.ok(html.includes('Consulta de roles rechazada: 42501'));assert.ok(html.includes('Reintentar consulta'));assert.ok(!html.includes('CONTENIDO PRIVADO'));
 });
@@ -257,4 +257,27 @@ test('responsabilidad acepta texto institucional y valida la columna VARCHAR(100
 
 test('tipografía libre respeta el tamaño de la columna sin escribir datos inválidos',async()=>{
  for(const font of ['   ','x'.repeat(101)]){const snapshot=snapshotFixture('Colegio');snapshot.theme.font_family=font;const p=portal([]);await assert.rejects(()=>p.module.savePortal('tenant-a','page-a',0,snapshot,false),/tipografía/);assert.equal(p.calls.length,0);}
+});
+
+test('integración conserva permisos explícitos de módulos y no habilita ausentes',async()=>{
+ const c=client([ok([{institution_id:'tenant-a',role_id:'role-a'}]),ok([{role_id:'role-a',name:'institution_admin'}]),ok([{institution_id:'tenant-a',name:'Colegio',slug:'colegio',is_active:true}])]);
+ c.fake.rpc=async name=>{assert.equal(name,'get_accessible_module_settings');return ok([{institution_id:'tenant-a',module_name:'inicio',is_enabled:true},{institution_id:'tenant-a',module_name:'projects',is_enabled:false},{institution_id:'other',module_name:'portal',is_enabled:true}]);};
+ const service=load('src/core/institutionService.ts',{'./supabaseClient':{supabase:c.fake}});const [institution]=await service.getUserInstitutions('user-a');
+ assert.equal(institution.module_permissions.inicio,true);assert.equal(institution.projects_enabled,false);assert.equal(institution.module_permissions.portal,false);assert.equal(institution.enabled_modules.join(','),'inicio');
+});
+
+test('fallo al consultar permisos de módulos no concede acceso por defecto',async()=>{
+ const c=client([ok([{institution_id:'tenant-a',role_id:'role-a'}]),ok([{role_id:'role-a',name:'institution_admin'}]),ok([{institution_id:'tenant-a',name:'Colegio',slug:'colegio',is_active:true}])]);
+ c.fake.rpc=async()=>({data:null,error:{code:'42501'}});
+ const service=load('src/core/institutionService.ts',{'./supabaseClient':{supabase:c.fake}});await assert.rejects(()=>service.getUserInstitutions('user-a'),/módulos.*42501/);
+});
+
+test('control integrado conserva la entrada pública y redirección del estudiante',()=>{
+ const react=require('react');const render=require('react-dom/server').renderToStaticMarkup;
+ const state={user:null,activeInstitution:null,allowed:false};
+ const {ModuleGate}=load('src/core/ModuleGate.tsx',{'./AuthContext':{useAuth:()=>({user:state.user,loading:false})},'./TenantContext':{useTenant:()=>({activeInstitution:state.activeInstitution,loadingTenant:false,hasModuleAccess:()=>state.allowed})},'react-router-dom':{Navigate:({to})=>react.createElement('span',null,to)},'../pages/InstitutionalEntryPage':{InstitutionalEntryPage:()=>react.createElement('span',null,'Entrada institucional')},'react/jsx-runtime':require('react/jsx-runtime')});
+ assert.ok(render(react.createElement(ModuleGate,{moduleName:'inicio'},'PRIVADO')).includes('Entrada institucional'));
+ state.user={id:'user-a'};state.activeInstitution={name:'Colegio',slug:'colegio',role:'student'};
+ assert.ok(!render(react.createElement(ModuleGate,{moduleName:'dece'},'PRIVADO')).includes('/mi-ficha'));
+ state.allowed=true;assert.ok(render(react.createElement(ModuleGate,{moduleName:'dece'},'PRIVADO')).includes('/colegio/mi-ficha'));
 });

@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Institution } from '../../core/TenantContext';
 import { createProjectService, projectError } from './projectService';
 import { ecuadorToday, MAX_STORED_MONEY, projectDateWindow, sumMoney, remainingMoney, validateProjectDates, type ProjectAcademicPeriod } from './projectValidation';

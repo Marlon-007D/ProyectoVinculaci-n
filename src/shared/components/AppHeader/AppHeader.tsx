@@ -1,10 +1,12 @@
-import { Building2, CircleUserRound } from 'lucide-react'
-import { tenantInstitution } from '../../../core/config/tenant'
+import { ChevronRight, CircleUserRound } from 'lucide-react'
 import './AppHeader.css'
 
-export function AppHeader() {
+export interface BreadcrumbItem { label: string; onClick?: () => void }
+interface Props { breadcrumbs?: BreadcrumbItem[] }
+
+export function AppHeader({ breadcrumbs = [] }: Props) {
   return <header className="topbar">
-    <div className="tenant-chip"><Building2 className="tenant-icon" size={20} aria-hidden="true" /><span>{tenantInstitution.name}</span></div>
+    {breadcrumbs.length > 0 && <nav className="topbar-breadcrumbs" aria-label="Migas de pan">{breadcrumbs.map((item, index) => <span className="topbar-breadcrumb-item" key={`${item.label}-${index}`}>{index > 0 && <ChevronRight size={15} aria-hidden="true" />}{item.onClick ? <button type="button" onClick={item.onClick}>{item.label}</button> : <span aria-current="page">{item.label}</span>}</span>)}</nav>}
     <div className="student-chip"><CircleUserRound className="profile-icon" size={25} aria-hidden="true" /><p><b>Brigitte Rodríguez</b><small>Administradora</small></p></div>
   </header>
 }

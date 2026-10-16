@@ -20,7 +20,7 @@ export type FormQuestion = {
   is_required: boolean
   is_system: boolean
   position: number
-  display_config: { section?: string }
+  display_config: QuestionDisplayConfig
   form_question_options: Array<{
     question_option_id: string
     value: string
@@ -36,6 +36,45 @@ export type FormSubmission = {
 }
 
 export type FormAnswerValue = string | number | boolean | string[] | null
+export type QuestionValidation = { format?: 'phone' | 'email' | 'national_id'; min?: number; max?: number; integer?: boolean }
+export type QuestionDisplayConfig = { section?: string; validation?: QuestionValidation }
+
+export function getQuestionValidation(question: Pick<FormQuestion, 'code' | 'display_config'>): QuestionValidation {
+  const code = question.code.toLowerCase()
+  const fallback: QuestionValidation = code.endsWith('_age')
+    ? { min: 4, max: 100, integer: true }
+    : code.includes('national_id') || code.includes('guardian_national_id')
+      ? { format: 'national_id' }
+      : ['family_phones', 'representative_phone', 'responsible_landline', 'responsible_mobile', 'emergency_contact_phone'].includes(code)
+        ? { format: 'phone' }
+        : {}
+  return { ...fallback, ...question.display_config?.validation }
+}
+
+export function validateFormAnswers(questions: FormQuestion[], answers: Record<string, FormAnswerValue>) {
+  for (const question of questions) {
+    if (question.is_system) continue
+    const value = answers[question.form_question_id]
+    const empty = value === null || value === undefined || value === '' || (Array.isArray(value) && value.length === 0)
+    if (question.is_required && empty) return `Completa el campo requerido: ${question.label}`
+    if (empty) continue
+    const validation = getQuestionValidation(question)
+    if (question.data_type === 'number') {
+      if (typeof value !== 'number' || !Number.isFinite(value)) return `${question.label}: ingresa un número válido.`
+      if (validation.integer && !Number.isInteger(value)) return `${question.label}: ingresa un número entero.`
+      if (validation.min !== undefined && value < validation.min) return `${question.label}: el valor mínimo es ${validation.min}.`
+      if (validation.max !== undefined && value > validation.max) return `${question.label}: el valor máximo es ${validation.max}.`
+    }
+    if (typeof value === 'string' && validation.format === 'phone') {
+      const digits = value.replace(/\D/g, '').length
+      const maxDigits = question.code === 'family_phones' ? 30 : 15
+      if (!/^[+(),/\d\s-]+$/.test(value) || digits < 7 || digits > maxDigits) return `${question.label}: ingresa un teléfono válido de 7 a ${maxDigits} dígitos.`
+    }
+    if (typeof value === 'string' && validation.format === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return `${question.label}: ingresa un correo electrónico válido.`
+    if (typeof value === 'string' && validation.format === 'national_id' && !/^\d{10}$/.test(value)) return `${question.label}: ingresa una cédula de 10 dígitos.`
+  }
+  return null
+}
 
 export type FormRuntime = {
   definitionId: string
@@ -224,6 +263,88 @@ export function createDeceFormService(client: SupabaseClient) {
     }
   }
 
+  async function listFormTemplates(institutionId: string) {
+    const { data, error } = await client.from('form_definitions')
+      .select('form_definition_id, code, name, is_active, form_versions(form_version_id, version_number, status)')
+      .eq('institution_id', institutionId).eq('is_active', true).order('name')
+    if (error) throw error
+    return (data ?? []).map(definition => {
+      const versions = (definition.form_versions ?? []) as Array<{ form_version_id: string; version_number: number; status: string }>
+      const version = versions.filter(item => item.status === 'published' || item.status === 'draft').sort((a, b) => b.version_number - a.version_number)[0]
+      return { id: definition.form_definition_id as string, code: definition.code as string, name: definition.name as string, versionId: version?.form_version_id ?? null }
+    })
+  }
+
+  async function createFormTemplate(institutionId: string, name: string) {
+    const code = `custom_${crypto.randomUUID()}`
+    const { data: definition, error: definitionError } = await client.from('form_definitions')
+      .insert({ institution_id: institutionId, code, name: name.trim(), is_active: true })
+      .select('form_definition_id').single()
+    if (definitionError) throw definitionError
+    const { data: version, error: versionError } = await client.from('form_versions')
+      .insert({ form_definition_id: definition.form_definition_id, version_number: 1, status: 'published', published_at: new Date().toISOString() })
+      .select('form_version_id').single()
+    if (versionError) throw versionError
+    return { id: definition.form_definition_id as string, code, versionId: version.form_version_id as string, name: name.trim() }
+  }
+
+  async function deactivateFormTemplate(definitionId: string) {
+    const { data: definition, error: readError } = await client.from('form_definitions').select('code').eq('form_definition_id', definitionId).single()
+    if (readError) throw readError
+    if (definition.code === 'general' || definition.code === 'authorization') throw new Error('Las fichas base no se pueden retirar.')
+    const { error } = await client.from('form_definitions').update({ is_active: false, updated_at: new Date().toISOString() }).eq('form_definition_id', definitionId)
+    if (error) throw error
+  }
+
+  async function resetDefaultTemplates(institutionId: string) {
+    await ensureStandardForms(institutionId)
+    for (const [code, defaults] of Object.entries(standardQuestions)) {
+      const { data: definition, error: definitionError } = await client.from('form_definitions').select('form_definition_id')
+        .eq('institution_id', institutionId).eq('code', code).single()
+      if (definitionError) throw definitionError
+      const { data: versions, error: versionError } = await client.from('form_versions').select('form_version_id, version_number, status')
+        .eq('form_definition_id', definition.form_definition_id).eq('status', 'published').order('version_number', { ascending: false }).limit(1)
+      if (versionError) throw versionError
+      const currentVersion = versions?.[0]
+      if (!currentVersion) continue
+      const { data: currentQuestions, error: questionsError } = await client.from('form_questions')
+        .select('code, label, help_text, data_type, source_field, is_required, is_system, position, display_config')
+        .eq('form_version_id', currentVersion.form_version_id).eq('is_system', true).eq('is_active', true)
+      if (questionsError) throw questionsError
+      const { error: retireError } = await client.from('form_versions').update({ status: 'retired' }).eq('form_version_id', currentVersion.form_version_id)
+      if (retireError) throw retireError
+      const { data: newVersion, error: createVersionError } = await client.from('form_versions').insert({
+        form_definition_id: definition.form_definition_id,
+        version_number: currentVersion.version_number + 1,
+        status: 'published',
+        published_at: new Date().toISOString(),
+      }).select('form_version_id').single()
+      if (createVersionError) throw createVersionError
+      const systemRows = (currentQuestions ?? []).map(question => ({ ...question, form_version_id: newVersion.form_version_id }))
+      const defaultRows = defaults.map((question, index) => ({
+        form_version_id: newVersion.form_version_id, code: question.code, label: question.label,
+        help_text: question.help ?? null, data_type: question.type, source_field: null,
+        is_required: question.required ?? false, is_system: false, is_active: true,
+        position: systemRows.length + index + 1, display_config: { section: question.section },
+      }))
+      if (systemRows.length) {
+        const { error } = await client.from('form_questions').insert(systemRows)
+        if (error) throw error
+      }
+      const { data: insertedDefaults, error: defaultsError } = await client.from('form_questions').insert(defaultRows).select('form_question_id, code')
+      if (defaultsError) throw defaultsError
+      const questionIds = new Map((insertedDefaults ?? []).map(question => [question.code, question.form_question_id]))
+      for (const question of defaults) {
+        const questionId = questionIds.get(question.code)
+        if (!questionId || !question.options?.length) continue
+        const { error } = await client.from('form_question_options').insert(question.options.map((label, index) => ({
+          form_question_id: questionId, value: label, label, position: index + 1,
+        })))
+        if (error) throw error
+      }
+    }
+  }
+
   async function loadForm(institutionId: string, code: string, studentId: string, allowDraft = true) {
     const { data: definition, error: definitionError } = await client
       .from('form_definitions')
@@ -307,13 +428,15 @@ export function createDeceFormService(client: SupabaseClient) {
     answers: Record<string, FormAnswerValue>,
     questions: FormQuestion[],
   ) {
+    const validationError = validateFormAnswers(questions, answers)
+    if (validationError) throw new Error(validationError)
     let currentSubmissionId = submissionId
 
     if (currentSubmissionId) {
       const { data: existing, error: statusError } = await client.from('form_submissions')
         .select('status').eq('form_submission_id', currentSubmissionId).single()
       if (statusError) throw statusError
-      if (existing.status !== 'draft') throw new Error('La ficha ya fue enviada y no se puede editar.')
+      if (existing.status !== 'draft') throw new Error('La ficha está bloqueada. Comunícate con DECE para solicitar una corrección.')
     }
 
     if (!currentSubmissionId) {
@@ -397,6 +520,15 @@ export function createDeceFormService(client: SupabaseClient) {
       .select('form_submission_id').maybeSingle()
     if (error) throw error
     if (!data) throw new Error('Sin permiso para revisar esta ficha o ya fue revisada.')
+  }
+
+  async function reopenSubmission(submissionId: string) {
+    const { data, error } = await client.from('form_submissions')
+      .update({ status: 'draft', updated_at: new Date().toISOString() })
+      .eq('form_submission_id', submissionId).eq('status', 'reviewed')
+      .select('form_submission_id').maybeSingle()
+    if (error) throw error
+    if (!data) throw new Error('No se pudo reabrir la ficha: debe estar revisada y visible para DECE.')
   }
 
   async function loadOwnSubmission(submissionId: string, studentId: string) {
@@ -513,5 +645,5 @@ export function createDeceFormService(client: SupabaseClient) {
     if (error) throw error
   }
 
-  return { ensureStandardForms, loadForm, saveDraft, submit, markReviewed, loadOwnSubmission, addQuestion, removeQuestion }
+  return { ensureStandardForms, listFormTemplates, createFormTemplate, deactivateFormTemplate, resetDefaultTemplates, loadForm, saveDraft, submit, markReviewed, reopenSubmission, loadOwnSubmission, addQuestion, removeQuestion }
 }

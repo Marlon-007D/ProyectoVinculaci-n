@@ -104,7 +104,7 @@ try:
     for user, tenant, role in [(ADMIN_A, A, 'institution_admin'), (ADMIN_B, B, 'institution_admin'),
                                (MANAGER_A, A, 'project_manager'), (VIEWER_A, A, 'viewer'), (SUPER, A, 'super_admin')]:
         sql(f"""INSERT INTO auth.users VALUES('{user}');
-          INSERT INTO profiles(profile_id, first_name, last_name, email) VALUES('{user}', 'Prueba', '{role}', '{user}@example.test');
+          INSERT INTO profiles(profile_id, first_name, last_name, email, phone) VALUES('{user}', 'Prueba', '{role}', '{user}@example.test', '0999999999');
           INSERT INTO memberships(institution_id, profile_id, role_id) SELECT '{tenant}', '{user}', role_id FROM roles WHERE name='{role}';""")
     assert sql('SELECT count(*) FROM project_institutions();', 'authenticated', ADMIN_A) == '1'
     assert sql('SELECT count(*) FROM project_institutions();', 'authenticated', SUPER) == '4'

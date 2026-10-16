@@ -1,4 +1,4 @@
-﻿import { supabase } from '../../core/supabaseClient';
+import { supabase } from '../../core/supabaseClient';
 import { ecuadorToday, isCalendarDate, isMoney, MAX_STORED_MONEY, projectDateWindow, remainingMoney, sumMoney, toCents, validateProjectDates, type ProjectAcademicPeriod } from './projectValidation';
 import type { BudgetItem, Expense, MemberOption, Project, ProjectMember } from './types';
 interface ProfileRow { profile_id: string; first_name: string; last_name: string; email: string }

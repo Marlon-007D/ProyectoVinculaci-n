@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
+﻿import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from './supabaseClient';
 
@@ -10,6 +10,7 @@ interface AuthContextType {
   institutionId: string | null;
   loading: boolean;
   login: (email: string, pass: string) => Promise<{ error: Error | null }>;
+  requestLoginLink: (email: string) => Promise<{ error: Error | null }>;
   register: (email: string, password: string, firstName: string, lastName: string) => Promise<{ error: Error | null; confirmationRequired: boolean; existingAccount: boolean }>;
   isPasswordRecovery: boolean;
   mfaRequired: boolean;
@@ -138,6 +139,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setRole(assignedRole);
     setInstitutionId(membership?.institution_id ?? null);
 
+    // El modo de contraseña omite TOTP; el modo correo + TOTP conserva el enrolamiento.
+    if (sessionStorage.getItem('auth-login-method') === 'password') {
+      setMfaEnrollmentRequired(false);
+      return;
+    }
+
     // Solo se pide configurar TOTP cuando el flujo de asignación dejó la marca pendiente.
     const { data: enrollmentRequired, error: mfaStatusError } = await supabase.rpc('own_mfa_enrollment_required');
     setMfaEnrollmentRequired(!mfaStatusError && enrollmentRequired === true);
@@ -150,8 +157,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setSession(nextSession);
       setUser(nextSession?.user ?? null);
       if (nextSession?.user) {
-        const mfaPending = await checkMfaSession(nextSession);
-        if (!mfaPending) await fetchUserRoleAndTenant(nextSession.user.id);
+        if (sessionStorage.getItem('auth-login-method') === 'password') {
+          setMfaRequired(false);
+          setMfaFactorId(null);
+          setMfaChallengeId(null);
+          mfaChallengeRef.current = null;
+          await fetchUserRoleAndTenant(nextSession.user.id);
+        } else {
+          const mfaPending = await checkMfaSession(nextSession);
+          if (!mfaPending) await fetchUserRoleAndTenant(nextSession.user.id);
+        }
       } else {
         setRole(null);
         setRoleError(null);
@@ -174,8 +189,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(nextSession?.user ?? null);
       if (nextSession?.user) {
         window.setTimeout(() => {
-          void checkMfaSession(nextSession)
-            .then((mfaPending) => mfaPending ? undefined : fetchUserRoleAndTenant(nextSession.user.id))
+          const passwordOnly = sessionStorage.getItem('auth-login-method') === 'password';
+          if (passwordOnly) {
+            setMfaRequired(false);
+            setMfaFactorId(null);
+            setMfaChallengeId(null);
+            mfaChallengeRef.current = null;
+          }
+          void (passwordOnly
+            ? fetchUserRoleAndTenant(nextSession.user.id)
+            : checkMfaSession(nextSession).then((mfaPending) => mfaPending ? undefined : fetchUserRoleAndTenant(nextSession.user.id)))
             .finally(() => { if (active) setLoading(false); });
         }, 0);
       } else {
@@ -196,11 +219,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const login = async (email: string, pass: string) => {
+    sessionStorage.setItem('auth-login-method', 'password');
     const { error } = await supabase.auth.signInWithPassword({ email, password: pass });
-    if (!error) {
-      const { data: assurance } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-      if (assurance?.nextLevel === 'aal2' && assurance.currentLevel !== 'aal2') await checkMfaSession((await supabase.auth.getSession()).data.session);
-    }
+    if (error) sessionStorage.removeItem('auth-login-method');
+    return { error };
+  };
+
+  const requestLoginLink = async (email: string) => {
+    sessionStorage.setItem('auth-login-method', 'email_totp');
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: { shouldCreateUser: false, emailRedirectTo: window.location.origin },
+    });
+    if (error) sessionStorage.removeItem('auth-login-method');
     return { error };
   };
 
@@ -244,6 +275,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setMfaFactorId(null);
       setMfaChallengeId(null);
       mfaChallengeRef.current = null;
+      const { data: currentSession } = await supabase.auth.getSession();
+      if (currentSession.session?.user) {
+        setLoading(true);
+        await fetchUserRoleAndTenant(currentSession.session.user.id);
+        setLoading(false);
+      }
     }
     return { error };
   };
@@ -264,6 +301,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     await supabase.auth.signOut();
+    sessionStorage.removeItem('auth-login-method');
     setMfaRequired(false);
     setMfaEnrollmentRequired(false);
     setMfaFactorId(null);
@@ -272,7 +310,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, role, roleError, institutionId, loading, login, register, isPasswordRecovery, mfaRequired, mfaEnrollmentRequired, completeMfaEnrollment, mfaChallengeReady: Boolean(mfaChallengeId), verifyMfa, requestPasswordReset, updatePassword, logout }}>
+    <AuthContext.Provider value={{ user, session, role, roleError, institutionId, loading, login, requestLoginLink, register, isPasswordRecovery, mfaRequired, mfaEnrollmentRequired, completeMfaEnrollment, mfaChallengeReady: Boolean(mfaChallengeId), verifyMfa, requestPasswordReset, updatePassword, logout }}>
       {children}
     </AuthContext.Provider>
   );

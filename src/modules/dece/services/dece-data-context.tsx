@@ -5,6 +5,8 @@ import type { Student } from '../types/student'
 export type DeceDataIntegration = {
   client: SupabaseClient
   institutionId: string
+  profileId?: string
+  slug?: string
   getStudentId: (student: Student) => string | null
 }
 

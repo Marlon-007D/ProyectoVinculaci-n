@@ -17,4 +17,5 @@ export const dashboardStats: DashboardStat[] = [
   { icon: 'forms', label: 'Fichas generales', value: '112', hint: '87% completadas', tone: 'green' },
   { icon: 'authorizations', label: 'Autorizaciones', value: '96', hint: '75% completadas', tone: 'orange' },
   { icon: 'follow-ups', label: 'Seguimientos', value: '08', hint: 'Esta semana', tone: 'blue' },
+  { icon: 'follow-ups', label: 'Casos abiertos', value: '—', hint: 'En esta institución', tone: 'blue' },
 ]

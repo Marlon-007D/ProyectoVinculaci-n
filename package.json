@@ -8,7 +8,9 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "test": "node --test --test-isolation=none supabase/tests/frontend_projects.test.cjs"
+    "test": "node --test --test-isolation=none supabase/tests/frontend_projects.test.cjs",
+    "typecheck": "tsc --noEmit",
+    "portable": "node server.mjs"
   },
   "dependencies": {
     "@fortawesome/fontawesome-svg-core": "^7.3.1",
@@ -20,7 +22,8 @@
     "lucide-react": "^1.16.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
-    "react-router-dom": "^7.18.4"
+    "react-router-dom": "^7.18.4",
+    "sweetalert2": "^11.26.25"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",

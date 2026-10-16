@@ -1,8 +1,17 @@
 export interface InvoiceLine {
   id: string
+  productId?: string
   description: string
   quantity: number
   unitPrice: number
+}
+
+export interface InvoiceProduct {
+  id: string
+  description: string
+  unitPrice: number
+  sourceName: string
+  sourceUrl: string
 }
 
 export interface InvoiceTotals {

@@ -4,8 +4,12 @@ import {
   faHeartPulse,
   faHouse,
   faUsers,
+  faFileLines,
+  faInbox,
+  faHeart,
 } from '@fortawesome/free-solid-svg-icons'
 import type { ReactNode } from 'react'
+import { useState } from 'react'
 import type { DeceScreen } from '../../types/screen'
 
 type Props = {
@@ -15,17 +19,31 @@ type Props = {
 }
 
 export default function ProvisionalShell({ screen, onNavigate, children }: Props) {
+  const [menuOpen, setMenuOpen] = useState(false)
+
   return (
     <>
       <aside className="sidebar">
-        <div className="brand">
-          <div className="brand-mark">D</div>
-          <div>
-            <b>DECE</b>
-            <small>Bienestar estudiantil</small>
+        <div className="sidebar-heading">
+          <div className="brand">
+            <div className="brand-mark">D</div>
+            <div>
+              <b>DECE</b>
+              <small>Bienestar estudiantil</small>
+            </div>
           </div>
+          <button
+            type="button"
+            className="menu-toggle"
+            aria-expanded={menuOpen}
+            aria-controls="dece-workspace-navigation"
+            onClick={() => setMenuOpen(open => !open)}
+          >
+            <span>Menú DECE</span>
+            <span aria-hidden="true">{menuOpen ? '−' : '+'}</span>
+          </button>
         </div>
-        <nav aria-label="Navegación principal">
+        <nav id="dece-workspace-navigation" className={`workspace-nav ${menuOpen ? 'open' : ''}`} aria-label="Navegación principal">
           <div className="nav-caption">ESPACIO DE TRABAJO</div>
           <button
             type="button"
@@ -36,14 +54,26 @@ export default function ProvisionalShell({ screen, onNavigate, children }: Props
             <FontAwesomeIcon icon={faHouse} aria-hidden="true" />
             Panel principal
           </button>
+          <button type="button" className={`nav-item ${screen === 'forms' ? 'active' : ''}`} aria-current={screen === 'forms' ? 'page' : undefined} onClick={() => onNavigate('forms')}>
+            <FontAwesomeIcon icon={faFileLines} aria-hidden="true" />
+            Plantillas de fichas
+          </button>
+          <button type="button" className={`nav-item ${screen === 'submissions' ? 'active' : ''}`} aria-current={screen === 'submissions' ? 'page' : undefined} onClick={() => onNavigate('submissions')}>
+            <FontAwesomeIcon icon={faInbox} aria-hidden="true" />
+            Envíos de fichas
+          </button>
           <button
             type="button"
-            className={`nav-item ${screen !== 'home' ? 'active' : ''}`}
+            className={`nav-item ${screen === 'students' ? 'active' : ''}`}
             aria-current={screen === 'students' ? 'page' : undefined}
             onClick={() => onNavigate('students')}
           >
             <FontAwesomeIcon icon={faUsers} aria-hidden="true" />
             Estudiantes
+          </button>
+          <button type="button" className={`nav-item ${screen === 'cases' ? 'active' : ''}`} aria-current={screen === 'cases' ? 'page' : undefined} onClick={() => onNavigate('cases')}>
+            <FontAwesomeIcon icon={faHeart} aria-hidden="true" />
+            Casos de acompañamiento
           </button>
         </nav>
         <div className="sidebar-note">

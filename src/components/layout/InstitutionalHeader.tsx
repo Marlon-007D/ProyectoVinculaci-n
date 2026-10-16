@@ -9,7 +9,7 @@ export function InstitutionalHeader() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, role, logout } = useAuth();
-  const { activeInstitution, institutions, setActiveInstitution } = useTenant();
+  const { activeInstitution, institutions, setActiveInstitution, hasModuleAccess } = useTenant();
 
   const pathname = location.pathname;
   const isPanel = pathname === '/panel' || pathname === '/' || pathname === '/inicio';
@@ -17,15 +17,14 @@ export function InstitutionalHeader() {
   const isDece = pathname === '/panel/dece' || pathname === '/dece';
   const isSimulators = pathname === '/panel/simuladores' || pathname === '/simuladores';
   const isSite = pathname.startsWith('/panel/portal') || pathname.startsWith('/portal');
-  const isAdmin = pathname === '/panel/admin' || pathname === '/admin';
 
-  const navLinks = [
-    { label: 'Inicio', path: '/panel', isActive: isPanel },
-    { label: 'Proyectos', path: '/panel/proyectos', isActive: isProjects },
-    { label: 'DECE', path: '/panel/dece', isActive: isDece },
-    { label: 'Simuladores', path: '/panel/simuladores', isActive: isSimulators },
-    { label: 'Portal Web', path: '/panel/portal', isActive: isSite },
-  ];
+  const navLinks = (role === 'super_admin' ? [] : [
+    { label: 'Inicio', path: '/panel', isActive: isPanel, moduleName: 'inicio' },
+    { label: 'Proyectos', path: '/panel/proyectos', isActive: isProjects, moduleName: 'projects' },
+    { label: 'DECE', path: '/panel/dece', isActive: isDece, moduleName: 'dece' },
+    { label: 'Simuladores', path: '/panel/simuladores', isActive: isSimulators, moduleName: 'simuladores' },
+    { label: 'Portal Web', path: '/panel/portal', isActive: isSite, moduleName: 'portal' },
+  ] as const).filter((link) => hasModuleAccess(link.moduleName));
 
   const handleLogout = async () => {
     try {
@@ -37,15 +36,15 @@ export function InstitutionalHeader() {
   };
 
   return (
-    <header className="sticky top-0 z-40 w-full shadow-xs bg-white border-b border-gray-200">
+    <header className="sticky top-0 z-40 w-full bg-white shadow-[0_8px_26px_rgba(11,37,66,0.06)] border-b border-[#e0e8ee]">
       <div className="w-full text-white text-xs py-2 px-4 bg-[#0a233f]">
         <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
-          <div className="text-[11px] sm:text-xs text-sky-200 font-medium">
+          <div className="text-[11px] sm:text-xs text-teal-200 font-semibold">
             Plataforma Institucional Educativa
           </div>
 
           <div className="ml-auto text-xs">
-            {institutions && institutions.length > 1 ? (
+            {role === 'super_admin' && institutions && institutions.length > 1 ? (
               <select
                 value={activeInstitution?.institution_id || ''}
                 onChange={(e) => {
@@ -61,7 +60,7 @@ export function InstitutionalHeader() {
                 ))}
               </select>
             ) : (
-              <span className="text-[11px] text-sky-200">
+              <span className="text-[11px] text-teal-200">
                 {activeInstitution?.name || 'Sede Educativa'}
               </span>
             )}
@@ -86,27 +85,17 @@ export function InstitutionalHeader() {
                 to={link.path}
                 className={`relative px-3.5 py-2 rounded-lg text-xs font-semibold tracking-wide transition-colors whitespace-nowrap ${
                   link.isActive
-                    ? 'text-sky-900 bg-sky-50 border border-sky-200 shadow-2xs font-bold'
+                    ? 'text-teal-900 bg-teal-50 border border-teal-200 shadow-2xs font-bold'
                     : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                 }`}
               >
                 <span>{link.label}</span>
                 {link.isActive && (
-                  <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-6 h-0.5 rounded-full bg-sky-600" />
+                  <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-6 h-0.5 rounded-full bg-teal-600" />
                 )}
               </Link>
             ))}
 
-            <Link
-              to="/panel/admin"
-              className={`px-3 py-2 rounded-lg text-xs font-semibold tracking-wide transition-colors whitespace-nowrap ${
-                isAdmin
-                    ? 'text-sky-900 bg-sky-50 border border-sky-200 shadow-2xs font-bold'
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-              }`}
-            >
-              <span>Admin</span>
-            </Link>
           </nav>
 
           <div className="hidden sm:flex items-center gap-3 shrink-0">
@@ -124,7 +113,7 @@ export function InstitutionalHeader() {
                     <span className="block text-xs font-semibold text-gray-800 leading-tight truncate">
                       {user.email}
                     </span>
-                    <span className="block text-[10px] text-sky-700 font-bold capitalize truncate">
+                      <span className="block text-[10px] text-teal-700 font-bold capitalize truncate">
                       {role || 'Usuario'}
                     </span>
                   </div>
@@ -141,7 +130,7 @@ export function InstitutionalHeader() {
             ) : (
               <Link
                 to="/panel/admin"
-                className="px-3.5 py-2 rounded-lg text-xs font-semibold text-sky-900 bg-sky-50 border border-sky-200 hover:bg-sky-100 transition-colors whitespace-nowrap"
+                className="px-3.5 py-2 rounded-lg text-xs font-semibold text-teal-900 bg-teal-50 border border-teal-200 hover:bg-teal-100 transition-colors whitespace-nowrap"
               >
                 Acceso Institucional
               </Link>
@@ -170,35 +159,18 @@ export function InstitutionalHeader() {
                 onClick={() => setMobileMenuOpen(false)}
                 className={`flex items-center justify-between px-3 py-2 rounded-lg text-sm font-semibold ${
                   link.isActive
-                    ? 'bg-sky-50 text-sky-900 border border-sky-200 font-bold'
+                    ? 'bg-teal-50 text-teal-900 border border-teal-200 font-bold'
                     : 'text-gray-700 hover:bg-gray-50'
                 }`}
               >
                 <span>{link.label}</span>
                 {link.isActive && (
-                  <span className="text-[10px] bg-sky-200 text-sky-900 px-2 py-0.5 rounded">
+                    <span className="text-[10px] bg-teal-100 text-teal-900 px-2 py-0.5 rounded">
                     Activo
                   </span>
                 )}
               </Link>
             ))}
-
-            <Link
-              to="/panel/admin"
-              onClick={() => setMobileMenuOpen(false)}
-              className={`flex items-center justify-between px-3 py-2 rounded-lg text-sm font-semibold ${
-                isAdmin
-                  ? 'bg-sky-50 text-sky-900 border border-sky-200 font-bold'
-                  : 'text-gray-700 hover:bg-gray-50'
-              }`}
-            >
-              <span>Administración</span>
-              {isAdmin && (
-                <span className="text-[10px] bg-sky-200 text-sky-900 px-2 py-0.5 rounded">
-                  Activo
-                </span>
-              )}
-            </Link>
           </div>
 
           <div className="pt-3 border-t border-gray-100">
@@ -206,7 +178,7 @@ export function InstitutionalHeader() {
               <div className="flex items-center justify-between p-2 bg-gray-50 rounded-lg text-xs">
                 <div>
                   <span className="block font-semibold text-gray-800">{user.email}</span>
-                  <span className="block text-[11px] text-sky-700 font-bold capitalize">
+                  <span className="block text-[11px] text-teal-700 font-bold capitalize">
                     {role || 'Usuario'}
                   </span>
                 </div>
@@ -222,7 +194,7 @@ export function InstitutionalHeader() {
               <Link
                 to="/panel/admin"
                 onClick={() => setMobileMenuOpen(false)}
-                className="block w-full text-center py-2 text-xs font-semibold text-sky-900 bg-sky-50 border border-sky-200 rounded-lg"
+                className="block w-full text-center py-2 text-xs font-semibold text-teal-900 bg-teal-50 border border-teal-200 rounded-lg"
               >
                 Acceso Institucional
               </Link>

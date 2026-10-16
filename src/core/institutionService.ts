@@ -1,5 +1,5 @@
 import { supabase } from './supabaseClient';
-import type { Institution } from './TenantContext';
+import type { Institution, InstitutionModuleName, InstitutionModulePermissions } from './TenantContext';
 
 function accessError(subject:string,error:{code?:string}) {
   return new Error(`No se pudieron consultar ${subject} con tu sesión. ${error.code?`Código: ${error.code}. `:''}Reintenta; si persiste, el responsable de accesos debe revisar tu cuenta.`);
@@ -20,12 +20,16 @@ export async function getUserInstitutions(userId: string): Promise<Institution[]
   const institutions=await query;
   if(institutions.error)throw accessError('tus instituciones',institutions.error);
   if(!institutions.data?.length)return [];
-  const modules=await supabase.from('module_settings').select('institution_id,module_name,is_enabled').in('institution_id',institutions.data.map(i=>i.institution_id));
+  const modules=await supabase.rpc('get_accessible_module_settings');
   if(modules.error)throw accessError('los módulos habilitados',modules.error);
+  if(!Array.isArray(modules.data))throw new Error('No se pudieron verificar los permisos de módulos de esta sesión.');
+  const moduleSettings=modules.data as Array<{institution_id:string;module_name:string;is_enabled:boolean}>;
   return institutions.data.map(i=>{
-    const settings=modules.data?.filter(m=>m.institution_id===i.institution_id)??[];
-    const enabled=['projects','portal','dece','simuladores'].filter(name=>!settings.some(s=>s.module_name===name&&!s.is_enabled));
-    return {...i,role:isSuper?'super_admin':roleById.get(membership.data.find(m=>m.institution_id===i.institution_id)?.role_id)??'viewer',projects_enabled:enabled.includes('projects'),enabled_modules:enabled};
+    const settings=moduleSettings.filter(m=>m.institution_id===i.institution_id);
+    const module_permissions:InstitutionModulePermissions={inicio:false,projects:false,portal:false,dece:false,simuladores:false};
+    for(const name of Object.keys(module_permissions) as InstitutionModuleName[])module_permissions[name]=settings.some(s=>s.module_name===name&&s.is_enabled===true);
+    const enabled=(Object.keys(module_permissions) as InstitutionModuleName[]).filter(name=>module_permissions[name]);
+    return {...i,role:isSuper?'super_admin':roleById.get(membership.data.find(m=>m.institution_id===i.institution_id)?.role_id)??'viewer',projects_enabled:module_permissions.projects,enabled_modules:enabled,module_permissions};
   });
 }
 

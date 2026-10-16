@@ -35,7 +35,7 @@ export function InstitutionalFooter() {
                 <h4 className="font-bold text-sm tracking-tight text-white">
                   {activeInstitution?.name || 'Plataforma Institucional Educativa'}
                 </h4>
-                <p className="text-xs text-sky-200">
+              <p className="text-xs text-teal-200">
                   Sistema de Gestión Web, Vinculación Comunitaria y Módulos Académicos
                 </p>
               </div>
@@ -44,7 +44,7 @@ export function InstitutionalFooter() {
             <div className="flex items-center gap-2">
               <Link
                 to="/panel"
-                className="px-3.5 py-1.5 rounded-lg bg-sky-700 hover:bg-sky-600 text-white font-semibold text-xs transition-colors"
+                className="px-3.5 py-1.5 rounded-lg bg-teal-700 hover:bg-teal-600 text-white font-semibold text-xs transition-colors"
               >
                 Inicio
               </Link>
@@ -61,19 +61,19 @@ export function InstitutionalFooter() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
             <div>
-              <h5 className="text-xs font-bold tracking-wider uppercase text-sky-300 mb-3 pb-1 border-b border-white/10">
+              <h5 className="text-xs font-bold tracking-wider uppercase text-teal-300 mb-3 pb-1 border-b border-white/10">
                 Plataforma Institucional
               </h5>
               <p className="text-xs text-slate-300 leading-relaxed mb-3">
                 Entorno integral para la administración web, seguimiento de prácticas de vinculación comunitaria, consejería DECE y simuladores educativos.
               </p>
-              <span className="text-[11px] text-sky-400 font-medium">
+              <span className="text-[11px] text-teal-300 font-medium">
                 Red multiinstitucional de 4 unidades educativas
               </span>
             </div>
 
             <div>
-              <h5 className="text-xs font-bold tracking-wider uppercase text-sky-300 mb-3 pb-1 border-b border-white/10">
+              <h5 className="text-xs font-bold tracking-wider uppercase text-teal-300 mb-3 pb-1 border-b border-white/10">
                 Módulos del Sistema
               </h5>
               <ul className="space-y-2 text-xs text-slate-300">
@@ -106,7 +106,7 @@ export function InstitutionalFooter() {
             </div>
 
             <div>
-              <h5 className="text-xs font-bold tracking-wider uppercase text-sky-300 mb-3 pb-1 border-b border-white/10">
+              <h5 className="text-xs font-bold tracking-wider uppercase text-teal-300 mb-3 pb-1 border-b border-white/10">
                 Accesos Directos
               </h5>
               <ul className="space-y-2 text-xs text-slate-300">
@@ -134,7 +134,7 @@ export function InstitutionalFooter() {
             </div>
 
             <div>
-              <h5 className="text-xs font-bold tracking-wider uppercase text-sky-300 mb-3 pb-1 border-b border-white/10">
+              <h5 className="text-xs font-bold tracking-wider uppercase text-teal-300 mb-3 pb-1 border-b border-white/10">
                 Unidades Educativas
               </h5>
               <div className="space-y-2 text-xs text-slate-300">
@@ -178,7 +178,7 @@ export function InstitutionalFooter() {
         <button
           type="button"
           onClick={scrollToTop}
-          className="fixed bottom-6 right-6 z-40 px-3 py-1.5 text-xs font-bold rounded-lg bg-sky-900 hover:bg-sky-800 text-white shadow-md transition-colors border border-white/20 cursor-pointer"
+          className="fixed bottom-6 right-6 z-40 px-3 py-1.5 text-xs font-bold rounded-lg bg-teal-800 hover:bg-teal-700 text-white shadow-md transition-colors border border-white/20 cursor-pointer"
           aria-label="Volver arriba"
           title="Volver al inicio"
         >
