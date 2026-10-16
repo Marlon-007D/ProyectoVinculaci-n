@@ -1,3 +1,4 @@
+import { isDemoMode, demoPages } from "../lib/demo";
 import { getSupabase } from "../lib/supabase";
 import { toServiceError } from "../lib/errors";
 import type { Page } from "../types/page";
@@ -5,6 +6,7 @@ import type { Page } from "../types/page";
 const COLUMNS = "page_id, institution_id, slug, title, status, is_homepage";
 
 export async function getPageBySlug(institutionId: string, slug: string): Promise<Page | null> {
+  if (isDemoMode()) return demoPages.find((p) => p.slug === slug) ?? null;
   const { data, error } = await getSupabase()
     .from("pages")
     .select(COLUMNS)
@@ -17,6 +19,7 @@ export async function getPageBySlug(institutionId: string, slug: string): Promis
 }
 
 export async function getHomePage(institutionId: string): Promise<Page | null> {
+  if (isDemoMode()) return demoPages.find((p) => p.is_homepage) ?? null;
   const { data, error } = await getSupabase()
     .from("pages")
     .select(COLUMNS)

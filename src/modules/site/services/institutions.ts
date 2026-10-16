@@ -1,8 +1,10 @@
+import { isDemoMode, demoInstitution } from "../lib/demo";
 import { getSupabase } from "../lib/supabase";
 import { toServiceError } from "../lib/errors";
 import type { Institution } from "../types/institution";
 
 export async function getInstitutionBySlug(slug: string): Promise<Institution | null> {
+  if (isDemoMode()) return demoInstitution;
   const { data, error } = await getSupabase()
     .from("institutions")
     .select("institution_id, name, slug, domain, is_active")

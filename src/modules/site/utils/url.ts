@@ -6,3 +6,12 @@ export function isSafeExternalUrl(url: string): boolean {
     return false;
   }
 }
+
+/** Conserva ?institution=... al navegar entre páginas internas (para ver otra institución por URL). */
+export function keepInstitution(path: string, currentSearch: string): string {
+  const keep = new URLSearchParams(currentSearch).get("institution");
+  if (!keep) return path;
+  const u = new URL(path, "http://x");
+  if (!u.searchParams.has("institution")) u.searchParams.set("institution", keep);
+  return u.pathname + u.search + u.hash;
+}
