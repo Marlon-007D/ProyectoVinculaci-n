@@ -4,6 +4,8 @@ export interface InvoiceLine {
   description: string
   quantity: number
   unitPrice: number
+  stock: number
+  isAvailable: boolean
 }
 
 export interface InvoiceProduct {
@@ -12,6 +14,7 @@ export interface InvoiceProduct {
   unitPrice: number
   sourceName: string
   sourceUrl: string
+  imageUrl?: string
 }
 
 export interface InvoiceTotals {

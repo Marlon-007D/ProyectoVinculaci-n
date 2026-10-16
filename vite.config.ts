@@ -3,10 +3,7 @@ import { defineConfig } from 'vite'
 
 // https://vite.dev/config/
 export default defineConfig({
-  // GitHub Pages sirve los repositorios de proyecto desde /<repo>/.
-  // En desarrollo local se conserva la raíz del dominio.
-  base: process.env.GITHUB_ACTIONS === 'true'
-    ? `/${process.env.GITHUB_REPOSITORY?.split('/')[1] ?? ''}/`
-    : '/',
+  // Vercel sirve la aplicación desde la raíz del dominio.
+  base: '/',
   plugins: [react()],
 })

@@ -15,14 +15,13 @@ function findCatalogProduct(line: InvoiceLine, products: InvoiceProduct[]) {
     ?? products.find(product => (key.includes('bond') || key.includes('resma')) && product.id === 'bond-paper')
     ?? products.find(product => key.includes('hojas') && product.id === 'loose-sheets')
     ?? products.find(product => key.includes('folder') && product.id === 'folder-pack')
+    ?? products.find(product => key.includes('lápices de colores') && product.id === 'colored-pencils')
 }
 
 export function useInvoiceSimulator() {
   const [draft, setDraft] = useState<InvoiceDraft>(copySampleInvoice)
   const [savedInvoices, setSavedInvoices] = useState<SavedInvoice[]>(getSavedInvoices)
   const [products, setProducts] = useState<InvoiceProduct[]>(sampleInvoiceProducts)
-  const [catalogNotice, setCatalogNotice] = useState('')
-  const [notice, setNotice] = useState('')
   const [historyNotice, setHistoryNotice] = useState('')
   const totals = useMemo(() => calculateInvoice(draft.lines, invoiceTaxRate), [draft.lines])
 
@@ -31,7 +30,6 @@ export function useInvoiceSimulator() {
     getInvoiceProductCatalog().then(catalog => {
       if (!mounted) return
       setProducts(catalog.products)
-      setCatalogNotice(catalog.source === 'mock' ? 'Catálogo de demostración: conecta Supabase para cargar los precios desde la base de datos.' : '')
       setDraft(current => ({ ...current, lines: current.lines.map(line => {
         const product = findCatalogProduct(line, catalog.products)
         return product ? { ...line, description: product.description, unitPrice: product.unitPrice } : line
@@ -39,7 +37,6 @@ export function useInvoiceSimulator() {
     }).catch(() => {
       if (!mounted) return
       setProducts(sampleInvoiceProducts.map(product => ({ ...product })))
-      setCatalogNotice('No se pudo consultar Supabase; se usa el catálogo de demostración.')
     })
     return () => { mounted = false }
   }, [])
@@ -56,33 +53,22 @@ export function useInvoiceSimulator() {
         if (!product) return current
         return { ...current, lines: current.lines.map(line => line.id === id ? { ...line, productId, description: product.description, unitPrice: product.unitPrice } : line) }
       }
-      const numericValue = Math.max(0, Number(value) || 0)
+      const line = current.lines.find(candidate => candidate.id === id)
+      const stock = products.find(candidate => candidate.id === line?.productId)?.stock ?? 0
+      const numericValue = Math.min(stock, Math.max(0, Number(value) || 0))
       return { ...current, lines: current.lines.map(line => line.id === id ? { ...line, quantity: numericValue } : line) }
     })
   }
-  const addLine = () => setDraft(current => {
+  const addLine = (productId?: string) => setDraft(current => {
     const usedProducts = new Set(current.lines.map(line => line.productId).filter(Boolean))
-    const product = products.find(candidate => !usedProducts.has(candidate.id))
-    if (!product) return current
+    const product = products.find(candidate => candidate.id === productId && !usedProducts.has(candidate.id))
+      ?? (productId ? undefined : products.find(candidate => !usedProducts.has(candidate.id)))
+    if (!product || !product.isAvailable || product.stock < 1) return current
     return { ...current, lines: [...current.lines, { id: crypto.randomUUID(), productId: product.id, description: product.description, quantity: 1, unitPrice: product.unitPrice }] }
   })
-  const removeLine = (id: string) => setDraft(current => ({ ...current, lines: current.lines.length > 1 ? current.lines.filter(line => line.id !== id) : current.lines }))
-  const reset = () => {
-    setDraft({
-      customer: '',
-      identification: '',
-      date: '',
-      paymentMethod: '',
-      lines: [{ id: crypto.randomUUID(), productId: '', description: '', quantity: 1, unitPrice: 0 }],
-    })
-    setNotice('')
-  }
-
+  const removeLine = (id: string) => setDraft(current => ({ ...current, lines: current.lines.filter(line => line.id !== id) }))
   const persist = () => {
-    if (!draft.customer.trim()) {
-      setNotice('Escribe el nombre del cliente antes de guardar.')
-      return
-    }
+    if (!draft.customer.trim()) return false
     const record: SavedInvoice = {
       ...draft,
       id: crypto.randomUUID(),
@@ -92,9 +78,11 @@ export function useInvoiceSimulator() {
     }
     try {
       setSavedInvoices(saveInvoice(record))
-      setNotice('Factura guardada en este navegador.')
+      setHistoryNotice('')
+      return true
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : 'No se pudo guardar la factura.')
+      setHistoryNotice(error instanceof Error ? error.message : 'No se pudo guardar la factura.')
+      return false
     }
   }
   const load = (record: SavedInvoice) => {
@@ -104,17 +92,16 @@ export function useInvoiceSimulator() {
         ? { ...line, productId: product.id, description: product.description, unitPrice: product.unitPrice }
         : { ...line, productId: '', description: '', unitPrice: 0 }
     }) })
-    setNotice('')
+    setHistoryNotice('')
   }
   const removeSaved = (id: string) => {
     try {
       setSavedInvoices(deleteInvoice(id))
-      setNotice('')
       setHistoryNotice('Factura eliminada del historial.')
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : 'No se pudo eliminar la factura.')
+      setHistoryNotice(error instanceof Error ? error.message : 'No se pudo eliminar la factura.')
     }
   }
 
-  return { draft, totals, notice, historyNotice, savedInvoices, products, catalogNotice, updateField, updateLine, addLine, removeLine, reset, persist, load, removeSaved }
+  return { draft, totals, historyNotice, savedInvoices, products, updateField, updateLine, addLine, removeLine, persist, load, removeSaved }
 }

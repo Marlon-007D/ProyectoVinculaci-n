@@ -54,3 +54,6 @@ desktop.ini
 *.sqlite
 *.sqlite3
 *.db
+.vercel
+.env*
+!.env.example

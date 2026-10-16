@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
+import { FileText, FolderOpen } from 'lucide-react'
 import { Sidebar } from '../../shared/components/Sidebar/Sidebar'
 import { AppHeader } from '../../shared/components/AppHeader/AppHeader'
 import { InvoiceSimulatorPage } from '../../features/simulators/invoice/pages/InvoiceSimulatorPage'
@@ -20,6 +21,7 @@ import { AcademicContentSkeleton } from '../../features/academic-content/compone
 import { AcademicPostPreviewPage } from '../../features/academic-content/pages/AcademicPostPreviewPage'
 import type { AcademicContentEntry } from '../../features/academic-content/types/academicContent.types'
 import type { ThemeName } from '../../features/themeUser/types/themeUser.types'
+import { getSavedInvoices } from '../../features/simulators/invoice/services/invoiceStorageService'
 
 export type SimulatorRoute = 'invoice' | 'converter' | 'interest'
 export type AppRoute = SimulatorRoute | 'school-courses' | 'news' | 'events' | 'honors' | 'academic-periods'
@@ -56,6 +58,8 @@ const routeSkeletons: Record<AppRoute, () => ReactNode> = {
 
 export function AppRouter({ collapsed, theme, onThemeChange, onToggleSidebar }: Props) {
   const [route, setRoute] = useState<AppRoute>('invoice')
+  const [invoiceSection, setInvoiceSection] = useState<'emission' | 'history'>('emission')
+  const [invoiceCount, setInvoiceCount] = useState(() => getSavedInvoices().length)
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null)
   const [selectedModuleId, setSelectedModuleId] = useState<string | null>(null)
   const [courseTopicName, setCourseTopicName] = useState<string | null>(null)
@@ -104,11 +108,15 @@ export function AppRouter({ collapsed, theme, onThemeChange, onToggleSidebar }: 
     ...(selectedCourse && courseTopicName ? [{ label: courseTopicName, onClick: evaluationActive ? () => setEvaluationActive(false) : undefined }] : []),
     ...(evaluationActive ? [{ label: 'Evaluaciones' }] : []),
   ] : []
+  const invoiceNavigation = displayedRoute === 'invoice' && !loadingRoute ? <nav className="invoice-navbar-tabs" aria-label="Secciones de facturación" role="tablist">
+    <button className="invoice-navbar-tab" id="invoice-tab-emission" type="button" role="tab" aria-controls="invoice-panel-emission" aria-selected={invoiceSection === 'emission'} onClick={() => setInvoiceSection('emission')}><FileText size={18} aria-hidden="true" />Emisión</button>
+    <button className="invoice-navbar-tab" id="invoice-tab-history" type="button" role="tab" aria-controls="invoice-panel-history" aria-selected={invoiceSection === 'history'} onClick={() => setInvoiceSection('history')}><FolderOpen size={18} aria-hidden="true" />Facturas<span className="invoice-section-count">{invoiceCount}</span></button>
+  </nav> : undefined
   return <>
-    <AppHeader breadcrumbs={breadcrumbs} />
+    <AppHeader breadcrumbs={breadcrumbs} navigation={invoiceNavigation} />
     <Sidebar active={displayedRoute} activeModuleId={selectedModuleId} collapsed={collapsed} theme={theme} onThemeChange={onThemeChange} onSelect={navigateTo} onSelectModule={selectModule} onToggle={onToggleSidebar} />
     <main className="main">
-      {loadingRoute ? <Skeleton /> : previewEntry ? <AcademicPostPreviewPage entry={previewEntry} /> : displayedRoute === 'school-courses' ? <SchoolCoursesPage selectedModuleId={selectedModuleId} selectedCourseId={selectedCourseId} evaluationActive={evaluationActive} onSelectCourse={selectCourse} onTopicChange={setCourseTopicName} onEvaluationChange={setEvaluationActive} /> : <Component onPreview={showPostPreview} />}
+      {loadingRoute ? <Skeleton /> : previewEntry ? <AcademicPostPreviewPage entry={previewEntry} /> : displayedRoute === 'school-courses' ? <SchoolCoursesPage selectedModuleId={selectedModuleId} selectedCourseId={selectedCourseId} evaluationActive={evaluationActive} onSelectCourse={selectCourse} onTopicChange={setCourseTopicName} onEvaluationChange={setEvaluationActive} /> : displayedRoute === 'invoice' ? <InvoiceSimulatorPage activeSection={invoiceSection} onSectionChange={setInvoiceSection} onInvoiceCountChange={setInvoiceCount} /> : <Component onPreview={showPostPreview} />}
     </main>
   </>
 }

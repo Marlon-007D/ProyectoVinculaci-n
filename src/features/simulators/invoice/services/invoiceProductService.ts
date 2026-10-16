@@ -9,6 +9,7 @@ interface DatabaseInvoiceProduct {
   unit_price: number | string
   source_name: string
   source_url: string
+  stock: number | string
 }
 
 export interface InvoiceProductCatalog {
@@ -20,14 +21,17 @@ export async function getInvoiceProductCatalog(): Promise<InvoiceProductCatalog>
   if (!supabaseClient.isConfigured) return { products: sampleInvoiceProducts.map(product => ({ ...product })), source: 'mock' }
 
   const rows = await supabaseClient.request<DatabaseInvoiceProduct[]>(
-    'invoice_products?select=id,description,unit_price,source_name,source_url&is_active=eq.true&order=description.asc',
+    'invoice_products?select=id,description,unit_price,source_name,source_url,stock&is_active=eq.true&order=description.asc',
   )
   const products = rows.map(row => ({
     id: row.id,
     description: row.description,
     unitPrice: Number(row.unit_price),
+    stock: Math.max(0, Number(row.stock) || 0),
+    isAvailable: Number(row.stock) > 0,
     sourceName: row.source_name,
     sourceUrl: row.source_url,
+    imageUrl: sampleInvoiceProducts.find(product => product.id === row.id || product.description === row.description)?.imageUrl ?? '/products/notebook.jpg',
   })).filter(product => product.id && product.description && Number.isFinite(product.unitPrice) && product.unitPrice > 0)
 
   if (products.length === 0) throw new AppError('La base de datos no tiene productos activos con precios válidos.')

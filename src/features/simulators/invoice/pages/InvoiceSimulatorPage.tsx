@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Check, ChevronLeft, FileText, LoaderCircle } from 'lucide-react'
 import type { SavedInvoice } from '../types/invoice.types'
 import { useInvoiceSimulator } from '../hooks/useInvoiceSimulator'
 import { InvoiceForm } from '../components/InvoiceForm'
@@ -6,10 +7,19 @@ import { InvoiceResult } from '../components/InvoiceResult'
 import { InvoiceHistory } from '../components/InvoiceHistory'
 import './InvoiceSimulatorPage.css'
 
-export function InvoiceSimulatorPage() {
+interface Props {
+  activeSection: 'emission' | 'history'
+  onSectionChange: (section: 'emission' | 'history') => void
+  onInvoiceCountChange: (count: number) => void
+}
+
+export function InvoiceSimulatorPage({ activeSection, onSectionChange, onInvoiceCountChange }: Props) {
   const invoice = useInvoiceSimulator()
-  const formColumnRef = useRef<HTMLDivElement>(null)
+  const pageRef = useRef<HTMLElement>(null)
+  const [activeStep, setActiveStep] = useState<1 | 2 | 3>(1)
+  const [isSaving, setIsSaving] = useState(false)
   const [editToast, setEditToast] = useState(false)
+  useEffect(() => onInvoiceCountChange(invoice.savedInvoices.length), [invoice.savedInvoices.length, onInvoiceCountChange])
   useEffect(() => {
     if (!editToast) return
     const timeoutId = window.setTimeout(() => setEditToast(false), 7000)
@@ -17,16 +27,45 @@ export function InvoiceSimulatorPage() {
   }, [editToast])
   const handleEdit = (record: SavedInvoice) => {
     invoice.load(record)
+    onSectionChange('emission')
+    setActiveStep(1)
     setEditToast(true)
     const behavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'
-    formColumnRef.current?.scrollIntoView({ behavior, block: 'start' })
+    pageRef.current?.scrollIntoView({ behavior, block: 'start' })
   }
-  return <section className="page-content invoice-page">
-    <div className="workspace"><div className="invoice-form-column" ref={formColumnRef}>
-      <InvoiceForm draft={invoice.draft} products={invoice.products} catalogNotice={invoice.catalogNotice} onField={invoice.updateField} onUpdate={invoice.updateLine} onAdd={invoice.addLine} onRemove={invoice.removeLine} onReset={invoice.reset} onSubmit={invoice.persist} />
-      {invoice.notice && <p className="success-message" role="status">{invoice.notice}</p>}
-      {editToast && <div className="edit-toast" role="status">Factura cargada para editar.</div>}
-    </div><InvoiceResult totals={invoice.totals} /></div>
-    <InvoiceHistory invoices={invoice.savedInvoices} notice={invoice.historyNotice} onLoad={handleEdit} onDelete={invoice.removeSaved} />
+  const handleSave = async () => {
+    if (isSaving) return
+    setIsSaving(true)
+    await new Promise(resolve => window.setTimeout(resolve, 350))
+    const saved = invoice.persist()
+    setIsSaving(false)
+    if (saved) {
+      onSectionChange('history')
+      setActiveStep(1)
+    }
+  }
+  const steps = [
+    { id: 1, label: 'Productos' },
+    { id: 2, label: 'Datos de emisión' },
+    { id: 3, label: 'Total factura' },
+  ] as const
+  return <section className="page-content invoice-page" ref={pageRef}>
+    <div className="workspace workspace-single">
+      {activeSection === 'emission' && <div className="invoice-emission-panel" id="invoice-panel-emission" role="tabpanel" aria-labelledby="invoice-tab-emission">
+        <nav className="invoice-stepper" aria-label="Pasos de emisión de factura">
+          <ol>{steps.map(step => <li key={step.id} className={activeStep === step.id ? 'is-current' : activeStep > step.id ? 'is-complete' : ''} aria-current={activeStep === step.id ? 'step' : undefined}>
+            <button type="button" onClick={() => step.id < activeStep && setActiveStep(step.id)} disabled={step.id > activeStep} aria-label={`Paso ${step.id}: ${step.label}`}><span className="invoice-step-number">{activeStep > step.id ? <Check size={14} aria-hidden="true" /> : step.id}</span><span className="invoice-step-name">{step.label}</span></button>
+          </li>)}</ol>
+        </nav>
+        {activeStep < 3 && <div className="invoice-form-column"><InvoiceForm activeStep={activeStep as 1 | 2} draft={invoice.draft} products={invoice.products} onField={invoice.updateField} onUpdate={invoice.updateLine} onAdd={invoice.addLine} onRemove={invoice.removeLine} onNext={() => setActiveStep(current => Math.min(3, current + 1) as 1 | 2 | 3)} onPrevious={() => setActiveStep(1)} />
+          {editToast && <div className="edit-toast" role="status">Factura cargada para editar.</div>}
+        </div>}
+        {activeStep === 3 && <div className="invoice-total-step"><InvoiceResult totals={invoice.totals} />
+          {invoice.historyNotice && <p className="invoice-save-error" role="alert">{invoice.historyNotice}</p>}
+          <div className="invoice-step-actions"><button className="secondary-button" type="button" onClick={() => setActiveStep(1)} disabled={isSaving}><ChevronLeft size={18} /> Volver a productos</button><button className="primary-button invoice-save-button" type="button" onClick={handleSave} disabled={isSaving}>{isSaving ? <><LoaderCircle className="invoice-loader" size={18} aria-hidden="true" /> Guardando...</> : <><FileText size={18} aria-hidden="true" /> Guardar factura</>}</button></div>
+        </div>}
+      </div>}
+      {activeSection === 'history' && <div className="invoice-history-panel" id="invoice-panel-history" role="tabpanel" aria-labelledby="invoice-tab-history"><InvoiceHistory invoices={invoice.savedInvoices} notice={invoice.historyNotice} onLoad={handleEdit} onDelete={invoice.removeSaved} /></div>}
+    </div>
   </section>
 }
