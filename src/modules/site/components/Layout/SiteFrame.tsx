@@ -15,7 +15,7 @@ interface Props {
 
 export function SiteFrame({ config, menu, homeUrl, children }: Props) {
   return (
-    <div className="site-root">
+    <div className="site-root" style={config.themeVars}>
       <a className="site-skip" href="#contenido">Saltar al contenido</a>
       <Header config={config} menu={menu} homeUrl={homeUrl} />
       <main id="contenido" tabIndex={-1} className="site-main">

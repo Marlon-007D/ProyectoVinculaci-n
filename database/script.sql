@@ -1208,3 +1208,313 @@ CREATE POLICY dece_assignments_access_policy ON dece_case_assignments
     FOR ALL TO authenticated
     USING (can_access_dece_case(dece_case_id))
     WITH CHECK (can_access_dece_case(dece_case_id));
+
+-- =========================================================
+-- 13. LECTURA PÚBLICA PARA EL PORTAL (visitantes sin sesión y usuarios con sesión)
+-- El portal solo lee contenido publicado. Es repetible.
+-- Se abre a anon Y authenticated: dentro de la app el usuario ya inició sesión
+-- (rol authenticated) y sin esto las políticas por institución le ocultan todo.
+-- =========================================================
+
+GRANT USAGE ON SCHEMA public TO anon, authenticated;
+GRANT SELECT ON institutions, site_settings, themes, menus, pages,
+                publication_versions, media_assets, news, staff, events TO anon, authenticated;
+
+DROP POLICY IF EXISTS institutions_public_read ON institutions;
+CREATE POLICY institutions_public_read ON institutions
+    FOR SELECT TO anon, authenticated USING (is_active);
+
+DROP POLICY IF EXISTS site_settings_public_read ON site_settings;
+CREATE POLICY site_settings_public_read ON site_settings
+    FOR SELECT TO anon, authenticated USING (
+        EXISTS (SELECT 1 FROM institutions i
+                WHERE i.institution_id = site_settings.institution_id AND i.is_active));
+
+DROP POLICY IF EXISTS themes_public_read ON themes;
+CREATE POLICY themes_public_read ON themes
+    FOR SELECT TO anon, authenticated USING (
+        EXISTS (SELECT 1 FROM institutions i
+                WHERE i.institution_id = themes.institution_id AND i.is_active));
+
+DROP POLICY IF EXISTS menus_public_read ON menus;
+CREATE POLICY menus_public_read ON menus
+    FOR SELECT TO anon, authenticated USING (
+        EXISTS (SELECT 1 FROM institutions i
+                WHERE i.institution_id = menus.institution_id AND i.is_active));
+
+DROP POLICY IF EXISTS pages_public_read ON pages;
+CREATE POLICY pages_public_read ON pages
+    FOR SELECT TO anon, authenticated USING (status = 'published');
+
+DROP POLICY IF EXISTS publication_versions_public_read ON publication_versions;
+CREATE POLICY publication_versions_public_read ON publication_versions
+    FOR SELECT TO anon, authenticated USING (
+        EXISTS (SELECT 1 FROM pages p
+                WHERE p.page_id = publication_versions.page_id AND p.status = 'published'));
+
+DROP POLICY IF EXISTS media_assets_public_read ON media_assets;
+CREATE POLICY media_assets_public_read ON media_assets
+    FOR SELECT TO anon, authenticated USING (is_public);
+
+DROP POLICY IF EXISTS news_public_read ON news;
+CREATE POLICY news_public_read ON news
+    FOR SELECT TO anon, authenticated USING (
+        is_published
+        AND (published_at IS NULL OR published_at <= CURRENT_TIMESTAMP)
+        AND EXISTS (SELECT 1 FROM institutions i
+                    WHERE i.institution_id = news.institution_id AND i.is_active));
+
+DROP POLICY IF EXISTS staff_public_read ON staff;
+CREATE POLICY staff_public_read ON staff
+    FOR SELECT TO anon, authenticated USING (
+        is_public
+        AND EXISTS (SELECT 1 FROM institutions i
+                    WHERE i.institution_id = staff.institution_id AND i.is_active));
+
+DROP POLICY IF EXISTS events_public_read ON events;
+CREATE POLICY events_public_read ON events
+    FOR SELECT TO anon, authenticated USING (
+        EXISTS (SELECT 1 FROM institutions i
+                WHERE i.institution_id = events.institution_id AND i.is_active));
+
+-- Cuadro de honor: vista pública que expone SOLO nombre y grado del estudiante.
+-- La tabla students (cédula, fecha de nacimiento) NO se abre a visitantes.
+-- Publicar nombres de menores requiere autorización de sus representantes.
+CREATE OR REPLACE VIEW public_honors AS
+SELECT
+    h.honor_id,
+    h.institution_id,
+    h.academic_period_id,
+    h.achievement,
+    h.score,
+    h.photo_url,
+    (s.first_name || ' ' || s.last_name) AS student_name,
+    s.grade_level
+FROM honors h
+JOIN students s
+  ON s.institution_id = h.institution_id AND s.student_id = h.student_id
+JOIN institutions i
+  ON i.institution_id = h.institution_id
+WHERE i.is_active;
+
+GRANT SELECT ON public_honors TO anon, authenticated;
+
+-- =========================================================
+-- 14. COLEGIO DEMO: sitio de ejemplo COMPLETO (solo demostración)
+-- Muestra todo lo que puede tener una portada: banner, cifras,
+-- noticias, eventos, equipo, cuadro de honor, enlaces, redes, 5 páginas
+-- y menú con submenú. Se puede ejecutar varias veces: reemplaza
+-- únicamente los datos de "colegio-demo". Nombres y cédulas ficticios.
+-- =========================================================
+
+DO $$
+DECLARE
+    rec RECORD;
+    inst UUID;
+    th UUID;
+    pg UUID;
+    per UUID;
+    parent UUID;
+BEGIN
+    INSERT INTO institutions (name, slug, is_active)
+    VALUES ('Colegio Demo', 'colegio-demo', TRUE)
+    ON CONFLICT (slug) DO UPDATE SET is_active = TRUE
+    RETURNING institution_id INTO inst;
+
+    INSERT INTO themes (institution_id, name, primary_color, secondary_color, font_family)
+    VALUES (inst, 'Tema principal', '#1d4e89', '#f2a900', 'system-ui, sans-serif')
+    ON CONFLICT (institution_id, name) DO UPDATE
+        SET primary_color = EXCLUDED.primary_color,
+            secondary_color = EXCLUDED.secondary_color,
+            font_family = EXCLUDED.font_family
+    RETURNING theme_id INTO th;
+
+    INSERT INTO site_settings (institution_id, site_title, logo_url, theme_id, contact_email, contact_phone, footer_text, social_links)
+    VALUES (inst, 'Colegio Demo', 'data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 48 48%27%3E%3Ccircle cx=%2724%27 cy=%2724%27 r=%2722%27 fill=%27%231d4e89%27/%3E%3Ccircle cx=%2724%27 cy=%2724%27 r=%2719%27 fill=%27none%27 stroke=%27%23f2a900%27 stroke-width=%273%27/%3E%3Ctext x=%2724%27 y=%2730%27 font-size=%2717%27 text-anchor=%27middle%27 fill=%27white%27 font-family=%27Arial%27 font-weight=%27700%27%3ECD%3C/text%3E%3C/svg%3E', th, 'info@colegio-demo.test', '0999999999',
+            'Av. Principal y Calle 1 · Quito, Ecuador', '{"facebook": "https://facebook.com/colegiodemo", "instagram": "https://instagram.com/colegiodemo", "youtube": "https://youtube.com/@colegiodemo"}'::jsonb)
+    ON CONFLICT (institution_id) DO UPDATE
+        SET site_title = EXCLUDED.site_title, logo_url = EXCLUDED.logo_url, theme_id = EXCLUDED.theme_id,
+            contact_email = EXCLUDED.contact_email, contact_phone = EXCLUDED.contact_phone,
+            footer_text = EXCLUDED.footer_text, social_links = EXCLUDED.social_links;
+
+    -- Menú: Inicio | Institución ▾ (Nosotros, Oferta educativa) | Noticias | Contacto
+    DELETE FROM menus WHERE institution_id = inst;
+    INSERT INTO menus (institution_id, label, url, position, is_external)
+    VALUES (inst, 'Inicio', '/', 1, FALSE);
+    INSERT INTO menus (institution_id, label, url, position, is_external)
+    VALUES (inst, 'Institución', '/?slug=nosotros', 2, FALSE)
+    RETURNING menu_id INTO parent;
+    INSERT INTO menus (institution_id, label, url, parent_id, position, is_external)
+    VALUES (inst, 'Nosotros', '/?slug=nosotros', parent, 1, FALSE),
+           (inst, 'Oferta educativa', '/?slug=oferta-educativa', parent, 2, FALSE);
+    INSERT INTO menus (institution_id, label, url, position, is_external)
+    VALUES (inst, 'Noticias', '/?slug=noticias', 3, FALSE),
+           (inst, 'Contacto', '/?slug=contacto', 4, FALSE);
+
+    -- Páginas publicadas
+    FOR rec IN
+        SELECT * FROM (VALUES
+            ('inicio', 'Inicio', TRUE, $j${"title": "Inicio", "sections": [{"type": "banner", "position": 0, "is_visible": true, "properties": {"title": "Bienvenidos al Colegio Demo", "subtitle": "Formamos personas íntegras, críticas y solidarias.", "button_label": "Conoce nuestra oferta", "button_url": "/?slug=oferta-educativa", "secondary_label": "Contáctanos", "secondary_url": "/?slug=contacto"}}, {"type": "text", "position": 1, "is_visible": true, "properties": {"title": "Colegio Demo en cifras", "layout": "stats", "items": [{"title": "25+", "description": "Años de trayectoria"}, {"title": "1.200", "description": "Estudiantes"}, {"title": "85", "description": "Docentes y personal"}, {"title": "98%", "description": "Bachilleres que continúan estudios superiores"}]}}, {"type": "text", "position": 2, "is_visible": true, "properties": {"title": "¿Por qué elegirnos?", "body": "Una propuesta educativa integral que acompaña a cada estudiante dentro y fuera del aula.", "items": [{"title": "Excelencia académica", "description": "Docentes certificados y planes de estudio actualizados."}, {"title": "Formación en valores", "description": "Respeto, solidaridad y responsabilidad en cada actividad."}, {"title": "Ciencia y tecnología", "description": "Laboratorios equipados y proyectos de innovación."}, {"title": "Bienestar estudiantil", "description": "Acompañamiento psicológico y orientación vocacional (DECE)."}]}}, {"type": "news", "position": 3, "is_visible": true, "properties": {"title": "Últimas noticias", "limit": 3}}, {"type": "events", "position": 4, "is_visible": true, "properties": {"title": "Próximos eventos", "limit": 4}}, {"type": "staff", "position": 5, "is_visible": true, "properties": {"title": "Nuestro equipo directivo"}}, {"type": "honors", "position": 6, "is_visible": true, "properties": {"title": "Cuadro de honor", "limit": 6}}, {"type": "links", "position": 7, "is_visible": true, "properties": {"title": "Enlaces de interés", "items": [{"title": "Oferta educativa", "description": "Conoce nuestros niveles y servicios.", "url": "/?slug=oferta-educativa"}, {"title": "Noticias", "description": "Todo lo que pasa en el colegio.", "url": "/?slug=noticias"}, {"title": "Contacto", "description": "Escríbenos o visítanos.", "url": "/?slug=contacto"}, {"title": "Ministerio de Educación", "description": "Información oficial del sistema educativo.", "url": "https://educacion.gob.ec"}]}}, {"type": "social_links", "position": 8, "is_visible": true, "properties": {"title": "Síguenos en redes"}}, {"type": "banner", "position": 9, "is_visible": true, "properties": {"size": "compact", "title": "¿Listo para ser parte de nuestra comunidad?", "subtitle": "Escríbenos y te contamos todo sobre el proceso de admisión.", "button_label": "Contáctanos", "button_url": "/?slug=contacto"}}]}$j$::jsonb),
+            ('nosotros', 'Nosotros', FALSE, $j${"title": "Nosotros", "sections": [{"type": "banner", "position": 0, "is_visible": true, "properties": {"size": "compact", "title": "Quiénes somos", "subtitle": "Más de 25 años educando con valores."}}, {"type": "text", "position": 1, "is_visible": true, "properties": {"title": "Nuestra historia", "body": "El Colegio Demo nació en 1998 con una idea sencilla: que cada niño y joven encuentre un lugar donde aprender con curiosidad y alegría.\nHoy somos una comunidad de más de mil estudiantes, docentes y familias que comparten el mismo compromiso con la educación."}}, {"type": "text", "position": 2, "is_visible": true, "properties": {"title": "Misión, visión y valores", "items": [{"title": "Misión", "description": "Brindar una educación de calidad que fomente el pensamiento crítico, la creatividad y el compromiso social."}, {"title": "Visión", "description": "Ser una institución referente por la formación integral de personas íntegras y solidarias."}, {"title": "Valores", "description": "Respeto, honestidad, responsabilidad, solidaridad y excelencia."}]}}, {"type": "text", "position": 3, "is_visible": true, "properties": {"title": "Nuestros hitos", "layout": "stats", "items": [{"title": "1998", "description": "Fundación con 60 estudiantes"}, {"title": "2008", "description": "Apertura del Bachillerato"}, {"title": "2016", "description": "Laboratorios de ciencias"}, {"title": "2024", "description": "Transformación digital"}]}}, {"type": "staff", "position": 4, "is_visible": true, "properties": {"title": "Equipo directivo y docente"}}, {"type": "banner", "position": 5, "is_visible": true, "properties": {"size": "compact", "title": "¿Listo para ser parte de nuestra comunidad?", "subtitle": "Escríbenos y te contamos todo sobre el proceso de admisión.", "button_label": "Contáctanos", "button_url": "/?slug=contacto"}}]}$j$::jsonb),
+            ('oferta-educativa', 'Oferta educativa', FALSE, $j${"title": "Oferta educativa", "sections": [{"type": "banner", "position": 0, "is_visible": true, "properties": {"size": "compact", "title": "Oferta educativa", "subtitle": "Un camino completo, de Inicial a Bachillerato."}}, {"type": "text", "position": 1, "is_visible": true, "properties": {"title": "Niveles educativos", "body": "Acompañamos a cada estudiante en todas sus etapas.", "items": [{"title": "Educación Inicial", "description": "Juego, lenguaje y primeras habilidades sociales."}, {"title": "Básica Elemental", "description": "Lectoescritura, cálculo y hábitos de estudio."}, {"title": "Básica Media", "description": "Pensamiento científico y trabajo colaborativo."}, {"title": "Básica Superior", "description": "Proyectos interdisciplinarios y orientación."}, {"title": "Bachillerato General Unificado", "description": "Preparación académica y vocacional para la universidad."}]}}, {"type": "text", "position": 2, "is_visible": true, "properties": {"title": "Jornada y horarios", "body": "Jornada matutina de 07:00 a 13:00.\nActividades extracurriculares de lunes a jueves, de 13:30 a 15:30."}}, {"type": "text", "position": 3, "is_visible": true, "properties": {"title": "Servicios para estudiantes", "items": [{"title": "DECE", "description": "Departamento de Consejería Estudiantil."}, {"title": "Biblioteca", "description": "Más de 5.000 títulos y salas de estudio."}, {"title": "Laboratorios", "description": "Ciencias y computación."}, {"title": "Deportes y arte", "description": "Fútbol, baloncesto, música y danza."}]}}, {"type": "links", "position": 4, "is_visible": true, "properties": {"title": "Proceso de admisión", "items": [{"title": "Solicitar información", "description": "Déjanos tus datos y te contactamos.", "url": "/?slug=contacto"}, {"title": "Ver próximos eventos", "description": "Casa abierta y reuniones informativas.", "url": "/"}, {"title": "Ministerio de Educación", "description": "Requisitos y normativa oficial.", "url": "https://educacion.gob.ec"}]}}, {"type": "banner", "position": 5, "is_visible": true, "properties": {"size": "compact", "title": "¿Listo para ser parte de nuestra comunidad?", "subtitle": "Escríbenos y te contamos todo sobre el proceso de admisión.", "button_label": "Contáctanos", "button_url": "/?slug=contacto"}}]}$j$::jsonb),
+            ('noticias', 'Noticias', FALSE, $j${"title": "Noticias", "sections": [{"type": "banner", "position": 0, "is_visible": true, "properties": {"size": "compact", "title": "Noticias", "subtitle": "Lo que ocurre en nuestra comunidad educativa."}}, {"type": "news", "position": 1, "is_visible": true, "properties": {"title": "Últimas noticias", "limit": 12}}, {"type": "events", "position": 2, "is_visible": true, "properties": {"title": "Agenda", "limit": 6}}]}$j$::jsonb),
+            ('contacto', 'Contacto', FALSE, $j${"title": "Contacto", "sections": [{"type": "banner", "position": 0, "is_visible": true, "properties": {"size": "compact", "title": "Contáctanos", "subtitle": "Estamos para ayudarte."}}, {"type": "text", "position": 1, "is_visible": true, "properties": {"title": "Dónde estamos", "body": "Av. Principal y Calle 1, Quito, Ecuador.\nHorario de atención: lunes a viernes, de 07:00 a 16:00."}}, {"type": "links", "position": 2, "is_visible": true, "properties": {"title": "Escríbenos o llámanos", "items": [{"title": "Correo electrónico", "description": "info@colegio-demo.test", "url": "mailto:info@colegio-demo.test"}, {"title": "Teléfono", "description": "099 999 9999", "url": "tel:0999999999"}]}}, {"type": "social_links", "position": 3, "is_visible": true, "properties": {"title": "Síguenos en redes"}}]}$j$::jsonb)
+        ) AS t(page_slug, page_title, is_home, snap)
+    LOOP
+        INSERT INTO pages (institution_id, slug, title, status, is_homepage)
+        VALUES (inst, rec.page_slug, rec.page_title, 'published', rec.is_home)
+        ON CONFLICT (institution_id, slug) DO UPDATE
+            SET title = EXCLUDED.title, status = 'published', is_homepage = EXCLUDED.is_homepage
+        RETURNING page_id INTO pg;
+
+        INSERT INTO publication_versions (page_id, version_number, content_snapshot)
+        VALUES (pg, 1, rec.snap)
+        ON CONFLICT (page_id, version_number) DO UPDATE SET content_snapshot = EXCLUDED.content_snapshot;
+    END LOOP;
+
+    -- Noticias
+    INSERT INTO news (institution_id, title, slug, summary, content, is_published, published_at)
+    SELECT inst, v.title, v.slug, v.summary, v.content, TRUE, v.published_at
+    FROM (VALUES
+            ('inicio-del-ano-lectivo', 'Inicio del año lectivo 2026-2027', 'Damos la bienvenida a estudiantes y familias.', E'Iniciamos un nuevo año lectivo lleno de proyectos.\n\nGracias a toda la comunidad por su confianza.', CURRENT_TIMESTAMP - INTERVAL '25 days'),
+            ('feria-de-ciencias', 'Feria de ciencias: ¡ya tenemos proyectos!', 'Más de 40 equipos presentarán sus experimentos.', E'Los estudiantes presentarán sus experimentos ante la comunidad.\n\nLas familias están invitadas a participar.', CURRENT_TIMESTAMP - INTERVAL '12 days'),
+            ('campeonato-de-futbol', 'Campeonato interinstitucional de fútbol', 'Nuestro equipo avanzó a las semifinales.', E'Con un gran partido, nuestros estudiantes lograron el pase a semifinales.\n\n¡Todos a apoyar al equipo!', CURRENT_TIMESTAMP - INTERVAL '7 days'),
+            ('jornada-puertas-abiertas', 'Jornada de puertas abiertas', 'Conoce nuestras instalaciones y propuesta educativa.', E'Las familias interesadas pueden recorrer el colegio y conversar con docentes y directivos.', CURRENT_TIMESTAMP - INTERVAL '3 days'),
+            ('nuevo-laboratorio', 'Nuevo laboratorio de computación', 'Equipos modernos para el aprendizaje digital.', E'Inauguramos un laboratorio con 30 equipos para clases de programación y robótica.', CURRENT_TIMESTAMP - INTERVAL '1 days')
+    ) AS v(slug, title, summary, content, published_at)
+    ON CONFLICT (institution_id, slug) DO UPDATE
+        SET title = EXCLUDED.title, summary = EXCLUDED.summary, content = EXCLUDED.content,
+            is_published = TRUE, published_at = EXCLUDED.published_at;
+
+    -- Eventos próximos (se recalculan respecto a hoy)
+    DELETE FROM events WHERE institution_id = inst;
+    INSERT INTO events (institution_id, title, description, location, event_date)
+    SELECT inst, v.title, v.description, v.location, v.event_date
+    FROM (VALUES
+            ('Reunión de padres de familia', 'Entrega de informes y planificación del quimestre.', 'Auditorio', date_trunc('day', CURRENT_TIMESTAMP) + INTERVAL '5 days 23 hours'),
+            ('Casa abierta de ciencias', 'Exposición de proyectos de todos los niveles.', 'Patio central', date_trunc('day', CURRENT_TIMESTAMP) + INTERVAL '12 days 14 hours'),
+            ('Festival artístico y cultural', 'Música, danza y teatro a cargo de los estudiantes.', 'Coliseo', date_trunc('day', CURRENT_TIMESTAMP) + INTERVAL '20 days 22 hours'),
+            ('Entrega de libretas', 'Primer quimestre, por cursos.', 'Aulas', date_trunc('day', CURRENT_TIMESTAMP) + INTERVAL '40 days 13 hours')
+    ) AS v(title, description, location, event_date);
+
+    -- Personal
+    DELETE FROM staff WHERE institution_id = inst;
+    INSERT INTO staff (institution_id, full_name, position, bio, position_order, is_public)
+    SELECT inst, v.full_name, v.position, v.bio, v.ord, TRUE
+    FROM (VALUES
+            ('Mg. María Fernanda Salazar', 'Rectora', 'Más de 15 años en gestión educativa.', 1),
+            ('Lic. Carlos Andrés Vera', 'Vicerrector', 'Especialista en planificación curricular.', 2),
+            ('Mg. Patricia Elena Cordero', 'Inspectora General', NULL::text, 3),
+            ('Psic. Lucía Elizabeth Mora', 'Coordinadora DECE', 'Acompañamiento psicológico y orientación vocacional.', 4),
+            ('Lic. Jorge Luis Paredes', 'Coordinador de Matemática', NULL::text, 5),
+            ('Ing. Andrea Carolina Ruiz', 'Coordinadora de Tecnología', NULL::text, 6)
+    ) AS v(full_name, position, bio, ord);
+
+    -- Cuadro de honor
+    INSERT INTO academic_periods (institution_id, name, is_active, start_date, end_date)
+    VALUES (inst, 'Año lectivo 2026-2027', TRUE, DATE '2026-09-01', DATE '2027-06-30')
+    ON CONFLICT (institution_id, name) DO UPDATE SET is_active = TRUE
+    RETURNING academic_period_id INTO per;
+
+    INSERT INTO students (institution_id, national_id, first_name, last_name, grade_level)
+    VALUES
+        (inst, '0000000001', 'Sofía', 'Salazar', 'Tercero de Bachillerato'),
+        (inst, '0000000002', 'Mateo', 'Vera', 'Décimo de Básica'),
+        (inst, '0000000003', 'Valentina', 'Cordero', 'Noveno de Básica'),
+        (inst, '0000000004', 'Daniel', 'Paredes', 'Primero de Bachillerato')
+    ON CONFLICT (institution_id, national_id) DO UPDATE
+        SET first_name = EXCLUDED.first_name, last_name = EXCLUDED.last_name, grade_level = EXCLUDED.grade_level;
+
+    DELETE FROM honors WHERE institution_id = inst;
+    INSERT INTO honors (institution_id, academic_period_id, student_id, achievement, score)
+    SELECT inst, per, s.student_id, v.achievement, v.score
+    FROM (VALUES
+            ('0000000001', 'Mejor promedio', 9.85),
+            ('0000000004', 'Olimpiada de matemática', 9.7),
+            ('0000000003', 'Mérito artístico', 9.55),
+            ('0000000002', 'Excelencia deportiva', 9.4)
+    ) AS v(nid, achievement, score)
+    JOIN students s ON s.institution_id = inst AND s.national_id = v.nid;
+END $$;
+
+-- =========================================================
+-- 15. TEMA Y PORTADA INICIAL PARA LAS INSTITUCIONES REALES
+-- NO crea instituciones ni inventa noticias, personal u honores.
+-- NO pisa nada existente: cada paso solo se aplica si la institución
+-- todavía no tiene tema / menú / páginas. Es repetible.
+-- =========================================================
+
+DO $$
+DECLARE
+    rec RECORD;
+    inst UUID;
+    inst_title TEXT;
+    th UUID;
+    pg UUID;
+BEGIN
+    FOR rec IN
+        SELECT * FROM (VALUES
+            ('ue-luz-de-america', '#1e4d8c', '#f2b705', 'system-ui, sans-serif'),
+            ('ue-puerto-limon',   '#4c7a1b', '#f5c400', 'Verdana, sans-serif'),
+            ('ue-la-concordia',   '#7a1f3d', '#e0b13a', 'Georgia, serif'),
+            ('ue-el-esfuerzo',    '#b4501a', '#1b6b6b', '"Trebuchet MS", sans-serif')
+        ) AS t(inst_slug, color_primary, color_secondary, font)
+    LOOP
+        SELECT i.institution_id, i.name INTO inst, inst_title
+        FROM institutions i WHERE i.slug = rec.inst_slug;
+        CONTINUE WHEN inst IS NULL;
+
+        -- Tema: solo si no tiene ninguno (no pisa el que cree el editor).
+        SELECT t.theme_id INTO th FROM themes t
+        WHERE t.institution_id = inst ORDER BY t.created_at LIMIT 1;
+        IF th IS NULL THEN
+            INSERT INTO themes (institution_id, name, primary_color, secondary_color, font_family)
+            VALUES (inst, 'Tema principal', rec.color_primary, rec.color_secondary, rec.font)
+            RETURNING theme_id INTO th;
+        END IF;
+
+        -- Configuración del sitio: crea si falta; si existe, solo completa el tema vacío.
+        INSERT INTO site_settings (institution_id, site_title, theme_id, footer_text)
+        VALUES (inst, inst_title, th, '© ' || inst_title)
+        ON CONFLICT (institution_id) DO UPDATE
+            SET theme_id = COALESCE(site_settings.theme_id, EXCLUDED.theme_id);
+
+        -- Portada inicial y menú: solo si la institución no tiene ninguna página.
+        IF NOT EXISTS (SELECT 1 FROM pages p WHERE p.institution_id = inst) THEN
+            INSERT INTO pages (institution_id, slug, title, status, is_homepage)
+            VALUES (inst, 'inicio', 'Inicio', 'published', TRUE)
+            RETURNING page_id INTO pg;
+
+            INSERT INTO publication_versions (page_id, version_number, content_snapshot)
+            VALUES (pg, 1, jsonb_build_object('title', 'Inicio', 'sections', jsonb_build_array(
+                jsonb_build_object('type', 'banner', 'position', 0, 'is_visible', TRUE, 'properties', jsonb_build_object(
+                    'title', 'Bienvenidos a ' || inst_title, 'subtitle', 'Portal institucional')),
+                jsonb_build_object('type', 'text', 'position', 1, 'is_visible', TRUE, 'properties', jsonb_build_object(
+                    'title', 'Nuestra comunidad',
+                    'body', 'Esta es la portada inicial de ' || inst_title || '. El contenido se administra desde el editor del portal.')),
+                jsonb_build_object('type', 'news',   'position', 2, 'is_visible', TRUE, 'properties', jsonb_build_object('title', 'Noticias', 'limit', 3)),
+                jsonb_build_object('type', 'staff',  'position', 3, 'is_visible', TRUE, 'properties', jsonb_build_object('title', 'Nuestro equipo')),
+                jsonb_build_object('type', 'honors', 'position', 4, 'is_visible', TRUE, 'properties', jsonb_build_object('title', 'Cuadro de honor', 'limit', 6))
+            )))
+            ON CONFLICT (page_id, version_number) DO NOTHING;
+
+            IF NOT EXISTS (SELECT 1 FROM menus m WHERE m.institution_id = inst) THEN
+                INSERT INTO menus (institution_id, label, url, position, is_external)
+                VALUES (inst, 'Inicio', '/', 1, FALSE);
+            END IF;
+        END IF;
+    END LOOP;
+END $$;
+
+-- Refresca la caché de la API para que reconozca la vista public_honors.
+NOTIFY pgrst, 'reload schema';
+
+-- Verificación: una fila por institución con lo que tiene cada una.
+SELECT i.slug,
+       (SELECT count(*) FROM themes t WHERE t.institution_id = i.institution_id) AS temas,
+       (SELECT count(*) FROM pages p WHERE p.institution_id = i.institution_id AND p.status = 'published') AS paginas,
+       (SELECT count(*) FROM news n WHERE n.institution_id = i.institution_id AND n.is_published) AS noticias,
+       (SELECT count(*) FROM staff st WHERE st.institution_id = i.institution_id) AS personal,
+       (SELECT count(*) FROM public_honors ph WHERE ph.institution_id = i.institution_id) AS honores
+FROM institutions i
+ORDER BY i.slug;

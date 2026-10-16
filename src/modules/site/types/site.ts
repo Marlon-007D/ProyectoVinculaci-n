@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import type { Json } from "./common";
 
 export interface SiteSettingsRow {
@@ -24,4 +25,6 @@ export interface SiteConfig {
   phone?: string;
   footerText?: string;
   social: SocialLink[];
+  /** Variables CSS del tema de la institución (colores, tipografía). */
+  themeVars?: CSSProperties;
 }
