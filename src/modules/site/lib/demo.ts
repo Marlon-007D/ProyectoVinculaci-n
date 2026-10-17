@@ -9,7 +9,6 @@ import { demoSnapshots } from "./demoContent";
 
 const KEY = "portal-demo-mode";
 
-/** Modo demostración: datos de ejemplo en memoria, sin necesitar Supabase. */
 export function isDemoMode(): boolean {
   try {
     if (import.meta.env.VITE_DEMO_MODE === "true") return true;
@@ -27,7 +26,6 @@ export function setDemoMode(on: boolean): void {
     if (on) sessionStorage.setItem(KEY, "1");
     else sessionStorage.removeItem(KEY);
   } catch {
-    /* sin almacenamiento: no hay modo demo persistente */
   }
 }
 

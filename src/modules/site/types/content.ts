@@ -30,7 +30,6 @@ export interface StaffMember {
   position_order: number;
 }
 
-/** Fila de la vista pública public_honors (solo nombre y grado, sin datos sensibles). */
 export interface Honor {
   honor_id: string;
   institution_id: string;

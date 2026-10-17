@@ -5,17 +5,17 @@ import { MenuLink } from "../Navigation/MenuLink";
 
 export function Footer({ config, tree = [] }: { config: SiteConfig; tree?: MenuNode[] }) {
   const links = flattenLeaves(tree);
+  const hasContact = Boolean(config.email || config.phone);
   return (
     <footer className="site-footer">
       <div className="site-container site-footer__inner">
-        <div>
+        <div className="site-footer__brand">
           <p className="site-footer__name">{config.name}</p>
-          {config.footerText && <p>{config.footerText}</p>}
-          {config.phone && <p><a href={`tel:${config.phone.replace(/\s/g, "")}`}>{config.phone}</a></p>}
-          {config.email && <p><a href={`mailto:${config.email}`}>{config.email}</a></p>}
+          {config.footerText && <p className="site-footer__desc">{config.footerText}</p>}
         </div>
         {links.length > 0 && (
           <nav aria-label="Pie de página">
+            <h2 className="site-footer__heading">Explora</h2>
             <ul className="site-footer__links">
               {links.map((n) => (
                 <li key={n.menu_id}><MenuLink node={n} /></li>
@@ -23,16 +23,32 @@ export function Footer({ config, tree = [] }: { config: SiteConfig; tree?: MenuN
             </ul>
           </nav>
         )}
-        {config.social.length > 0 && (
-          <ul className="site-footer__links" aria-label="Redes sociales">
-            {config.social.map((s) => (
-              <li key={s.url}>
-                <a href={s.url} target="_blank" rel="noopener noreferrer">
-                  {s.label}<span className="site-sr-only"> (se abre en una pestaña nueva)</span>
-                </a>
-              </li>
-            ))}
-          </ul>
+        {(hasContact || config.social.length > 0) && (
+          <div>
+            {hasContact && (
+              <>
+                <h2 className="site-footer__heading">Contacto</h2>
+                <ul className="site-footer__contact">
+                  {config.email && <li><a href={`mailto:${config.email}`}>{config.email}</a></li>}
+                  {config.phone && <li><a href={`tel:${config.phone.replace(/\s/g, "")}`}>{config.phone}</a></li>}
+                </ul>
+              </>
+            )}
+            {config.social.length > 0 && (
+              <>
+                <h2 className="site-footer__heading">Redes</h2>
+                <ul className="site-footer__links" aria-label="Redes sociales">
+                  {config.social.map((s) => (
+                    <li key={s.url}>
+                      <a href={s.url} target="_blank" rel="noopener noreferrer">
+                        {s.label}<span className="site-sr-only"> (se abre en una pestaña nueva)</span>
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </div>
         )}
       </div>
       <div className="site-container site-footer__legal">

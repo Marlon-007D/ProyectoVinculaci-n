@@ -1,4 +1,3 @@
-// Generado: mismo contenido que la sección 14 de database/script.sql (modo demostración sin base de datos).
 export const demoSnapshots: Record<string, unknown> = {
  "inicio": {
   "title": "Inicio",

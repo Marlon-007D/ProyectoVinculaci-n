@@ -25,6 +25,5 @@ export interface SiteConfig {
   phone?: string;
   footerText?: string;
   social: SocialLink[];
-  /** Variables CSS del tema de la institución (colores, tipografía). */
   themeVars?: CSSProperties;
 }

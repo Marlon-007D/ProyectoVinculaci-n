@@ -7,7 +7,6 @@ export function isSafeExternalUrl(url: string): boolean {
   }
 }
 
-/** Conserva ?institution=... al navegar entre páginas internas (para ver otra institución por URL). */
 export function keepInstitution(path: string, currentSearch: string): string {
   const keep = new URLSearchParams(currentSearch).get("institution");
   if (!keep) return path;

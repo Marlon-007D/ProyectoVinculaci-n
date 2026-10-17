@@ -1,13 +1,17 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useSite } from "../../hooks/useSite";
 import type { PageSection } from "../../types/page";
 import { asString } from "../../utils/snapshot";
 import { isSafeExternalUrl, keepInstitution } from "../../utils/url";
 import { EventsSection, HonorsSection, NewsSection, StaffSection } from "../Content/ContentSections";
+import { EXTERNAL_SECTION_TYPES, ExternalSection } from "../External/ExternalSection";
+import { GallerySection, galleryItems } from "../Gallery/GallerySection";
 import "../../styles/sections.css";
 
 type Item = { title?: string; description?: string; url?: string };
+
+const SAFE_IMAGE = /^(https:\/\/[^\s"\'()<>\\]+|\/images\/[A-Za-z0-9_\/.-]+\.(svg|png|jpe?g|webp))$/;
 
 function items(v: unknown): Item[] {
   if (!Array.isArray(v)) return [];
@@ -20,7 +24,6 @@ function items(v: unknown): Item[] {
     }));
 }
 
-/** Enlace seguro: interno (router), externo http(s), mailto o tel. Cualquier otro esquema se descarta. */
 function SafeLink({ url, className, children }: { url: string; className?: string; children: ReactNode }) {
   const { search } = useLocation();
   if (/^[a-z][a-z0-9+.-]*:/i.test(url)) {
@@ -69,9 +72,13 @@ function Section({ s }: { s: PageSection }) {
   if (s.type === "banner" || s.type === "hero") {
     const b1 = asString(p.button_label), u1 = asString(p.button_url);
     const b2 = asString(p.secondary_label), u2 = asString(p.secondary_url);
+    const eyebrow = asString(p.eyebrow);
+    const image = asString(p.image_url);
+    const heroStyle = image && SAFE_IMAGE.test(image) ? ({ "--site-hero-image": `url("${image}")` } as CSSProperties) : undefined;
     return (
-      <section className={`site-hero${p.size === "compact" ? " site-hero--compact" : ""}`}>
+      <section className={`site-hero${p.size === "compact" ? " site-hero--compact" : ""}`} style={heroStyle}>
         <div className="site-container">
+          {eyebrow && <p className="site-hero__eyebrow">{eyebrow}</p>}
           {title && <h2>{title}</h2>}
           {asString(p.subtitle) && <p>{asString(p.subtitle)}</p>}
           {(b1 && u1) || (b2 && u2) ? (
@@ -85,12 +92,16 @@ function Section({ s }: { s: PageSection }) {
     );
   }
 
-  // Secciones conectadas a datos institucionales (el editor solo configura título y cantidad).
   if (s.type === "news") return <NewsSection title={title} limit={limit} />;
   if (s.type === "events") return <EventsSection title={title} limit={limit} />;
   if (s.type === "staff") return <StaffSection title={title} />;
   if (s.type === "honors") return <HonorsSection title={title} limit={limit} />;
   if (s.type === "social_links") return <SocialSection title={title} />;
+
+  if (s.type === "gallery")
+    return <GallerySection title={title} items={galleryItems(p.items)} limit={limit} />;
+
+  if (EXTERNAL_SECTION_TYPES.includes(s.type)) return <ExternalSection type={s.type} title={title} />;
 
   const list = items(p.items);
   const body = asString(p.body ?? p.text ?? p.content);
@@ -113,9 +124,12 @@ function Section({ s }: { s: PageSection }) {
       </section>
     );
 
+  const eyebrow = asString(p.eyebrow);
+  const tone = p.tone === "dark" ? " site-block--dark" : p.tone === "tint" ? " site-block--tint" : "";
   return (
-    <section className="site-section site-block">
+    <section className={`site-section site-block${tone}`}>
       <div className="site-container">
+        {eyebrow && <p className="site-eyebrow">{eyebrow}</p>}
         {title && <h2>{title}</h2>}
         <Paragraphs text={body} />
         {list.length > 0 && p.layout === "stats" ? (

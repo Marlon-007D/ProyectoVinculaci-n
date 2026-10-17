@@ -2,7 +2,7 @@ import { isDemoMode, demoMenus } from "../lib/demo";
 import { getSupabase } from "../lib/supabase";
 import { toServiceError } from "../lib/errors";
 import type { Menu, MenuNode } from "../types/menu";
-import { buildMenuTree } from "../utils/menuTree";
+import { buildMenuTree, filterVisibleMenus } from "../utils/menuTree";
 
 export async function getMenus(institutionId: string): Promise<Menu[]> {
   if (isDemoMode()) return demoMenus;
@@ -12,7 +12,7 @@ export async function getMenus(institutionId: string): Promise<Menu[]> {
     .eq("institution_id", institutionId)
     .order("position", { ascending: true });
   if (error) throw toServiceError(error, "No se pudo cargar el menú de navegación.");
-  return (data ?? []) as Menu[];
+  return filterVisibleMenus((data ?? []) as Menu[]);
 }
 
 export async function getMenuTree(institutionId: string): Promise<MenuNode[]> {

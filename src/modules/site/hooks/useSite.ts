@@ -11,7 +11,6 @@ export function useSite() {
   const settings = useAsync(() => getSiteSettings(institutionId), [institutionId]);
   const row = settings.state.status === "success" ? settings.state.data : null;
   const themeId = row?.theme_id ?? null;
-  // Si el tema falla, el portal sigue funcionando con los colores por defecto.
   const theme = useAsync(() => getTheme(themeId), [themeId]);
   const themeRow = theme.state.status === "success" ? theme.state.data : null;
   const config = useMemo(

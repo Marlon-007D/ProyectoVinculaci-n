@@ -14,11 +14,9 @@ function luminance(hex: string): number {
   return 0.2126 * r + 0.7152 * g + 0.0722 * b;
 }
 
-/** Convierte la fila `themes` en variables CSS. Valida todo: nada llega al DOM sin comprobar. */
 export function buildThemeVars(theme: ThemeRow | null): CSSProperties | undefined {
   if (!theme) return undefined;
   const v: Record<string, string> = {
-    // Marca institucional siempre en modo claro para garantizar contraste.
     "--site-ink": "#1f2933", "--site-muted": "#52606d", "--site-paper": "#ffffff",
     "--site-surface": "#f3f5f7", "--site-line": "#d5dbe1",
   };

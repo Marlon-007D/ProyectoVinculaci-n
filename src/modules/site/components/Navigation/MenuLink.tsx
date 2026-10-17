@@ -26,7 +26,6 @@ export function MenuLink({ node, className, onClick }: Props) {
     );
   }
   const to = joinBase(basePath, node.url);
-  // Los enlaces del tipo "/?slug=nosotros" comparten ruta: se distinguen por el parámetro slug.
   const target = new URL(to, "http://x");
   const sameSlug =
     (target.searchParams.get("slug") ?? "") === (new URLSearchParams(location.search).get("slug") ?? "");

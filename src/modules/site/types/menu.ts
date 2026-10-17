@@ -6,6 +6,7 @@ export interface Menu {
   parent_id: string | null;
   position: number;
   is_external: boolean;
+  is_visible?: boolean;
   created_at: string;
   updated_at: string;
 }
