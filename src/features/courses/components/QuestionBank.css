@@ -89,30 +89,55 @@
 .course-evaluations-panel .question-bank-header h2 { margin:0 0 4px; color:#342d39; font:600 21px 'Outfit',sans-serif; }
 .course-evaluations-panel .question-bank-header p { line-height:1.5; }
 .course-evaluations-panel .question-bank-choice { width:100%; min-height:86px; }
-.course-evaluations-panel .evaluation-entry-choice { box-sizing:border-box; margin:0 0 12px; padding:16px 20px; border-color:color-mix(in srgb,var(--accent) 28%,var(--line)); border-radius:18px; color:var(--accent); background:color-mix(in srgb,var(--accent-soft) 66%,#fff); }
-.course-evaluations-panel .evaluation-entry-choice:hover:not(:disabled) { border-color:var(--accent); background:color-mix(in srgb,var(--accent-soft) 82%,#fff); }
+.course-evaluations-panel .evaluation-entry-choice { box-sizing:border-box; margin:0 0 12px; padding:16px 20px; border-color:color-mix(in srgb,var(--accent) 32%,var(--line)); border-radius:18px; color:var(--accent); background:color-mix(in srgb,var(--accent-container) 62%,var(--surface)); }
+.course-evaluations-panel .evaluation-entry-choice:hover:not(:disabled) { border-color:var(--accent); background:color-mix(in srgb,var(--accent-container) 78%,var(--surface)); }
 .course-evaluations-panel .evaluation-entry-choice .question-type-number { display:grid; flex:none; place-items:center; width:48px; height:48px; border-radius:15px; color:var(--accent); background:#fff; }
+.site-root[data-a11y-theme="dark"] .course-evaluations-panel .evaluation-entry-choice { border-color:#655281; color:#e5d8f5; background:#29213a; }
+.site-root[data-a11y-theme="dark"] .course-evaluations-panel .evaluation-entry-choice:hover:not(:disabled) { background:#342a48; }
+.site-root[data-a11y-theme="dark"] .course-evaluations-panel .evaluation-entry-choice .question-type-number { color:#e5d8f5; background:#1b1724; }
+.site-root[data-a11y-theme="dark"] .evaluation-entry-choice .question-bank-choice-copy strong { color:#f4effb; }
+.site-root[data-a11y-theme="dark"] .evaluation-entry-choice .question-bank-choice-copy small { color:#c7bbd6; }
 .evaluation-entry-choice .question-bank-choice-copy { gap:5px; }
 .evaluation-entry-choice .question-bank-choice-copy strong { color:#302a36; font-size:15px; }
 .evaluation-entry-action { display:inline-flex; align-items:center; justify-content:center; gap:8px; flex:none; min-height:40px; box-sizing:border-box; padding:0 16px; border:1px solid var(--accent); border-radius:999px; color:#fff; background:var(--accent); font-size:13px; font-weight:700; }
 .evaluation-entry-choice:disabled .evaluation-entry-action { color:#6e6872; background:#e7e4e9; }
 .evaluation-status-chips { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin:0 0 4px; }
-.evaluation-status-chip { display:inline-flex; align-items:center; gap:6px; min-height:30px; box-sizing:border-box; padding:5px 10px; border:1px solid var(--line); border-radius:999px; color:#625969; background:#fff; font-size:12px; line-height:1.2; white-space:nowrap; }
+.evaluation-status-chip { display:inline-flex; align-items:center; gap:6px; min-height:30px; box-sizing:border-box; padding:5px 10px; border:1px solid var(--line); border-radius:999px; color:#625969; background:#fff; font-size:13px; line-height:1.2; white-space:nowrap; }
 .evaluation-status-chip svg { flex:none; color:var(--accent); }
 .evaluation-status-chip.is-progress { color:var(--accent); background:color-mix(in srgb,var(--accent-soft) 52%,#fff); border-color:color-mix(in srgb,var(--accent) 35%,var(--line)); }
 .evaluation-status-chip.is-complete,.evaluation-status-chip.is-score { color:#25694f; background:#eaf6ef; border-color:#c5e3d1; }
 .evaluation-status-chip.is-complete svg,.evaluation-status-chip.is-score svg { color:#287a5d; }
 .evaluation-attempt-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,360px),1fr)); gap:12px; margin:0 0 8px; }
-.evaluation-attempt-card { display:grid; align-content:start; gap:14px; min-width:0; padding:16px; border:1px solid var(--line); border-radius:18px; background:#fff; }
-.evaluation-attempt-card > header { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; min-height:40px; color:#3d3542; font-size:14px; }
+.course-evaluations-panel .evaluation-attempt-card { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:10px 16px; min-width:0; padding:12px 14px; border:1px solid #e3dce9; border-radius:14px; background:#f8f7fa; }
+.site-root[data-a11y-theme="dark"] .course-evaluations-panel .evaluation-attempt-card { border-color:#354256; background:#152337; }
+.site-root[data-a11y-theme="dark"] .course-evaluations-panel .evaluation-attempt-card > header { color:#e7eaf0; }
+.site-root[data-a11y-theme="dark"] .course-evaluations-panel .evaluation-attempt-card .evaluation-attempt-icon { color:#d5c2ef; background:#302641; }
+.site-root[data-a11y-theme="dark"] .course-evaluations-panel .evaluation-attempt-card .evaluation-status-chip { color:#e6e9f0; background:#26334a; border-color:#40516d; }
+.site-root[data-a11y-theme="dark"] .course-evaluations-panel .evaluation-attempt-card .evaluation-status-chip.is-answered { color:#d6e7ff; background:#233b59; border-color:#385675; }
+.site-root[data-a11y-theme="dark"] .course-evaluations-panel .evaluation-attempt-card .evaluation-status-chip.is-elapsed { color:#c9eee5; background:#1e403e; border-color:#315c57; }
+.site-root[data-a11y-theme="dark"] .course-evaluations-panel .evaluation-attempt-card .evaluation-status-chip.is-progress { color:#ffe5b3; background:#493a24; border-color:#6c542d; }
+.site-root[data-a11y-theme="dark"] .course-evaluations-panel .evaluation-attempt-card .evaluation-status-chip.is-time-left { color:#ffdce2; background:#4a2e3a; border-color:#704354; }
+.site-root[data-a11y-theme="dark"] .course-evaluations-panel .evaluation-attempt-card .evaluation-status-chip.is-complete,.site-root[data-a11y-theme="dark"] .course-evaluations-panel .evaluation-attempt-card .evaluation-status-chip.is-score { color:#c8f0d8; background:#214236; border-color:#35644f; }
+.evaluation-attempt-card > header { grid-column:1 / -1; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px 14px; min-height:0; color:#3d3542; font-size:14px; }
 .evaluation-attempt-heading { display:inline-flex; align-items:center; gap:9px; }
 .evaluation-attempt-heading strong { font-size:15px; }
 .evaluation-attempt-icon { display:grid; place-items:center; width:36px; height:36px; border-radius:12px; color:var(--accent); background:var(--accent-soft); }
-.evaluation-attempt-card .evaluation-status-chip { background:color-mix(in srgb,var(--accent-soft) 48%,#fff); }
+.evaluation-attempt-card .evaluation-status-chip { background:#f0eafa; border-color:#e1d5f0; color:#51416b; }
+.evaluation-attempt-card .evaluation-status-chip.is-answered { background:#eaf1fb; border-color:#d2e0f4; color:#315b82; }
+.evaluation-attempt-card .evaluation-status-chip.is-answered svg { color:#416f9c; }
+.evaluation-attempt-card .evaluation-status-chip.is-elapsed { background:#e8f4f2; border-color:#cfe7e1; color:#28695f; }
+.evaluation-attempt-card .evaluation-status-chip.is-elapsed svg { color:#347d71; }
+.evaluation-attempt-card .evaluation-status-chip.is-progress { background:#fff2df; border-color:#f1dfbd; color:#805719; }
+.evaluation-attempt-card .evaluation-status-chip.is-progress svg { color:#a66d17; }
+.evaluation-attempt-card .evaluation-status-chip.is-time-left { background:#fcecef; border-color:#f0d2d8; color:#8a4b59; }
+.evaluation-attempt-card .evaluation-status-chip.is-time-left svg { color:#a75a6b; }
 .evaluation-attempt-card .evaluation-status-chip.is-complete,.evaluation-attempt-card .evaluation-status-chip.is-score { color:#25694f; background:#eaf6ef; border-color:#c5e3d1; }
-.evaluation-attempt-metrics { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,155px),1fr)); gap:8px; }
-.evaluation-attempt-metrics .evaluation-status-chip { width:100%; min-height:36px; box-sizing:border-box; padding:6px 10px; border-radius:11px; font-size:12px; white-space:normal; }
+.evaluation-attempt-metrics { grid-column:1 / -1; display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-start; gap:7px; min-width:0; }
+.evaluation-attempt-metrics .evaluation-status-chip { width:auto; min-height:30px; box-sizing:border-box; padding:5px 9px; border-radius:999px; font-size:13px; white-space:nowrap; }
 .evaluation-resume-button { display:inline-flex; align-items:center; justify-content:center; justify-self:start; gap:8px; min-height:40px; margin-top:2px; padding:0 16px; border:1px solid var(--accent); border-radius:999px; color:#fff; background:var(--accent); font:600 13px 'DM Sans',sans-serif; cursor:pointer; }
+.course-evaluations-panel .evaluation-attempt-card .evaluation-resume-button { min-height:36px; margin:0; border-color:var(--accent); border-radius:999px; color:#fff; background:var(--accent); white-space:nowrap; }
+.course-evaluations-panel .evaluation-attempt-card > header .evaluation-resume-button { display:inline-flex; align-items:center; justify-content:center; justify-self:auto; gap:8px; padding:0 15px; font:600 13px 'DM Sans',sans-serif; }
+.course-evaluations-panel .evaluation-attempt-card > header .evaluation-resume-button:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
 .evaluation-resume-button:hover { background:color-mix(in srgb,var(--accent) 88%,#000); }
 .evaluation-resume-button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
 .evaluation-entry-meta { display:flex; align-items:center; justify-content:space-between; gap:12px; color:#706677; font-size:12px; }
@@ -201,7 +226,7 @@
 .evaluation-question-list { grid-template-columns:repeat(3,minmax(0,1fr)); }
 @media(max-width:620px){.evaluation-question-list{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:900px){.evaluation-attempt-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr))}}
-@media(max-width:620px){.evaluation-attempt-grid{grid-template-columns:1fr}}
+@media(max-width:620px){.evaluation-attempt-grid{grid-template-columns:1fr}.course-evaluations-panel .evaluation-attempt-card{grid-template-columns:1fr;gap:10px}.evaluation-attempt-card > header{align-items:flex-start}.evaluation-attempt-metrics{gap:6px}}
 .evaluation-question-list { grid-template-columns:repeat(auto-fit,minmax(48px,1fr)); }
 @media(max-width:620px){.evaluation-question-list{grid-template-columns:repeat(auto-fit,minmax(48px,1fr))}}
 .word-search-layout { display:grid; grid-template-columns:minmax(0,1fr) minmax(165px,210px); align-items:start; gap:14px; min-width:0; }

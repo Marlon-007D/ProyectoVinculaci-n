@@ -27,13 +27,15 @@ export function MenuLink({ node, className, onClick }: Props) {
   }
   const to = joinBase(basePath, node.url);
   const target = new URL(to, "http://x");
-  const sameSlug =
-    (target.searchParams.get("slug") ?? "") === (new URLSearchParams(location.search).get("slug") ?? "");
+  const currentParams = new URLSearchParams(location.search);
+  const sameRouteQuery = ["slug", "courses", "simulator"].every(
+    (key) => (target.searchParams.get(key) ?? "") === (currentParams.get(key) ?? ""),
+  );
   const here = trim(location.pathname);
   const there = trim(target.pathname);
   const samePath = there === "/" ? here === "/" : here === there || here.startsWith(there + "/");
   return (
-    <Link to={keepInstitution(to, location.search)} className={className} onClick={onClick} aria-current={samePath && sameSlug ? "page" : undefined}>
+    <Link to={keepInstitution(to, location.search)} className={className} onClick={onClick} aria-current={samePath && sameRouteQuery ? "page" : undefined}>
       {node.label}
     </Link>
   );

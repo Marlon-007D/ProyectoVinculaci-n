@@ -7,6 +7,9 @@ import { withSimulatorChoices } from "./Navigation";
 function MobileItem({ node, close }: { node: MenuNode; close: () => void }) {
   const [open, setOpen] = useState(false);
   const subId = useId();
+  const location = useLocation();
+  const params = new URLSearchParams(location.search);
+  const learningActive = node.label === "Aprendizaje" && (params.get("courses") === "1" || params.has("simulator") || params.get("slug") === "simuladores");
   if (node.children.length === 0)
     return (
       <li>
@@ -15,7 +18,7 @@ function MobileItem({ node, close }: { node: MenuNode; close: () => void }) {
     );
   return (
     <li>
-      <button type="button" className="site-mnav__link site-mnav__toggle" aria-expanded={open} aria-controls={subId} onClick={() => setOpen((o) => !o)}>
+      <button type="button" className="site-mnav__link site-mnav__toggle" aria-expanded={open} aria-controls={subId} aria-current={learningActive ? "page" : undefined} onClick={() => setOpen((o) => !o)}>
         {node.label}
         <span aria-hidden="true">{open ? "−" : "+"}</span>
       </button>

@@ -67,9 +67,20 @@ src/
 └── main.tsx
 ```
 
+## Diseño de software
+
+- Modelar flujos con varios estados o pasos como máquinas de estado explícitas. Definir estados y transiciones con uniones discriminadas de TypeScript, y hacer exhaustivos los cambios de estado y su renderizado.
+- Evitar cadenas de `if` anidadas o repetidas para representar estados de una pantalla. Preferir `switch` exhaustivos, tablas de transición, mapas de estrategias o componentes por estado cuando aclaren el flujo. Mantener guardas simples cuando sean la opción más legible.
+- Aplicar inversión de dependencias: páginas, hooks y casos de uso deben depender de interfaces y contratos, no importar directamente implementaciones concretas de red, almacenamiento o persistencia.
+- Inyectar dependencias explícitamente mediante props, parámetros, constructores o providers tipados. Mantener los adaptadores concretos en la capa de composición de la aplicación y usar implementaciones mock solo en pruebas, seeds o desarrollo aislado autorizado.
+- Definir transiciones válidas y estados terminales antes de implementar flujos interactivos. Rechazar o ignorar transiciones inválidas en la capa de dominio, y mantener la interfaz sincronizada con el estado resultante.
+- Para flujos con ramas o transiciones relevantes, verificar los casos de estado y transición, incluidos los cambios inválidos y los estados de carga y error.
+
 ## Diseño e interfaz
 
 - Aplicar los principios de Material Design 3: jerarquía clara, superficies diferenciadas, estados interactivos perceptibles, accesibilidad y espaciado consistente.
+- Usar [Material Design 3](https://m3.material.io/) como referencia visual: superficies neutrales y contenedores de bajo énfasis, bordes finos y suaves, radios moderados y acentos de color reservados para acciones o estados. No agregar sombras ni elevaciones.
+- Antes de cambiar estilos, revisar las reglas existentes y el orden de la cascada. Mantener una regla canónica por componente y estilos locales; evitar `!important` y el aumento arbitrario de especificidad. Si una regla genérica interfiere, aplicar un selector contextual mínimo y comprobar el resultado visual.
 - La navegación principal debe usar un `aside` lateral, con accesos a los tres simuladores.
 - Buscar una estética moderna inspirada en las interfaces de Google Account: sobria, clara, ordenada y centrada en contenido.
 - El color dominante es el morado, empleado preferentemente en tonalidades pastel y con contraste suficiente para texto y controles.

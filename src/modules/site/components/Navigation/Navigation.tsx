@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from "react";
 import type { MenuNode } from "../../types/menu";
+import { useLocation } from "react-router-dom";
 import { MenuLink } from "./MenuLink";
 
 export function withSimulatorChoices(node: MenuNode): MenuNode {
@@ -14,6 +15,9 @@ function NavItem({ node }: { node: MenuNode }) {
   const ref = useRef<HTMLLIElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const subId = useId();
+  const location = useLocation();
+  const params = new URLSearchParams(location.search);
+  const learningActive = node.label === "Aprendizaje" && (params.get("courses") === "1" || params.has("simulator") || params.get("slug") === "simuladores");
 
   useEffect(() => {
     if (!open) return;
@@ -54,6 +58,7 @@ function NavItem({ node }: { node: MenuNode }) {
         type="button"
         className="site-nav__link site-nav__toggle"
         aria-expanded={open}
+        aria-current={learningActive ? "page" : undefined}
         aria-controls={subId}
         onClick={() => setOpen((o) => !o)}
       >
