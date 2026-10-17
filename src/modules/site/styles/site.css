@@ -27,6 +27,8 @@
 
 .site-root { min-height: 100vh; display: flex; flex-direction: column; font-family: var(--site-font); color: var(--site-ink); background: var(--site-paper); line-height: 1.6; }
 .site-root *, .site-root *::before, .site-root *::after { box-sizing: border-box; }
+html, body, #root { width:100%; min-width:320px; min-height:100%; margin:0; padding:0; }
+#root { max-width:none; border:0; }
 .site-main { flex: 1; outline: none; }
 .site-container { width: 100%; max-width: var(--site-max); margin-inline: auto; padding-inline: 1rem; }
 .site-sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }

@@ -68,11 +68,11 @@ export function SchoolCoursesPage({ selectedModuleId = null, selectedCourseId = 
     </section>
   }
 
-  return <section className="page-content school-courses-page">
+  return <section className="page-content school-courses-page school-modules-home">
     <div className="school-module-grid" aria-label="Módulos de estudio">{schoolModulesMock.map((module, index) => {
       const Icon = moduleIcons[index % moduleIcons.length]
       const cover = schoolCoursesMock.find(course => course.id === module.courseIds[0])?.coverImage
-      return <button type="button" className="school-module-card" key={module.id} onClick={() => onSelectModule(module.id)}><span className="school-module-cover-wrap"><img className="school-module-cover" src={cover} alt="" loading="lazy" /><span className="school-module-icon"><Icon size={22} /></span></span><span className="school-module-info"><strong>{module.name}</strong><span>{module.description}</span></span><span className="school-module-footer"><span className="school-module-count">{module.courseIds.length} {module.courseIds.length === 1 ? 'curso' : 'cursos'}</span><ChevronRight size={18} /></span></button>
+      return <button type="button" className="school-module-card" key={module.id} onClick={() => onSelectModule(module.id)}><span className="school-module-cover-wrap"><img className="school-module-cover" src={cover} alt="" loading="lazy" /><span className="school-module-cover-title"><span className="school-module-icon"><Icon size={22} /></span><strong>{module.name}</strong></span></span><span className="school-module-info"><span>{module.description}</span></span><span className="school-module-footer"><span className="school-module-count">{module.courseIds.length} {module.courseIds.length === 1 ? 'curso' : 'cursos'}</span><ChevronRight size={18} /></span></button>
     })}</div>
   </section>
 }
