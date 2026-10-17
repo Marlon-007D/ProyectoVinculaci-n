@@ -3,60 +3,58 @@ node_modules/
 .pnp/
 .pnp.*
 
-# Vite / build outputs
+# Build outputs and caches
 dist/
+dist-ssr/
 .vite/
 coverage/
-
+.npm-cache/
+.cache/
+*.tsbuildinfo
+docs/
 # Local environment and secrets
 .env
 .env.*
 !.env.example
+!.env.*.example
 
 # Local instructions and requirements documents
 requerimientos.md
 Requerimientos.md
 requerimietnos.md
 
-# Package manager and tool caches
-.npm-cache/
-.cache/
-.eslintcache
-.stylelintcache
-
 # Logs and temporary debug output
+logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
-vite-debug.log*
+lerna-debug.log*
+tmp/
+*.local
 
-# TypeScript incremental build metadata
-*.tsbuildinfo
+# Tool and deployment state
+.vercel/
+.eslintcache
+.stylelintcache
 
-# Operating system files
-.DS_Store
-Thumbs.db
-desktop.ini
-
-# Editors and IDEs
-.idea/
-.vscode/*
-!.vscode/extensions.json
-*.swp
-*.swo
-
-# Local database files
+# Local databases and editor swap files
 *.sqlite
 *.sqlite3
 *.db
-.vercel
-.env*
-!.env.example
+*.swp
+*.swo
 
-# Keep local credentials out of version control; allow the documented template.
-.env
-.env.*
-!.env.example
-!.env.*.example
+# Editor and operating-system files
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

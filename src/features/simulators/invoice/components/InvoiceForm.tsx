@@ -57,11 +57,10 @@ export function InvoiceForm({ activeStep, isLoading = false, draft, products, on
       <label><span className="invoice-field-label"><CalendarDays size={16} aria-hidden="true" />Fecha de emisión</span><input required type="date" aria-invalid={!!errors.date} aria-describedby={errors.date ? 'invoice-error-date' : undefined} value={draft.date} onChange={e => { onField('date', e.target.value); if (e.target.value) clearError('date') }} />{fieldError('date')}</label>
       <label><span className="invoice-field-label"><CreditCard size={16} aria-hidden="true" />Forma de pago</span><select required aria-invalid={!!errors.paymentMethod} aria-describedby={errors.paymentMethod ? 'invoice-error-paymentMethod' : undefined} value={draft.paymentMethod} onChange={e => { onField('paymentMethod', e.target.value); if (e.target.value) clearError('paymentMethod') }}><option value="" disabled>Selecciona una forma de pago</option><option>Efectivo</option><option>Transferencia</option><option>Tarjeta</option></select>{fieldError('paymentMethod')}</label>
     </div>
-    <div className="invoice-step-actions invoice-step-actions-navigation"><div className="invoice-step-navigation" aria-label="Navegación de pasos"><button type="button" onClick={onPrevious} aria-label="Anterior">Anterior</button><button type="button" onClick={validateStep}>Siguiente</button></div></div>
+    <div className="invoice-step-actions invoice-step-actions-bottom"><div className="invoice-step-navigation" aria-label="Navegación de pasos"><button type="button" onClick={onPrevious} aria-label="Anterior">Anterior</button><button type="button" onClick={validateStep}>Siguiente</button></div></div>
     </section>}
     {activeStep === 1 && <section className="invoice-card invoice-products-card" aria-label="Productos">
-    <div className="line-items"><div className="items-heading"><p>Elige los productos para incluir en la factura</p></div>
-      {fieldError('products')}
+    <div className="line-items">
       {activeStep === 1 && isLoading ? <div className="invoice-products-skeleton" role="status" aria-label="Cargando productos">
         {Array.from({ length: 4 }, (_, index) => <div className="invoice-product-skeleton-card" key={index} aria-hidden="true"><i /><div><b /><span /><span /></div></div>)}
       </div> : <div className="invoice-products-list">
@@ -89,7 +88,8 @@ export function InvoiceForm({ activeStep, isLoading = false, draft, products, on
       </div>}
       {productPageCount > 1 && <nav className="invoice-product-pagination" aria-label="Páginas de productos"><button type="button" aria-label="Productos anteriores" disabled={productPage === 0} onClick={() => setProductPage(page => Math.max(0, page - 1))}><ChevronLeft size={18} /></button><span>{productPage * productsPerPage + 1}–{Math.min((productPage + 1) * productsPerPage, products.length)} de {products.length}</span><button type="button" aria-label="Más productos" disabled={productPage + 1 >= productPageCount} onClick={() => setProductPage(page => Math.min(productPageCount - 1, page + 1))}><ChevronRight size={18} /></button></nav>}
     </div>
-    <div className="invoice-step-actions invoice-step-actions-navigation"><div className="invoice-step-navigation" aria-label="Navegación de pasos"><button type="button" onClick={onPrevious} disabled aria-label="Anterior">Anterior</button><button type="button" onClick={validateStep} disabled={isLoading}>Siguiente</button></div></div>
+    <div className="invoice-step-actions invoice-step-actions-bottom"><div className="invoice-step-navigation" aria-label="Navegación de pasos"><button type="button" disabled aria-label="Anterior">Anterior</button><button type="button" onClick={validateStep} disabled={isLoading}>Siguiente</button></div></div>
+    {fieldError('products')}
     </section>}
   </div>
 }

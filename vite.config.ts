@@ -1,9 +1,12 @@
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 
-// https://vite.dev/config/
+// GitHub Pages sirve desde /<repositorio>/; Vercel y el desarrollo usan la raíz.
+const base = process.env.GITHUB_ACTIONS === 'true'
+  ? `/${process.env.GITHUB_REPOSITORY?.split('/')[1] ?? ''}/`
+  : '/'
+
 export default defineConfig({
-  // Vercel sirve la aplicación desde la raíz del dominio.
-  base: '/',
+  base,
   plugins: [react()],
 })

@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "tsc -b && vite build",
     "deploy": "npm run build && vercel --prod",
     "db:backup-public": "node scripts/backup-public-schema.mjs",
     "db:migrate": "node scripts/apply-drizzle-migrations.mjs",
@@ -14,26 +14,28 @@
     "test:db-security": "node --test tests/integration/database-security.test.mjs",
     "test:db-crud": "node --experimental-strip-types --test tests/integration/invoice-repository.test.mjs tests/integration/invoice-rest.test.mjs",
     "test:security": "node --disable-warning=ExperimentalWarning --experimental-strip-types --test tests/security/*.test.mjs",
-    "typecheck": "tsc --noEmit",
-    "preview": "vite preview",
-    "portable": "node server.mjs"
+    "typecheck": "tsc -b",
+    "preview": "vite preview"
   },
   "dependencies": {
-    "@vitejs/plugin-react": "latest",
+    "@supabase/supabase-js": "^2.117.3",
     "dompurify": "^3.4.17",
     "drizzle-orm": "^0.45.4",
     "jspdf": "^4.2.1",
     "lucide-react": "latest",
     "postgres": "^3.4.9",
-    "react": "latest",
-    "react-dom": "latest",
-    "vite": "latest"
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "react-router-dom": "^7.18.4"
   },
   "devDependencies": {
-    "@types/react": "latest",
-    "@types/react-dom": "latest",
+    "@types/node": "^24.13.3",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "@vitejs/plugin-react": "^6.1.1",
     "dotenv": "^18.0.8",
     "drizzle-kit": "^0.31.11",
-    "typescript": "latest"
+    "typescript": "~6.0.2",
+    "vite": "^8.3.0"
   }
 }

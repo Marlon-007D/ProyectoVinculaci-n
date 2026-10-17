@@ -1,55 +1,29 @@
-import type { AccessTokenProvider } from '../../../../core/auth/authorization'
 import { AppError } from '../../../../core/errors/AppError'
-import { supabaseClient } from '../../../../core/supabase/supabaseClient'
+import { sampleInvoiceProducts } from '../mocks/invoiceMock'
 import type { InvoiceProduct } from '../types/invoice.types'
-
-interface DatabaseInvoiceProduct {
-  id: string
-  description: string
-  unit_price: number | string
-  source_name: string
-  source_url: string
-  stock: number | string
-  image_url?: string | null
-}
 
 export interface InvoiceProductCatalog {
   products: InvoiceProduct[]
-  source: 'supabase'
+  source: 'local'
 }
 
 export interface InvoiceCatalogRepository {
   list(): Promise<InvoiceProduct[]>
 }
 
-export class SupabaseInvoiceCatalogRepository implements InvoiceCatalogRepository {
-  constructor(private readonly accessTokenProvider?: AccessTokenProvider) {}
-
+/** Uses the checked-in seed catalog for the standalone educational simulator. */
+export class LocalInvoiceCatalogRepository implements InvoiceCatalogRepository {
   async list(): Promise<InvoiceProduct[]> {
-    const accessToken = await this.accessTokenProvider?.getAccessToken() ?? undefined
-    const rows = await supabaseClient.request<DatabaseInvoiceProduct[]>(
-      'invoice_products?select=id,description,unit_price,source_name,source_url,stock,image_url&is_active=eq.true&is_public=eq.true&order=description.asc',
-      accessToken ? { accessToken } : {},
-    )
-    return rows.map(row => ({
-      id: row.id,
-      description: row.description,
-      unitPrice: Number(row.unit_price),
-      stock: Math.max(0, Number(row.stock) || 0),
-      isAvailable: Number(row.stock) > 0,
-      sourceName: row.source_name,
-      sourceUrl: row.source_url,
-      imageUrl: row.image_url ?? undefined,
-    })).filter(product => product.id && product.description && Number.isFinite(product.unitPrice) && product.unitPrice > 0)
+    return sampleInvoiceProducts.map(product => ({ ...product }))
   }
 }
 
-const publicCatalogRepository = new SupabaseInvoiceCatalogRepository()
+const localCatalogRepository = new LocalInvoiceCatalogRepository()
 
 export async function getInvoiceProductCatalog(
-  repository: InvoiceCatalogRepository = publicCatalogRepository,
+  repository: InvoiceCatalogRepository = localCatalogRepository,
 ): Promise<InvoiceProductCatalog> {
   const products = await repository.list()
-  if (products.length === 0) throw new AppError('No hay productos activos para esta institución.')
-  return { products, source: 'supabase' }
+  if (products.length === 0) throw new AppError('No hay productos disponibles para la simulación.')
+  return { products, source: 'local' }
 }

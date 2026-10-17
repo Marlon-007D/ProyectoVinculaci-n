@@ -1,0 +1,126 @@
+.portal-simulators {
+  --surface: #fff;
+  --line: #d5dbe1;
+  --text: #1f2933;
+  --muted: #52606d;
+  --accent: #1d4e89;
+  --accent-hover: #173d6b;
+  --accent-soft: #eef4fa;
+  --accent-container: #dce9f5;
+  --accent-focus: #b8cde0;
+  --accent-ink: #173d6b;
+  width: 100%;
+  color: var(--text);
+  font-family: var(--site-font, system-ui, sans-serif);
+}
+
+.site-main--simulator { min-height: 100vh; }
+.site-root--simulator .portal-simulators .page-content { padding-top: 1.25rem; }
+
+.portal-simulators .simulator-hub-page.page-content {
+  width: 100%;
+  max-width: var(--site-max, 72rem);
+  padding: 2.5rem 1.5rem 4rem;
+}
+
+.portal-simulators .simulator-hub-header { margin-bottom: 1.75rem; }
+.portal-simulators .simulator-hub-header > span { display: inline-flex; align-items: center; gap: .5rem; margin-bottom: .65rem; color: var(--accent); font-size: .85rem; font-weight: 700; }
+.portal-simulators .simulator-hub-header h1 { margin: 0 0 .5rem; color: var(--site-ink, #1f2933); font-family: var(--site-serif, Georgia, serif); font-size: clamp(1.7rem, 3vw, 2.25rem); line-height: 1.2; }
+.portal-simulators .simulator-hub-header p { max-width: 42rem; margin: 0; color: var(--site-muted, #52606d); font-size: 1rem; }
+.portal-simulators .simulator-hub-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.1rem; }
+.portal-simulators .simulator-hub-card {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) 20px;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  min-width: 0;
+  min-height: 132px;
+  padding: 1.25rem;
+  border: 1px solid var(--site-line, #d5dbe1);
+  border-radius: 14px;
+  background: var(--site-paper, #fff);
+  color: var(--site-ink, #1f2933);
+  text-align: left;
+  transition: background-color .18s ease, border-color .18s ease, transform .18s ease;
+}
+.portal-simulators .simulator-hub-card:hover { transform: translateY(-2px); border-color: var(--accent-focus); background: var(--accent-soft); }
+.portal-simulators .simulator-hub-icon { display: grid; place-items: center; width: 48px; height: 48px; border: 1px solid var(--accent-focus); border-radius: 14px; color: var(--accent); background: var(--accent-soft); }
+.portal-simulators .simulator-hub-info { display: grid; gap: .4rem; min-width: 0; }
+.portal-simulators .simulator-hub-info strong { color: var(--site-ink, #1f2933); font-size: 1rem; line-height: 1.35; }
+.portal-simulators .simulator-hub-info > span { color: var(--site-muted, #52606d); font-size: .9rem; line-height: 1.5; }
+.portal-simulators .simulator-hub-card > svg { color: var(--accent); }
+.portal-simulators .simulator-hub-card:focus-visible { outline: 3px solid var(--accent-focus); outline-offset: 3px; }
+
+.portal-simulators-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .75rem;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: .25rem 12px 0;
+}
+.portal-simulators-back,
+.portal-invoice-tabs button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+  min-height: 42px;
+  padding: .55rem .85rem;
+  border: 1px solid var(--site-line, #d5dbe1);
+  border-radius: 999px;
+  color: var(--accent-ink);
+  background: var(--site-paper, #fff);
+  font-size: .9rem;
+  font-weight: 600;
+}
+.portal-simulators-back {
+  justify-self: start;
+  min-height: 44px;
+  padding: .55rem 1rem;
+  border-radius: 999px;
+  color: var(--site-muted, #52606d);
+}
+.portal-simulators-back:hover { color: var(--accent); }
+.portal-simulators-back:hover,
+.portal-invoice-tabs button:hover { background: var(--accent-soft); }
+.portal-invoice-tabs { display: flex; gap: .5rem; }
+.portal-invoice-tabs button[aria-selected="true"] { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+.portal-invoice-tabs button span { display: inline-grid; place-items: center; min-width: 1.35rem; height: 1.35rem; padding: 0 .25rem; border-radius: 999px; background: var(--accent-container); font-size: .75rem; }
+.portal-simulators .page-content { width: 100%; }
+.portal-simulators .invoice-stepper { width: 100%; margin: 0; }
+.portal-simulators .invoice-stepper ol { justify-content: center; width: 100%; min-width: 0; }
+.portal-simulators .invoice-step-actions.invoice-step-actions-bottom { position: static; justify-content: center; margin: 22px 0 0; padding: 0 0 18px; border: 0; background: transparent; }
+.portal-simulators .invoice-step-navigation { margin-inline: auto; }
+.portal-simulators .invoice-step-actions-bottom .invoice-step-navigation button { min-height: 48px; padding-inline: 20px; }
+.portal-simulators .invoice-products-card > .invoice-field-error { display: block; margin: 0 auto 4px; text-align: center; }
+.portal-simulators .invoice-total-navigation { margin: 22px auto 0; }
+
+@media (max-width: 760px) {
+  .portal-simulators .simulator-hub-page.page-content { padding: 1.75rem 1rem 3rem; }
+  .portal-simulators .simulator-hub-list { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .8rem; }
+  .portal-simulators .simulator-hub-card { grid-template-columns: 42px minmax(0, 1fr) 18px; gap: .75rem; min-height: 116px; padding: 1rem; }
+  .portal-simulators .simulator-hub-icon { width: 42px; height: 42px; }
+}
+
+@media (max-width: 520px) {
+  .portal-simulators .simulator-hub-list { grid-template-columns: 1fr; }
+  .portal-simulators .simulator-hub-card { min-height: 96px; }
+  .portal-simulators .simulator-hub-info strong,
+  .portal-simulators .simulator-hub-info > span { overflow: visible; white-space: normal; }
+  .portal-simulators-toolbar { flex-wrap: wrap; gap: .5rem; }
+  .portal-invoice-tabs { min-width: 0; }
+  .portal-invoice-tabs button { flex: 1; }
+}
+
+@media (max-width: 620px) {
+  .portal-simulators .invoice-stepper { overflow: hidden; }
+  .portal-simulators .invoice-step-actions.invoice-step-actions-bottom { position: static; justify-content: center; margin: 18px 0 0; padding: 0 0 20px; border: 0; background: transparent; }
+  .portal-simulators .invoice-step-navigation { width: min(100%, 320px); min-height: 44px; margin-inline: auto; }
+  .portal-simulators .invoice-step-actions-bottom .invoice-step-navigation button { min-height: 48px; padding-inline: 16px; font-size: 13px; }
+  .portal-simulators .invoice-total-navigation { width: min(100%, 280px); min-height: 40px; margin: 18px auto 0; }
+  .portal-simulators .invoice-total-navigation button { font-size: 12px; }
+}

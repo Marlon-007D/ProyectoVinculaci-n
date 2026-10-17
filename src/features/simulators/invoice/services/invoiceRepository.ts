@@ -1,5 +1,4 @@
 import { AppError } from '../../../../core/errors/AppError'
-import { supabaseClient } from '../../../../core/supabase/supabaseClient'
 import type { InvoicePersistenceInput, SavedInvoice } from '../types/invoice.types'
 
 export interface InvoiceRepository {
@@ -9,104 +8,66 @@ export interface InvoiceRepository {
   remove(id: string): Promise<void>
 }
 
-export interface InvoiceSessionProvider {
-  getSessionId(): string
-}
+const STORAGE_KEY = 'simulaedu.invoice-history.v1'
 
-/** Stores only a random session capability, never invoice data. */
-export class BrowserInvoiceSessionProvider implements InvoiceSessionProvider {
-  private static readonly key = 'simulaedu.invoice-session.v1'
-
-  getSessionId(): string {
-    const existing = sessionStorage.getItem(BrowserInvoiceSessionProvider.key)
-    if (existing && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(existing)) return existing
-    const sessionId = crypto.randomUUID()
-    sessionStorage.setItem(BrowserInvoiceSessionProvider.key, sessionId)
-    return sessionId
-  }
-}
-
-interface DatabaseInvoiceRow {
-  id: string
-  customer_name: string
-  customer_identification: string
-  issued_on: string
-  payment_method: string
-  subtotal: number | string
-  tax: number | string
-  total: number | string
-  created_at: string
-  invoice_items: Array<{
-    id: string
-    product_id: string | null
-    description: string
-    quantity: number
-    unit_price: number | string
-  }>
-}
-
-function fromDatabase(row: DatabaseInvoiceRow): SavedInvoice {
-  return {
-    id: row.id,
-    customer: row.customer_name,
-    identification: row.customer_identification,
-    date: row.issued_on,
-    paymentMethod: row.payment_method,
-    createdAt: row.created_at,
-    totals: { subtotal: Number(row.subtotal), tax: Number(row.tax), total: Number(row.total) },
-    lines: row.invoice_items.map(item => ({
-      id: item.id,
-      productId: item.product_id ?? undefined,
-      description: item.description,
-      quantity: item.quantity,
-      unitPrice: Number(item.unit_price),
-    })),
-  }
-}
-
-/** Supabase persistence scoped by a random, per-tab session capability in RLS. */
-export class SupabaseInvoiceRepository implements InvoiceRepository {
-  constructor(private readonly sessionProvider: InvoiceSessionProvider) {}
-
+/** Browser-only adapter for the invoice simulator; it does not call Supabase. */
+export class LocalInvoiceRepository implements InvoiceRepository {
   async save(input: InvoicePersistenceInput): Promise<SavedInvoice> {
-    return this.saveOrUpdate(null, input)
-  }
-
-  async update(id: string, input: InvoicePersistenceInput): Promise<SavedInvoice> {
-    return this.saveOrUpdate(id, input)
+    const record: SavedInvoice = {
+      ...input,
+      id: crypto.randomUUID(),
+      createdAt: new Date().toISOString(),
+      lines: input.lines.map(line => ({ ...line })),
+      totals: { ...input.totals },
+    }
+    this.write([record, ...this.read()])
+    return record
   }
 
   async list(): Promise<SavedInvoice[]> {
-    const rows = await supabaseClient.request<DatabaseInvoiceRow[]>(
-      'invoices?select=id,customer_name,customer_identification,issued_on,payment_method,subtotal,tax,total,created_at,invoice_items(id,product_id,description,quantity,unit_price)&order=created_at.desc',
-      { headers: this.sessionHeaders() },
-    )
-    return rows.map(fromDatabase)
+    return this.read()
+  }
+
+  async update(id: string, input: InvoicePersistenceInput): Promise<SavedInvoice> {
+    const invoices = this.read()
+    const existing = invoices.find(invoice => invoice.id === id)
+    if (!existing) throw new AppError('No se encontró la factura guardada en este navegador.')
+    const updated: SavedInvoice = {
+      ...input,
+      id,
+      createdAt: existing.createdAt,
+      lines: input.lines.map(line => ({ ...line })),
+      totals: { ...input.totals },
+    }
+    this.write(invoices.map(invoice => invoice.id === id ? updated : invoice))
+    return updated
   }
 
   async remove(id: string): Promise<void> {
-    const deleted = await supabaseClient.request<Array<{ id: string }>>(
-      `invoices?id=eq.${encodeURIComponent(id)}&select=id`,
-      { method: 'DELETE', headers: this.sessionHeaders({ Prefer: 'return=representation' }) },
-    )
-    if (deleted.length === 0) throw new AppError('No se encontró la factura de esta sesión.')
+    const invoices = this.read()
+    const remaining = invoices.filter(invoice => invoice.id !== id)
+    if (remaining.length === invoices.length) throw new AppError('No se encontró la factura guardada en este navegador.')
+    this.write(remaining)
   }
 
-  private async saveOrUpdate(id: string | null, input: InvoicePersistenceInput): Promise<SavedInvoice> {
-    const idResult = await supabaseClient.request<string>('rpc/save_simulated_invoice', {
-      method: 'POST',
-      headers: this.sessionHeaders({ 'Content-Type': 'application/json' }),
-      body: JSON.stringify({ p_invoice_id: id, p_payload: input }),
-    })
-    const saved = (await this.list()).find(invoice => invoice.id === idResult)
-    if (!saved) throw new AppError('Supabase no devolvió la factura guardada.')
-    return saved
+  private read(): SavedInvoice[] {
+    try {
+      const raw = window.localStorage.getItem(STORAGE_KEY)
+      if (!raw) return []
+      const parsed: unknown = JSON.parse(raw)
+      if (!Array.isArray(parsed)) throw new Error('El historial guardado no tiene un formato válido.')
+      return parsed as SavedInvoice[]
+    } catch (error) {
+      if (error instanceof AppError) throw error
+      throw new AppError('No se pudo leer el historial local de facturas.')
+    }
   }
 
-  private sessionHeaders(extra?: HeadersInit): Headers {
-    const headers = new Headers(extra)
-    headers.set('x-invoice-session', this.sessionProvider.getSessionId())
-    return headers
+  private write(invoices: SavedInvoice[]): void {
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(invoices))
+    } catch {
+      throw new AppError('No se pudo guardar el historial local. Revisa el espacio disponible en el navegador.')
+    }
   }
 }
-

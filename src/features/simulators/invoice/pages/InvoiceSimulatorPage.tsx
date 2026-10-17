@@ -53,16 +53,16 @@ export function InvoiceSimulatorPage({ activeSection, onSectionChange, onInvoice
     <div className="workspace workspace-single">
       {activeSection === 'emission' && <div className="invoice-emission-panel" id="invoice-panel-emission" role="tabpanel" aria-labelledby="invoice-tab-emission">
         <nav className="invoice-stepper" aria-label="Pasos de emisión de factura">
-          <ol>{steps.map(step => <li key={step.id} className={activeStep === step.id ? 'is-current' : activeStep > step.id ? 'is-complete' : ''} aria-current={activeStep === step.id ? 'step' : undefined}>
-            <button type="button" onClick={() => step.id < activeStep && setActiveStep(step.id)} disabled={step.id > activeStep} aria-label={`Paso ${step.id}: ${step.label}`}><span className="invoice-step-number">{activeStep > step.id ? <Check size={14} aria-hidden="true" /> : step.id}</span><span className="invoice-step-name">{step.label}</span><span className="invoice-step-name-short" aria-hidden="true">{step.shortLabel}</span></button>
-          </li>)}</ol>
+            <ol>{steps.map(step => <li key={step.id} className={activeStep === step.id ? 'is-current' : activeStep > step.id ? 'is-complete' : ''} aria-current={activeStep === step.id ? 'step' : undefined}>
+              <button type="button" onClick={() => step.id < activeStep && setActiveStep(step.id)} disabled={step.id > activeStep} aria-label={`Paso ${step.id}: ${step.label}`}><span className="invoice-step-number">{activeStep > step.id ? <Check size={14} aria-hidden="true" /> : step.id}</span><span className="invoice-step-name">{step.label}</span><span className="invoice-step-name-short" aria-hidden="true">{step.shortLabel}</span></button>
+            </li>)}</ol>
         </nav>
         {activeStep < 3 && <div className="invoice-form-column">{invoice.catalogNotice && !invoice.isCatalogLoading && <p className="invoice-save-error" role="alert">{invoice.catalogNotice}</p>}<InvoiceForm activeStep={activeStep as 1 | 2} isLoading={invoice.isCatalogLoading} draft={invoice.draft} products={invoice.products} onField={invoice.updateField} onUpdate={invoice.updateLine} onAdd={invoice.addLine} onSetQuantity={invoice.setProductQuantity} onRemove={invoice.removeLine} onNext={() => setActiveStep(current => Math.min(3, current + 1) as 1 | 2 | 3)} onPrevious={() => setActiveStep(1)} />
           {editToast && <div className="edit-toast" role="status">Factura cargada para editar.</div>}
         </div>}
         {activeStep === 3 && <div className="invoice-total-step"><InvoiceResult totals={invoice.totals} lines={invoice.draft.lines} />
           {invoice.historyNotice && <p className="invoice-save-error" role="alert">{invoice.historyNotice}</p>}
-          <div className="invoice-total-navigation" role="group" aria-label="Acciones de factura"><button type="button" onClick={() => setActiveStep(2)} disabled={isSaving}>Volver</button><button type="button" onClick={handleSave} disabled={isSaving}>{isSaving ? <><LoaderCircle className="invoice-loader" size={18} aria-hidden="true" /> Guardando...</> : 'Guardar factura'}</button></div>
+          <div className="invoice-total-navigation" role="group" aria-label="Acciones de factura"><button type="button" onClick={() => setActiveStep(2)} disabled={isSaving}>Anterior</button><button type="button" onClick={handleSave} disabled={isSaving}>{isSaving ? <><LoaderCircle className="invoice-loader" size={18} aria-hidden="true" /> Guardando...</> : 'Guardar factura'}</button></div>
         </div>}
       </div>}
       {activeSection === 'history' && <div className="invoice-history-panel" id="invoice-panel-history" role="tabpanel" aria-labelledby="invoice-tab-history"><div className="invoice-history-layout"><InvoiceHistory invoices={invoice.savedInvoices} notice={invoice.historyNotice} isLoading={invoice.isHistoryLoading} onLoad={handleEdit} onDelete={invoice.removeSaved} /></div></div>}

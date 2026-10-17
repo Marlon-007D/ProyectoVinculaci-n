@@ -3,7 +3,7 @@ import type { InvoiceDraft, InvoiceLine, InvoiceProduct, SavedInvoice } from '..
 import { calculateInvoice } from '../utils/calculateInvoice'
 import { invoiceTaxRate } from '../utils/invoiceTaxRate'
 import { getInvoiceProductCatalog, type InvoiceCatalogRepository } from '../services/invoiceProductService'
-import { BrowserInvoiceSessionProvider, SupabaseInvoiceRepository, type InvoiceRepository } from '../services/invoiceRepository'
+import { LocalInvoiceRepository, type InvoiceRepository } from '../services/invoiceRepository'
 
 const emptyDraft: InvoiceDraft = {
   customer: '',
@@ -13,7 +13,7 @@ const emptyDraft: InvoiceDraft = {
   lines: [],
 }
 
-const sessionInvoiceRepository = new SupabaseInvoiceRepository(new BrowserInvoiceSessionProvider())
+const localInvoiceRepository = new LocalInvoiceRepository()
 
 interface UseInvoiceSimulatorOptions {
   catalogRepository?: InvoiceCatalogRepository
@@ -33,7 +33,7 @@ function findCatalogProduct(line: InvoiceLine, products: InvoiceProduct[]) {
     ?? products.find(product => key.includes('lápices de colores') && product.id === 'colored-pencils')
 }
 
-export function useInvoiceSimulator({ catalogRepository, invoiceRepository = sessionInvoiceRepository }: UseInvoiceSimulatorOptions = {}) {
+export function useInvoiceSimulator({ catalogRepository, invoiceRepository = localInvoiceRepository }: UseInvoiceSimulatorOptions = {}) {
   const [draft, setDraft] = useState<InvoiceDraft>(emptyDraft)
   const [savedInvoices, setSavedInvoices] = useState<SavedInvoice[]>([])
   const [editingInvoiceId, setEditingInvoiceId] = useState<string | null>(null)
@@ -58,7 +58,7 @@ export function useInvoiceSimulator({ catalogRepository, invoiceRepository = ses
     }).catch(error => {
       if (!mounted) return
       setProducts([])
-      setCatalogNotice(error instanceof Error ? error.message : 'No se pudo cargar el catálogo institucional.')
+      setCatalogNotice(error instanceof Error ? error.message : 'No se pudo cargar el catálogo local.')
     }).finally(() => {
       if (mounted) setIsCatalogLoading(false)
     })
@@ -73,7 +73,7 @@ export function useInvoiceSimulator({ catalogRepository, invoiceRepository = ses
       setSavedInvoices(invoices)
       setHistoryNotice('')
     }).catch(error => {
-      if (mounted) setHistoryNotice(error instanceof Error ? error.message : 'No se pudo cargar el historial institucional.')
+      if (mounted) setHistoryNotice(error instanceof Error ? error.message : 'No se pudo cargar el historial local.')
     }).finally(() => {
       if (mounted) setIsHistoryLoading(false)
     })
