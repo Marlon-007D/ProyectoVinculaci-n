@@ -1,10 +1,10 @@
 const themeColor = 'var(--accent, #63556B)'
 type PenguinExpression = 'happy' | 'wink' | 'excited' | 'curious'
 
-interface PenguinMascotProps { expression: PenguinExpression }
+interface PenguinMascotProps { expression: PenguinExpression; dance?: boolean }
 
-export function PenguinMascot({ expression }: PenguinMascotProps) {
-  return <svg className={`question-encouragement-vector penguin-mascot is-${expression}`} viewBox="0 0 180 180" fill="none" aria-hidden="true">
+export function PenguinMascot({ expression, dance = false }: PenguinMascotProps) {
+  return <svg className={`question-encouragement-vector penguin-mascot is-${expression}${dance ? ' is-dancing' : ''}`} viewBox="0 0 180 180" fill="none" aria-hidden="true">
     <ellipse cx="90" cy="161" rx="55" ry="8" fill="#E7D5DF" />
     <g className="penguin-character">
     <path className="penguin-wing penguin-wing-left" d="M52 80C35 72 18 68 13 76c-5 9 16 35 42 44l13-19L52 80Z" fill={themeColor} stroke="#352941" strokeWidth="4" strokeLinejoin="round" />

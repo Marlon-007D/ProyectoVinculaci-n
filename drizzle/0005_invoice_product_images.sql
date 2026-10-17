@@ -1,0 +1,1 @@
+ALTER TABLE "invoice_products" ADD COLUMN "image_url" text;

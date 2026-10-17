@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ArrowRight, ArrowRightLeft, BarChart3, Calculator, FileText, GraduationCap, ReceiptText } from 'lucide-react'
+import { ArrowRight, ArrowRightLeft, Calculator, FileText, GraduationCap, ReceiptText } from 'lucide-react'
 import type { AppRoute } from '../../../app/router/AppRouter'
 import type { AcademicContentEntry } from '../../academic-content/types/academicContent.types'
 import { PenguinMascot } from '../../courses/components/PenguinMascot'

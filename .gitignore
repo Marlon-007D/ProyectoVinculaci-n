@@ -14,9 +14,6 @@ coverage/
 !.env.example
 
 # Local instructions and requirements documents
-AGENTS.md
-**/AGENTS.md
-agents.md
 requerimientos.md
 Requerimientos.md
 requerimietnos.md

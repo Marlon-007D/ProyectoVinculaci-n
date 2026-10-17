@@ -7,9 +7,9 @@ import { formatDate } from '../../../../shared/utils/formatDate'
 import type { SavedInvoice } from '../types/invoice.types'
 import './InvoiceHistory.css'
 
-interface Props { invoices: SavedInvoice[]; notice: string; onLoad: (invoice: SavedInvoice) => void; onDelete: (id: string) => void }
+interface Props { invoices: SavedInvoice[]; notice: string; isLoading: boolean; onLoad: (invoice: SavedInvoice) => void; onDelete: (id: string) => void }
 
-export function InvoiceHistory({ invoices, notice, onLoad, onDelete }: Props) {
+export function InvoiceHistory({ invoices, notice, isLoading, onLoad, onDelete }: Props) {
   const [page, setPage] = useState(1)
   const [invoiceToDelete, setInvoiceToDelete] = useState<SavedInvoice | null>(null)
   const pageSize = 5
@@ -19,8 +19,8 @@ export function InvoiceHistory({ invoices, notice, onLoad, onDelete }: Props) {
   useEffect(() => setPage(current => Math.min(current, pageCount)), [pageCount])
 
   return <section className="invoice-history" aria-labelledby="invoice-history-title">
-    <div className="invoice-history-heading"><div><h2 id="invoice-history-title">Facturas simuladas</h2></div><span>{invoices.length}</span></div>
-    {invoices.length === 0 ? <p className="invoice-history-empty">Al guardar una factura, aparecerá aquí para que puedas volver a cargarla.</p> :
+    <div className="invoice-history-heading"><div><h2 id="invoice-history-title">Facturas simuladas</h2></div>{isLoading ? <span className="invoice-history-count-skeleton" aria-hidden="true" /> : <span>{invoices.length}</span>}</div>
+    {isLoading ? <ul className="invoice-history-skeleton-list" aria-label="Cargando facturas" aria-busy="true">{[0, 1].map(item => <li key={item} className="invoice-history-skeleton-row"><span className="invoice-history-skeleton-icon" /><span className="invoice-history-skeleton-copy"><span /><span /></span><span className="invoice-history-skeleton-total" /></li>)}</ul> : invoices.length === 0 ? <p className="invoice-history-empty">Al guardar una factura, aparecerá aquí para que puedas volver a cargarla.</p> :
       <ul>{visibleInvoices.map(invoice => <li key={invoice.id}>
         <div className="invoice-history-icon"><FolderOpen size={19} /></div>
         <div className="invoice-history-info"><strong>{invoice.customer}</strong><small>{formatDate(invoice.createdAt)} · {invoice.lines.length} {invoice.lines.length === 1 ? 'ítem' : 'ítems'}</small></div>

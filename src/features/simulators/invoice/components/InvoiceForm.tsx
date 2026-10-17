@@ -6,6 +6,7 @@ import './InvoiceForm.css'
 
 interface Props {
   activeStep: 1 | 2
+  isLoading?: boolean
   draft: InvoiceDraft
   onField: (field: keyof Omit<InvoiceDraft, 'lines'>, value: string) => void
   products: InvoiceProduct[]
@@ -17,7 +18,7 @@ interface Props {
   onPrevious: () => void
 }
 
-export function InvoiceForm({ activeStep, draft, products, onField, onUpdate, onAdd, onSetQuantity, onRemove, onNext, onPrevious }: Props) {
+export function InvoiceForm({ activeStep, isLoading = false, draft, products, onField, onUpdate, onAdd, onSetQuantity, onRemove, onNext, onPrevious }: Props) {
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [productPage, setProductPage] = useState(0)
   const productsPerPage = 6
@@ -51,7 +52,7 @@ export function InvoiceForm({ activeStep, draft, products, onField, onUpdate, on
     {activeStep === 2 && <section className="invoice-card invoice-details-card" aria-labelledby="invoice-details-title">
     <div className="card-heading"><div className="invoice-title"><span className="invoice-title-icon"><FileText size={21} aria-hidden="true" /></span><div><p className="invoice-section-kicker">DATOS DE EMISIÓN</p><h2 id="invoice-details-title">Cliente y pago</h2></div></div></div>
     <div className="form-grid">
-      <label><span className="invoice-field-label"><UserRound size={16} aria-hidden="true" />Cliente</span><input required maxLength={120} aria-invalid={!!errors.customer} aria-describedby={errors.customer ? 'invoice-error-customer' : undefined} value={draft.customer} onChange={e => { const rawValue = e.target.value; const cleanValue = sanitizeHtml(rawValue, 120).replace(/[^\p{L}\s]/gu, '').replace(/\s+/gu, ' ').trim(); const value = cleanValue && /\s$/u.test(rawValue) ? `${cleanValue} ` : cleanValue; onField('customer', value); if (value.trim()) clearError('customer') }} />{fieldError('customer')}</label>
+      <label><span className="invoice-field-label"><UserRound size={16} aria-hidden="true" />Cliente</span><input required maxLength={60} aria-invalid={!!errors.customer} aria-describedby={errors.customer ? 'invoice-error-customer' : undefined} value={draft.customer} onChange={e => { const rawValue = e.target.value; const cleanValue = sanitizeHtml(rawValue, 60).replace(/[^\p{L}\s]/gu, '').replace(/\s+/gu, ' ').trim(); const value = cleanValue && /\s$/u.test(rawValue) ? `${cleanValue} ` : cleanValue; onField('customer', value); if (value.trim()) clearError('customer') }} />{fieldError('customer')}</label>
       <label><span className="invoice-field-label"><IdCard size={16} aria-hidden="true" />Identificación</span><input required type="text" inputMode="numeric" autoComplete="off" maxLength={10} pattern="[0-9]{10}" aria-invalid={!!errors.identification} aria-describedby={errors.identification ? 'invoice-error-identification' : undefined} value={draft.identification} onChange={e => { const value = sanitizeHtml(e.target.value, 10).replace(/\D/g, '').slice(0, 10); onField('identification', value); if (/^\d{10}$/.test(value)) clearError('identification') }} />{fieldError('identification')}</label>
       <label><span className="invoice-field-label"><CalendarDays size={16} aria-hidden="true" />Fecha de emisión</span><input required type="date" aria-invalid={!!errors.date} aria-describedby={errors.date ? 'invoice-error-date' : undefined} value={draft.date} onChange={e => { onField('date', e.target.value); if (e.target.value) clearError('date') }} />{fieldError('date')}</label>
       <label><span className="invoice-field-label"><CreditCard size={16} aria-hidden="true" />Forma de pago</span><select required aria-invalid={!!errors.paymentMethod} aria-describedby={errors.paymentMethod ? 'invoice-error-paymentMethod' : undefined} value={draft.paymentMethod} onChange={e => { onField('paymentMethod', e.target.value); if (e.target.value) clearError('paymentMethod') }}><option value="" disabled>Selecciona una forma de pago</option><option>Efectivo</option><option>Transferencia</option><option>Tarjeta</option></select>{fieldError('paymentMethod')}</label>
@@ -61,7 +62,9 @@ export function InvoiceForm({ activeStep, draft, products, onField, onUpdate, on
     {activeStep === 1 && <section className="invoice-card invoice-products-card" aria-label="Productos">
     <div className="line-items"><div className="items-heading"><p>Elige los productos para incluir en la factura</p></div>
       {fieldError('products')}
-      <div className="invoice-products-list">
+      {activeStep === 1 && isLoading ? <div className="invoice-products-skeleton" role="status" aria-label="Cargando productos">
+        {Array.from({ length: 4 }, (_, index) => <div className="invoice-product-skeleton-card" key={index} aria-hidden="true"><i /><div><b /><span /><span /></div></div>)}
+      </div> : <div className="invoice-products-list">
         {visibleProducts.map(product => {
           const line = draft.lines.find(item => item.productId === product.id)
           const available = product.isAvailable && product.stock > 0
@@ -83,10 +86,10 @@ export function InvoiceForm({ activeStep, draft, products, onField, onUpdate, on
             </div>
           </article>
         })}
-      </div>
+      </div>}
       {productPageCount > 1 && <nav className="invoice-product-pagination" aria-label="Páginas de productos"><button type="button" aria-label="Productos anteriores" disabled={productPage === 0} onClick={() => setProductPage(page => Math.max(0, page - 1))}><ChevronLeft size={18} /></button><span>{productPage * productsPerPage + 1}–{Math.min((productPage + 1) * productsPerPage, products.length)} de {products.length}</span><button type="button" aria-label="Más productos" disabled={productPage + 1 >= productPageCount} onClick={() => setProductPage(page => Math.min(productPageCount - 1, page + 1))}><ChevronRight size={18} /></button></nav>}
     </div>
-    <div className="invoice-step-actions invoice-step-actions-navigation"><div className="invoice-step-navigation" aria-label="Navegación de pasos"><button type="button" onClick={onPrevious} disabled aria-label="Anterior">Anterior</button><button type="button" onClick={validateStep}>Siguiente</button></div></div>
+    <div className="invoice-step-actions invoice-step-actions-navigation"><div className="invoice-step-navigation" aria-label="Navegación de pasos"><button type="button" onClick={onPrevious} disabled aria-label="Anterior">Anterior</button><button type="button" onClick={validateStep} disabled={isLoading}>Siguiente</button></div></div>
     </section>}
   </div>
 }

@@ -1,9 +1,24 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { InvoiceDraft, InvoiceLine, InvoiceProduct, SavedInvoice } from '../types/invoice.types'
 import { calculateInvoice } from '../utils/calculateInvoice'
-import { copySampleInvoice, invoiceTaxRate, sampleInvoiceProducts } from '../mocks/invoiceMock'
-import { getInvoiceProductCatalog } from '../services/invoiceProductService'
-import { deleteInvoice, getSavedInvoices, saveInvoice } from '../services/invoiceStorageService'
+import { invoiceTaxRate } from '../utils/invoiceTaxRate'
+import { getInvoiceProductCatalog, type InvoiceCatalogRepository } from '../services/invoiceProductService'
+import { BrowserInvoiceSessionProvider, SupabaseInvoiceRepository, type InvoiceRepository } from '../services/invoiceRepository'
+
+const emptyDraft: InvoiceDraft = {
+  customer: '',
+  identification: '',
+  date: new Date().toISOString().slice(0, 10),
+  paymentMethod: '',
+  lines: [],
+}
+
+const sessionInvoiceRepository = new SupabaseInvoiceRepository(new BrowserInvoiceSessionProvider())
+
+interface UseInvoiceSimulatorOptions {
+  catalogRepository?: InvoiceCatalogRepository
+  invoiceRepository?: InvoiceRepository
+}
 
 function findCatalogProduct(line: InvoiceLine, products: InvoiceProduct[]) {
   const key = `${line.productId ?? ''} ${line.id} ${line.description}`.toLocaleLowerCase()
@@ -18,28 +33,52 @@ function findCatalogProduct(line: InvoiceLine, products: InvoiceProduct[]) {
     ?? products.find(product => key.includes('lápices de colores') && product.id === 'colored-pencils')
 }
 
-export function useInvoiceSimulator() {
-  const [draft, setDraft] = useState<InvoiceDraft>(copySampleInvoice)
-  const [savedInvoices, setSavedInvoices] = useState<SavedInvoice[]>(getSavedInvoices)
-  const [products, setProducts] = useState<InvoiceProduct[]>(sampleInvoiceProducts)
+export function useInvoiceSimulator({ catalogRepository, invoiceRepository = sessionInvoiceRepository }: UseInvoiceSimulatorOptions = {}) {
+  const [draft, setDraft] = useState<InvoiceDraft>(emptyDraft)
+  const [savedInvoices, setSavedInvoices] = useState<SavedInvoice[]>([])
+  const [editingInvoiceId, setEditingInvoiceId] = useState<string | null>(null)
+  const [products, setProducts] = useState<InvoiceProduct[]>([])
   const [historyNotice, setHistoryNotice] = useState('')
+  const [isHistoryLoading, setIsHistoryLoading] = useState(true)
+  const [catalogNotice, setCatalogNotice] = useState('')
+  const [isCatalogLoading, setIsCatalogLoading] = useState(true)
   const totals = useMemo(() => calculateInvoice(draft.lines, invoiceTaxRate), [draft.lines])
 
   useEffect(() => {
     let mounted = true
-    getInvoiceProductCatalog().then(catalog => {
+    setIsCatalogLoading(true)
+    getInvoiceProductCatalog(catalogRepository).then(catalog => {
       if (!mounted) return
       setProducts(catalog.products)
+      setCatalogNotice('')
       setDraft(current => ({ ...current, lines: current.lines.map(line => {
         const product = findCatalogProduct(line, catalog.products)
         return product ? { ...line, description: product.description, unitPrice: product.unitPrice } : line
       }) }))
-    }).catch(() => {
+    }).catch(error => {
       if (!mounted) return
-      setProducts(sampleInvoiceProducts.map(product => ({ ...product })))
+      setProducts([])
+      setCatalogNotice(error instanceof Error ? error.message : 'No se pudo cargar el catálogo institucional.')
+    }).finally(() => {
+      if (mounted) setIsCatalogLoading(false)
     })
     return () => { mounted = false }
-  }, [])
+  }, [catalogRepository])
+
+  useEffect(() => {
+    let mounted = true
+    setIsHistoryLoading(true)
+    invoiceRepository.list().then(invoices => {
+      if (!mounted) return
+      setSavedInvoices(invoices)
+      setHistoryNotice('')
+    }).catch(error => {
+      if (mounted) setHistoryNotice(error instanceof Error ? error.message : 'No se pudo cargar el historial institucional.')
+    }).finally(() => {
+      if (mounted) setIsHistoryLoading(false)
+    })
+    return () => { mounted = false }
+  }, [invoiceRepository])
 
   const updateField = (field: keyof Omit<InvoiceDraft, 'lines'>, value: string) => {
     setDraft(current => ({ ...current, [field]: value }))
@@ -76,17 +115,15 @@ export function useInvoiceSimulator() {
     return { ...current, lines: [...current.lines, { id: crypto.randomUUID(), productId: product.id, description: product.description, quantity, unitPrice: product.unitPrice }] }
   })
   const removeLine = (id: string) => setDraft(current => ({ ...current, lines: current.lines.filter(line => line.id !== id) }))
-  const persist = () => {
+  const persist = async () => {
     if (!draft.customer.trim()) return false
-    const record: SavedInvoice = {
-      ...draft,
-      id: crypto.randomUUID(),
-      createdAt: new Date().toISOString(),
-      lines: draft.lines.map((line: InvoiceLine) => ({ ...line })),
-      totals,
-    }
     try {
-      setSavedInvoices(saveInvoice(record))
+      const input = { ...draft, lines: draft.lines.map((line: InvoiceLine) => ({ ...line })), totals }
+      const record = editingInvoiceId
+        ? await invoiceRepository.update(editingInvoiceId, input)
+        : await invoiceRepository.save(input)
+      setSavedInvoices(current => [record, ...current.filter(invoice => invoice.id !== record.id)])
+      setEditingInvoiceId(null)
       setHistoryNotice('')
       return true
     } catch (error) {
@@ -95,6 +132,7 @@ export function useInvoiceSimulator() {
     }
   }
   const load = (record: SavedInvoice) => {
+    setEditingInvoiceId(record.id)
     setDraft({ customer: record.customer, identification: record.identification, date: record.date, paymentMethod: record.paymentMethod, lines: record.lines.map(line => {
       const product = findCatalogProduct(line, products)
       return product
@@ -103,14 +141,16 @@ export function useInvoiceSimulator() {
     }) })
     setHistoryNotice('')
   }
-  const removeSaved = (id: string) => {
+  const removeSaved = async (id: string) => {
     try {
-      setSavedInvoices(deleteInvoice(id))
+      await invoiceRepository.remove(id)
+      setSavedInvoices(current => current.filter(invoice => invoice.id !== id))
+      if (editingInvoiceId === id) setEditingInvoiceId(null)
       setHistoryNotice('')
     } catch (error) {
       setHistoryNotice(error instanceof Error ? error.message : 'No se pudo eliminar la factura.')
     }
   }
 
-  return { draft, totals, historyNotice, savedInvoices, products, updateField, updateLine, addLine, setProductQuantity, removeLine, persist, load, removeSaved }
+  return { draft, totals, historyNotice, catalogNotice, isCatalogLoading, isHistoryLoading, savedInvoices, products, updateField, updateLine, addLine, setProductQuantity, removeLine, persist, load, removeSaved }
 }

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { ReactNode } from 'react'
+import type { ElementType, ReactNode } from 'react'
 import { FileText, FolderOpen } from 'lucide-react'
 import { Sidebar } from '../../shared/components/Sidebar/Sidebar'
 import { AppHeader } from '../../shared/components/AppHeader/AppHeader'
@@ -24,7 +24,6 @@ import { AcademicPostPreviewPage } from '../../features/academic-content/pages/A
 import { ReportsHubPage } from '../../features/academic-content/pages/ReportsHubPage'
 import type { AcademicContentEntry } from '../../features/academic-content/types/academicContent.types'
 import type { ThemeName } from '../../features/themeUser/types/themeUser.types'
-import { getSavedInvoices } from '../../features/simulators/invoice/services/invoiceStorageService'
 import { HomePage } from '../../features/home/pages/HomePage'
 
 export type SimulatorRoute = 'invoice' | 'converter' | 'interest'
@@ -44,16 +43,7 @@ const pages = {
   events: { Component: EventsPage },
   honors: { Component: HonorsPage },
   'academic-periods': { Component: AcademicPeriodsPage },
-} satisfies Record<AppRoute, { Component: (props: { onPreview: (entry: AcademicContentEntry) => void }) => ReactNode }>
-
-const routeLabels: Record<AppRoute, string> = {
-  home: 'Inicio',
-  invoice: 'Facturación electrónica', converter: 'Unidades y monedas', interest: 'Interés financiero',
-  'simulator-hub': 'Simuladores',
-  'reports-hub': 'Reportes',
-  'school-courses': 'Cursos de colegio',
-  news: 'Noticias', events: 'Eventos', honors: 'Cuadro de honor', 'academic-periods': 'Período académico',
-}
+} satisfies Record<AppRoute, { Component: ElementType }>
 
 const routeSkeletons: Record<AppRoute, () => ReactNode> = {
   home: () => <HomePage />,
@@ -72,7 +62,7 @@ const routeSkeletons: Record<AppRoute, () => ReactNode> = {
 export function AppRouter({ collapsed, theme, onThemeChange, onToggleSidebar }: Props) {
   const [route, setRoute] = useState<AppRoute>('home')
   const [invoiceSection, setInvoiceSection] = useState<'emission' | 'history'>('emission')
-  const [invoiceCount, setInvoiceCount] = useState(() => getSavedInvoices().length)
+  const [invoiceCount, setInvoiceCount] = useState(0)
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null)
   const [selectedModuleId, setSelectedModuleId] = useState<string | null>(null)
   const [courseTopicName, setCourseTopicName] = useState<string | null>(null)
@@ -81,7 +71,7 @@ export function AppRouter({ collapsed, theme, onThemeChange, onToggleSidebar }: 
   const [previewEntry, setPreviewEntry] = useState<AcademicContentEntry | null>(null)
   const navigationTimer = useRef<number | null>(null)
   const displayedRoute = loadingRoute ?? route
-  const { Component } = pages[displayedRoute]
+  const { Component }: { Component: ElementType } = pages[displayedRoute]
   const Skeleton = routeSkeletons[displayedRoute]
   const navigateTo = (nextRoute: AppRoute, forceLoading = false) => {
     if (nextRoute === displayedRoute && !forceLoading) { setPreviewEntry(null); return }

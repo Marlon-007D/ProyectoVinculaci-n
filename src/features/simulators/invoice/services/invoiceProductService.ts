@@ -1,6 +1,6 @@
+import type { AccessTokenProvider } from '../../../../core/auth/authorization'
 import { AppError } from '../../../../core/errors/AppError'
 import { supabaseClient } from '../../../../core/supabase/supabaseClient'
-import { sampleInvoiceProducts } from '../mocks/invoiceMock'
 import type { InvoiceProduct } from '../types/invoice.types'
 
 interface DatabaseInvoiceProduct {
@@ -10,30 +10,46 @@ interface DatabaseInvoiceProduct {
   source_name: string
   source_url: string
   stock: number | string
+  image_url?: string | null
 }
 
 export interface InvoiceProductCatalog {
   products: InvoiceProduct[]
-  source: 'database' | 'mock'
+  source: 'supabase'
 }
 
-export async function getInvoiceProductCatalog(): Promise<InvoiceProductCatalog> {
-  if (!supabaseClient.isConfigured) return { products: sampleInvoiceProducts.map(product => ({ ...product })), source: 'mock' }
+export interface InvoiceCatalogRepository {
+  list(): Promise<InvoiceProduct[]>
+}
 
-  const rows = await supabaseClient.request<DatabaseInvoiceProduct[]>(
-    'invoice_products?select=id,description,unit_price,source_name,source_url,stock&is_active=eq.true&order=description.asc',
-  )
-  const products = rows.map(row => ({
-    id: row.id,
-    description: row.description,
-    unitPrice: Number(row.unit_price),
-    stock: Math.max(0, Number(row.stock) || 0),
-    isAvailable: Number(row.stock) > 0,
-    sourceName: row.source_name,
-    sourceUrl: row.source_url,
-    imageUrl: sampleInvoiceProducts.find(product => product.id === row.id || product.description === row.description)?.imageUrl ?? '/products/notebook.jpg',
-  })).filter(product => product.id && product.description && Number.isFinite(product.unitPrice) && product.unitPrice > 0)
+export class SupabaseInvoiceCatalogRepository implements InvoiceCatalogRepository {
+  constructor(private readonly accessTokenProvider?: AccessTokenProvider) {}
 
-  if (products.length === 0) throw new AppError('La base de datos no tiene productos activos con precios válidos.')
-  return { products, source: 'database' }
+  async list(): Promise<InvoiceProduct[]> {
+    const accessToken = await this.accessTokenProvider?.getAccessToken() ?? undefined
+    const rows = await supabaseClient.request<DatabaseInvoiceProduct[]>(
+      'invoice_products?select=id,description,unit_price,source_name,source_url,stock,image_url&is_active=eq.true&is_public=eq.true&order=description.asc',
+      accessToken ? { accessToken } : {},
+    )
+    return rows.map(row => ({
+      id: row.id,
+      description: row.description,
+      unitPrice: Number(row.unit_price),
+      stock: Math.max(0, Number(row.stock) || 0),
+      isAvailable: Number(row.stock) > 0,
+      sourceName: row.source_name,
+      sourceUrl: row.source_url,
+      imageUrl: row.image_url ?? undefined,
+    })).filter(product => product.id && product.description && Number.isFinite(product.unitPrice) && product.unitPrice > 0)
+  }
+}
+
+const publicCatalogRepository = new SupabaseInvoiceCatalogRepository()
+
+export async function getInvoiceProductCatalog(
+  repository: InvoiceCatalogRepository = publicCatalogRepository,
+): Promise<InvoiceProductCatalog> {
+  const products = await repository.list()
+  if (products.length === 0) throw new AppError('No hay productos activos para esta institución.')
+  return { products, source: 'supabase' }
 }
