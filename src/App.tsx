@@ -388,6 +388,9 @@ function ModuleGate({ moduleName, children }: { moduleName: InstitutionModuleNam
   if (moduleName === 'dece' && activeInstitution.role === 'student') {
     return <Navigate to={`/${activeInstitution.slug}/mi-ficha`} replace />;
   }
+  if (moduleName === 'dece' && activeInstitution.role !== 'dece_staff') {
+    return <div className="mx-auto max-w-3xl p-8"><section role="alert" className="rounded-xl border border-rose-200 bg-white p-6 text-sm text-rose-800">El módulo DECE está disponible únicamente para el personal DECE.</section></div>;
+  }
   if (modulePermissionError) return <div className="mx-auto max-w-3xl p-8"><section role="alert" className="rounded-xl border border-rose-200 bg-white p-6 text-sm text-rose-800">{modulePermissionError}</section></div>;
   if (!hasModuleAccess(moduleName)) {
     return <div className="mx-auto max-w-3xl p-8"><section className="rounded-xl border border-amber-200 bg-white p-6 text-sm text-amber-900">Este modulo no esta habilitado para {activeInstitution.name}. Solicita al superadministrador que lo active.</section></div>;
@@ -397,14 +400,16 @@ function ModuleGate({ moduleName, children }: { moduleName: InstitutionModuleNam
 
 function DecePageWrapper() {
   const { activeInstitution } = useTenant();
+  const { user } = useAuth();
   const integration = useMemo(() => {
     if (!activeInstitution) return null;
     return {
       client: supabase,
       institutionId: activeInstitution.institution_id,
+      profileId: user?.id,
       getStudentId: (student: { recordId?: string }) => student.recordId ?? null,
     };
-  }, [activeInstitution]);
+  }, [activeInstitution, user?.id]);
 
   if (!integration) {
     return (

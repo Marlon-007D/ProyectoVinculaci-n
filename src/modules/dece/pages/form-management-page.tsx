@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import Swal from 'sweetalert2'
 import 'sweetalert2/dist/sweetalert2.min.css'
 import { createDeceFormService, type FormQuestion, type QuestionType, type QuestionValidation } from '../services/form-service'
+import PdfActionButton from '../components/pdf-action-button'
 import { useDeceData } from '../services/dece-data-context'
 
 type Template = { id: string; code: string; name: string; versionId: string | null }
@@ -155,7 +156,7 @@ export default function FormManagementPage() {
       {selected && !['general', 'authorization'].includes(selected.code) && <button className="btn btn-outline-danger" disabled={busy} onClick={() => void removeTemplate(selected)}>Retirar ficha</button>}
     </div>
     {!selected && <p>No hay plantillas activas.</p>}
-    {selected && <><ul className="list-group mb-4">{questions.map(question => <li className="list-group-item d-flex justify-content-between align-items-center gap-2" key={question.form_question_id}><span><strong>{question.label}</strong><small className="d-block text-secondary">{question.display_config?.section ?? 'Información'}</small></span>{!question.is_system && <button className="btn btn-sm btn-outline-danger" disabled={busy} onClick={() => void removeQuestion(question)}>Retirar pregunta</button>}</li>)}</ul>
+    {selected && <><div className="mb-3"><PdfActionButton label={`Descargar ficha en blanco: ${selected.name}`} generate={async () => { const { createDecePdfService } = await import('../services/pdf-service'); await createDecePdfService(integration!.client).blankForm(integration!.institutionId, selected.code, null, integration!.profileId) }} /></div><ul className="list-group mb-4">{questions.map(question => <li className="list-group-item d-flex justify-content-between align-items-center gap-2" key={question.form_question_id}><span><strong>{question.label}</strong><small className="d-block text-secondary">{question.display_config?.section ?? 'Información'}</small></span>{!question.is_system && <button className="btn btn-sm btn-outline-danger" disabled={busy} onClick={() => void removeQuestion(question)}>Retirar pregunta</button>}</li>)}</ul>
       <form className="row g-2" onSubmit={event => void addQuestion(event)}><div className="col-md-6"><input className="form-control" required placeholder="Texto de la pregunta" value={label} onChange={event => setLabel(event.target.value)} /></div>
         <div className="col-md-3"><select className="form-select" value={type} onChange={event => setType(event.target.value as QuestionType)}>{questionTypes.map(item => <option key={item.value} value={item.value}>{item.label}</option>)}</select></div>
         <div className="col-md-3"><input className="form-control" placeholder="Sección" value={section} onChange={event => setSection(event.target.value)} /></div>

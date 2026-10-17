@@ -4,6 +4,7 @@ import 'sweetalert2/dist/sweetalert2.min.css'
 import { useDeceData } from '../services/dece-data-context'
 import { createDeceFormService } from '../services/form-service'
 import type { Student } from '../types/student'
+import PdfActionButton from '../components/pdf-action-button'
 
 type StudentRecord = {
   student_id: string
@@ -255,8 +256,8 @@ export default function StudentManagementPage({ onOpenForm, onStudentSaved, onOp
       <section className="table-card p-3 mb-4" aria-labelledby="student-details-heading"><h2 id="student-details-heading">{displayedName}</h2><p>Cédula: {record.national_id} · Grado: {record.grade_level ?? 'Sin grado'}</p>
         <StudentFieldsForm values={values} setValues={setValues} onSubmit={submit} saving={saving} error={validationError} />
       </section>
-      <section className="table-card p-3"><h2>Fichas del estudiante</h2><p>Abre una ficha para consultar o completar sus respuestas.</p><div className="d-flex flex-wrap gap-2">
-        {templates.map(template => <button type="button" key={template.code} className="button btn secondary" onClick={() => onOpenForm(toStudent(record), template.code)}>{template.name}</button>)}
+      <section className="table-card p-3"><h2>Fichas del estudiante</h2><p>Abre una ficha para consultar o completar sus respuestas, o descarga una copia en blanco.</p><div className="d-flex flex-wrap gap-2">
+        {templates.map(template => <span key={template.code} className="d-inline-flex flex-wrap align-items-center gap-2"><button type="button" className="button btn secondary" onClick={() => onOpenForm(toStudent(record), template.code)}>{template.name}</button><PdfActionButton label={`Descargar ${template.name} en blanco`} generate={async () => { const { createDecePdfService } = await import('../services/pdf-service'); await createDecePdfService(integration!.client).blankForm(integration!.institutionId, template.code, record!.student_id, integration!.profileId) }} /></span>)}
       </div></section>
       <StudentCases studentId={record.student_id} institutionId={integration?.institutionId ?? ''} slug={integration?.slug ?? ''} onNew={() => onOpenCases?.(record.student_id)} />
     </>}
@@ -277,20 +278,51 @@ export default function StudentManagementPage({ onOpenForm, onStudentSaved, onOp
 
 function StudentCases({ studentId, institutionId, slug, onNew }: { studentId: string; institutionId: string; slug: string; onNew: () => void }) {
   const integration = useDeceData()
-  const [rows, setRows] = useState<Array<{ dece_case_id: string; case_number: string; status: string }>>([])
+  const [rows, setRows] = useState<Array<{ dece_case_id: string; case_number: string; status: string; risk_level: string; created_at: string }>>([])
+  const [timeline, setTimeline] = useState<Array<{ id: string; type: string; caseId: string; at: string; description: string }>>([])
   const [error, setError] = useState('')
+  const [includeForms, setIncludeForms] = useState(false)
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const dialogRef = useRef<HTMLDialogElement | null>(null)
+  useEffect(() => {
+    const dialog = dialogRef.current
+    if (dialogOpen && dialog && !dialog.open) dialog.showModal()
+    if (!dialogOpen && dialog?.open) dialog.close()
+  }, [dialogOpen])
   useEffect(() => {
     let live = true
     if (!integration) return
-    void integration.client.from('dece_cases').select('dece_case_id,case_number,status').eq('institution_id', institutionId).eq('student_id', studentId).order('updated_at', { ascending: false }).then(({ data, error: queryError }) => {
-      if (!live) return
-      if (queryError) setError(queryError.code === '42501' ? 'No tienes permiso para consultar los casos de este estudiante.' : 'No se pudieron cargar los casos.')
-      else setRows(data ?? [])
-    })
+    async function load() {
+      setError('')
+      try {
+        const { data, error: queryError } = await integration!.client.from('dece_cases').select('dece_case_id,case_number,status,risk_level,created_at').eq('institution_id', institutionId).eq('student_id', studentId).order('created_at')
+        if (queryError) throw queryError
+        const cases = data ?? []; const caseIds = cases.map(row => row.dece_case_id)
+        if (!caseIds.length) { if (live) { setRows([]); setTimeline([]) }; return }
+        const [visitsResult, actionsResult] = await Promise.all([
+          integration!.client.from('dece_visits').select('dece_visit_id,dece_case_id,visit_date,summary').in('dece_case_id', caseIds),
+          integration!.client.from('dece_actions').select('dece_action_id,dece_case_id,due_date,description,is_completed,completed_at').in('dece_case_id', caseIds),
+        ])
+        if (visitsResult.error) throw visitsResult.error
+        if (actionsResult.error) throw actionsResult.error
+        const eventRows = [
+          ...(visitsResult.data ?? []).map(item => ({ id: item.dece_visit_id, type: 'Visita', caseId: item.dece_case_id, at: item.visit_date, description: item.summary })),
+          ...(actionsResult.data ?? []).map(item => ({ id: item.dece_action_id, type: item.is_completed ? 'Acción completada' : 'Acción', caseId: item.dece_case_id, at: item.completed_at ?? item.due_date ?? '', description: `${item.description}${item.is_completed ? '' : ' · Pendiente'}` })),
+        ].sort((a, b) => a.at.localeCompare(b.at))
+        if (live) { setRows(cases); setTimeline(eventRows) }
+      } catch (cause) {
+        const issue = cause as { code?: string }
+        if (live) setError(issue.code === '42501' ? 'No tienes permiso para consultar el historial del estudiante.' : 'No se pudo cargar el historial de casos del estudiante.')
+      }
+    }
+    void load()
     return () => { live = false }
   }, [integration, institutionId, studentId])
   const statusLabel: Record<string, string> = { registered: 'Registrado', in_progress: 'En atención', under_monitoring: 'En seguimiento', closed: 'Cerrado' }
-  return <section className="table-card p-3 mt-3" aria-labelledby="student-cases-heading"><div className="d-flex justify-content-between align-items-center"><h2 id="student-cases-heading">Casos de acompañamiento</h2><button type="button" className="btn btn-primary btn-sm" onClick={onNew}>Nuevo caso</button></div>{error && <p role="alert">{error}</p>}{rows.length ? <ul>{rows.map(row => <li key={row.dece_case_id}><a href={`/${slug}/dece/casos/${row.dece_case_id}`}>{row.case_number} · {statusLabel[row.status] ?? row.status}</a></li>)}</ul> : !error && <p>No hay casos visibles para este estudiante.</p>}</section>
+  return <section className="table-card p-3 mt-3" aria-labelledby="student-cases-heading"><div className="d-flex justify-content-between align-items-center"><h2 id="student-cases-heading">Casos de acompañamiento</h2><button type="button" className="btn btn-primary btn-sm" onClick={onNew}>Nuevo caso</button></div>{error && <p role="alert">{error}</p>}{rows.length ? <><div className="table-responsive"><table className="table"><thead><tr><th>Número</th><th>Estado</th><th>Riesgo</th><th>Fecha</th><th>Acciones</th></tr></thead><tbody>{rows.map(row => <tr key={row.dece_case_id}><td><a href={`/${slug}/dece/casos/${row.dece_case_id}`}>{row.case_number}</a></td><td>{statusLabel[row.status] ?? row.status}</td><td>{{ low: 'Bajo', medium: 'Medio', high: 'Alto', critical: 'Crítico' }[row.risk_level] ?? row.risk_level}</td><td>{new Date(row.created_at).toLocaleDateString('es-EC', { timeZone: 'America/Guayaquil' })}</td><td><PdfActionButton label={`Descargar PDF del caso ${row.case_number}`} generate={async () => { const { createDecePdfService } = await import('../services/pdf-service'); await createDecePdfService(integration!.client).casePdf(institutionId, row.dece_case_id, integration!.profileId) }} /></td></tr>)}</tbody></table></div><h3 className="h5 mt-4">Línea de tiempo</h3>{timeline.length ? <ol>{timeline.map(item => <li key={`${item.type}-${item.id}`}><time dateTime={item.at}>{item.at ? new Date(item.at).toLocaleString('es-EC', { timeZone: 'America/Guayaquil', hourCycle: 'h23' }) : 'Sin fecha'}</time> · {item.type} · <a href={`/${slug}/dece/casos/${item.caseId}`}>{rows.find(row => row.dece_case_id === item.caseId)?.case_number}</a> · {item.description}</li>)}</ol> : <p>Sin registros</p>}</> : !error && <p>Sin registros</p>}
+    <div className="mt-3"><button type="button" className="btn btn-outline-primary" onClick={() => setDialogOpen(true)}>Generar expediente del estudiante</button></div>
+    <dialog ref={dialogRef} aria-labelledby="student-file-dialog-title" className="rounded border-0 p-4 shadow" style={{ maxWidth: 440, width: 'calc(100% - 2rem)' }} onClose={() => setDialogOpen(false)}><h3 id="student-file-dialog-title">Generar expediente del estudiante</h3><label className="d-flex gap-2 align-items-start my-3"><input type="checkbox" checked={includeForms} onChange={event => setIncludeForms(event.target.checked)} /><span>Incluir respuestas de las fichas llenadas</span></label><div className="d-flex gap-2"><PdfActionButton label="Generar expediente PDF" generate={async () => { const { createDecePdfService } = await import('../services/pdf-service'); await createDecePdfService(integration!.client).studentFile(institutionId, studentId, includeForms, integration!.profileId); setDialogOpen(false) }} /><button type="button" className="btn btn-outline-secondary" onClick={() => setDialogOpen(false)}>Cancelar</button></div></dialog>
+  </section>
 }
 
 function StudentFieldsForm({ values, setValues, onSubmit, saving, error, onCancel }: {

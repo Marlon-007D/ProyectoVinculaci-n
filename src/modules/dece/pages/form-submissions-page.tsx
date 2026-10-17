@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import type { Student } from '../types'
 import { useDeceData } from '../services/dece-data-context'
 import { createDeceFormService } from '../services/form-service'
+import PdfActionButton from '../components/pdf-action-button'
 
 type SubmissionRow = { form_submission_id: string; student_id: string; form_version_id: string; status: 'draft' | 'submitted' | 'reviewed'; updated_at: string }
 type FormMeta = { code: string; name: string; version: number }
@@ -57,7 +58,7 @@ export default function FormSubmissionsPage({ onOpen }: { onOpen: (student: Stud
         if (!submissions.length) { if (live) setRows([]); return }
         const studentIds = [...new Set(submissions.map(row => row.student_id))]
         const { data: studentRows, error: studentsError } = await integration.client.from('students')
-          .select('student_id, national_id, first_name, last_name, grade_level').in('student_id', studentIds)
+          .select('student_id, institution_id, national_id, first_name, last_name, grade_level').eq('institution_id', integration.institutionId).in('student_id', studentIds)
         if (studentsError) throw studentsError
         const students = new Map((studentRows ?? []).map(row => [row.student_id, row]))
         const forms = new Map(definitions.map(definition => [definition.form_definition_id, definition]))
@@ -77,7 +78,7 @@ export default function FormSubmissionsPage({ onOpen }: { onOpen: (student: Stud
             initials: studentRow.first_name.split(/\s+/).slice(0, 2).map((part: string) => part[0]).join('').toUpperCase(),
             color: 'lavender',
           }
-          return [{ id: submission.form_submission_id, student, form: { code: definition.code, name: definition.name, version: version.version_number }, status: submission.status, updatedAt: submission.updated_at }]
+      return [{ id: submission.form_submission_id, student, form: { code: definition.code, name: definition.name, version: version.version_number }, status: submission.status, updatedAt: submission.updated_at }]
         })
         if (live) setRows(mapped)
       } catch (cause) {
@@ -95,7 +96,7 @@ export default function FormSubmissionsPage({ onOpen }: { onOpen: (student: Stud
     {!loading && rows.length === 0 && <div className="empty-state">Todavía no hay envíos de fichas.</div>}
     {rows.length > 0 && <><div className="toolbar d-flex flex-wrap mb-3"><label className="field"><span>Tipo de ficha</span><select className="form-select" value={formFilter} onChange={event => setFormFilter(event.target.value)}><option value="all">Todas las fichas</option>{forms.map(form => <option key={form.code} value={form.code}>{form.name}</option>)}</select></label><label className="field"><span>Estado de revisión</span><select className="form-select" value={reviewFilter} onChange={event => setReviewFilter(event.target.value as typeof reviewFilter)}><option value="all">Todos los estados</option><option value="reviewed">Revisadas</option><option value="not-reviewed">Sin revisar</option></select></label></div>
     {visibleRows.length === 0 ? <div className="empty-state">No hay envíos que coincidan con estos filtros.</div> : <div className="table-card table-responsive"><table className="table"><thead><tr><th>ESTUDIANTE</th><th>FICHA</th><th>VERSIÓN</th><th>ESTADO</th><th>ACTUALIZACIÓN</th><th>ACCIONES</th></tr></thead><tbody>
-      {visibleRows.map(row => <tr key={row.id}><td><strong>{row.student.name}</strong><small className="d-block text-secondary">{row.student.grade} · {row.student.id}</small></td><td>{row.form.name}</td><td>{row.form.version}</td><td>{row.status === 'draft' ? 'Borrador' : row.status === 'submitted' ? 'Enviada' : 'Revisada'}</td><td>{new Date(row.updatedAt).toLocaleString('es-EC')}</td><td><button type="button" className="table-link me-3" onClick={() => onOpen(row.student, row.form.code)}>Revisar ficha</button>{row.status === 'reviewed' && <button type="button" className="btn btn-sm btn-outline-primary" onClick={() => void reopen(row.id)}>Reabrir para corrección</button>}</td></tr>)}
+      {visibleRows.map(row => <tr key={row.id}><td><strong>{row.student.name}</strong><small className="d-block text-secondary">{row.student.grade} · {row.student.id}</small></td><td>{row.form.name}</td><td>{row.form.version}</td><td>{row.status === 'draft' ? 'Borrador' : row.status === 'submitted' ? 'Enviada' : 'Revisada'}</td><td>{new Date(row.updatedAt).toLocaleString('es-EC')}</td><td><button type="button" className="table-link me-3" onClick={() => onOpen(row.student, row.form.code)}>Revisar ficha</button><PdfActionButton label={`Descargar ficha llena de ${row.student.name}`} generate={async () => { const { createDecePdfService } = await import('../services/pdf-service'); await createDecePdfService(integration!.client).filledForm(integration!.institutionId, row.id, integration!.profileId) }} />{row.status === 'reviewed' && <button type="button" className="btn btn-sm btn-outline-primary" onClick={() => void reopen(row.id)}>Reabrir para corrección</button>}</td></tr>)}
     </tbody></table></div>}
     </>}
   </div>

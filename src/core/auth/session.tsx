@@ -5,6 +5,7 @@ import { DeceApp, DeceDataProvider } from '../../modules/dece'
 import ConfigurableForm from '../../modules/dece/pages/student-form/configurable-form'
 import type { Student } from '../../modules/dece/types/student'
 import { createDeceFormService } from '../../modules/dece/services/form-service'
+import PdfActionButton from '../../modules/dece/components/pdf-action-button'
 import './student-portal.css'
 
 type Membership = { institution_id: string; role: { name: string } | { name: string }[] | null; institution: { name: string; slug: string } | { name: string; slug: string }[] | null }
@@ -277,6 +278,7 @@ function StudentFicha({ session }: { session: ActiveSession }) {
       <nav className="studentPortal__tabs" aria-label="Fichas, historial y casos"><button type="button" className={activeTab === 'forms' ? 'active' : ''} onClick={() => setActiveTab('forms')}>Completar fichas</button><button type="button" className={activeTab === 'history' ? 'active' : ''} onClick={() => { setActiveTab('history'); setHistoryRefresh(value => value + 1); setSelectedHistory(null) }}>Historial de fichas</button><button type="button" className={activeTab === 'cases' ? 'active' : ''} onClick={() => setActiveTab('cases')}>Mis casos de acompañamiento</button></nav>
       {activeTab === 'forms' ? <>
         <nav className="studentPortal__formTabs" aria-label="Formularios">{availableForms.map(form => <button type="button" key={form.code} className={formCode === form.code ? 'active' : ''} onClick={() => { setFormCode(form.code); setSection(0) }}>{form.name}</button>)}</nav>
+        {student && <div className="mb-3"><PdfActionButton label={`Descargar ${availableForms.find(form => form.code === formCode)?.name ?? 'ficha'} en blanco`} generate={async () => { const { createDecePdfService } = await import('../../modules/dece/services/pdf-service'); await createDecePdfService(supabase).blankForm(session.institutionId, formCode, student.recordId, session.userId) }} /></div>}
         <nav className="studentPortal__sections" aria-label="Secciones de la ficha">{sections.map((item, index) => <button type="button" className={section === index ? 'active' : ''} key={item} onClick={() => setSection(index)}>{String(index + 1).padStart(2, '0')} · {item}</button>)}</nav>
         <section className="studentPortal__formSurface"><header className="studentPortal__formHeading"><span>FORMULARIO ESTUDIANTIL</span><h2>{availableForms.find(form => form.code === formCode)?.name ?? 'Ficha'}</h2><p>{student.name} · {student.grade}</p></header><ConfigurableForm key={formCode} integration={integration} student={student} code={formCode} section={section} onSectionsChange={syncSections} audience="student" /></section>
       </> : activeTab === 'history' ? <section aria-labelledby="history-heading"><h2 id="history-heading">Historial de mis fichas</h2>
