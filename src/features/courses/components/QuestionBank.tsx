@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
-import { BookOpen, Check, Circle, CircleHelp, Clock3, ListChecks, Search } from 'lucide-react'
+import { ArrowRight, BookOpen, Check, CheckCircle2, Circle, CircleHelp, ClipboardList, Clock3, Hourglass, Lightbulb, ListChecks, RotateCcw, Search } from 'lucide-react'
 import { getSchoolQuestionSet } from '../mocks/schoolQuestionMock'
 import { PenguinMascot } from './PenguinMascot'
 import './QuestionBank.css'
@@ -11,7 +11,19 @@ const QUESTION_COUNT = 10
 const POINTS_PER_QUESTION = 20 / QUESTION_COUNT
 type QuestionKind = 'multiple-choice' | 'multiple-select' | 'matching' | 'word-search'
 const questionKinds: QuestionKind[] = ['multiple-choice', 'matching', 'word-search', 'multiple-select', 'multiple-choice', 'word-search', 'multiple-select', 'multiple-choice', 'multiple-select', 'multiple-select']
-
+const MAX_ATTEMPTS = 3
+interface SavedProgress {
+  attempts: number; answers: Record<number, number>; multiAnswers: Record<number, number[]>;
+  connectionsByQuestion: Record<number, Record<number, string>>; foundWords: Record<number, string[]>;
+  foundWordPaths: Record<number, Record<string, number[]>>; wordSelections: Record<number, number[]>;
+  questionIndex: number; elapsedSeconds: number; savedAt: number; completed: boolean; hintsUsed?: number
+  history?: AttemptMetrics[]; score?: number; answeredCount?: number
+}
+interface AttemptMetrics { attempt: number; completed: boolean; answeredCount: number; elapsedSeconds: number; savedAt: number; score?: number }
+const progressKey = (courseId: string, topicTitle: string) => `evaluation-progress:${courseId}:${encodeURIComponent(topicTitle)}`
+function readProgress(key: string): SavedProgress | null {
+  try { const value = localStorage.getItem(key); return value ? JSON.parse(value) as SavedProgress : null } catch { return null }
+}
 function getEncouragements(courseName: string, topicTitle: string) {
   const subject = `${courseName} ${topicTitle}`.toLocaleLowerCase()
   if (subject.includes('matem')) return [
@@ -50,36 +62,52 @@ function occurrenceOfKind(index: number, kind: QuestionKind): number {
   return questionKinds.slice(0, index).filter(questionKind => questionKind === kind).length
 }
 
-function isCompleteWordPath(selection: number[], rows: string[][], word: string): boolean {
-  if (selection.length !== word.length) return false
-  const width = rows[0]?.length ?? 0
-  const rowOf = (index: number) => Math.floor(index / width)
-  const colOf = (index: number) => index % width
-  const letters = selection.map(index => rows[rowOf(index)]?.[colOf(index)] ?? '').join('')
-  const target = word.toUpperCase()
-  if (letters !== target && letters !== [...target].reverse().join('')) return false
-  const rowStep = selection.length > 1 ? rowOf(selection[1]) - rowOf(selection[0]) : 0
-  const colStep = selection.length > 1 ? colOf(selection[1]) - colOf(selection[0]) : 0
-  if (Math.abs(rowStep) > 1 || Math.abs(colStep) > 1 || (rowStep === 0 && colStep === 0)) return false
-  return selection.every((index, position) => rowOf(index) === rowOf(selection[0]) + rowStep * position && colOf(index) === colOf(selection[0]) + colStep * position)
+function findWordPath(rows: string[][], word: string): number[] | null {
+  const directions = [-1, 0, 1].flatMap(rowStep => [-1, 0, 1].map(colStep => [rowStep, colStep] as const)).filter(([rowStep, colStep]) => rowStep !== 0 || colStep !== 0)
+  for (let row = 0; row < rows.length; row++) for (let col = 0; col < (rows[row]?.length ?? 0); col++) {
+    if (rows[row][col] !== word[0]) continue
+    for (const [rowStep, colStep] of directions) {
+      const path = Array.from({ length: word.length }, (_, offset) => {
+        const nextRow = row + rowStep * offset
+        const nextCol = col + colStep * offset
+        return rows[nextRow]?.[nextCol] === word[offset] ? nextRow * rows[0].length + nextCol : -1
+      })
+      if (path.every(index => index >= 0)) return path
+    }
+  }
+  return null
 }
 
 export function QuestionBank({ courseId, courseName, topicTitle, mode, onEnter = () => undefined, onExit = () => undefined }: Props) {
   const questions = getSchoolQuestionSet(courseId, topicTitle)
-  const [started] = useState(mode === 'assessment')
-  const [finished, setFinished] = useState(false)
-  const [questionIndex, setQuestionIndex] = useState(0)
+  const storageKey = progressKey(courseId, topicTitle)
+  const initialProgress = useRef(readProgress(storageKey)).current
+  const [attempts, setAttempts] = useState(initialProgress?.attempts ?? 0)
+  const [lastSaved, setLastSaved] = useState(initialProgress?.savedAt ?? null)
+  const [started, setStarted] = useState(mode === 'assessment')
+  const [finished, setFinished] = useState(mode === 'assessment' && (initialProgress?.completed ?? false))
+  const [questionIndex, setQuestionIndex] = useState(initialProgress?.questionIndex ?? 0)
   const [danceSequence, setDanceSequence] = useState(0)
   const [danceActive, setDanceActive] = useState(false)
   const previousQuestionIndex = useRef(questionIndex)
-  const [secondsLeft, setSecondsLeft] = useState(LIMIT_SECONDS)
-  const [answers, setAnswers] = useState<Record<number, number>>({})
-  const [multiAnswers, setMultiAnswers] = useState<Record<number, number[]>>({})
+  const [secondsLeft, setSecondsLeft] = useState(Math.max(0, LIMIT_SECONDS - (initialProgress?.elapsedSeconds ?? 0)))
+  const [answers, setAnswers] = useState<Record<number, number>>(initialProgress?.answers ?? {})
+  const [multiAnswers, setMultiAnswers] = useState<Record<number, number[]>>(initialProgress?.multiAnswers ?? {})
   const [selectedImage, setSelectedImage] = useState<number | null>(null)
-  const [connectionsByQuestion, setConnectionsByQuestion] = useState<Record<number, Record<number, string>>>({})
-  const [foundWords, setFoundWords] = useState<Record<number, string[]>>({})
-  const [foundWordPaths, setFoundWordPaths] = useState<Record<number, Record<string, number[]>>>({})
-  const [wordSelections, setWordSelections] = useState<Record<number, number[]>>({})
+  const [connectionsByQuestion, setConnectionsByQuestion] = useState<Record<number, Record<number, string>>>(initialProgress?.connectionsByQuestion ?? {})
+  const [foundWords, setFoundWords] = useState<Record<number, string[]>>(initialProgress?.foundWords ?? {})
+  const [foundWordPaths, setFoundWordPaths] = useState<Record<number, Record<string, number[]>>>(initialProgress?.foundWordPaths ?? {})
+  const [wordSelections, setWordSelections] = useState<Record<number, number[]>>(initialProgress?.wordSelections ?? {})
+  const [hintsUsed, setHintsUsed] = useState(initialProgress?.hintsUsed ?? 0)
+  const [hintedCells, setHintedCells] = useState<Record<number, number>>({})
+  const [attemptHistory, setAttemptHistory] = useState<AttemptMetrics[]>(initialProgress?.history ?? [])
+  const elapsedSeconds = Math.max(0, LIMIT_SECONDS - secondsLeft)
+
+  useEffect(() => {
+    if (!started || finished) return
+    const progress: SavedProgress = { attempts, answers, multiAnswers, connectionsByQuestion, foundWords, foundWordPaths, wordSelections, questionIndex, elapsedSeconds, savedAt: Date.now(), completed: false, hintsUsed, history: attemptHistory }
+    try { localStorage.setItem(storageKey, JSON.stringify(progress)); setLastSaved(progress.savedAt) } catch { /* storage can be unavailable */ }
+  }, [started, storageKey, attempts, answers, multiAnswers, connectionsByQuestion, foundWords, foundWordPaths, wordSelections, questionIndex, elapsedSeconds, finished, hintsUsed, attemptHistory])
   const currentKind = questionKinds[questionIndex]
   const encouragements = getEncouragements(courseName, topicTitle)
   const encouragement = encouragements[questionIndex % encouragements.length]
@@ -96,11 +124,13 @@ export function QuestionBank({ courseId, courseName, topicTitle, mode, onEnter =
   useEffect(() => {
     if (!started || finished) return
     const timer = window.setTimeout(() => {
-      if (secondsLeft <= 1) { setSecondsLeft(0); setFinished(true) }
+      if (secondsLeft <= 1) {
+        setSecondsLeft(0); setFinished(true)
+      }
       else setSecondsLeft(secondsLeft - 1)
     }, 1000)
     return () => window.clearTimeout(timer)
-  }, [started, finished, secondsLeft])
+  }, [started, finished, secondsLeft, storageKey])
 
   useEffect(() => {
     if (!danceActive) return
@@ -137,6 +167,20 @@ export function QuestionBank({ courseId, courseName, topicTitle, mode, onEnter =
     return total + (correct / questions.matching.pairs.length) * POINTS_PER_QUESTION
   }, 0)
   const timeLabel = `${String(Math.floor(secondsLeft / 60)).padStart(2, '0')}:${String(secondsLeft % 60).padStart(2, '0')}`
+  const answeredCount = questionKinds.filter((kind, index) => kind === 'multiple-choice'
+    ? answers[index] !== undefined
+    : kind === 'multiple-select'
+      ? (multiAnswers[index]?.length ?? 0) > 0
+      : kind === 'matching'
+        ? Object.keys(connectionsByQuestion[index] ?? {}).length === questions.matching.pairs.length
+        : (foundWords[index]?.length ?? 0) > 0).length
+  const hasActiveAttempt = Boolean(initialProgress && !initialProgress.completed)
+  useEffect(() => {
+    if (!started || !finished) return
+    const savedAt = Date.now()
+    const completed: SavedProgress = { attempts, answers, multiAnswers, connectionsByQuestion, foundWords, foundWordPaths, wordSelections, questionIndex, elapsedSeconds, savedAt, completed: true, hintsUsed, history: attemptHistory, score, answeredCount }
+    try { localStorage.setItem(storageKey, JSON.stringify(completed)); setLastSaved(savedAt) } catch { /* storage can be unavailable */ }
+  }, [started, finished, storageKey, attempts, answers, multiAnswers, connectionsByQuestion, foundWords, foundWordPaths, wordSelections, questionIndex, elapsedSeconds, hintsUsed, attemptHistory, score, answeredCount])
   const goToNextQuestion = () => {
     if (questionIndex === QUESTION_COUNT - 1) {
       setFinished(true)
@@ -145,14 +189,38 @@ export function QuestionBank({ courseId, courseName, topicTitle, mode, onEnter =
     setQuestionIndex(index => index + 1)
     setSelectedImage(null)
   }
+  const evaluationEntry = <button className="question-bank-choice evaluation-entry-choice" type="button" disabled={attempts >= MAX_ATTEMPTS} onClick={() => {
+    const saved = readProgress(storageKey)
+    if (!saved || saved.completed) {
+      const nextAttempts = Math.min(MAX_ATTEMPTS, (saved?.attempts ?? attempts) + 1)
+      const history = [...(saved?.history ?? attemptHistory)]
+      if (saved?.completed && !history.some(item => item.attempt === saved.attempts)) history.push({ attempt: saved.attempts, completed: true, answeredCount: saved.answeredCount ?? answeredCount, elapsedSeconds: saved.elapsedSeconds, savedAt: saved.savedAt, score: saved.score ?? score })
+      setAttemptHistory(history)
+      const fresh: SavedProgress = { attempts: nextAttempts, answers: {}, multiAnswers: {}, connectionsByQuestion: {}, foundWords: {}, foundWordPaths: {}, wordSelections: {}, questionIndex: 0, elapsedSeconds: 0, savedAt: Date.now(), completed: false, hintsUsed: 0, history }
+      try { localStorage.setItem(storageKey, JSON.stringify(fresh)) } catch { /* storage can be unavailable */ }
+      setAttempts(nextAttempts); setLastSaved(fresh.savedAt)
+      setQuestionIndex(0); setSecondsLeft(LIMIT_SECONDS); setFinished(false)
+      setAnswers({}); setMultiAnswers({}); setConnectionsByQuestion({}); setFoundWords({}); setFoundWordPaths({}); setWordSelections({}); setSelectedImage(null); setHintsUsed(0); setHintedCells({})
+    }
+    setStarted(true)
+    onEnter()
+  }}><span className="question-type-number"><ListChecks size={19} aria-hidden="true" /></span><span className="question-bank-choice-copy"><strong>{attempts > 0 && !initialProgress?.completed ? 'Continuar evaluación' : 'Entrar a evaluaciones'}</strong><small>{QUESTION_COUNT} preguntas · 10 minutos · calificación sobre 20</small></span><span className="evaluation-entry-action">{attempts >= MAX_ATTEMPTS ? 'Intentos agotados' : 'Iniciar'} <ArrowRight size={17} aria-hidden="true" /></span></button>
   if (finished) return <section className="course-evaluations-panel" aria-labelledby="evaluation-result-title">
     <header className="question-bank-header"><span className="question-bank-icon"><Check size={22} /></span><div><span className="question-activity-course">{courseName} · {topicTitle}</span><h2 id="evaluation-result-title">Evaluación finalizada</h2><p>Tu resultado para este tema</p></div></header>
-    <article className="question-card evaluation-result"><strong>{Number(score.toFixed(1))}<span> / 20</span></strong><p>{score >= 14 ? 'Aprobado' : 'Sigue practicando este tema.'}</p><button className="evaluation-button" type="button" onClick={onExit}>Volver al resumen</button></article>
+    <article className="question-card evaluation-result"><strong>{Number(score.toFixed(1))}<span> / 20</span></strong><p>{score >= 14 ? 'Aprobado' : 'Sigue practicando este tema.'}</p><p>Intento {attempts} de {MAX_ATTEMPTS} · Tiempo: {Math.floor(elapsedSeconds / 60)} min {elapsedSeconds % 60} s</p><button className="evaluation-button" type="button" onClick={onExit}>Volver al resumen</button></article>
   </section>
 
-  if (mode === 'entry') return <section className="course-evaluations-panel" aria-labelledby="question-bank-title">
+  if (!started) return <section className="course-evaluations-panel" aria-labelledby="question-bank-title">
     <header className="question-bank-header"><span className="question-bank-icon"><CircleHelp size={22} /></span><div><h2 id="question-bank-title">Evaluaciones</h2><p>Comprueba lo aprendido en {topicTitle}.</p></div></header>
-    <button className="question-bank-choice" type="button" onClick={onEnter}><span className="question-type-number"><ListChecks size={18} /></span><span className="question-bank-choice-copy"><strong>Entrar a evaluaciones</strong><small>{QUESTION_COUNT} preguntas · 10 minutos · calificación sobre 20</small></span><Clock3 size={19} /></button>
+    {!hasActiveAttempt && evaluationEntry}
+    {(attemptHistory.length > 0 || attempts > 0) && <div className="evaluation-attempt-grid" aria-label="Historial de intentos">
+      {[...attemptHistory, ...(attempts > 0 ? [{ attempt: attempts, completed: initialProgress?.completed ?? false, answeredCount: initialProgress?.answeredCount ?? answeredCount, elapsedSeconds: initialProgress?.elapsedSeconds ?? elapsedSeconds, savedAt: lastSaved ?? initialProgress?.savedAt ?? Date.now(), score: initialProgress?.score ?? (initialProgress?.completed ? score : undefined) }] : [])].map(item => <article className="evaluation-attempt-card" key={item.attempt}>
+        <header><span className="evaluation-attempt-heading"><span className="evaluation-attempt-icon"><ClipboardList size={17} aria-hidden="true" /></span><strong>Intento {item.attempt}</strong></span></header>
+        <div className="evaluation-attempt-metrics"><span className="evaluation-status-chip"><ListChecks size={14} aria-hidden="true" />{item.answeredCount}/{QUESTION_COUNT} respondidas</span><span className="evaluation-status-chip"><Clock3 size={14} aria-hidden="true" />{Math.floor(item.elapsedSeconds / 60)} min {item.elapsedSeconds % 60} s</span>{item.completed && item.score !== undefined && <span className="evaluation-status-chip is-score"><CheckCircle2 size={14} aria-hidden="true" />Nota: {Number(item.score.toFixed(1))}/20</span>}<span className={`evaluation-status-chip${item.completed ? ' is-complete' : ' is-progress'}`}>{item.completed ? <CheckCircle2 size={14} aria-hidden="true" /> : <RotateCcw size={14} aria-hidden="true" />}{item.completed ? 'Finalizado' : 'En curso'}</span>{!item.completed && <span className="evaluation-status-chip is-time-left"><Hourglass size={14} aria-hidden="true" />Quedan {Math.floor(Math.max(0, LIMIT_SECONDS - item.elapsedSeconds) / 60)} min {Math.max(0, LIMIT_SECONDS - item.elapsedSeconds) % 60} s</span>}</div>
+        {!item.completed && item.attempt === attempts && <button className="evaluation-resume-button" type="button" onClick={() => { setStarted(true); onEnter() }}><RotateCcw size={16} aria-hidden="true" />Reanudar evaluación</button>}
+      </article>)}
+    </div>}
+    {attempts >= MAX_ATTEMPTS && <p className="evaluation-attempt-limit">Ya usaste los 3 intentos disponibles.</p>}
   </section>
 
   const prompt = currentKind === 'multiple-choice' ? currentMultipleChoice.prompt : currentKind === 'multiple-select' ? currentMultipleSelect.prompt : currentKind === 'matching' ? questions.matching.prompt : currentWordSearch.prompt
@@ -167,7 +235,6 @@ export function QuestionBank({ courseId, courseName, topicTitle, mode, onEnter =
           <div className="evaluation-timer-label"><Clock3 size={16} /><span>{timeLabel}</span></div>
           <div className="evaluation-timer-track" role="progressbar" aria-label="Tiempo restante" aria-valuemin={0} aria-valuemax={LIMIT_SECONDS} aria-valuenow={secondsLeft}><span style={{ width: `${(secondsLeft / LIMIT_SECONDS) * 100}%` }} /></div>
         </div>
-        <p>Pregunta {questionIndex + 1} de {QUESTION_COUNT}</p>
         <nav className="evaluation-question-list" aria-label="Ir a una pregunta">{questionKinds.map((kind, index) => {
           const answered = kind === 'multiple-choice'
             ? answers[index] !== undefined
@@ -197,15 +264,21 @@ export function QuestionBank({ courseId, courseName, topicTitle, mode, onEnter =
                     const index = rowIndex * row.length + colIndex
                     const selected = (wordSelections[questionIndex] ?? []).includes(index)
                     const correct = correctWordCells.has(index)
-                    return <button type="button" key={`${letter}-${index}`} aria-label={`Letra ${letter}, posición ${index + 1}${correct ? ', correcta' : ''}`} className={`${selected ? 'selected-letter' : ''}${correct ? ' is-correct-letter' : ''}`} style={correct ? { animationDelay: `${[...correctWordCells].indexOf(index) * 45}ms` } : undefined} onClick={() => {
+                    const hinted = hintedCells[questionIndex] === index && !correct
+                    return <button type="button" key={`${letter}-${index}`} aria-label={`Letra ${letter}, posición ${index + 1}${correct ? ', correcta' : hinted ? ', pista' : ''}`} className={`${selected ? 'selected-letter' : ''}${correct ? ' is-correct-letter' : ''}${hinted ? ' is-hinted-letter' : ''}`} style={correct ? { animationDelay: `${[...correctWordCells].indexOf(index) * 45}ms` } : undefined} onClick={() => {
                       if (correct) return
                       const currentSelection = wordSelections[questionIndex] ?? []
                       const next = selected ? currentSelection.filter(item => item !== index) : [...currentSelection, index]
-                      const match = currentWordSearch.words.find(word => !currentFoundWords.includes(word) && isCompleteWordPath(next, rows, word))
+                      const matchedPath = currentWordSearch.words
+                        .filter(word => !currentFoundWords.includes(word) && word.length === next.length)
+                        .map(word => ({ word, path: findWordPath(rows, word) }))
+                        .find(candidate => candidate.path?.length === next.length && candidate.path.every(cell => next.includes(cell)))
+                      const match = matchedPath?.word
                       if (match) {
                         setFoundWords(current => ({ ...current, [questionIndex]: [...(current[questionIndex] ?? []), match] }))
-                        setFoundWordPaths(current => ({ ...current, [questionIndex]: { ...(current[questionIndex] ?? {}), [match]: next } }))
+                        setFoundWordPaths(current => ({ ...current, [questionIndex]: { ...(current[questionIndex] ?? {}), [match]: matchedPath.path! } }))
                         setWordSelections(current => ({ ...current, [questionIndex]: [] }))
+                        setHintedCells(current => { const nextHints = { ...current }; delete nextHints[questionIndex]; return nextHints })
                       } else setWordSelections(current => ({ ...current, [questionIndex]: next }))
                     }} aria-pressed={selected || correct}>{letter}</button>
                   })}
@@ -219,9 +292,13 @@ export function QuestionBank({ courseId, courseName, topicTitle, mode, onEnter =
                   const found = currentFoundWords.includes(word)
                   return <li key={word} className={found ? 'found' : ''}>{found ? <Check size={14} aria-hidden="true" /> : <Circle size={12} aria-hidden="true" />}<span>{word}</span></li>
                 })}</ol>
+                <div className="word-search-controls"><button className="word-search-hint" type="button" onClick={() => {
+                  const nextWord = currentWordSearch.words.find(word => !currentFoundWords.includes(word))
+                  const path = nextWord ? findWordPath(rows, nextWord) : null
+                  if (path) { setHintedCells(current => ({ ...current, [questionIndex]: path[0] })); setHintsUsed(current => Math.min(3, current + 1)) }
+                }} disabled={hintsUsed >= 3 || currentFoundWords.length === currentWordSearch.words.length}><Lightbulb size={15} aria-hidden="true" />Pistas {3 - hintsUsed}/3</button><button className="word-search-reset" type="button" onClick={() => setWordSelections(current => ({ ...current, [questionIndex]: [] }))} disabled={(wordSelections[questionIndex] ?? []).length === 0}><RotateCcw size={15} aria-hidden="true" />Limpiar</button></div>
               </aside>
             </div>
-            <p className="word-search-feedback"><Search size={14} />Selecciona las letras de cada palabra en orden.</p>
           </>}
         </article>
       </div>

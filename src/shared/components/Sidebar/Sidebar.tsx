@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { AppRoute, SimulatorRoute } from '../../../app/router/AppRouter'
 import { schoolModulesMock } from '../../../features/courses/mocks/schoolModulesMock'
+import { sanitizeHtml } from '../../utils/sanitizeHtml'
 import './Sidebar.css'
 
 interface Props { active: AppRoute; activeModuleId: string | null; collapsed: boolean; onSelect: (route: AppRoute) => void; onSelectModule: (moduleId: string) => void; onToggle: () => void }
@@ -99,13 +100,13 @@ export function Sidebar({ active, activeModuleId, collapsed, onSelect, onSelectM
   return <>
   <aside className={collapsed ? 'sidebar is-collapsed' : 'sidebar'} aria-label="Navegación principal">
     <div className="sidebar-search-row">
-      {!collapsed ? <div className="sidebar-search"><Search size={18} aria-hidden="true" /><input type="search" value={searchQuery} onChange={event => setSearchQuery(event.target.value)} placeholder="Buscar módulos" aria-label="Buscar módulos" />{searchQuery && <button className="sidebar-search-clear" type="button" onClick={() => setSearchQuery('')} aria-label="Limpiar búsqueda"><X size={17} aria-hidden="true" /></button>}</div> : <button className="icon-button sidebar-search-expand" type="button" onClick={onToggle} aria-label="Expandir menú para buscar"><Search size={20} /></button>}
+      {!collapsed ? <div className="sidebar-search"><Search size={18} aria-hidden="true" /><input type="search" value={searchQuery} onChange={event => setSearchQuery(sanitizeHtml(event.target.value, 100))} placeholder="Buscar módulos" aria-label="Buscar módulos" />{searchQuery && <button className="sidebar-search-clear" type="button" onClick={() => setSearchQuery('')} aria-label="Limpiar búsqueda"><X size={17} aria-hidden="true" /></button>}</div> : <button className="icon-button sidebar-search-expand" type="button" onClick={onToggle} aria-label="Expandir menú para buscar"><Search size={20} /></button>}
       <button className="icon-button collapse-button" onClick={onToggle} aria-label={collapsed ? 'Expandir menú' : 'Contraer menú'}>{collapsed ? <PanelLeftOpen size={20} /> : <PanelLeftClose size={20} />}</button>
     </div>
     <nav className="sidebar-navigation" aria-label="Secciones">
-      <div className={`nav-group home-nav-group${active === 'home' ? ' is-active' : ''}`}>
+      {!searching && <div className={`nav-group home-nav-group${active === 'home' ? ' is-active' : ''}`}>
         <button type="button" data-tooltip="Inicio" className="nav-group-toggle" onClick={() => selectRoute('home')} aria-current={active === 'home' ? 'page' : undefined} aria-label="Inicio"><Home size={19} />{!collapsed && <span>Inicio</span>}</button>
-      </div>
+      </div>}
       {renderNavGroup('courses', 'Cursos', BookOpen, <>
         {(!searching || filteredModules.length > 0) && <div className={`nav-group nested-nav-group${openSubgroup === 'school-courses' ? ' is-open' : ''}`}>
           <button className="nav-group-toggle" type="button" aria-expanded={showModules} onClick={() => toggleSubgroup('school-courses')}><GraduationCap size={19} />{!collapsed && <><span>Módulos</span><ChevronDown className="nav-group-chevron" size={16} /></>}</button>
@@ -119,7 +120,7 @@ export function Sidebar({ active, activeModuleId, collapsed, onSelect, onSelectM
         <button className="nav-group-toggle" type="button" aria-expanded={showPublications} onClick={() => toggleSubgroup('publications')}><Newspaper size={19} />{!collapsed && <><span>Publicaciones</span><ChevronDown className="nav-group-chevron" size={16} /></>}</button>
         <div className={`nav-group-panel${showPublications ? ' is-open' : ''}`} aria-hidden={!showPublications} inert={!showPublications}><div className="nav-group-panel-inner"><div className="nav-group-items publication-items">{filteredPublications.map(({ id, label, Icon: ItemIcon }) => <button key={id} data-tooltip={label} className={active === id ? 'nav-item active' : 'nav-item'} onClick={() => selectRoute(id)} aria-label={label}><ItemIcon size={19} />{!collapsed && <span>{label}</span>}</button>)}</div></div></div>
       </div>}</>, filteredPublications.length > 0)}
-      {searching && filteredModules.length === 0 && filteredSimulators.length === 0 && filteredPublications.length === 0 && <p className="sidebar-search-empty">No se encontraron módulos ni submódulos.</p>}
+      {searching && filteredModules.length === 0 && filteredSimulators.length === 0 && filteredPublications.length === 0 && <p className="sidebar-search-empty">No se encontraron resultados.</p>}
     </nav>
   </aside>
   <nav className="mobile-bottom-navigation" aria-label="Navegación principal móvil">

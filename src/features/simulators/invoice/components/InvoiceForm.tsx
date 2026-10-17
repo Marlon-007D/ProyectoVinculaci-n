@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { CalendarDays, ChevronLeft, ChevronRight, CreditCard, FileText, IdCard, Minus, Package, Plus, UserRound } from 'lucide-react'
+import { sanitizeHtml } from '../../../../shared/utils/sanitizeHtml'
 import type { InvoiceDraft, InvoiceProduct } from '../types/invoice.types'
 import './InvoiceForm.css'
 
@@ -50,8 +51,8 @@ export function InvoiceForm({ activeStep, draft, products, onField, onUpdate, on
     {activeStep === 2 && <section className="invoice-card invoice-details-card" aria-labelledby="invoice-details-title">
     <div className="card-heading"><div className="invoice-title"><span className="invoice-title-icon"><FileText size={21} aria-hidden="true" /></span><div><p className="invoice-section-kicker">DATOS DE EMISIÓN</p><h2 id="invoice-details-title">Cliente y pago</h2></div></div></div>
     <div className="form-grid">
-      <label><span className="invoice-field-label"><UserRound size={16} aria-hidden="true" />Cliente</span><input required aria-invalid={!!errors.customer} aria-describedby={errors.customer ? 'invoice-error-customer' : undefined} value={draft.customer} onChange={e => { onField('customer', e.target.value); if (e.target.value.trim()) clearError('customer') }} />{fieldError('customer')}</label>
-      <label><span className="invoice-field-label"><IdCard size={16} aria-hidden="true" />Identificación</span><input required type="text" inputMode="numeric" autoComplete="off" maxLength={10} pattern="[0-9]{10}" aria-invalid={!!errors.identification} aria-describedby={errors.identification ? 'invoice-error-identification' : undefined} value={draft.identification} onChange={e => { const value = e.target.value.replace(/\D/g, '').slice(0, 10); onField('identification', value); if (/^\d{10}$/.test(value)) clearError('identification') }} />{fieldError('identification')}</label>
+      <label><span className="invoice-field-label"><UserRound size={16} aria-hidden="true" />Cliente</span><input required maxLength={120} aria-invalid={!!errors.customer} aria-describedby={errors.customer ? 'invoice-error-customer' : undefined} value={draft.customer} onChange={e => { const rawValue = e.target.value; const cleanValue = sanitizeHtml(rawValue, 120).replace(/[^\p{L}\s]/gu, '').replace(/\s+/gu, ' ').trim(); const value = cleanValue && /\s$/u.test(rawValue) ? `${cleanValue} ` : cleanValue; onField('customer', value); if (value.trim()) clearError('customer') }} />{fieldError('customer')}</label>
+      <label><span className="invoice-field-label"><IdCard size={16} aria-hidden="true" />Identificación</span><input required type="text" inputMode="numeric" autoComplete="off" maxLength={10} pattern="[0-9]{10}" aria-invalid={!!errors.identification} aria-describedby={errors.identification ? 'invoice-error-identification' : undefined} value={draft.identification} onChange={e => { const value = sanitizeHtml(e.target.value, 10).replace(/\D/g, '').slice(0, 10); onField('identification', value); if (/^\d{10}$/.test(value)) clearError('identification') }} />{fieldError('identification')}</label>
       <label><span className="invoice-field-label"><CalendarDays size={16} aria-hidden="true" />Fecha de emisión</span><input required type="date" aria-invalid={!!errors.date} aria-describedby={errors.date ? 'invoice-error-date' : undefined} value={draft.date} onChange={e => { onField('date', e.target.value); if (e.target.value) clearError('date') }} />{fieldError('date')}</label>
       <label><span className="invoice-field-label"><CreditCard size={16} aria-hidden="true" />Forma de pago</span><select required aria-invalid={!!errors.paymentMethod} aria-describedby={errors.paymentMethod ? 'invoice-error-paymentMethod' : undefined} value={draft.paymentMethod} onChange={e => { onField('paymentMethod', e.target.value); if (e.target.value) clearError('paymentMethod') }}><option value="" disabled>Selecciona una forma de pago</option><option>Efectivo</option><option>Transferencia</option><option>Tarjeta</option></select>{fieldError('paymentMethod')}</label>
     </div>
@@ -90,4 +91,4 @@ export function InvoiceForm({ activeStep, draft, products, onField, onUpdate, on
   </div>
 }
 
-const usd = new Intl.NumberFormat('es-EC', { style: 'currency', currency: 'USD' })
+const usd = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' })

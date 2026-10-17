@@ -9,13 +9,15 @@ import type { AcademicContentEntry, AcademicContentKind, AcademicPublicationStat
 import { tenantInstitution } from '../../../core/config/tenant'
 import { getHonorCategory, OFFICIAL_DISTINCTIONS, sortOfficialDistinctions } from '../../honors/utils/honorRules'
 import { getStudentAvatar, getStudentInitials } from '../../honors/utils/studentAvatar'
+import { AcademicPostPreviewPage } from '../pages/AcademicPostPreviewPage'
 import './AcademicContentManager.css'
 
 interface Props { kind: AcademicContentKind; title: string; singular: string; onPreview?: (entry: AcademicContentEntry) => void }
 
 const emptyEntry = (kind: AcademicContentKind, institutionId: string): AcademicContentEntry => ({
-  id: crypto.randomUUID(), institutionId, kind, title: '', description: '', periodId: '', status: 'draft', date: '', location: '',
+  id: crypto.randomUUID(), institutionId, kind, title: '', description: '', periodId: '', status: 'draft', date: kind === 'news' || kind === 'event' ? todayISO() : '', location: '',
   studentName: '', grade: '', distinction: '', honorCategory: kind === 'honor' ? 'institutional' : undefined, startDate: '', endDate: '', isCurrent: false, sourceName: '', sourceUrl: '', updatedAt: new Date().toISOString(),
+  author: kind === 'news' || kind === 'event' ? 'Brigitte Rodríguez' : undefined,
 })
 
 const pageSize = 5
@@ -25,6 +27,12 @@ const eventCover = 'https://socialsciences.careers.mcmaster.ca/app/uploads/2025/
 function dateLabel(value: string) {
   if (!value) return ''
   return new Intl.DateTimeFormat('es-EC', { dateStyle: 'medium', timeZone: 'UTC' }).format(new Date(`${value}T12:00:00Z`))
+}
+
+function todayISO() {
+  const parts = new Intl.DateTimeFormat('en', { timeZone: 'America/Guayaquil', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date())
+  const part = (type: string) => parts.find(item => item.type === type)?.value ?? ''
+  return `${part('year')}-${part('month')}-${part('day')}`
 }
 
 export function AcademicContentManager({ kind, title, singular, onPreview }: Props) {
@@ -94,7 +102,7 @@ export function AcademicContentManager({ kind, title, singular, onPreview }: Pro
     const entry = emptyEntry(kind, tenantInstitution.id)
     setEditing(officialDistinction ? { ...entry, honorCategory: 'official', grade: 'Tercero de Bachillerato', distinction: officialDistinction, periodId } : entry)
   }
-  const beginEdit = (entry: AcademicContentEntry) => { setNotice(''); setFieldErrors({}); setFormStep(1); setEditing({ ...entry }) }
+  const beginEdit = (entry: AcademicContentEntry) => { setNotice(''); setFieldErrors({}); setFormStep(1); setEditing({ ...entry, author: 'Brigitte Rodríguez' }) }
   const validateFields = (requiredFields: (keyof AcademicContentEntry)[]) => {
     if (!editing) return false
     const nextErrors: Record<string, string> = Object.fromEntries(requiredFields
@@ -158,6 +166,26 @@ export function AcademicContentManager({ kind, title, singular, onPreview }: Pro
     }
   }
   const renderPagination = (position: 'top' | 'bottom') => pageCount > 1 && <nav className={`academic-pagination is-${position}`} aria-label={`Paginación de ${title}`}><button type="button" onClick={() => setPage(current => Math.max(1, current - 1))} disabled={page === 1} aria-label="Página anterior"><ArrowLeft size={16} /></button><span>Página {page} de {pageCount}</span><button type="button" onClick={() => setPage(current => Math.min(pageCount, current + 1))} disabled={page === pageCount} aria-label="Página siguiente"><ArrowRight size={16} /></button></nav>
+
+  const saveEditedPublication = (entry: AcademicContentEntry) => {
+    try {
+      save({ ...entry, date: editing?.date || todayISO(), author: 'Brigitte Rodríguez' })
+      setEditing(null)
+      setNotice(`${singular} guardado.`)
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'No se pudo guardar la publicación.')
+    }
+  }
+
+  if (editing && (kind === 'news' || kind === 'event')) return <AcademicPostPreviewPage
+    entry={editing}
+    mode="edit"
+    isNew={!visibleEntries.some(entry => entry.id === editing.id)}
+    periods={periods.map(period => ({ id: period.id, title: period.title }))}
+    onChange={setEditing}
+    onSave={saveEditedPublication}
+    onCancel={() => setEditing(null)}
+  />
 
   return <section className="page-content academic-content-page">
     {kind !== 'honor' && <header className="academic-page-heading"><div><h1>{title}</h1></div>

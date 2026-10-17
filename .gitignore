@@ -57,3 +57,9 @@ desktop.ini
 .vercel
 .env*
 !.env.example
+
+# Keep local credentials out of version control; allow the documented template.
+.env
+.env.*
+!.env.example
+!.env.*.example

@@ -30,7 +30,7 @@ export function SchoolCoursesPage({ selectedModuleId = null, selectedCourseId = 
   if (selectedCourse) {
     const topic = selectedCourse.units[selectedTopic]
     if (evaluationActive) return <section className="page-content school-courses-page course-evaluation-page">
-      <QuestionBank key={`${selectedCourse.id}-${topic.title}-assessment`} courseId={selectedCourse.id} courseName={selectedCourse.name} topicTitle={topic.title} mode="assessment" onExit={() => onEvaluationChange(false)} />
+      <QuestionBank key={`${selectedCourse.id}-${topic.title}-assessment`} courseId={selectedCourse.id} courseName={selectedCourse.name} topicTitle={topic.title} mode="entry" onExit={() => onEvaluationChange(false)} />
     </section>
     return <section className="page-content school-courses-page course-detail-page">
       <section className="course-topics-section" aria-label="Resumen del tema">

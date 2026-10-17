@@ -3,7 +3,7 @@ import { ChevronDown, Landmark } from 'lucide-react'
 import type { InvoiceLine, InvoiceTotals } from '../types/invoice.types'
 import './InvoiceResult.css'
 
-const usd = new Intl.NumberFormat('es-EC', { style: 'currency', currency: 'USD' })
+const usd = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' })
 
 export function InvoiceResult({ totals, lines }: { totals: InvoiceTotals; lines: InvoiceLine[] }) {
   const [productsOpen, setProductsOpen] = useState(false)

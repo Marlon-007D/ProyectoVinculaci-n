@@ -13,8 +13,11 @@
   },
   "dependencies": {
     "@vitejs/plugin-react": "latest",
+    "dompurify": "^3.4.17",
+    "drizzle-orm": "^0.45.4",
     "jspdf": "^4.2.1",
     "lucide-react": "latest",
+    "postgres": "^3.4.9",
     "react": "latest",
     "react-dom": "latest",
     "vite": "latest"
@@ -22,6 +25,8 @@
   "devDependencies": {
     "@types/react": "latest",
     "@types/react-dom": "latest",
+    "dotenv": "^18.0.8",
+    "drizzle-kit": "^0.31.11",
     "typescript": "latest"
   }
 }
