@@ -30,6 +30,11 @@ const toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: 
 
 function clean(value: string) { return value.replace(/\s+/g, ' ').trim() }
 function safeSearch(value: string) { return value.normalize('NFKC').replace(/[^\p{L}\p{N}\s-]/gu, '').trim().replace(/\s+/g, ' ') }
+function getStudentRouteId() {
+  const segments = location.pathname.split('/').filter(Boolean)
+  const studentsIndex = segments.indexOf('estudiantes')
+  return studentsIndex >= 0 ? segments[studentsIndex + 1] ?? '' : ''
+}
 function blankFields(): StudentFields { return { national_id: '', first_name: '', last_name: '', grade_level: '', enrollment_number: '' } }
 function fieldsFrom(record: StudentRecord): StudentFields {
   return { national_id: record.national_id, first_name: record.first_name, last_name: record.last_name, grade_level: record.grade_level ?? '', enrollment_number: record.enrollment_number ?? '' }
@@ -50,14 +55,15 @@ function toStudent(record: StudentRecord): Student {
   return { recordId: record.student_id, id: record.national_id, name, firstName: record.first_name, lastName: record.last_name, grade: record.grade_level ?? 'Sin grado', initials: name.split(/\s+/).slice(0, 2).map(part => part[0]).join('').toUpperCase(), color: 'lavender' }
 }
 
-export default function StudentManagementPage({ onOpenForm, onStudentSaved, onOpenCases }: {
+export default function StudentManagementPage({ onOpenForm, onStudentSaved, onOpenCases, onOpenCase }: {
   onOpenForm: (student: Student, code: string) => void
   onStudentSaved: (student: Student) => void
   onOpenCases?: (studentId: string) => void
+  onOpenCase?: (caseId: string) => void
 }) {
   const integration = useDeceData()
   const formService = useMemo(() => integration ? createDeceFormService(integration.client) : null, [integration?.client])
-  const [routeStudentId, setRouteStudentId] = useState(() => location.pathname.split('/').filter(Boolean)[3] ?? '')
+  const [routeStudentId, setRouteStudentId] = useState(getStudentRouteId)
   const [records, setRecords] = useState<StudentRecord[]>([])
   const [record, setRecord] = useState<StudentRecord | null>(null)
   const [templates, setTemplates] = useState<Template[]>([])
@@ -78,7 +84,8 @@ export default function StudentManagementPage({ onOpenForm, onStudentSaved, onOp
   const rowRef = useRef<HTMLTableRowElement | null>(null)
   const listRequestId = useRef(0)
   const detailRequestId = useRef(0)
-  const basePath = `/${integration?.slug ?? ''}/dece/estudiantes`.replace('//dece', '/dece')
+  const deceBasePath = integration?.slug ? `/${integration.slug}/dece` : '/panel/dece'
+  const basePath = `${deceBasePath}/estudiantes`
 
   const followRoute = useCallback(() => {
     const parts = location.pathname.split('/').filter(Boolean)
@@ -259,7 +266,7 @@ export default function StudentManagementPage({ onOpenForm, onStudentSaved, onOp
       <section className="table-card p-3"><h2>Fichas del estudiante</h2><p>Abre una ficha para consultar o completar sus respuestas, o descarga una copia en blanco.</p><div className="d-flex flex-wrap gap-2">
         {templates.map(template => <span key={template.code} className="d-inline-flex flex-wrap align-items-center gap-2"><button type="button" className="button btn secondary" onClick={() => onOpenForm(toStudent(record), template.code)}>{template.name}</button><PdfActionButton label={`Descargar ${template.name} en blanco`} generate={async () => { const { createDecePdfService } = await import('../services/pdf-service'); await createDecePdfService(integration!.client).blankForm(integration!.institutionId, template.code, record!.student_id, integration!.profileId) }} /></span>)}
       </div></section>
-      <StudentCases studentId={record.student_id} institutionId={integration?.institutionId ?? ''} slug={integration?.slug ?? ''} onNew={() => onOpenCases?.(record.student_id)} />
+      <StudentCases studentId={record.student_id} institutionId={integration?.institutionId ?? ''} onNew={() => onOpenCases?.(record.student_id)} onOpenCase={caseId => onOpenCase?.(caseId)} />
     </>}
     {!record && !creating && <>
       <label className="search-box mb-3"><span className="visually-hidden">Buscar por nombres, apellidos, cédula o grado</span><input className="form-control" aria-label="Buscar estudiantes por nombres, apellidos, cédula o grado" value={search} onChange={event => setSearch(event.target.value)} placeholder="Buscar nombres, apellidos, cédula o grado…" /></label>
@@ -276,7 +283,7 @@ export default function StudentManagementPage({ onOpenForm, onStudentSaved, onOp
   </div>
 }
 
-function StudentCases({ studentId, institutionId, slug, onNew }: { studentId: string; institutionId: string; slug: string; onNew: () => void }) {
+function StudentCases({ studentId, institutionId, onNew, onOpenCase }: { studentId: string; institutionId: string; onNew: () => void; onOpenCase: (caseId: string) => void }) {
   const integration = useDeceData()
   const [rows, setRows] = useState<Array<{ dece_case_id: string; case_number: string; status: string; risk_level: string; created_at: string }>>([])
   const [timeline, setTimeline] = useState<Array<{ id: string; type: string; caseId: string; at: string; description: string }>>([])
@@ -319,7 +326,7 @@ function StudentCases({ studentId, institutionId, slug, onNew }: { studentId: st
     return () => { live = false }
   }, [integration, institutionId, studentId])
   const statusLabel: Record<string, string> = { registered: 'Registrado', in_progress: 'En atención', under_monitoring: 'En seguimiento', closed: 'Cerrado' }
-  return <section className="table-card p-3 mt-3" aria-labelledby="student-cases-heading"><div className="d-flex justify-content-between align-items-center"><h2 id="student-cases-heading">Casos de acompañamiento</h2><button type="button" className="btn btn-primary btn-sm" onClick={onNew}>Nuevo caso</button></div>{error && <p role="alert">{error}</p>}{rows.length ? <><div className="table-responsive"><table className="table"><thead><tr><th>Número</th><th>Estado</th><th>Riesgo</th><th>Fecha</th><th>Acciones</th></tr></thead><tbody>{rows.map(row => <tr key={row.dece_case_id}><td><a href={`/${slug}/dece/casos/${row.dece_case_id}`}>{row.case_number}</a></td><td>{statusLabel[row.status] ?? row.status}</td><td>{{ low: 'Bajo', medium: 'Medio', high: 'Alto', critical: 'Crítico' }[row.risk_level] ?? row.risk_level}</td><td>{new Date(row.created_at).toLocaleDateString('es-EC', { timeZone: 'America/Guayaquil' })}</td><td><PdfActionButton label={`Descargar PDF del caso ${row.case_number}`} generate={async () => { const { createDecePdfService } = await import('../services/pdf-service'); await createDecePdfService(integration!.client).casePdf(institutionId, row.dece_case_id, integration!.profileId) }} /></td></tr>)}</tbody></table></div><h3 className="h5 mt-4">Línea de tiempo</h3>{timeline.length ? <ol>{timeline.map(item => <li key={`${item.type}-${item.id}`}><time dateTime={item.at}>{item.at ? new Date(item.at).toLocaleString('es-EC', { timeZone: 'America/Guayaquil', hourCycle: 'h23' }) : 'Sin fecha'}</time> · {item.type} · <a href={`/${slug}/dece/casos/${item.caseId}`}>{rows.find(row => row.dece_case_id === item.caseId)?.case_number}</a> · {item.description}</li>)}</ol> : <p>Sin registros</p>}</> : !error && <p>Sin registros</p>}
+  return <section className="table-card p-3 mt-3" aria-labelledby="student-cases-heading"><div className="d-flex justify-content-between align-items-center"><h2 id="student-cases-heading">Casos de acompañamiento</h2><button type="button" className="btn btn-primary btn-sm" onClick={onNew}>Nuevo caso</button></div>{error && <p role="alert">{error}</p>}{rows.length ? <><div className="table-responsive"><table className="table"><thead><tr><th>Número</th><th>Estado</th><th>Riesgo</th><th>Fecha</th><th>Acciones</th></tr></thead><tbody>{rows.map(row => <tr key={row.dece_case_id}><td><button type="button" className="table-link" onClick={() => onOpenCase(row.dece_case_id)}>{row.case_number}</button></td><td>{statusLabel[row.status] ?? row.status}</td><td>{{ low: 'Bajo', medium: 'Medio', high: 'Alto', critical: 'Crítico' }[row.risk_level] ?? row.risk_level}</td><td>{new Date(row.created_at).toLocaleDateString('es-EC', { timeZone: 'America/Guayaquil' })}</td><td><PdfActionButton label={`Descargar PDF del caso ${row.case_number}`} generate={async () => { const { createDecePdfService } = await import('../services/pdf-service'); await createDecePdfService(integration!.client).casePdf(institutionId, row.dece_case_id, integration!.profileId) }} /></td></tr>)}</tbody></table></div><h3 className="h5 mt-4">Línea de tiempo</h3>{timeline.length ? <ol>{timeline.map(item => <li key={`${item.type}-${item.id}`}><time dateTime={item.at}>{item.at ? new Date(item.at).toLocaleString('es-EC', { timeZone: 'America/Guayaquil', hourCycle: 'h23' }) : 'Sin fecha'}</time> · {item.type} · <button type="button" className="table-link" onClick={() => onOpenCase(item.caseId)}>{rows.find(row => row.dece_case_id === item.caseId)?.case_number}</button> · {item.description}</li>)}</ol> : <p>Sin registros</p>}</> : !error && <p>Sin registros</p>}
     <div className="mt-3"><button type="button" className="btn btn-outline-primary" onClick={() => setDialogOpen(true)}>Generar expediente del estudiante</button></div>
     <dialog ref={dialogRef} aria-labelledby="student-file-dialog-title" className="rounded border-0 p-4 shadow" style={{ maxWidth: 440, width: 'calc(100% - 2rem)' }} onClose={() => setDialogOpen(false)}><h3 id="student-file-dialog-title">Generar expediente del estudiante</h3><label className="d-flex gap-2 align-items-start my-3"><input type="checkbox" checked={includeForms} onChange={event => setIncludeForms(event.target.checked)} /><span>Incluir respuestas de las fichas llenadas</span></label><div className="d-flex gap-2"><PdfActionButton label="Generar expediente PDF" generate={async () => { const { createDecePdfService } = await import('../services/pdf-service'); await createDecePdfService(integration!.client).studentFile(institutionId, studentId, includeForms, integration!.profileId); setDialogOpen(false) }} /><button type="button" className="btn btn-outline-secondary" onClick={() => setDialogOpen(false)}>Cancelar</button></div></dialog>
   </section>

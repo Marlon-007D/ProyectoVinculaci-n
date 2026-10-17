@@ -15,6 +15,12 @@ import { createDeceFormService } from './services/form-service'
 import type { DeceScreen, Student } from './types'
 type FormTemplate = { code: string; name: string }
 
+function getDeceRouteSection() {
+  const segments = location.pathname.split('/').filter(Boolean)
+  const deceIndex = segments.indexOf('dece')
+  return deceIndex >= 0 ? segments[deceIndex + 1] ?? '' : ''
+}
+
 export default function DeceApp() {
   const appShellRef = useRef<HTMLDivElement>(null)
   const integration = useDeceData()
@@ -24,7 +30,7 @@ export default function DeceApp() {
   const [formSetupError, setFormSetupError] = useState('')
   const [formSetupRetry, setFormSetupRetry] = useState(0)
   const [formSetupLoading, setFormSetupLoading] = useState(true)
-  const [screen, setScreen] = useState<DeceScreen>(() => location.pathname.split('/').filter(Boolean)[2] === 'estudiantes' ? 'students' : location.pathname.split('/').filter(Boolean)[2] === 'casos' ? 'cases' : 'home')
+  const [screen, setScreen] = useState<DeceScreen>(() => getDeceRouteSection() === 'estudiantes' ? 'students' : getDeceRouteSection() === 'casos' ? 'cases' : 'home')
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
   const [caseStudentId, setCaseStudentId] = useState('')
   const [openCases, setOpenCases] = useState('—')
@@ -74,7 +80,7 @@ export default function DeceApp() {
   }, [integration, formSetupRetry])
 
   useEffect(() => {
-    const syncRoute = () => { const section = location.pathname.split('/').filter(Boolean)[2]; setScreen(section === 'estudiantes' ? 'students' : section === 'casos' ? 'cases' : 'home') }
+    const syncRoute = () => { const section = getDeceRouteSection(); setScreen(section === 'estudiantes' ? 'students' : section === 'casos' ? 'cases' : 'home') }
     window.addEventListener('popstate', syncRoute)
     return () => window.removeEventListener('popstate', syncRoute)
   }, [])
@@ -144,7 +150,8 @@ export default function DeceApp() {
   }, [])
 
   const routeTo = (target: DeceScreen) => {
-    if (integration?.slug) history.pushState(null, '', target === 'students' ? `/${integration.slug}/dece/estudiantes` : target === 'cases' ? `/${integration.slug}/dece/casos` : `/${integration.slug}/dece`)
+    const basePath = integration?.slug ? `/${integration.slug}/dece` : '/panel/dece'
+    history.pushState(null, '', target === 'students' ? `${basePath}/estudiantes` : target === 'cases' ? `${basePath}/casos` : basePath)
     setScreen(target)
   }
 
@@ -197,7 +204,7 @@ export default function DeceApp() {
             onOpen={openForm}
           />
         )}
-        {screen === 'students' && <StudentManagementPage onOpenForm={openSubmissionForm} onStudentSaved={syncSavedStudent} onOpenCases={studentId => { setCaseStudentId(studentId); routeTo('cases') }} />}
+        {screen === 'students' && <StudentManagementPage onOpenForm={openSubmissionForm} onStudentSaved={syncSavedStudent} onOpenCases={studentId => { setCaseStudentId(studentId); routeTo('cases') }} onOpenCase={caseId => { const basePath = integration?.slug ? `/${integration.slug}/dece` : '/panel/dece'; history.pushState(null, '', `${basePath}/casos/${caseId}`); setScreen('cases') }} />}
         {screen === 'cases' && <CasesPage initialStudentId={caseStudentId} onInitialStudentUsed={clearCaseStudent} />}
         {screen === 'forms' && <FormManagementPage />}
         {screen === 'submissions' && <FormSubmissionsPage onOpen={openSubmissionForm} />}

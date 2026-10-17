@@ -441,6 +441,7 @@ function AppRoutes() {
         <Route path="panel" element={<ModuleGate moduleName="inicio"><InstitutionalPanel /></ModuleGate>} />
         <Route path="panel/proyectos" element={<ModuleGate moduleName="projects"><ProjectsPageWrapper /></ModuleGate>} />
         <Route path="panel/dece" element={<ModuleGate moduleName="dece"><DecePageWrapper /></ModuleGate>} />
+        <Route path="panel/dece/*" element={<ModuleGate moduleName="dece"><DecePageWrapper /></ModuleGate>} />
         <Route path="panel/simuladores" element={<ModuleGate moduleName="simuladores"><SimuladoresApp /></ModuleGate>} />
         <Route path="panel/portal/*" element={<ModuleGate moduleName="portal"><SiteApp /></ModuleGate>} />
         <Route path="panel/admin" element={<AdminWorkspace />} />

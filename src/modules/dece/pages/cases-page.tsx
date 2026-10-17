@@ -22,6 +22,11 @@ function dayAfterGuayaquilDate(isoDate: string) {
   return new Date(Date.UTC(Number(date.year), Number(date.month) - 1, Number(date.day) + 1)).toISOString().slice(0, 10)
 }
 const toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3200, timerProgressBar: true })
+function getCaseRouteId() {
+  const segments = location.pathname.split('/').filter(Boolean)
+  const casesIndex = segments.indexOf('casos')
+  return casesIndex >= 0 ? segments[casesIndex + 1] ?? '' : ''
+}
 async function bestEffortAudit(client: SupabaseClient, institutionId: string, profileId: string | undefined, action: string, entityType: string, entityId: string, fields: string[], status?: { old: string; new: string }) {
   if (!profileId) return false
   try {
@@ -56,8 +61,14 @@ export default function CasesPage({ initialStudentId = '', onInitialStudentUsed 
   const [page, setPage] = useState(0)
   const requestId = useRef(0)
   const slug = integration?.slug ?? ''
-  const caseId = location.pathname.split('/').filter(Boolean)[3] ?? ''
-  const base = `/${slug}/dece/casos`
+  const base = `${slug ? `/${slug}/dece` : '/panel/dece'}/casos`
+  const [caseId, setCaseId] = useState(getCaseRouteId)
+
+  useEffect(() => {
+    const syncCaseRoute = () => setCaseId(getCaseRouteId())
+    window.addEventListener('popstate', syncCaseRoute)
+    return () => window.removeEventListener('popstate', syncCaseRoute)
+  }, [])
 
   useEffect(() => {
     if (!initialStudentId || !integration) return
@@ -178,8 +189,24 @@ export default function CasesPage({ initialStudentId = '', onInitialStudentUsed 
     finally { setBusy(false) }
   }
 
-  function openCase(row: CaseRow) { history.pushState(null, '', `${base}/${row.dece_case_id}`); setSelected(row); setDetailStudent(students[row.student_id] ?? null); setError('') }
-  function back() { history.pushState(null, '', base); setSelected(null); setError('') }
+  function openCase(row: CaseRow) {
+    history.pushState(null, '', `${base}/${row.dece_case_id}`)
+    setCaseId(row.dece_case_id)
+    setSelected(row)
+    setDetailStudent(students[row.student_id] ?? null)
+    setReason(row.reason)
+    setCategory(row.primary_category)
+    setRisk(row.risk_level)
+    setConf(row.confidentiality_level)
+    setStatus(row.status)
+    setError('')
+  }
+  function back() {
+    history.pushState(null, '', base)
+    setCaseId('')
+    setSelected(null)
+    setError('')
+  }
   async function quickStatusChange(row: CaseRow, nextStatus: keyof typeof statuses) {
     if (!integration || row.status === nextStatus) return
     if (nextStatus === 'closed') {
