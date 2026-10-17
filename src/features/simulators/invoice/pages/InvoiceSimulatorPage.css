@@ -3,9 +3,9 @@
 .invoice-page.page-content { padding-top: 16px; }
 .invoice-summary-panel .summary-card { width: 100%; }
 .invoice-history-panel .invoice-history { margin-top: 0; }
-.invoice-history-layout { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(280px, .85fr); gap: 24px; align-items: start; }
+.invoice-history-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; align-items: start; }
 .invoice-history-layout .invoice-history { min-width: 0; }
-@media (max-width: 960px) { .invoice-history-layout { grid-template-columns: minmax(0, 1fr); gap: 16px; }.invoice-history-guide { max-width: 480px; margin-left: auto; } }
+@media (max-width: 960px) { .invoice-history-layout { grid-template-columns: minmax(0, 1fr); gap: 16px; } }
 .invoice-stepper { overflow-x: auto; margin: 0 0 20px; }
 .invoice-stepper ol { display: flex; align-items: center; min-width: max-content; margin: 0; padding: 0; list-style: none; }
 .invoice-stepper li { display: flex; align-items: center; }

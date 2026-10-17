@@ -125,36 +125,36 @@ function drawHeader(pdf: jsPDF, institution: string, year: string, accent: Color
   pdf.setFillColor(248, 247, 250)
   pdf.rect(0, 0, pageWidth, pdf.internal.pageSize.getHeight(), 'F')
   pdf.setFillColor(...paleAccent)
-  pdf.rect(0, 0, pageWidth, 34, 'F')
+  pdf.rect(0, 0, pageWidth, 39, 'F')
   pdf.setTextColor(...accent)
   pdf.setFont('helvetica', 'bold')
   pdf.setFontSize(7.5)
-  pdf.text('RECONOCIMIENTO ACADÉMICO', centerX, 8.5, { align: 'center' })
-  drawMedal(pdf, centerX - 25, 7.5, 4, accent, mixWithWhite(accent, 0.72))
+  pdf.text('RECONOCIMIENTO ACADÉMICO', centerX, 9, { align: 'center' })
+  drawMedal(pdf, centerX - 25, 8, 4, accent, mixWithWhite(accent, 0.72))
   pdf.setTextColor(...ink)
   pdf.setFont('helvetica', 'bold')
   pdf.setFontSize(17)
-  pdf.text('Cuadro de honor', centerX, 18, { align: 'center' })
+  pdf.text('Cuadro de honor', centerX, 19, { align: 'center' })
   pdf.setTextColor(...accent)
   pdf.setFont('helvetica', 'normal')
   pdf.setFontSize(8.5)
-  pdf.text(institution, centerX, 25, { align: 'center', maxWidth: pageWidth - 40 })
+  pdf.text(institution, centerX, 26, { align: 'center', maxWidth: pageWidth - 40 })
   pdf.setTextColor(...accent)
   pdf.setFont('helvetica', 'bold')
   pdf.setFontSize(8)
-  pdf.text(`Período ${year.replace(/[–—]/g, '-')}`, centerX, 31, { align: 'center' })
+  pdf.text(`Período ${year.replace(/[–—]/g, '-')}`, centerX, 33, { align: 'center' })
 
   pdf.setTextColor(...ink)
   pdf.setFont('helvetica', 'bold')
   pdf.setFontSize(10)
-  pdf.text('Estudiantes destacados', centerX, 44, { align: 'center' })
+  pdf.text('Estudiantes destacados', centerX, 47, { align: 'center' })
   pdf.setTextColor(112, 119, 132)
   pdf.setFont('helvetica', 'normal')
   pdf.setFontSize(8)
-  pdf.text('Esfuerzo, trayectoria y participación estudiantil', centerX, 49, { align: 'center', maxWidth: pageWidth - 30 })
+  pdf.text('Esfuerzo, trayectoria y participación estudiantil', centerX, 52, { align: 'center', maxWidth: pageWidth - 30 })
   pdf.setDrawColor(226, 224, 229)
   pdf.setLineWidth(0.45)
-  pdf.line(15, 53, pageWidth - 15, 53)
+  pdf.line(15, 56, pageWidth - 15, 56)
   pdf.setDrawColor(...accent)
 }
 
@@ -252,9 +252,7 @@ export async function createRecognitionPdf(
   const gapY = 4
   const cardWidth = (pageWidth - marginX * 2 - gapX * (columns - 1)) / columns
   const cardHeight = 66
-  const gridTop = 57
-  const gridHeight = rows * cardHeight + (rows - 1) * gapY
-  const footerY = gridTop + gridHeight + 6
+  const gridTop = 60
   const pageCount = Math.max(1, Math.ceil(people.length / pageCapacity))
   const avatarImages = await Promise.all(people.map(async person => {
     const avatarPath = getStudentAvatar(person.studentName)
@@ -280,14 +278,6 @@ export async function createRecognitionPdf(
       drawPersonCard(pdf, person, pageIndex * pageCapacity + index, accent, paleAccent, x, y, cardWidth, cardHeight, avatarImages[pageIndex * pageCapacity + index])
     })
 
-    pdf.setDrawColor(226, 224, 229)
-    pdf.setLineWidth(0.4)
-    pdf.line(15, footerY, pageWidth - 15, footerY)
-    pdf.setFont('helvetica', 'normal')
-    pdf.setTextColor(112, 119, 132)
-    pdf.setFontSize(8)
-    pdf.text(`${institutionName} · Período ${year.replace(/[–—]/g, '-')}`, 15, footerY + 5)
-    pdf.text(`${pageIndex + 1} / ${pageCount}`, pageWidth - 15, footerY + 5, { align: 'right' })
   }
 
   return URL.createObjectURL(pdf.output('blob'))

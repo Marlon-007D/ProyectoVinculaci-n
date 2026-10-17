@@ -5,8 +5,6 @@ import { useInvoiceSimulator } from '../hooks/useInvoiceSimulator'
 import { InvoiceForm } from '../components/InvoiceForm'
 import { InvoiceResult } from '../components/InvoiceResult'
 import { InvoiceHistory } from '../components/InvoiceHistory'
-import { InvoiceHistoryGuide } from '../components/InvoiceHistoryGuide'
-import { InvoicePenguinGuide } from '../components/InvoicePenguinGuide'
 import './InvoiceSimulatorPage.css'
 
 interface Props {
@@ -61,16 +59,13 @@ export function InvoiceSimulatorPage({ activeSection, onSectionChange, onInvoice
         </nav>
         {activeStep < 3 && <div className="invoice-form-column"><InvoiceForm activeStep={activeStep as 1 | 2} draft={invoice.draft} products={invoice.products} onField={invoice.updateField} onUpdate={invoice.updateLine} onAdd={invoice.addLine} onSetQuantity={invoice.setProductQuantity} onRemove={invoice.removeLine} onNext={() => setActiveStep(current => Math.min(3, current + 1) as 1 | 2 | 3)} onPrevious={() => setActiveStep(1)} />
           {editToast && <div className="edit-toast" role="status">Factura cargada para editar.</div>}
-          {activeStep === 1 && <InvoicePenguinGuide step={1} inline />}
-          {activeStep === 2 && <InvoicePenguinGuide step={2} inline />}
         </div>}
         {activeStep === 3 && <div className="invoice-total-step"><InvoiceResult totals={invoice.totals} lines={invoice.draft.lines} />
           {invoice.historyNotice && <p className="invoice-save-error" role="alert">{invoice.historyNotice}</p>}
           <div className="invoice-total-navigation" role="group" aria-label="Acciones de factura"><button type="button" onClick={() => setActiveStep(2)} disabled={isSaving}>Volver</button><button type="button" onClick={handleSave} disabled={isSaving}>{isSaving ? <><LoaderCircle className="invoice-loader" size={18} aria-hidden="true" /> Guardando...</> : 'Guardar factura'}</button></div>
         </div>}
       </div>}
-      {activeSection === 'history' && <div className="invoice-history-panel" id="invoice-panel-history" role="tabpanel" aria-labelledby="invoice-tab-history"><div className="invoice-history-layout"><InvoiceHistory invoices={invoice.savedInvoices} notice={invoice.historyNotice} onLoad={handleEdit} onDelete={invoice.removeSaved} /><InvoiceHistoryGuide key={invoice.savedInvoices.length > 0 ? 'has-invoices' : 'empty'} hasInvoices={invoice.savedInvoices.length > 0} /></div></div>}
-      {activeSection === 'emission' && activeStep === 3 && <InvoicePenguinGuide step={3} followAtTop />}
+      {activeSection === 'history' && <div className="invoice-history-panel" id="invoice-panel-history" role="tabpanel" aria-labelledby="invoice-tab-history"><div className="invoice-history-layout"><InvoiceHistory invoices={invoice.savedInvoices} notice={invoice.historyNotice} onLoad={handleEdit} onDelete={invoice.removeSaved} /></div></div>}
     </div>
   </section>
 }
