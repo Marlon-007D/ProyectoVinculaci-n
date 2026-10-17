@@ -1,4 +1,4 @@
-import { ArrowLeftRight, Atom, Award, BarChart3, BookOpen, CalendarDays, CalendarRange, Calculator, ChevronDown, GraduationCap, Laptop, Languages, Newspaper, Palette, PanelLeftClose, PanelLeftOpen, ReceiptText, Search, Sigma, X } from 'lucide-react'
+import { ArrowLeftRight, Atom, Award, BarChart3, BookOpen, CalendarDays, CalendarRange, Calculator, ChevronDown, GraduationCap, Home, Laptop, Languages, Newspaper, Palette, PanelLeftClose, PanelLeftOpen, ReceiptText, Search, Sigma, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { AppRoute, SimulatorRoute } from '../../../app/router/AppRouter'
@@ -46,6 +46,7 @@ export function Sidebar({ active, activeModuleId, collapsed, onSelect, onSelectM
       setOpenSubgroup('publications')
       return
     }
+    if (active === 'home' || active === 'simulator-hub' || active === 'reports-hub') setOpenGroup(null)
     setOpenSubgroup(null)
   }, [active])
   const toggleGroup = (group: Group) => {
@@ -94,7 +95,7 @@ export function Sidebar({ active, activeModuleId, collapsed, onSelect, onSelectM
   const openCoursesPage = () => {
     onSelect('school-courses')
   }
-  const activeMobileTab = active === 'school-courses' ? 'courses' : (['simulator-hub', 'invoice', 'converter', 'interest'] as AppRoute[]).includes(active) ? 'simulators' : (['reports-hub', 'news', 'events', 'honors', 'academic-periods'] as AppRoute[]).includes(active) ? 'reports' : null
+  const activeMobileTab = active === 'home' ? 'home' : active === 'school-courses' ? 'courses' : (['simulator-hub', 'invoice', 'converter', 'interest'] as AppRoute[]).includes(active) ? 'simulators' : (['reports-hub', 'news', 'events', 'honors', 'academic-periods'] as AppRoute[]).includes(active) ? 'reports' : null
   return <>
   <aside className={collapsed ? 'sidebar is-collapsed' : 'sidebar'} aria-label="Navegación principal">
     <div className="sidebar-search-row">
@@ -102,6 +103,9 @@ export function Sidebar({ active, activeModuleId, collapsed, onSelect, onSelectM
       <button className="icon-button collapse-button" onClick={onToggle} aria-label={collapsed ? 'Expandir menú' : 'Contraer menú'}>{collapsed ? <PanelLeftOpen size={20} /> : <PanelLeftClose size={20} />}</button>
     </div>
     <nav className="sidebar-navigation" aria-label="Secciones">
+      <div className={`nav-group home-nav-group${active === 'home' ? ' is-active' : ''}`}>
+        <button type="button" data-tooltip="Inicio" className="nav-group-toggle" onClick={() => selectRoute('home')} aria-current={active === 'home' ? 'page' : undefined} aria-label="Inicio"><Home size={19} />{!collapsed && <span>Inicio</span>}</button>
+      </div>
       {renderNavGroup('courses', 'Cursos', BookOpen, <>
         {(!searching || filteredModules.length > 0) && <div className={`nav-group nested-nav-group${openSubgroup === 'school-courses' ? ' is-open' : ''}`}>
           <button className="nav-group-toggle" type="button" aria-expanded={showModules} onClick={() => toggleSubgroup('school-courses')}><GraduationCap size={19} />{!collapsed && <><span>Módulos</span><ChevronDown className="nav-group-chevron" size={16} /></>}</button>
@@ -119,6 +123,7 @@ export function Sidebar({ active, activeModuleId, collapsed, onSelect, onSelectM
     </nav>
   </aside>
   <nav className="mobile-bottom-navigation" aria-label="Navegación principal móvil">
+    <button type="button" className={activeMobileTab === 'home' ? 'is-active' : ''} onClick={() => selectRoute('home')}><Home size={18} /><span>Inicio</span></button>
     <button type="button" className={activeMobileTab === 'courses' ? 'is-active' : ''} onClick={openCoursesPage}><BookOpen size={18} /><span>Cursos</span></button>
     <button type="button" className={activeMobileTab === 'simulators' ? 'is-active' : ''} onClick={() => selectRoute('simulator-hub')}><Calculator size={18} /><span>Simuladores</span></button>
     <button type="button" className={activeMobileTab === 'reports' ? 'is-active' : ''} onClick={() => selectRoute('reports-hub')}><BarChart3 size={18} /><span>Reportes</span></button>

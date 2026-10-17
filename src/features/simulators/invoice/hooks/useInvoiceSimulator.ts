@@ -106,7 +106,7 @@ export function useInvoiceSimulator() {
   const removeSaved = (id: string) => {
     try {
       setSavedInvoices(deleteInvoice(id))
-      setHistoryNotice('Factura eliminada del historial.')
+      setHistoryNotice('')
     } catch (error) {
       setHistoryNotice(error instanceof Error ? error.message : 'No se pudo eliminar la factura.')
     }

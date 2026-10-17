@@ -1,5 +1,6 @@
 import { jsPDF } from 'jspdf'
 import type { AcademicContentEntry } from '../../academic-content/types/academicContent.types'
+import { getStudentAvatar, getStudentInitials } from '../utils/studentAvatar'
 
 type Color = [number, number, number]
 type RecognitionPerson = Pick<AcademicContentEntry, 'studentName' | 'grade' | 'distinction'>
@@ -120,7 +121,6 @@ function drawHeader(pdf: jsPDF, institution: string, year: string, accent: Color
   const pageWidth = pdf.internal.pageSize.getWidth()
   const centerX = pageWidth / 2
   const ink: Color = [48, 42, 57]
-  const muted: Color = [112, 109, 117]
 
   pdf.setFillColor(248, 247, 250)
   pdf.rect(0, 0, pageWidth, pdf.internal.pageSize.getHeight(), 'F')
@@ -158,15 +158,47 @@ function drawHeader(pdf: jsPDF, institution: string, year: string, accent: Color
   pdf.setDrawColor(...accent)
 }
 
-function drawGenericAvatar(pdf: jsPDF, centerX: number, centerY: number, size: number, paleAccent: Color, accent: Color) {
-  pdf.setFillColor(...paleAccent)
-  pdf.circle(centerX, centerY, size / 2, 'F')
-  pdf.setFillColor(...accent)
-  pdf.circle(centerX, centerY - size * 0.1, size * 0.14, 'F')
-  pdf.ellipse(centerX, centerY + size * 0.23, size * 0.28, size * 0.17, 'F')
+async function loadCircularAvatar(path: string): Promise<string | undefined> {
+  const response = await fetch(path)
+  if (!response.ok) return undefined
+
+  const bitmap = await createImageBitmap(await response.blob())
+  const canvas = document.createElement('canvas')
+  const size = 256
+  canvas.width = size
+  canvas.height = size
+  const context = canvas.getContext('2d')
+  if (!context) {
+    bitmap.close()
+    return undefined
+  }
+
+  const cropSize = Math.min(bitmap.width, bitmap.height)
+  const cropX = (bitmap.width - cropSize) / 2
+  const cropY = (bitmap.height - cropSize) / 2
+  context.beginPath()
+  context.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2)
+  context.clip()
+  context.drawImage(bitmap, cropX, cropY, cropSize, cropSize, 0, 0, size, size)
+  bitmap.close()
+  return canvas.toDataURL('image/png')
 }
 
-function drawPersonCard(pdf: jsPDF, person: RecognitionPerson, iconKind: number, accent: Color, paleAccent: Color, x: number, y: number, width: number, height: number) {
+function drawStudentAvatar(pdf: jsPDF, centerX: number, centerY: number, size: number, paleAccent: Color, accent: Color, image?: string, name = '') {
+  pdf.setFillColor(...paleAccent)
+  pdf.circle(centerX, centerY, size / 2, 'F')
+  if (image) {
+    pdf.addImage(image, 'PNG', centerX - size / 2, centerY - size / 2, size, size)
+    return
+  }
+  pdf.setFillColor(...accent)
+  pdf.setTextColor(...accent)
+  pdf.setFont('helvetica', 'bold')
+  pdf.setFontSize(7)
+  pdf.text(getStudentInitials(name), centerX, centerY + 1, { align: 'center' })
+}
+
+function drawPersonCard(pdf: jsPDF, person: RecognitionPerson, iconKind: number, accent: Color, paleAccent: Color, x: number, y: number, width: number, height: number, avatar?: string) {
   const ink: Color = [48, 42, 57]
   const muted: Color = [96, 105, 119]
   const centerX = x + width / 2
@@ -177,7 +209,7 @@ function drawPersonCard(pdf: jsPDF, person: RecognitionPerson, iconKind: number,
 
   const avatarSize = 17
   const avatarY = y + 18
-  drawGenericAvatar(pdf, centerX, avatarY, avatarSize, paleAccent, accent)
+  drawStudentAvatar(pdf, centerX, avatarY, avatarSize, paleAccent, accent, avatar, person.studentName)
 
   const textWidth = width - 8
   pdf.setFont('helvetica', 'bold')
@@ -224,6 +256,15 @@ export async function createRecognitionPdf(
   const gridHeight = rows * cardHeight + (rows - 1) * gapY
   const footerY = gridTop + gridHeight + 6
   const pageCount = Math.max(1, Math.ceil(people.length / pageCapacity))
+  const avatarImages = await Promise.all(people.map(async person => {
+    const avatarPath = getStudentAvatar(person.studentName)
+    if (!avatarPath) return undefined
+    try {
+      return await loadCircularAvatar(avatarPath)
+    } catch {
+      return undefined
+    }
+  }))
 
   pdf.setProperties({ title: `Cuadro de honor ${year}`, subject: institutionName, author: institutionName })
   for (let pageIndex = 0; pageIndex < pageCount; pageIndex += 1) {
@@ -236,7 +277,7 @@ export async function createRecognitionPdf(
       const row = Math.floor(index / columns)
       const x = marginX + column * (cardWidth + gapX)
       const y = gridTop + row * (cardHeight + gapY)
-      drawPersonCard(pdf, person, pageIndex * pageCapacity + index, accent, paleAccent, x, y, cardWidth, cardHeight)
+      drawPersonCard(pdf, person, pageIndex * pageCapacity + index, accent, paleAccent, x, y, cardWidth, cardHeight, avatarImages[pageIndex * pageCapacity + index])
     })
 
     pdf.setDrawColor(226, 224, 229)

@@ -42,7 +42,7 @@
 .invoice-form-sections { display: grid; gap: 16px; min-width: 0; }
 .invoice-details-card, .invoice-products-card { min-width: 0; }
 .invoice-section-kicker { margin: 0 0 5px; color: var(--accent); font-size: 10px; font-weight: 700; line-height: 1.2; letter-spacing: .09em; }
-.invoice-section-count { padding: 4px 8px; border-radius: 20px; color: #5c5269; background: #eeecf2; font-size: 11px; font-weight: 650; letter-spacing: 0; }
+.invoice-section-count { padding: 4px 8px; border-radius: 20px; color: var(--accent); background: var(--accent-soft); font-size: 11px; font-weight: 650; letter-spacing: 0; }
 .invoice-details-card > .form-grid { margin-top: 20px; }
 .invoice-products-card > .line-items { margin-top: 21px; }
 .card-heading { display: flex; justify-content: space-between; align-items: center; }.card-heading h2, .summary-card h2 { margin: 0; color: #342d39; font-size: 23px; letter-spacing: -.35px; }.invoice-title { display: flex; align-items: center; gap: 12px; }.invoice-title-icon { display: grid; flex: none; place-items: center; width: 42px; height: 42px; border-radius: 12px; color: white; background: var(--accent); }
@@ -64,7 +64,7 @@
 .invoice-product-unit { grid-column: 1; grid-row: 1; }
 .invoice-product-total { grid-column: 1; grid-row: 2; }
 .invoice-product-quantity { grid-column: 2; grid-row: 1; font-weight: 650; }
-.invoice-product-unit strong { color: #4b434f; font-size: 14px; font-weight: 600; }
+.invoice-product-unit strong { color: #4b434f; font-size: 18px; font-weight: 600; }
 .invoice-product-total strong { color: var(--accent); font-size: 18px; font-weight: 700; }
 .invoice-product-quantity select { width: 100%; min-height: 38px; padding: 6px 9px; border: 1px solid #dcd5e1; border-radius: 8px; color: #3d3543; background: #fff; font-size: 14px; }
 .invoice-product-quantity select:focus-visible { border-color: var(--accent); outline: 3px solid var(--accent-focus); }
@@ -109,7 +109,7 @@
   .invoice-product-main h3{font-size:14px}
   .invoice-product-meta{gap:10px}
   .invoice-product-unit,.invoice-product-total,.invoice-product-quantity{gap:4px;font-size:10px}
-  .invoice-product-unit strong{font-size:12px}
+  .invoice-product-unit strong{font-size:14px}
   .invoice-product-total strong{font-size:14px}
   .invoice-product-quantity select{min-height:36px;padding:5px 7px;font-size:12px}
   .invoice-product-toggle{min-height:36px;padding:0 11px;font-size:12px}
@@ -133,8 +133,8 @@
 .invoice-product-unit { grid-column: 2; grid-row: 1; justify-self: end; text-align: right; }
 .invoice-product-total { grid-column: 3; grid-row: 1; justify-self: end; align-self: center; text-align: right; }
 .invoice-stock { color: var(--accent); }
-.invoice-quantity-control { display: inline-flex; align-items: center; width: fit-content; min-height: 38px; overflow: hidden; border: 1px solid #dcd5e1; border-radius: 9px; background: #fff; }
-.invoice-quantity-control button { display: grid; place-items: center; width: 38px; height: 36px; border: 0; color: var(--accent); background: #f5f0f6; cursor: pointer; }
+.invoice-quantity-control { display: inline-flex; align-items: center; width: fit-content; min-height: 38px; overflow: hidden; border: 1px solid color-mix(in srgb, var(--accent) 20%, var(--line)); border-radius: 9px; background: #fff; }
+.invoice-quantity-control button { display: grid; place-items: center; width: 38px; height: 36px; border: 0; color: var(--accent); background: var(--accent-soft); cursor: pointer; }
 .invoice-quantity-control button:hover:not(:disabled) { background: var(--accent-container); }
 .invoice-quantity-control button:disabled { color: #aaa4ad; cursor: not-allowed; }
 .invoice-quantity-control button:focus-visible { position: relative; z-index: 1; outline: 3px solid var(--accent-focus); outline-offset: -3px; }
@@ -195,7 +195,7 @@
   .invoice-quantity-control button svg { width: 14px; height: 14px; }
   .invoice-quantity-control input { width: 30px; min-width: 30px; height: 32px; font-size: 12px; }
   .invoice-product-unit, .invoice-product-total { gap: 2px; font-size: 10px; }
-  .invoice-product-unit strong { font-size: 12px; }
+  .invoice-product-unit strong { font-size: 13px; }
   .invoice-product-total strong { font-size: 13px; }
   .invoice-product-pagination { margin: 8px 0 0; }
   .invoice-step-actions { position: fixed; z-index: 9; right: 0; bottom: calc(76px + env(safe-area-inset-bottom)); left: 0; justify-content: center; margin: 0; padding: 8px 12px; border-top: 1px solid var(--line); background: var(--canvas); }

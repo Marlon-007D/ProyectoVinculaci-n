@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import type { ReactNode } from 'react'
-import { ArrowLeft, ArrowRight, CalendarDays, Check, ChevronDown, CirclePlus, Eye, ImagePlus, Pencil, Trash2, UsersRound } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Building2, CalendarDays, Check, ChevronDown, CirclePlus, Clock3, Eye, GraduationCap, ImagePlus, Monitor, Pencil, Trash2, UsersRound } from 'lucide-react'
 import { Button } from '../../../shared/components/Button/Button'
 import { Modal } from '../../../shared/components/Modal/Modal'
 import { useAcademicContent } from '../hooks/useAcademicContent'
 import type { AcademicContentEntry, AcademicContentKind, AcademicPublicationStatus, HonorCategory } from '../types/academicContent.types'
 import { tenantInstitution } from '../../../core/config/tenant'
 import { getHonorCategory, OFFICIAL_DISTINCTIONS, sortOfficialDistinctions } from '../../honors/utils/honorRules'
+import { getStudentAvatar, getStudentInitials } from '../../honors/utils/studentAvatar'
 import './AcademicContentManager.css'
 
 interface Props { kind: AcademicContentKind; title: string; singular: string; onPreview?: (entry: AcademicContentEntry) => void }
@@ -159,13 +160,13 @@ export function AcademicContentManager({ kind, title, singular, onPreview }: Pro
   const renderPagination = (position: 'top' | 'bottom') => pageCount > 1 && <nav className={`academic-pagination is-${position}`} aria-label={`Paginación de ${title}`}><button type="button" onClick={() => setPage(current => Math.max(1, current - 1))} disabled={page === 1} aria-label="Página anterior"><ArrowLeft size={16} /></button><span>Página {page} de {pageCount}</span><button type="button" onClick={() => setPage(current => Math.min(pageCount, current + 1))} disabled={page === pageCount} aria-label="Página siguiente"><ArrowRight size={16} /></button></nav>
 
   return <section className="page-content academic-content-page">
-    <header className="academic-page-heading"><div><h1>{title}</h1></div>
-    </header>
+    {kind !== 'honor' && <header className="academic-page-heading"><div><h1>{title}</h1></div>
+    </header>}
     {notice && <p className="academic-notice" role="status">{notice}</p>}
     {kind === 'period' && <section className="current-period-card" aria-label="Período académico vigente">
       <div className="current-period-icon"><CalendarDays size={20} /></div><div><span>PERÍODO VIGENTE</span><strong>{currentPeriod?.title ?? 'No hay un período vigente'}</strong>{currentPeriod && <small>{dateLabel(currentPeriod.startDate)} – {dateLabel(currentPeriod.endDate)}</small>}</div>
     </section>}
-    <section className={`academic-list ${kind === 'news' || kind === 'event' ? 'is-publication-list' : ''}`} aria-label={title}>
+    <section className={kind === 'honor' ? 'is-honor-list' : `academic-list ${kind === 'news' || kind === 'event' ? 'is-publication-list' : ''}`} aria-label={title}>
       {kind === 'period' && <div className="academic-list-heading"><div><h2>Histórico de períodos</h2><span aria-label={`${listCount} ${singular.toLowerCase()}`}>{listCount}</span></div><Button variant="primary" onClick={() => beginCreate()}><CirclePlus size={18} />{`Nuevo ${singular.toLowerCase()}`}</Button></div>}
       {(kind === 'news' || kind === 'event') && <div className="publication-toolbar"><div className="publication-filters" role="group" aria-label="Filtrar publicaciones por estado">
         {([
@@ -180,13 +181,30 @@ export function AcademicContentManager({ kind, title, singular, onPreview }: Pro
         const expanded = expandedHonorPeriod === groupKey
         return <article className="academic-honor-group" key={groupKey}>
           <div className="academic-entry honor-period-entry">
-            <div className="academic-entry-copy"><div className="academic-entry-title"><h3>{group.category === 'official' ? 'Distinciones oficiales' : 'Reconocimientos institucionales'}</h3><span className="honor-people-count"><UsersRound size={14} />{group.people.length} {group.people.length === 1 ? 'estudiante' : 'estudiantes'}</span></div><small>{group.year}</small></div>
+            <div className="academic-entry-copy"><div className="academic-entry-title"><h3>{group.category === 'official' ? 'Distinciones oficiales' : 'Reconocimientos institucionales'}</h3><span className="honor-people-count"><UsersRound size={14} />{group.people.length} {group.people.length === 1 ? 'estudiante' : 'estudiantes'}</span></div><small className="honor-period-year"><CalendarDays size={15} aria-hidden="true" />{group.year}</small></div>
             <div className="academic-entry-actions">{group.people.length > 0 && <button type="button" className="academic-icon-button is-preview" onClick={() => previewRecognition(group.people[0])} disabled={previewLoading} aria-label={`Ver cuadro de honor ${group.year} en PDF`} title={previewLoading ? 'Generando PDF…' : 'Ver cuadro de honor'}><Eye size={18} /></button>}<button type="button" className="academic-icon-button honor-expand-button" onClick={() => setExpandedHonorPeriod(expanded ? null : groupKey)} aria-expanded={expanded} aria-label={expanded ? 'Ocultar personas' : 'Ver personas'} title={expanded ? 'Ocultar personas' : 'Ver personas'}><ChevronDown size={18} /></button></div>
           </div>
           {expanded && (group.category === 'official' ? <div className="honor-official-slots" aria-label={`Puestos oficiales ${group.year}`}>{OFFICIAL_DISTINCTIONS.map((distinction, index) => {
             const person = group.people.find(entry => entry.distinction === distinction)
-            return <article className={`honor-official-slot${person ? ' is-assigned' : ''}`} key={distinction}><span className="honor-slot-number">{index + 1}</span><div className="honor-slot-copy"><strong>{distinction}</strong>{person ? <><span>{person.studentName} · {person.grade}</span><small>{[person.schedule, person.modality, person.campus].filter(Boolean).join(' · ')}</small></> : <span className="honor-slot-empty">Sin asignar</span>}</div>{person ? <div className="honor-slot-controls"><div className="academic-entry-actions"><button type="button" className="academic-icon-button" onClick={() => beginEdit(person)} aria-label={`Editar ${distinction}`}><Pencil size={17} /></button><button type="button" className="academic-icon-button is-danger" onClick={() => deleteEntry(person)} aria-label={`Eliminar ${distinction}`}><Trash2 size={17} /></button></div><span className={`entry-status ${person.status === 'published' ? 'is-published' : ''}`}>{person.status === 'published' ? 'Publicado' : 'Borrador'}</span></div> : <Button type="button" onClick={() => beginCreate(distinction, group.periodId)}><CirclePlus size={16} />Asignar</Button>}</article>
-          })}</div> : <div className="honor-people-list" aria-label={`Reconocimientos institucionales ${group.year}`}>{group.people.map(person => <article className="academic-entry honor-person-entry" key={person.id}><div className="academic-entry-copy"><h3>{person.studentName}</h3><p>{person.distinction} · {person.grade}</p></div><div className="honor-person-controls"><div className="academic-entry-actions"><button type="button" className="academic-icon-button" onClick={() => beginEdit(person)} aria-label={`Editar ${person.studentName}`}><Pencil size={17} /></button><button type="button" className="academic-icon-button is-danger" onClick={() => deleteEntry(person)} aria-label={`Eliminar ${person.studentName}`}><Trash2 size={17} /></button></div><span className={`entry-status ${person.status === 'published' ? 'is-published' : ''}`}>{person.status === 'published' ? 'Publicado' : 'Borrador'}</span></div></article>)}</div>)}
+            return <article className={`honor-official-slot${person ? ' is-assigned' : ''}`} key={distinction}>
+              <div className="honor-profile-header">
+                {person ? getStudentAvatar(person.studentName) ? <img className="honor-student-avatar" src={getStudentAvatar(person.studentName)} alt={`Fotografía de ${person.studentName}`} loading="lazy" /> : <span className="honor-student-initials" aria-hidden="true">{getStudentInitials(person.studentName)}</span> : <span className="honor-slot-number">{index + 1}</span>}
+                <div className="honor-slot-copy">
+                  {person ? <>
+                    <div className="honor-slot-title-row"><strong className="honor-slot-student-name">{person.studentName}</strong><div className="honor-slot-actions"><button type="button" className="honor-card-action" onClick={() => beginEdit(person)} aria-label={`Editar ${person.studentName}`} title="Editar"><Pencil size={16} /></button><button type="button" className="honor-card-action is-danger" onClick={() => deleteEntry(person)} aria-label={`Eliminar ${person.studentName}`} title="Eliminar"><Trash2 size={16} /></button></div></div>
+                    <span className="honor-slot-distinction">{distinction}</span>
+                  </> : <><strong>{distinction}</strong><span className="honor-slot-empty">Sin asignar</span></>}
+                </div>
+              </div>
+              {person && <div className="honor-slot-meta">
+                {person.grade && <span><GraduationCap size={14} aria-hidden="true" />{person.grade}</span>}
+                {person.schedule && <span><Clock3 size={14} aria-hidden="true" />{person.schedule}</span>}
+                {person.campus && <span><Building2 size={14} aria-hidden="true" />{person.campus}</span>}
+                {person.modality && <span><Monitor size={14} aria-hidden="true" />{person.modality}</span>}
+              </div>}
+              {!person && <Button type="button" onClick={() => beginCreate(distinction, group.periodId)}><CirclePlus size={16} />Asignar</Button>}
+            </article>
+          })}</div> : <div className="honor-people-list" aria-label={`Reconocimientos institucionales ${group.year}`}>{group.people.map(person => <article className="academic-entry honor-person-entry" key={person.id}>{getStudentAvatar(person.studentName) ? <img className="honor-student-avatar" src={getStudentAvatar(person.studentName)} alt={`Fotografía de ${person.studentName}`} loading="lazy" /> : <span className="honor-student-initials" aria-hidden="true">{getStudentInitials(person.studentName)}</span>}<div className="academic-entry-copy"><h3>{person.studentName}</h3><p>{person.distinction} · {person.grade}</p></div><div className="honor-person-controls"><div className="academic-entry-actions"><button type="button" className="academic-icon-button" onClick={() => beginEdit(person)} aria-label={`Editar ${person.studentName}`}><Pencil size={17} /></button><button type="button" className="academic-icon-button is-danger" onClick={() => deleteEntry(person)} aria-label={`Eliminar ${person.studentName}`}><Trash2 size={17} /></button></div><span className={`entry-status ${person.status === 'published' ? 'is-published' : ''}`}>{person.status === 'published' ? 'Publicado' : 'Borrador'}</span></div></article>)}</div>)}
         </article>
       })}</div> : <div className="academic-entry-list">{pageEntries.map(entry => {
         const linkedPeriod = periods.find(period => period.id === entry.periodId)
