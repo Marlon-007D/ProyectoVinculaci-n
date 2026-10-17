@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import type { MenuNode } from "../../types/menu";
 import { MenuLink } from "./MenuLink";
+import { withSimulatorChoices } from "./Navigation";
 
 function MobileItem({ node, close }: { node: MenuNode; close: () => void }) {
   const [open, setOpen] = useState(false);
@@ -55,9 +56,10 @@ export function MobileNavigation({ tree }: { tree: MenuNode[] }) {
       </button>
       <nav id={panelId} className="site-mnav__panel" aria-label="Principal (móvil)" hidden={!open}>
         <ul className="site-mnav__list">
-          {tree.map((n) => (
-            <MobileItem key={n.menu_id} node={n} close={() => setOpen(false)} />
-          ))}
+          {tree.map((item) => {
+            const node = withSimulatorChoices(item);
+            return <MobileItem key={node.menu_id} node={node} close={() => setOpen(false)} />;
+          })}
         </ul>
       </nav>
     </div>

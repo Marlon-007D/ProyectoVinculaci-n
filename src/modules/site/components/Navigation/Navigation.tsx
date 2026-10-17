@@ -2,6 +2,13 @@ import { useEffect, useId, useRef, useState } from "react";
 import type { MenuNode } from "../../types/menu";
 import { MenuLink } from "./MenuLink";
 
+export function withSimulatorChoices(node: MenuNode): MenuNode {
+  if (node.label.trim().toLocaleLowerCase("es") !== "simuladores") return node;
+  const simulatorLink: MenuNode = { ...node, menu_id: `${node.menu_id}-simulators-link`, parent_id: node.menu_id, children: [], depth: node.depth + 1, label: "Simuladores" };
+  const coursesLink: MenuNode = { ...node, menu_id: `${node.menu_id}-courses-link`, parent_id: node.menu_id, children: [], depth: node.depth + 1, label: "Cursos", url: "/?courses=1", position: 0 };
+  return { ...node, label: "Aprendizaje", url: "#", children: [coursesLink, simulatorLink, ...node.children] };
+}
+
 function NavItem({ node }: { node: MenuNode }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLLIElement>(null);
@@ -66,9 +73,10 @@ export function Navigation({ tree }: { tree: MenuNode[] }) {
   return (
     <nav className="site-nav" aria-label="Principal">
       <ul className="site-nav__list">
-        {tree.map((n) => (
-          <NavItem key={n.menu_id} node={n} />
-        ))}
+        {tree.map((item) => {
+          const node = withSimulatorChoices(item);
+          return <NavItem key={node.menu_id} node={node} />;
+        })}
       </ul>
     </nav>
   );

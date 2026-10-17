@@ -69,13 +69,10 @@ export function SchoolCoursesPage({ selectedModuleId = null, selectedCourseId = 
   }
 
   return <section className="page-content school-courses-page">
-    <header className="school-courses-header">
-      <div><span className="school-courses-kicker"><GraduationCap size={17} /> Módulos de estudio</span><h1>Selecciona un módulo</h1><p className="desktop-module-help">Elige un módulo desde el aside para ver sus cursos.</p><p className="mobile-module-help">Selecciona un módulo para ver sus cursos.</p><span className="school-course-total-label">Total de cursos <strong>{schoolCoursesMock.length}</strong></span></div>
-    </header>
-    <div className="school-course-prompt"><BookOpen size={21} /><span>Abre <strong>Cursos → Módulos</strong> en el aside y selecciona un módulo.</span></div>
-    <div className="mobile-school-module-list" aria-label="Módulos de estudio">{schoolModulesMock.map((module, index) => {
+    <div className="school-module-grid" aria-label="Módulos de estudio">{schoolModulesMock.map((module, index) => {
       const Icon = moduleIcons[index % moduleIcons.length]
-      return <button type="button" className="mobile-school-module-card" key={module.id} onClick={() => onSelectModule(module.id)}><span className="mobile-school-module-icon"><Icon size={21} /></span><span className="mobile-school-module-info"><strong>{module.name}</strong><span>{module.description}</span></span><span className="mobile-school-module-count">{module.courseIds.length} {module.courseIds.length === 1 ? 'curso' : 'cursos'}</span><ChevronRight size={18} /></button>
+      const cover = schoolCoursesMock.find(course => course.id === module.courseIds[0])?.coverImage
+      return <button type="button" className="school-module-card" key={module.id} onClick={() => onSelectModule(module.id)}><span className="school-module-cover-wrap"><img className="school-module-cover" src={cover} alt="" loading="lazy" /><span className="school-module-icon"><Icon size={22} /></span></span><span className="school-module-info"><strong>{module.name}</strong><span>{module.description}</span></span><span className="school-module-footer"><span className="school-module-count">{module.courseIds.length} {module.courseIds.length === 1 ? 'curso' : 'cursos'}</span><ChevronRight size={18} /></span></button>
     })}</div>
   </section>
 }
