@@ -97,9 +97,10 @@ export function CourseTemario({ lesson, courseId, topicIndex }: Props) {
           const isFirstComputerSection = courseId === 'informatica' && topicIndex === 0
           const ConceptVector = conceptVectors[concept.title]
             ?? (!isFirstComputerSection ? sectionVectors[(topicIndex * 6 + index) % sectionVectors.length] : undefined)
+          const hasConceptVector = conceptVectors[concept.title] !== undefined || !isFirstComputerSection
           return (
           <article className={styles.concept} key={concept.title} role="listitem">
-            <div className={`${styles.conceptIllustration}${ConceptVector ? ` ${styles.conceptIllustrationVector}` : ''}`}>
+            <div className={`${styles.conceptIllustration}${hasConceptVector ? ` ${styles.conceptIllustrationVector}` : ''}`}>
               {ConceptVector
                 ? <ConceptVector className={styles.conceptVector} aria-hidden="true" />
                 : <img src={conceptIllustrations[index % conceptIllustrations.length]} alt="" aria-hidden="true" />}
