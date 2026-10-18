@@ -7,8 +7,6 @@ import type { MediaAsset } from "../types/media";
 import type { EventItem, Honor, NewsItem, StaffMember, ThemeRow } from "../types/content";
 import { demoSnapshots } from "./demoContent";
 
-// Los datos de demostración se conservan para pruebas y desarrollo aislado,
-// pero la aplicación no debe activarlos en tiempo de ejecución.
 export function isDemoMode(): boolean {
   return false;
 }
