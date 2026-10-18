@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { BookOpen, ChartNoAxesCombined, ChevronRight, ClipboardCheck, Dumbbell, FlaskConical, GraduationCap, Landmark, Languages, Laptop, Lightbulb, Palette, Ruler, Sigma } from 'lucide-react'
-import { schoolCoursesMock } from '../mocks/schoolCoursesMock'
-import { schoolModulesMock } from '../mocks/schoolModulesMock'
-import { schoolTemarioMock } from '../mocks/schoolTemarioMock'
+import { Atom, BookOpen, ChartNoAxesCombined, ChevronRight, ClipboardCheck, Dumbbell, FlaskConical, GraduationCap, Landmark, Languages, Laptop, Lightbulb, Palette, Ruler, Sigma } from 'lucide-react'
+import { useCourseCategories } from '../hooks/useCourseCategories'
+import { useSchoolCourses } from '../hooks/useSchoolCourses'
+import { getSchoolCourseLesson } from '../services/schoolCourseStore'
 import { QuestionBank } from '../components/QuestionBank'
 import { CourseTemario } from '../components/CourseTemario'
 import './SchoolCoursesPage.css'
@@ -20,6 +20,20 @@ const subjectIcons = {
   ciudadania: GraduationCap,
   informatica: Laptop,
 }
+const categoryIcons: Record<string, typeof Sigma> = {
+  sigma: Sigma,
+  laptop: Laptop,
+  languages: Languages,
+  flask: FlaskConical,
+  palette: Palette,
+  atom: Atom,
+  book: BookOpen,
+  chart: ChartNoAxesCombined,
+  landmark: Landmark,
+  dumbbell: Dumbbell,
+  lightbulb: Lightbulb,
+  ruler: Ruler,
+}
 const noop = () => undefined
 interface Props { selectedModuleId?: string | null; selectedCourseId?: string | null; evaluationActive?: boolean; onSelectModule?: (moduleId: string) => void; onSelectCourse?: (courseId: string) => void; courseHrefFor?: (courseId: string) => string; onBackToModules?: () => void; onBackToModule?: () => void; onTopicChange?: (topicTitle: string) => void; onEvaluationChange?: (active: boolean) => void }
 
@@ -28,6 +42,8 @@ function CourseBreadcrumbs({ items }: { items: { label: string; onClick?: () => 
 }
 
 export function SchoolCoursesPage({ selectedModuleId = null, selectedCourseId = null, evaluationActive = false, onSelectModule = noop, onSelectCourse = noop, courseHrefFor, onBackToModules = noop, onBackToModule = noop, onTopicChange = noop, onEvaluationChange = noop }: Props) {
+  const schoolModules = useCourseCategories()
+  const schoolCourses = useSchoolCourses()
   const [selectedTopic, setSelectedTopic] = useState(0)
   const [isSectionLoading, setIsSectionLoading] = useState(false)
   const sectionLoadingTimer = useRef<number | null>(null)
@@ -41,7 +57,7 @@ export function SchoolCoursesPage({ selectedModuleId = null, selectedCourseId = 
   }
   useEffect(() => {
     setSelectedTopic(0)
-    const firstTopic = schoolCoursesMock.find(course => course.id === selectedCourseId)?.units[0]?.title
+    const firstTopic = schoolCourses.find(course => course.id === selectedCourseId)?.units[0]?.title
     if (firstTopic) onTopicChange(firstTopic)
     onEvaluationChange(false)
     showSectionSkeleton()
@@ -50,12 +66,11 @@ export function SchoolCoursesPage({ selectedModuleId = null, selectedCourseId = 
     if (sectionLoadingTimer.current !== null) window.clearTimeout(sectionLoadingTimer.current)
   }, [])
 
-  const selectedCourse = schoolCoursesMock.find(course => course.id === selectedCourseId)
-  const selectedModule = schoolModulesMock.find(module => module.id === selectedModuleId)
-  const moduleIcons = [Sigma, Laptop, Languages, FlaskConical, Palette]
+  const selectedCourse = schoolCourses.find(course => course.id === selectedCourseId)
+  const selectedModule = schoolModules.find(module => module.id === selectedModuleId)
   if (selectedCourse) {
     const topic = selectedCourse.units[selectedTopic]
-    const topicLesson = schoolTemarioMock[selectedCourse.id]?.[selectedTopic]
+    const topicLesson = getSchoolCourseLesson(selectedCourse.id, selectedTopic)
     const topicIcons = [BookOpen, Ruler, ChartNoAxesCombined, Sigma]
     return <section className={`page-content school-courses-page course-detail-page${evaluationActive ? ' course-evaluation-page' : ''}`}>
       <section className="course-topics-section" aria-label="Resumen del tema">
@@ -96,8 +111,8 @@ export function SchoolCoursesPage({ selectedModuleId = null, selectedCourseId = 
 
   if (selectedModule) {
     const moduleCourses = selectedModule.courseIds
-      .map(id => schoolCoursesMock.find(course => course.id === id))
-      .filter((course): course is (typeof schoolCoursesMock)[number] => course !== undefined)
+      .map(id => schoolCourses.find(course => course.id === id))
+      .filter((course): course is (typeof schoolCourses)[number] => course !== undefined)
       .slice(0, 5)
     return <section className="page-content school-courses-page school-module-courses">
       <CourseBreadcrumbs items={[{ label: 'Cursos', onClick: onBackToModules }, { label: selectedModule.name }]} />
@@ -115,10 +130,10 @@ export function SchoolCoursesPage({ selectedModuleId = null, selectedCourseId = 
   }
 
   return <section className="page-content school-courses-page school-modules-home">
-    <div className="school-module-grid" aria-label="Módulos de estudio">{schoolModulesMock.map((module, index) => {
-      const Icon = moduleIcons[index % moduleIcons.length]
-      const cover = schoolCoursesMock.find(course => course.id === module.courseIds[0])?.coverImage
-      return <button type="button" className="school-module-card" key={module.id} onClick={() => onSelectModule(module.id)}><span className="school-module-cover-wrap"><img className="school-module-cover" src={cover} alt="" loading="lazy" /><span className="school-module-cover-title"><span className="school-module-icon"><Icon size={22} /></span><strong>{module.name}</strong></span></span><span className="school-module-info"><span>{module.description}</span></span><span className="school-module-footer"><span className="school-module-count">{module.courseIds.length} {module.courseIds.length === 1 ? 'curso' : 'cursos'}</span><ChevronRight size={18} /></span></button>
+    <div className="school-module-grid" aria-label="Categorías de cursos">{schoolModules.map(module => {
+      const Icon = categoryIcons[module.icon] ?? Sigma
+      const cover = module.coverImage || schoolCourses.find(course => course.id === module.courseIds[0])?.coverImage
+      return <button type="button" className="school-module-card" key={module.id} onClick={() => onSelectModule(module.id)}><span className="school-module-cover-wrap">{cover ? <img className="school-module-cover" src={cover} alt="" loading="lazy" /> : <span className="school-module-cover-placeholder" aria-hidden="true" />}<span className="school-module-cover-title"><span className="school-module-icon"><Icon size={22} /></span><strong>{module.name}</strong></span></span><span className="school-module-info"><span>{module.description}</span></span><span className="school-module-footer"><span className="school-module-count">{module.courseIds.length} {module.courseIds.length === 1 ? 'curso' : 'cursos'}</span><ChevronRight size={18} /></span></button>
     })}</div>
   </section>
 }

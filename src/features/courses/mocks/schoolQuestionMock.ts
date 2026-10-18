@@ -1,8 +1,10 @@
-import { schoolCoursesMock } from './schoolCoursesMock'
+import { getSchoolCourses } from '../services/schoolCourseStore'
+import { getAssessmentOverride } from '../services/schoolAssessmentStore'
+import { schoolCoursesMock as schoolCoursesMockDefault } from './schoolCoursesMock'
 
-type MultipleChoiceQuestion = { prompt: string; options: string[]; answer: number }
-type MultipleSelectQuestion = { prompt: string; options: string[]; answers: number[]; optionImages: { imageUrl: string; imageAlt: string }[] }
-type WordSearchQuestion = { prompt: string; words: string[]; grid: string[] }
+export type MultipleChoiceQuestion = { prompt: string; options: string[]; answer: number }
+export type MultipleSelectQuestion = { prompt: string; options: string[]; answers: number[]; optionImages: { imageUrl: string; imageAlt: string }[] }
+export type WordSearchQuestion = { prompt: string; words: string[]; grid: string[] }
 
 export interface CourseQuestionSet {
   multipleChoice: MultipleChoiceQuestion
@@ -264,9 +266,12 @@ function selectQuestion(prompt: string, correctTerms: string[], distractors: str
 
 export function getSchoolQuestionSet(courseId: string, topicTitle: string): AssessmentQuestionSet {
   const set = schoolQuestionMock[courseId] ?? fallbackSet
-  const course = schoolCoursesMock.find(item => item.id === courseId) ?? schoolCoursesMock.find(item => item.id === 'ciencias')!
+  const courses = getSchoolCourses()
+  const course = courses.find(item => item.id === courseId)
+    ?? courses.find(item => item.id === 'ciencias')
+    ?? schoolCoursesMockDefault.find(item => item.id === 'ciencias')!
   const topicIndex = Math.max(0, course.units.findIndex(unit => unit.title === topicTitle))
-  const topic = course.units[topicIndex]
+  const topic = course.units[topicIndex] ?? course.units[0] ?? { title: topicTitle, description: '' }
   const otherTopicTerms = course.units.filter((_, index) => index !== topicIndex).flatMap(unit => topicWords(unit.title))
   const titleTerms = topicWords(topic.title)
   const descriptionTerms = topicWords(topic.description)
@@ -295,5 +300,5 @@ export function getSchoolQuestionSet(courseId: string, topicTitle: string): Asse
       { ...set.wordSearch, prompt: `Localiza conceptos clave de «${topic.title}».`, words: completedSearchWords, grid: createChallengeGrid(completedSearchWords, `${courseId}-${topic.title}-topic`) },
     ],
   }
-  return versions
+  return getAssessmentOverride(courseId, topicTitle) ?? versions
 }

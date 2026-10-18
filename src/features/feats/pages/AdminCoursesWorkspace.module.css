@@ -1,0 +1,272 @@
+.shell {
+  display: grid;
+  grid-template-columns: 248px minmax(0, 1fr);
+  min-height: 100vh;
+  background: #f3f5f7;
+  color: #24364b;
+  font-family: Roboto, Arial, sans-serif;
+}
+
+.aside {
+  position: sticky;
+  top: 0;
+  display: flex;
+  height: 100vh;
+  flex-direction: column;
+  padding: 24px 16px 18px;
+  background: #fff;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 10px 28px;
+  color: #26384d;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.brandIcon {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  flex: none;
+  place-items: center;
+  border-radius: 14px;
+  background: #e2efff;
+  color: #1a73e8;
+}
+
+.navLabel {
+  margin: 0 12px 9px;
+  color: #718096;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+}
+
+.navigation {
+  display: grid;
+  gap: 4px;
+}
+
+.navItem,
+.activeItem,
+.logout {
+  display: flex;
+  width: 100%;
+  min-height: 48px;
+  align-items: center;
+  gap: 13px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 25px;
+  background: transparent;
+  color: #53657a;
+  font: 500 14px Roboto, Arial, sans-serif;
+  text-align: left;
+  cursor: pointer;
+}
+
+.navItem:hover,
+.logout:hover {
+  background: #f2f6fa;
+}
+
+.activeItem {
+  background: #e8f1ff;
+  color: #174ea6;
+  font-weight: 600;
+}
+
+.activeItem svg,
+.navItem svg,
+.logout svg {
+  flex: none;
+}
+
+.logout {
+  margin-top: auto;
+}
+
+.content {
+  min-width: 0;
+}
+
+.home {
+  max-width: 1280px;
+  min-height: 100vh;
+  margin: 0 auto;
+  padding: 48px clamp(20px, 4vw, 64px) 72px;
+}
+
+.homeHeader {
+  margin-bottom: 30px;
+}
+
+.homeEyebrow {
+  margin: 0 0 8px;
+  color: #5277a8;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.homeHeader h1 {
+  margin: 0;
+  color: #24364b;
+  font-size: clamp(28px, 3vw, 36px);
+  font-weight: 600;
+  letter-spacing: -0.5px;
+}
+
+.homeHeader > p:last-child,
+.quickHeading p {
+  margin: 9px 0 0;
+  color: #627184;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.summaryCard {
+  display: flex;
+  min-height: 112px;
+  align-items: center;
+  gap: 16px;
+  padding: 20px;
+  border-radius: 20px;
+  background: #fff;
+}
+
+.summaryIcon {
+  display: grid;
+  width: 46px;
+  height: 46px;
+  flex: none;
+  place-items: center;
+  border-radius: 16px;
+}
+
+.categoryIcon { background: #e8f1ff; color: #1a73e8; }
+.courseIcon { background: #e5f3ed; color: #33836b; }
+.topicIcon { background: #fff1df; color: #a96724; }
+
+.summaryCard p {
+  margin: 0 0 5px;
+  color: #627184;
+  font-size: 14px;
+}
+
+.summaryCard strong {
+  color: #24364b;
+  font-size: 27px;
+  font-weight: 600;
+}
+
+.quickSection {
+  margin-top: 40px;
+}
+
+.quickHeading h2 {
+  margin: 0;
+  color: #24364b;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.quickLinks {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 18px;
+}
+
+.quickLink {
+  display: flex;
+  min-width: 0;
+  min-height: 94px;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 18px;
+  border: 0;
+  border-radius: 20px;
+  background: #fff;
+  color: #53657a;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.quickLink:hover { background: #f9fbfd; }
+.quickLink > span:nth-child(2) { display: grid; flex: 1; gap: 5px; }
+.quickLink strong { color: #24364b; font-size: 14px; font-weight: 600; }
+.quickLink small { color: #627184; font-size: 13px; line-height: 1.4; }
+
+@media (max-width: 760px) {
+  .shell {
+    grid-template-columns: 1fr;
+  }
+
+  .aside {
+    position: sticky;
+    z-index: 5;
+    height: auto;
+    padding: 10px 12px 8px;
+  }
+
+  .brand {
+    padding: 2px 6px 10px;
+  }
+
+  .navLabel,
+  .logout {
+    width: auto;
+    min-height: 38px;
+    justify-content: center;
+    margin-top: 5px;
+  }
+
+  .logout span {
+    display: none;
+  }
+
+  .navigation {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .navItem,
+  .activeItem {
+    justify-content: center;
+    min-height: 44px;
+    gap: 7px;
+    padding: 0 8px;
+    font-size: 12px;
+  }
+
+  .home {
+    min-height: auto;
+    padding: 30px 18px 48px;
+  }
+
+  .summary {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .summaryCard {
+    min-height: 88px;
+    padding: 15px;
+  }
+
+  .quickLinks {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+}

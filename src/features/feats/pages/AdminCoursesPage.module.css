@@ -1,0 +1,788 @@
+.page {
+  min-height: 100vh;
+  padding: 42px clamp(16px, 4vw, 56px) 60px;
+  color: #24364b;
+  font-family: Roboto, Arial, sans-serif;
+}
+
+.header,
+.editorHeader,
+.sectionHeading,
+.listHeading,
+.filters,
+.pagination,
+.pageControls,
+.rowActions,
+.topicHeader,
+.conceptHeading,
+.formActions,
+.editorFooter {
+  display: flex;
+  align-items: center;
+}
+
+.header,
+.editorHeader {
+  justify-content: space-between;
+  gap: 20px;
+  max-width: 1300px;
+  margin: 0 auto 24px;
+}
+
+.header h1,
+.editorTitle h1,
+.sectionHeading h2,
+.listHeading h2,
+.topicHeader h3,
+.conceptHeading h3,
+.questionSection h3 {
+  margin: 0;
+  color: #24364b;
+  font-weight: 600;
+  letter-spacing: -0.25px;
+}
+
+.header h1,
+.editorTitle h1 {
+  font-size: clamp(27px, 3vw, 33px);
+}
+
+.eyebrow {
+  margin: 0 0 6px;
+  color: #155fc0;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.intro,
+.sectionHeading p,
+.listHeading p {
+  margin: 7px 0 0;
+  color: #627184;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.primaryButton,
+.secondaryButton,
+.backButton,
+.tab,
+.tabActive,
+.topicTab,
+.topicActive,
+.editButton,
+.deleteButton,
+.pageButton,
+.inlineDanger,
+.dangerConfirm {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0 17px;
+  border: 0;
+  border-radius: 22px;
+  cursor: pointer;
+  font: 500 13px Roboto, Arial, sans-serif;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.primaryButton {
+  background: #1a73e8;
+  color: #fff;
+  font-weight: 600;
+}
+
+.primaryButton:hover {
+  background: #155fc0;
+}
+
+.secondaryButton,
+.backButton {
+  background: #e8f1ff;
+  color: #155fc0;
+}
+
+.secondaryButton:hover,
+.backButton:hover {
+  background: #dceaff;
+}
+
+.dangerConfirm,
+.deleteButton {
+  background: #e8f1ff;
+  color: #155fc0;
+}
+
+.dangerConfirm:hover,
+.deleteButton:hover {
+  background: #dceaff;
+}
+
+.primaryButton:focus-visible,
+.secondaryButton:focus-visible,
+.backButton:focus-visible,
+.tab:focus-visible,
+.tabActive:focus-visible,
+.topicTab:focus-visible,
+.topicActive:focus-visible,
+.editButton:focus-visible,
+.deleteButton:focus-visible,
+.pageButton:focus-visible,
+.inlineDanger:focus-visible,
+.dangerConfirm:focus-visible {
+  outline: 2px solid #9bc3f5;
+  outline-offset: 2px;
+}
+
+.listCard,
+.editorCard {
+  max-width: 1300px;
+  margin: 0 auto;
+  border-radius: 20px;
+  background: #fff;
+}
+
+.listCard {
+  padding: 25px clamp(15px, 3vw, 30px) 18px;
+}
+
+.listHeading {
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.listHeading h2,
+.sectionHeading h2 {
+  font-size: 19px;
+}
+
+.listHeading p {
+  margin-top: 5px;
+  font-size: 13px;
+}
+
+.filters {
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.searchBox {
+  display: flex;
+  flex: 1 1 320px;
+  min-height: 46px;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px;
+  border-radius: 14px;
+  background: #f2f3f3;
+  color: #627184;
+}
+
+.searchBox input,
+.filterSelect select,
+.field input,
+.field select,
+.field textarea,
+.answerOption > input:last-child {
+  min-width: 0;
+  min-height: 44px;
+  padding: 10px 13px;
+  border: 0;
+  border-radius: 12px;
+  outline: 0;
+  background: #f2f3f3;
+  color: #24364b;
+  font: 400 14px/1.4 Roboto, Arial, sans-serif;
+}
+
+.searchBox input {
+  flex: 1;
+  padding-inline: 0;
+  background: transparent;
+}
+
+.filterSelect {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #627184;
+  font-size: 12px;
+}
+
+.filterSelect select {
+  min-width: 205px;
+}
+
+.field :is(input, select, textarea):focus-visible,
+.answerOption > input:last-child:focus-visible,
+.filterSelect select:focus-visible,
+.searchBox:focus-within {
+  outline: 2px solid #9bc3f5;
+  outline-offset: 2px;
+}
+
+.tableWrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.table th {
+  padding: 13px 12px;
+  background: #f3f7fb;
+  color: #53657a;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.table th:first-child {
+  border-radius: 12px 0 0 12px;
+}
+
+.table th:last-child {
+  width: 150px;
+  border-radius: 0 12px 12px 0;
+}
+
+.table td {
+  padding: 13px 12px;
+  border-bottom: 1px solid #e7edf3;
+  color: #405269;
+  font-size: 13px;
+  vertical-align: middle;
+}
+
+.table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.courseName,
+.courseDescription {
+  display: block;
+}
+
+.courseName {
+  margin-bottom: 4px;
+  color: #24364b;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.courseDescription {
+  max-width: 460px;
+  color: #627184;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.rowActions {
+  justify-content: flex-end;
+  gap: 7px;
+}
+
+.editButton {
+  min-height: 36px;
+  padding-inline: 14px;
+  background: #e8f1ff;
+  color: #155fc0;
+}
+
+.editButton:hover {
+  background: #dceaff;
+}
+
+.deleteButton {
+  width: 36px;
+  min-height: 36px;
+  padding: 0;
+  border-radius: 50%;
+}
+
+.empty {
+  padding: 35px 12px !important;
+  color: #627184 !important;
+  text-align: center;
+}
+
+.pagination {
+  min-height: 52px;
+  justify-content: space-between;
+  gap: 14px;
+  padding-top: 12px;
+  color: #627184;
+  font-size: 12px;
+}
+
+.pageControls {
+  gap: 9px;
+}
+
+.pageButton {
+  width: 36px;
+  min-height: 36px;
+  padding: 0;
+  border-radius: 50%;
+  background: #e8f1ff;
+  color: #155fc0;
+}
+
+.pageButton:hover:not(:disabled) {
+  background: #dceaff;
+}
+
+.pageButton:disabled {
+  background: #f3f7fb;
+  color: #9ba8b7;
+  cursor: default;
+}
+
+.confirmBar {
+  display: flex;
+  max-width: 1300px;
+  min-height: 58px;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin: 0 auto 16px;
+  padding: 8px 14px;
+  border-radius: 15px;
+  background: #e8f1ff;
+  color: #155fc0;
+  font-size: 13px;
+}
+
+.confirmBar > span {
+  margin-right: auto;
+}
+
+.editorHeader {
+  margin-bottom: 19px;
+}
+
+.editorTitle {
+  flex: 1;
+  min-width: 0;
+}
+
+.backButton {
+  flex: none;
+}
+
+.editorTabs {
+  display: flex;
+  max-width: 1300px;
+  gap: 4px;
+  margin: 0 auto 16px;
+  padding: 5px;
+  border-radius: 25px;
+  background: #f0f1f1;
+}
+
+.tab,
+.tabActive {
+  display: inline-flex;
+  min-height: 42px;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: transparent;
+  color: #53657a;
+}
+
+.tabActive {
+  background: #dceaff;
+  color: #155fc0;
+  font-weight: 600;
+}
+
+.editorCard {
+  padding: clamp(18px, 3vw, 32px);
+  background: #fff;
+}
+
+.editorSection {
+  display: grid;
+  gap: 23px;
+}
+
+.sectionHeading {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 16px;
+}
+
+.sectionHeading > :last-child:is(button) { margin-left: auto; }
+
+.sectionIcon {
+  display: grid;
+  width: 46px;
+  height: 46px;
+  flex: none;
+  place-items: center;
+  border-radius: 16px;
+}
+
+.courseSectionIcon { background: #e8f1ff; color: #1a73e8; }
+.curriculumSectionIcon { background: #e3efff; color: #1a73e8; }
+.assessmentSectionIcon { background: #dceaff; color: #155fc0; }
+
+.sectionCopy h2 { margin: 0; }
+.sectionCopy p { margin: 5px 0 0; }
+
+.fieldsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 17px 20px;
+}
+
+.field {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  color: #30445b;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.fullField {
+  grid-column: 1 / -1;
+}
+
+.field textarea {
+  min-height: 74px;
+  resize: vertical;
+}
+
+.categoryPicker {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.categoryPicker legend {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 10px;
+  color: #30445b;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.categoryPicker legend svg { color: #1a73e8; }
+
+.categoryOptions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.categoryOptions label {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 11px;
+  border-radius: 20px;
+  background: #f3f7fb;
+  color: #405269;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.categoryOptions input,
+.answerOption input[type="checkbox"],
+.answerOption input[type="radio"] {
+  width: 16px;
+  height: 16px;
+  accent-color: #1a73e8;
+}
+
+.categoryOptions p {
+  color: #627184;
+  font-size: 13px;
+}
+
+.topicTabs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 2px 0 4px;
+}
+
+.topicTab,
+.topicActive {
+  min-height: 38px;
+  flex: none;
+  padding-inline: 15px;
+  background: #f1f2f2;
+  color: #53657a;
+}
+
+.topicActive {
+  background: #dceaff;
+  color: #155fc0;
+  font-weight: 600;
+}
+
+.topicEditor {
+  display: grid;
+  gap: 20px;
+  padding: clamp(15px, 2.3vw, 25px);
+  border-radius: 17px;
+  background: #fff;
+}
+
+.topicHeader,
+.conceptHeading {
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.topicHeader h3,
+.conceptHeading h3,
+.questionSection h3 {
+  font-size: 16px;
+}
+
+.inlineDanger {
+  min-height: 36px;
+  padding-inline: 12px;
+  background: #e8f1ff;
+  color: #155fc0;
+}
+
+.inlineDanger:hover {
+  background: #dceaff;
+}
+
+.conceptHeading span,
+.questionSection h3 span {
+  color: #63768c;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.conceptGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.conceptCard {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  min-width: 0;
+  padding: 16px;
+  border-radius: 15px;
+  background: #fff;
+}
+
+.conceptNumber {
+  color: #1a73e8;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.conceptCard .field textarea {
+  min-height: 94px;
+}
+
+.assessmentSettings {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 220px));
+  gap: 16px;
+  padding: 16px;
+  border-radius: 15px;
+  background: #f3f4f4;
+}
+
+.fieldLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.fieldLabel svg { color: #1a73e8; }
+
+.questionCountNote {
+  margin: -10px 0 0;
+  color: #627184;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.questionSection {
+  display: grid;
+  gap: 13px;
+  padding-top: 6px;
+}
+
+.questionSection > h3 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e1e8ef;
+}
+
+.questionCard {
+  display: grid;
+  gap: 12px;
+  padding: 17px;
+  border-radius: 15px;
+  background: #f4f5f5;
+}
+
+.questionCard h4 {
+  margin: 0;
+  color: #155fc0;
+  font-size: 13px;
+}
+
+.answerGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.answerOption {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 9px;
+}
+
+.answerOption > input:last-child {
+  width: 100%;
+}
+
+.matchingGrid {
+  display: grid;
+  gap: 12px;
+}
+
+.matchingRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 17px;
+  padding: 14px;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.editorError {
+  margin: 18px 0 0;
+  color: #155fc0;
+  font-size: 13px;
+}
+
+.editorFooter {
+  justify-content: flex-end;
+  margin-top: 24px;
+  padding-top: 18px;
+  border-top: 1px solid #e7edf3;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+@media (max-width: 780px) {
+  .page {
+    padding: 28px 14px 42px;
+  }
+
+  .header,
+  .editorHeader {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .editorTitle {
+    order: -1;
+  }
+
+  .editorHeader > .primaryButton {
+    width: 100%;
+  }
+
+  .conceptGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .filterSelect {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .filterSelect select {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .confirmBar {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 540px) {
+  .fieldsGrid,
+  .answerGrid,
+  .matchingRow,
+  .assessmentSettings,
+  .conceptGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .fullField {
+    grid-column: auto;
+  }
+
+  .pagination {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .pageControls {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .confirmBar > span {
+    flex-basis: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .primaryButton,
+  .secondaryButton,
+  .backButton,
+  .tab,
+  .tabActive,
+  .topicTab,
+  .topicActive,
+  .editButton,
+  .deleteButton,
+  .pageButton,
+  .inlineDanger,
+  .dangerConfirm {
+    transition: none;
+  }
+}

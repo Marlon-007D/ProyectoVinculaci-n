@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { ArrowLeft, ArrowRight, BarChart3, BookOpen, Check, CheckCircle2, Circle, CircleHelp, ClipboardList, Clock3, Hourglass, Lightbulb, ListChecks, MessageSquareText, RotateCcw, Search, Timer, XCircle } from 'lucide-react'
-import { getSchoolQuestionSet } from '../mocks/schoolQuestionMock'
+import { useSchoolAssessment } from '../hooks/useSchoolAssessment'
 import evaluationIllustration from '../assets/online-test.svg'
 import evaluationChecklist from '../assets/evaluation-checklist.svg'
 import evaluationResults from '../assets/evaluation-results.svg'
@@ -11,9 +11,6 @@ import styles from './QuestionBank.module.css'
 const cx = (classNames: string) => classNames.split(/\s+/).filter(Boolean).map(className => styles[className]).filter(Boolean).join(' ')
 
 interface Props { courseId: string; courseName: string; topicTitle: string; mode: 'entry' | 'assessment'; onEnter?: () => void }
-const LIMIT_SECONDS = 10 * 60
-const QUESTION_COUNT = 10
-const POINTS_PER_QUESTION = 20 / QUESTION_COUNT
 type QuestionKind = 'multiple-choice' | 'multiple-select' | 'matching' | 'word-search'
 const questionKinds: QuestionKind[] = ['multiple-choice', 'matching', 'word-search', 'multiple-select', 'multiple-choice', 'word-search', 'multiple-select', 'multiple-choice', 'multiple-select', 'multiple-select']
 const MAX_ATTEMPTS = 3
@@ -88,7 +85,10 @@ function findWordPath(rows: string[][], word: string): number[] | null {
 }
 
 export function QuestionBank({ courseId, courseName, topicTitle, mode, onEnter = () => undefined }: Props) {
-  const questions = getSchoolQuestionSet(courseId, topicTitle)
+  const { questions, settings: assessmentSettings } = useSchoolAssessment(courseId, topicTitle)
+  const LIMIT_SECONDS = assessmentSettings.durationMinutes * 60
+  const QUESTION_COUNT = questionKinds.length
+  const POINTS_PER_QUESTION = assessmentSettings.totalPoints / QUESTION_COUNT
   const storageKey = progressKey(courseId, topicTitle)
   const initialProgress = useRef(readProgress(storageKey)).current
   const evaluationHubRef = useRef<HTMLElement | null>(null)
@@ -250,7 +250,7 @@ export function QuestionBank({ courseId, courseName, topicTitle, mode, onEnter =
     }
     setStarted(true)
     onEnter()
-  }}><span className={cx('question-type-number')}><ListChecks size={19} aria-hidden="true" /></span><span className={cx('question-bank-choice-copy')}><strong>{hasActiveAttempt ? 'Continuar evaluación' : attempts > 0 ? 'Nuevo intento' : 'Entrar a evaluaciones'}</strong><small>{QUESTION_COUNT} preguntas · 10 minutos · calificación sobre 20</small></span><span className={cx('evaluation-entry-action')}>{attempts >= MAX_ATTEMPTS ? 'Intentos agotados' : 'Iniciar'} <ArrowRight size={17} aria-hidden="true" /></span></button>
+  }}><span className={cx('question-type-number')}><ListChecks size={19} aria-hidden="true" /></span><span className={cx('question-bank-choice-copy')}><strong>{hasActiveAttempt ? 'Continuar evaluación' : attempts > 0 ? 'Nuevo intento' : 'Entrar a evaluaciones'}</strong><small>{QUESTION_COUNT} preguntas · {assessmentSettings.durationMinutes} minutos · calificación sobre {assessmentSettings.totalPoints}</small></span><span className={cx('evaluation-entry-action')}>{attempts >= MAX_ATTEMPTS ? 'Intentos agotados' : 'Iniciar'} <ArrowRight size={17} aria-hidden="true" /></span></button>
   const displayedAttempts = [...attemptHistory]
   if (attempts > 0 && !displayedAttempts.some(item => item.attempt === attempts)) displayedAttempts.push({ attempt: attempts, completed: initialProgress?.completed ?? false, answeredCount: initialProgress?.answeredCount ?? answeredCount, elapsedSeconds: initialProgress?.elapsedSeconds ?? elapsedSeconds, savedAt: lastSaved ?? initialProgress?.savedAt ?? Date.now(), score: initialProgress?.score ?? (initialProgress?.completed ? score : undefined) })
   const reviewRows: ReviewRow[] = questionKinds.map((kind, index) => {
@@ -300,7 +300,7 @@ export function QuestionBank({ courseId, courseName, topicTitle, mode, onEnter =
       </nav>
     </div>}
     {evaluationView === 'respuestas' && hasCompletedAttempt && <article className={cx('question-card evaluation-review-card')} role="tabpanel">
-      <div className={cx('evaluation-review-summary')}><strong>{Number(score.toFixed(1))}<span> / 20</span></strong><p>{reviewCorrectCount} correctas · {reviewIncorrectCount} incorrectas · {reviewUnansweredCount} sin responder</p></div>
+      <div className={cx('evaluation-review-summary')}><strong>{Number(score.toFixed(1))}<span> / {assessmentSettings.totalPoints}</span></strong><p>{reviewCorrectCount} correctas · {reviewIncorrectCount} incorrectas · {reviewUnansweredCount} sin responder</p></div>
       <div className={cx('evaluation-review-table-wrap')}>
         <table className={cx('evaluation-review-table')}>
           <thead><tr><th scope="col">#</th><th scope="col">Pregunta</th><th scope="col">Tu respuesta</th><th scope="col">Respuesta correcta</th><th scope="col">Resultado</th></tr></thead>
@@ -315,7 +315,7 @@ export function QuestionBank({ courseId, courseName, topicTitle, mode, onEnter =
       }}><ArrowLeft size={16} aria-hidden="true" />Volver a evaluaciones</button>
     </article>}
     {evaluationView === 'analisis' && hasCompletedAttempt && <div className={cx('evaluation-analysis')} role="tabpanel">
-      <div className={cx('evaluation-analysis-heading')}><div><span>Análisis del intento {attempts}</span><h2>Tu progreso</h2></div><strong>{Number(score.toFixed(1))}<small> / 20</small></strong></div>
+      <div className={cx('evaluation-analysis-heading')}><div><span>Análisis del intento {attempts}</span><h2>Tu progreso</h2></div><strong>{Number(score.toFixed(1))}<small> / {assessmentSettings.totalPoints}</small></strong></div>
       <div className={cx('evaluation-kpi-grid')}>
         <article className={cx('evaluation-kpi is-correct')}><CheckCircle2 size={19} aria-hidden="true" /><span>Correctas</span><strong>{reviewCorrectCount}<small> de {QUESTION_COUNT}</small></strong></article>
         <article className={cx('evaluation-kpi is-incorrect')}><XCircle size={19} aria-hidden="true" /><span>Incorrectas</span><strong>{reviewIncorrectCount}<small> de {QUESTION_COUNT}</small></strong></article>
@@ -354,7 +354,7 @@ export function QuestionBank({ courseId, courseName, topicTitle, mode, onEnter =
       {(attemptHistory.length > 0 || attempts > 0) && <div className={cx('evaluation-attempt-grid')} aria-label="Historial de intentos">
         {displayedAttempts.map(item => <article className={cx('evaluation-attempt-card')} key={item.attempt}>
           <header><span className={cx('evaluation-attempt-heading')}><span className={cx('evaluation-attempt-icon')}><ClipboardList size={17} aria-hidden="true" /></span><strong>Intento {item.attempt}</strong></span></header>
-          <div className={cx('evaluation-attempt-metrics')}><span className={cx('evaluation-status-chip is-answered')}><ListChecks size={14} aria-hidden="true" />{item.answeredCount}/{QUESTION_COUNT} respondidas</span><span className={cx('evaluation-status-chip is-elapsed')}><Clock3 size={14} aria-hidden="true" />{Math.floor(item.elapsedSeconds / 60)} min {item.elapsedSeconds % 60} s</span>{item.completed && item.score !== undefined && <span className={cx('evaluation-status-chip is-score')}><CheckCircle2 size={14} aria-hidden="true" />Nota: {Number(item.score.toFixed(1))}/20</span>}<span className={cx(`evaluation-status-chip${item.completed ? ' is-complete' : ' is-progress'}`)}>{item.completed ? <CheckCircle2 size={14} aria-hidden="true" /> : <RotateCcw size={14} aria-hidden="true" />}{item.completed ? 'Finalizado' : 'En curso'}</span>{!item.completed && <><span className={cx('evaluation-status-chip is-time-left')}><Hourglass size={14} aria-hidden="true" />Quedan {Math.floor(Math.max(0, LIMIT_SECONDS - item.elapsedSeconds) / 60)} min {Math.max(0, LIMIT_SECONDS - item.elapsedSeconds) % 60} s</span>{item.attempt === attempts && <button className={cx('evaluation-resume-button')} type="button" onClick={() => { setStarted(true); onEnter() }}><RotateCcw size={14} aria-hidden="true" />Reanudar</button>}</>}</div>
+          <div className={cx('evaluation-attempt-metrics')}><span className={cx('evaluation-status-chip is-answered')}><ListChecks size={14} aria-hidden="true" />{item.answeredCount}/{QUESTION_COUNT} respondidas</span><span className={cx('evaluation-status-chip is-elapsed')}><Clock3 size={14} aria-hidden="true" />{Math.floor(item.elapsedSeconds / 60)} min {item.elapsedSeconds % 60} s</span>{item.completed && item.score !== undefined && <span className={cx('evaluation-status-chip is-score')}><CheckCircle2 size={14} aria-hidden="true" />Nota: {Number(item.score.toFixed(1))}/{assessmentSettings.totalPoints}</span>}<span className={cx(`evaluation-status-chip${item.completed ? ' is-complete' : ' is-progress'}`)}>{item.completed ? <CheckCircle2 size={14} aria-hidden="true" /> : <RotateCcw size={14} aria-hidden="true" />}{item.completed ? 'Finalizado' : 'En curso'}</span>{!item.completed && <><span className={cx('evaluation-status-chip is-time-left')}><Hourglass size={14} aria-hidden="true" />Quedan {Math.floor(Math.max(0, LIMIT_SECONDS - item.elapsedSeconds) / 60)} min {Math.max(0, LIMIT_SECONDS - item.elapsedSeconds) % 60} s</span>{item.attempt === attempts && <button className={cx('evaluation-resume-button')} type="button" onClick={() => { setStarted(true); onEnter() }}><RotateCcw size={14} aria-hidden="true" />Reanudar</button>}</>}</div>
         </article>)}
       </div>}
       {attempts >= MAX_ATTEMPTS && <p className={cx('evaluation-attempt-limit')}>Ya usaste los 3 intentos disponibles.</p>}
