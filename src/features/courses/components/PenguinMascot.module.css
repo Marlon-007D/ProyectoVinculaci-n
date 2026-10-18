@@ -1,0 +1,20 @@
+.penguin-mascot { overflow:visible; }
+.penguin-character { transform-box:fill-box; transform-origin:center bottom; animation:penguin-dance 1.8s ease-in-out infinite; }
+.penguin-body { transform-box:fill-box; transform-origin:center bottom; }
+.penguin-wing { transform-box:fill-box; transform-origin:center bottom; animation:penguin-flap .72s ease-in-out infinite alternate; }
+.penguin-wing-right { animation-delay:.18s; }
+.penguin-eye { transform-box:fill-box; transform-origin:center; animation:penguin-blink 4s ease-in-out infinite; }
+.penguin-tuft { animation:penguin-tuft-sway 2.6s ease-in-out infinite; }
+.happy .penguin-body { animation:penguin-hop .42s ease-out 2; }
+.wink .penguin-wing-left { animation:penguin-wave .62s ease-in-out 2; }
+.excited .penguin-wing-left,.excited .penguin-wing-right { animation:penguin-wave .4s ease-in-out 3 alternate; }
+.curious .penguin-body { animation:penguin-tilt .62s ease-in-out 2 alternate; }
+.dancing .penguin-character { animation-duration:.7s; }
+@keyframes penguin-hop { 0%,100% { transform:translateY(0) scale(1); } 50% { transform:translateY(-4px) scale(1.035,.97); } }
+@keyframes penguin-wave { from { transform:rotate(0); } to { transform:rotate(-13deg) translateY(-2px); } }
+@keyframes penguin-tilt { from { transform:rotate(-4deg); } to { transform:rotate(4deg); } }
+@keyframes penguin-blink { 0%,90%,100% { transform:scaleY(1); } 94% { transform:scaleY(.12); } }
+@keyframes penguin-tuft-sway { 0%,100% { transform:rotate(0); } 50% { transform:rotate(7deg); } }
+@keyframes penguin-dance { 0%,100% { transform:translateY(0) rotate(0); } 20% { transform:translateY(-5px) rotate(-4deg); } 42% { transform:translateY(1px) rotate(3deg); } 65% { transform:translateY(-3px) rotate(-2deg); } 82% { transform:translateY(0) rotate(3deg); } }
+@keyframes penguin-flap { from { transform:rotate(-4deg) translateY(0); } to { transform:rotate(14deg) translateY(-4px); } }
+@media(prefers-reduced-motion:reduce) { .penguin-character,.penguin-body,.penguin-wing,.penguin-eye,.penguin-tuft { animation:none; } }

@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@400;500;600;700&family=Roboto:wght@300;400;500;600;700&display=swap");
 
 :root {
   --site-navy: #0a233f;
@@ -30,6 +30,7 @@
 html, body, #root { width:100%; min-width:320px; min-height:100%; margin:0; padding:0; }
 #root { max-width:none; border:0; }
 .site-main { flex: 1; outline: none; }
+.site-root--course,.site-main--course { background:var(--site-surface,#f3f5f7); }
 .site-container { width: 100%; max-width: var(--site-max); margin-inline: auto; padding-inline: 1rem; }
 .site-sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .site-root a { color: var(--site-accent); }

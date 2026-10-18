@@ -34,6 +34,9 @@ No agregar funciones ajenas a este alcance sin una solicitud explícita.
 - Dentro de cada simulador, separar `components/`, `hooks/`, `utils/` o `services/`, `types/` y `pages/` según corresponda.
 - Guardar los datos de demostración y prueba en `mocks/`; no incrustarlos en componentes o hooks.
 - Cada componente React debe tener su módulo TypeScript y estilos locales asociados; los componentes compartidos deben estar agrupados por carpeta en `src/shared/components/`.
+- Usar CSS Modules (`*.module.css`) para estilos de componentes y features; importar el objeto de clases y aplicarlo desde JSX. No depender de nombres CSS globales para estilos locales.
+- Mantener cada selector dentro del módulo que renderiza las clases. Los componentes compartidos deben incluir su propio módulo de estilos y exponer props tipadas como `className` solo cuando el consumidor necesite ajustar su presentación.
+- Reservar `:global(...)` dentro de CSS Modules para límites de integración intencionales, como un contenedor externo o una clase global compartida; limitar esas reglas al componente y no usarlo para evitar el mapeo de clases locales.
 - Reservar `src/shared/styles/globals.css` para tokens, reset, tipografía y reglas realmente globales.
 - Mantener configuración de entorno en `src/core/config/`, errores comunes en `src/core/errors/` y el cliente de Supabase en `src/core/supabase/`.
 - Las carpetas `news`, `events`, `honors` y `academic-periods` son solo estructura; no implementar sus funciones sin solicitud explícita.

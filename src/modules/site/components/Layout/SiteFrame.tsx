@@ -17,14 +17,16 @@ interface Props {
 export function SiteFrame({ config, menu, homeUrl, children }: Props) {
   const [params] = useSearchParams();
   const isStandaloneSimulator = Boolean(params.get("simulator"));
+  const isStandaloneCourse = params.get("courses") === "1" && Boolean(params.get("course"));
+  const hideSiteChrome = isStandaloneSimulator || isStandaloneCourse;
   return (
-    <div className={`site-root${isStandaloneSimulator ? " site-root--simulator" : ""}`} style={config.themeVars}>
-      {!isStandaloneSimulator && <a className="site-skip" href="#contenido">Saltar al contenido</a>}
-      {!isStandaloneSimulator && <Header config={config} menu={menu} homeUrl={homeUrl} />}
-      <main id="contenido" tabIndex={-1} className={`site-main${isStandaloneSimulator ? " site-main--simulator" : ""}`}>
+    <div className={`site-root${isStandaloneSimulator ? " site-root--simulator" : ""}${isStandaloneCourse ? " site-root--course" : ""}`} style={config.themeVars}>
+      {!hideSiteChrome && <a className="site-skip" href="#contenido">Saltar al contenido</a>}
+      {!hideSiteChrome && <Header config={config} menu={menu} homeUrl={homeUrl} />}
+      <main id="contenido" tabIndex={-1} className={`site-main${isStandaloneSimulator ? " site-main--simulator" : ""}${isStandaloneCourse ? " site-main--course" : ""}`}>
         {children}
       </main>
-      {!isStandaloneSimulator && <Footer config={config} tree={menu.state.status === "success" ? menu.state.data : []} />}
+      {!hideSiteChrome && <Footer config={config} tree={menu.state.status === "success" ? menu.state.data : []} />}
     </div>
   );
 }
