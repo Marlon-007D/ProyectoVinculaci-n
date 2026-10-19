@@ -7,9 +7,9 @@ export function useNews(limit?: number) {
   return useAsync(() => getNews(institutionId, limit), [institutionId, limit]);
 }
 
-export function useStaff() {
+export function useStaff(position?: string) {
   const { institutionId } = useInstitution();
-  return useAsync(() => getStaff(institutionId), [institutionId]);
+  return useAsync(() => getStaff(institutionId, position), [institutionId, position]);
 }
 
 export function useHonors(limit?: number) {

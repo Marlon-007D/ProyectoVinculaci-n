@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.117.3",
+    "bootstrap": "^5.3.8",
     "dompurify": "^3.4.17",
     "drizzle-orm": "^0.45.4",
     "jspdf": "^4.2.1",

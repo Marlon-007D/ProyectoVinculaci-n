@@ -28,6 +28,7 @@ export interface StaffMember {
   photo_url: string | null;
   bio: string | null;
   position_order: number;
+  email?: string | null;
 }
 
 export interface Honor {

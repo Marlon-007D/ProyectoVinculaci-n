@@ -1,0 +1,116 @@
+.carousel {
+  position: relative;
+  min-width: 0;
+  touch-action: pan-y;
+}
+
+.controls {
+  display: flex;
+  justify-content: center;
+  gap: .65rem;
+  margin-top: .85rem;
+}
+
+.controls button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
+  padding: .55rem 1rem;
+  border: 1px solid var(--site-accent);
+  border-radius: 999px;
+  color: var(--site-accent-ink);
+  background: var(--site-accent);
+  font: inherit;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.controls button:disabled {
+  border-color: var(--site-line);
+  color: var(--site-muted);
+  background: var(--site-surface);
+  cursor: not-allowed;
+}
+
+.carousel:focus-visible,
+.controls button:focus-visible,
+.indicators button:focus-visible {
+  outline: 3px solid var(--site-focus, var(--site-ink));
+  outline-offset: 3px;
+}
+
+.viewport {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+}
+
+.slide {
+  position: relative;
+  display: none;
+  float: left;
+  width: 100%;
+  margin-right: -100%;
+  backface-visibility: hidden;
+  transition: transform .6s ease-in-out;
+}
+
+:global(.carousel-item.active),
+:global(.carousel-item-next),
+:global(.carousel-item-prev) {
+  display: block;
+}
+
+:global(.carousel-item-next:not(.carousel-item-start)),
+:global(.active.carousel-item-end) {
+  transform: translateX(100%);
+}
+
+:global(.carousel-item-prev:not(.carousel-item-end)),
+:global(.active.carousel-item-start) {
+  transform: translateX(-100%);
+}
+
+.teamItems {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  margin: 0;
+  padding: .25rem .15rem 1rem;
+  list-style: none;
+}
+
+.indicators {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: .6rem;
+  margin-top: .5rem;
+}
+
+.indicators button {
+  width: .7rem;
+  height: .7rem;
+  padding: 0;
+  border: 1px solid var(--site-accent);
+  border-radius: 50%;
+  background: var(--site-surface);
+  cursor: pointer;
+}
+
+.indicators button[aria-current="true"] {
+  background: var(--site-accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .slide {
+    transition: none;
+  }
+}
+
+@media (max-width: 700px) {
+  .teamItems {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
