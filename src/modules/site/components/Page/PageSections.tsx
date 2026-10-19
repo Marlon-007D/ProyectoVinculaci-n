@@ -101,7 +101,7 @@ function Section({ s }: { s: PageSection }) {
   if (s.type === "gallery")
     return <GallerySection title={title} items={galleryItems(p.items)} limit={limit} />;
 
-  if (EXTERNAL_SECTION_TYPES.includes(s.type)) return <ExternalSection type={s.type} title={title} />;
+  if (EXTERNAL_SECTION_TYPES.includes(s.type)) return <ExternalSection type={s.type} title={title} properties={p} />;
 
   const list = items(p.items);
   const body = asString(p.body ?? p.text ?? p.content);

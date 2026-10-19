@@ -24,16 +24,32 @@ export async function getNews(institutionId: string, limit = 6): Promise<NewsIte
   return (data ?? []) as NewsItem[];
 }
 
-export async function getStaff(institutionId: string): Promise<StaffMember[]> {
-  if (isDemoMode()) return demoStaff;
-  const { data, error } = await getSupabase()
-    .from("staff")
-    .select("staff_id, institution_id, full_name, position, photo_url, bio, position_order")
-    .eq("institution_id", institutionId)
-    .eq("is_public", true)
-    .order("position_order", { ascending: true });
+export async function getStaff(institutionId: string, position?: string): Promise<StaffMember[]> {
+  if (isDemoMode()) {
+    const staff = demoStaff;
+    const filter = position?.trim().toLowerCase();
+    return filter ? staff.filter((member) => member.position.toLowerCase().includes(filter)) : staff;
+  }
+  const load = (includeEmail: boolean) => {
+    const staffTable = getSupabase().from("staff");
+    let query = (includeEmail
+      ? staffTable.select("staff_id, institution_id, full_name, position, photo_url, bio, position_order, email")
+      : staffTable.select("staff_id, institution_id, full_name, position, photo_url, bio, position_order"))
+      .eq("institution_id", institutionId)
+      .eq("is_public", true)
+      .order("position_order", { ascending: true });
+    if (position?.trim()) {
+      const escaped = position.trim().replace(/[\\%,_(),]/g, "\\$&");
+      query = query.ilike("position", `%${escaped}%`);
+    }
+    return query;
+  };
+  let { data, error } = await load(true);
+  if (error && /column .*email.* does not exist|could not find .*email.* column/i.test(error.message)) {
+    ({ data, error } = await load(false));
+  }
   if (error) throw toServiceError(error, "No se pudo cargar el personal.");
-  return (data ?? []) as StaffMember[];
+  return (data ?? []) as unknown as StaffMember[];
 }
 
 export async function getHonors(institutionId: string, limit = 12): Promise<Honor[]> {

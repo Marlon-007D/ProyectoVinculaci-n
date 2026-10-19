@@ -5,6 +5,7 @@ import { useEvents, useHonors, useNews, useStaff } from "../../hooks/useContent"
 interface Props {
   title?: string;
   limit?: number;
+  position?: string;
 }
 
 function Photo({ url, alt }: { url: string | null; alt: string }) {
@@ -66,8 +67,9 @@ export function NewsSection({ title = "Noticias", limit = 3 }: Props) {
   );
 }
 
-export function StaffSection({ title = "Nuestro equipo" }: Props) {
-  const { state, reload } = useStaff();
+export function StaffSection({ title = "Nuestro equipo", position }: Props) {
+  const { state, reload } = useStaff(position);
+  if (position && state.status !== "success") return null;
   return (
     <Block title={title}>
       <AsyncView state={state} onRetry={reload} emptyMessage="Aún no hay personal publicado.">
@@ -82,6 +84,7 @@ export function StaffSection({ title = "Nuestro equipo" }: Props) {
                 )}
                 <h3>{m.full_name}</h3>
                 <p className="site-person__role">{m.position}</p>
+                {safeStaffEmail(m.email) && <p><a href={`mailto:${safeStaffEmail(m.email)}`}>{m.email}</a></p>}
                 {m.bio && <p className="site-muted">{m.bio}</p>}
               </li>
             ))}
@@ -90,6 +93,12 @@ export function StaffSection({ title = "Nuestro equipo" }: Props) {
       </AsyncView>
     </Block>
   );
+}
+
+function safeStaffEmail(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const email = value.trim().replace(/[\u0000-\u001f\u007f]/g, "");
+  return /^[^\s@<>"'`]+@[^\s@<>"'`]+\.[^\s@<>"'`]+$/.test(email) ? email : null;
 }
 
 export function HonorsSection({ title = "Cuadro de honor", limit = 6 }: Props) {
