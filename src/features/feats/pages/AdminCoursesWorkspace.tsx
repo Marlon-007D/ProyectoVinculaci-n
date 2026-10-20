@@ -1,12 +1,13 @@
 import { useState } from 'react'
-import { ArrowRight, BookOpenText, FolderKanban, GraduationCap, House, Layers3, LogOut } from 'lucide-react'
+import { ArrowRight, Award, BookOpenText, CalendarDays, FolderKanban, GraduationCap, House, Layers3, LogOut, Newspaper } from 'lucide-react'
 import { AdminCourseCategoriesPage } from './AdminCourseCategoriesPage'
 import { AdminCoursesPage } from './AdminCoursesPage'
 import { useCourseCategories } from '../../courses/hooks/useCourseCategories'
 import { useSchoolCourses } from '../../courses/hooks/useSchoolCourses'
+import { AcademicContentManager } from '../../academic-content/components/AcademicContentManager'
 import styles from './AdminCoursesWorkspace.module.css'
 
-type Section = 'home' | 'categories' | 'courses'
+type Section = 'home' | 'categories' | 'courses' | 'news' | 'events' | 'honors'
 
 interface Props { onLogout: () => void }
 
@@ -18,11 +19,14 @@ export function AdminCoursesWorkspace({ onLogout }: Props) {
   return <div className={styles.shell}>
     <aside className={styles.aside} aria-label="Administración de cursos">
       <div className={styles.brand}><span className={styles.brandIcon}><GraduationCap size={21} /></span><span>Admin cursos</span></div>
-      <p className={styles.navLabel}>Catálogo</p>
+      <p className={styles.navLabel}>Administración</p>
       <nav className={styles.navigation} aria-label="Secciones del catálogo">
         <button type="button" className={section === 'home' ? styles.activeItem : styles.navItem} onClick={() => setSection('home')} aria-current={section === 'home' ? 'page' : undefined}><House size={19} /><span>Inicio</span></button>
         <button type="button" className={section === 'categories' ? styles.activeItem : styles.navItem} onClick={() => setSection('categories')} aria-current={section === 'categories' ? 'page' : undefined}><FolderKanban size={19} /><span>Categorías</span></button>
         <button type="button" className={section === 'courses' ? styles.activeItem : styles.navItem} onClick={() => setSection('courses')} aria-current={section === 'courses' ? 'page' : undefined}><BookOpenText size={19} /><span>Cursos</span></button>
+        <button type="button" className={section === 'news' ? styles.activeItem : styles.navItem} onClick={() => setSection('news')} aria-current={section === 'news' ? 'page' : undefined}><Newspaper size={19} /><span>Noticias</span></button>
+        <button type="button" className={section === 'events' ? styles.activeItem : styles.navItem} onClick={() => setSection('events')} aria-current={section === 'events' ? 'page' : undefined}><CalendarDays size={19} /><span>Eventos</span></button>
+        <button type="button" className={section === 'honors' ? styles.activeItem : styles.navItem} onClick={() => setSection('honors')} aria-current={section === 'honors' ? 'page' : undefined}><Award size={19} /><span>Cuadro de honor</span></button>
       </nav>
       <button className={styles.logout} type="button" onClick={onLogout}><LogOut size={18} /><span>Cerrar sesión</span></button>
     </aside>
@@ -45,7 +49,7 @@ export function AdminCoursesWorkspace({ onLogout }: Props) {
             <button type="button" className={styles.quickLink} onClick={() => setSection('courses')}><span className={`${styles.summaryIcon} ${styles.courseIcon}`}><BookOpenText size={20} /></span><span><strong>Administrar cursos</strong><small>Edita cursos, temarios y evaluaciones.</small></span><ArrowRight size={18} /></button>
           </div>
         </section>
-      </main> : section === 'categories' ? <AdminCourseCategoriesPage /> : <AdminCoursesPage />}
+      </main> : section === 'categories' ? <AdminCourseCategoriesPage /> : section === 'news' ? <AcademicContentManager kind="news" title="Noticias" singular="Noticia" /> : section === 'events' ? <AcademicContentManager kind="event" title="Eventos" singular="Evento" /> : section === 'honors' ? <AcademicContentManager kind="honor" title="Cuadro de honor" singular="Reconocimiento" /> : <AdminCoursesPage />}
     </div>
   </div>
 }

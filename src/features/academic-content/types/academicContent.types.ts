@@ -20,6 +20,7 @@ export interface AcademicContentEntry {
   periodId: string
   status: AcademicPublicationStatus
   date: string
+  time?: string
   location: string
   studentName: string
   grade: string

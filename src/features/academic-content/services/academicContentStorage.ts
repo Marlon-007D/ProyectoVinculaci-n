@@ -109,5 +109,6 @@ function persist(entries: AcademicContentEntry[]): AcademicContentEntry[] {
     : []
   const tenantEntries = entries.filter(entry => entry.institutionId === tenantInstitution.id)
   localStorage.setItem(storageKey, JSON.stringify([...otherTenantEntries, ...tenantEntries]))
+  window.dispatchEvent(new CustomEvent('academic-content-updated'))
   return tenantEntries
 }

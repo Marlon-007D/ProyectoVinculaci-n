@@ -66,7 +66,7 @@ function SocialSection({ title = "Síguenos" }: { title?: string }) {
 
 function Section({ s }: { s: PageSection }) {
   const p = s.properties;
-  const title = asString(p.title);
+  const title = s.type === "events" ? "Eventos" : asString(p.title);
   const limit = typeof p.limit === "number" && p.limit > 0 ? Math.min(p.limit, 24) : undefined;
 
   if (s.type === "banner" || s.type === "hero") {

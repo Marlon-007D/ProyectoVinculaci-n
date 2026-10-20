@@ -10,6 +10,22 @@ export function withSimulatorChoices(node: MenuNode): MenuNode {
   return { ...node, label: "Aprendizaje", url: "#", children: [coursesLink, simulatorLink, ...node.children] };
 }
 
+export function withHonorChoice(node: MenuNode): MenuNode {
+  if (node.label.trim().toLocaleLowerCase("es") !== "institución") return node;
+  const honorLink: MenuNode = {
+    ...node,
+    menu_id: `${node.menu_id}-honors-link`,
+    parent_id: node.menu_id,
+    children: [],
+    depth: node.depth + 1,
+    label: "Cuadro de honor",
+    url: "/?honores=1",
+    position: node.children.length,
+    is_external: false,
+  };
+  return { ...node, children: [...node.children, honorLink] };
+}
+
 function NavItem({ node }: { node: MenuNode }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLLIElement>(null);
@@ -79,7 +95,7 @@ export function Navigation({ tree }: { tree: MenuNode[] }) {
     <nav className="site-nav" aria-label="Principal">
       <ul className="site-nav__list">
         {tree.map((item) => {
-          const node = withSimulatorChoices(item);
+          const node = withHonorChoice(withSimulatorChoices(item));
           return <NavItem key={node.menu_id} node={node} />;
         })}
       </ul>

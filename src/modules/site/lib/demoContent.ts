@@ -394,7 +394,7 @@ export const demoSnapshots: Record<string, unknown> = {
     "position": 2,
     "is_visible": true,
     "properties": {
-     "title": "Agenda",
+     "title": "Eventos",
      "limit": 6
     }
    }

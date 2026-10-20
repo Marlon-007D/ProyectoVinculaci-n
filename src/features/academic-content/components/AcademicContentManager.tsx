@@ -15,7 +15,7 @@ import './AcademicContentManager.css'
 interface Props { kind: AcademicContentKind; title: string; singular: string; onPreview?: (entry: AcademicContentEntry) => void }
 
 const emptyEntry = (kind: AcademicContentKind, institutionId: string): AcademicContentEntry => ({
-  id: crypto.randomUUID(), institutionId, kind, title: '', description: '', periodId: '', status: 'draft', date: kind === 'news' || kind === 'event' ? todayISO() : '', location: '',
+  id: crypto.randomUUID(), institutionId, kind, title: '', description: '', periodId: '', status: 'draft', date: kind === 'news' || kind === 'event' ? todayISO() : '', time: kind === 'event' ? '' : undefined, location: '',
   studentName: '', grade: '', distinction: '', honorCategory: kind === 'honor' ? 'institutional' : undefined, startDate: '', endDate: '', isCurrent: false, sourceName: '', sourceUrl: '', updatedAt: new Date().toISOString(),
   author: kind === 'news' || kind === 'event' ? 'Brigitte Rodríguez' : undefined,
 })
@@ -188,7 +188,8 @@ export function AcademicContentManager({ kind, title, singular, onPreview }: Pro
   />
 
   return <section className="page-content academic-content-page">
-    {kind !== 'honor' && <header className="academic-page-heading"><div><h1>{title}</h1></div>
+    {kind !== 'honor' ? <header className="academic-page-heading"><div><h1>{title}</h1></div>
+    </header> : <header className="academic-page-heading honor-page-heading"><div><p className="honor-page-kicker">Reconocemos el esfuerzo y los logros de nuestros estudiantes</p><h1>{title}</h1><p>Administra las distinciones oficiales y los reconocimientos institucionales por período.</p></div><Button variant="primary" onClick={() => beginCreate()}><CirclePlus size={18} />Nuevo reconocimiento</Button>
     </header>}
     {notice && <p className="academic-notice" role="status">{notice}</p>}
     {kind === 'period' && <section className="current-period-card" aria-label="Período académico vigente">

@@ -47,5 +47,6 @@ export interface EventItem {
   title: string;
   description: string | null;
   event_date: string;
+  event_time?: string | null;
   location: string | null;
 }

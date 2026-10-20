@@ -238,7 +238,7 @@
   }
 
   .navigation {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(6, minmax(0, 1fr));
   }
 
   .navItem,
@@ -247,7 +247,7 @@
     min-height: 44px;
     gap: 7px;
     padding: 0 8px;
-    font-size: 12px;
+    font-size: 11px;
   }
 
   .home {
