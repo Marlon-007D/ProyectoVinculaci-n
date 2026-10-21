@@ -183,6 +183,10 @@ const standardQuestions: Record<'general' | 'authorization', StandardQuestion[]>
   ],
 }
 
+export function getStandardTemplateQuestionCodes(code: 'general' | 'authorization') {
+  return standardQuestions[code].map(question => question.code)
+}
+
 /**
  * Servicio del módulo. Recibe el cliente autenticado del contenedor de la app
  * y nunca crea una sesión propia; así reutiliza la autenticación del equipo.
@@ -296,6 +300,12 @@ export function createDeceFormService(client: SupabaseClient) {
     if (error) throw error
   }
 
+  async function activateFormTemplate(definitionId: string) {
+    const { error } = await client.from('form_definitions')
+      .update({ is_active: true, updated_at: new Date().toISOString() })
+      .eq('form_definition_id', definitionId)
+    if (error) throw error
+  }
   async function resetDefaultTemplates(institutionId: string) {
     await ensureStandardForms(institutionId)
     for (const [code, defaults] of Object.entries(standardQuestions)) {
@@ -343,6 +353,12 @@ export function createDeceFormService(client: SupabaseClient) {
         if (error) throw error
       }
     }
+    const { error: retireOtherTemplatesError } = await client.from('form_definitions')
+      .update({ is_active: false, updated_at: new Date().toISOString() })
+      .eq('institution_id', institutionId)
+      .eq('is_active', true)
+      .not('code', 'in', '(general,authorization)')
+    if (retireOtherTemplatesError) throw retireOtherTemplatesError
   }
 
   async function loadForm(institutionId: string, code: string, studentId: string, allowDraft = true) {
@@ -645,5 +661,5 @@ export function createDeceFormService(client: SupabaseClient) {
     if (error) throw error
   }
 
-  return { ensureStandardForms, listFormTemplates, createFormTemplate, deactivateFormTemplate, resetDefaultTemplates, loadForm, saveDraft, submit, markReviewed, reopenSubmission, loadOwnSubmission, addQuestion, removeQuestion }
+  return { ensureStandardForms, listFormTemplates, createFormTemplate, deactivateFormTemplate, activateFormTemplate, resetDefaultTemplates, loadForm, saveDraft, submit, markReviewed, reopenSubmission, loadOwnSubmission, addQuestion, removeQuestion }
 }

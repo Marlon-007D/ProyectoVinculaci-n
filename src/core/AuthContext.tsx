@@ -37,6 +37,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [mfaEnrollmentRequired, setMfaEnrollmentRequired] = useState(false);
   const [mfaFactorId, setMfaFactorId] = useState<string | null>(null);
   const [mfaChallengeId, setMfaChallengeId] = useState<string | null>(null);
+  const sessionRef = useRef<Session | null>(null);
   const mfaChallengeRef = useRef<{ factorId: string; challengeId: string } | null>(null);
 
   const checkMfaSession = async (nextSession: Session | null): Promise<boolean> => {
@@ -154,6 +155,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     let active = true;
 
     const applySession = async (nextSession: Session | null) => {
+      sessionRef.current = nextSession;
       setSession(nextSession);
       setUser(nextSession?.user ?? null);
       if (nextSession?.user) {
@@ -184,6 +186,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const { data: authListener } = supabase.auth.onAuthStateChange((event, nextSession) => {
       if (event === 'PASSWORD_RECOVERY') setIsPasswordRecovery(true);
+      const currentUserId = sessionRef.current?.user.id ?? null;
+      const nextUserId = nextSession?.user.id ?? null;
+      if (currentUserId && currentUserId === nextUserId && (event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION' || event === 'SIGNED_IN')) {
+        sessionRef.current = nextSession;
+        setSession(nextSession);
+        return;
+      }
+      sessionRef.current = nextSession;
       setLoading(true);
       setSession(nextSession);
       setUser(nextSession?.user ?? null);

@@ -115,10 +115,11 @@ function pageCursor(pdf: import('jspdf').jsPDF) {
   return { get y() { return y }, set y(next: number) { y = next }, text, heading, paragraph, ensure, measure }
 }
 
-function finish(pdf: import('jspdf').jsPDF, context: PdfContext, filename: string) {
+function finish(pdf: import('jspdf').jsPDF, context: PdfContext, filename: string, download = true) {
   const total = pdf.getNumberOfPages()
   for (let page = 1; page <= total; page += 1) { pdf.setPage(page); addHeader(pdf, context, page, total) }
-  pdf.save(filename)
+  if (download) { pdf.save(filename); return null }
+  return pdf.output('blob')
 }
 
 function signatureBlock(pdf: import('jspdf').jsPDF, cursor: ReturnType<typeof pageCursor>) {
@@ -204,14 +205,15 @@ async function profiles(client: SupabaseClient, ids: string[]) {
 }
 
 export function createDecePdfService(client: SupabaseClient) {
-  async function blankForm(institutionId: string, code: string, studentId?: string | null, profileId?: string) {
+  async function blankForm(institutionId: string, code: string, studentId?: string | null, profileId?: string, preview = false) {
     const context = await loadContext(client, institutionId, studentId); context.generatedBy = await loadGeneratedBy(client, profileId)
     const { definition, version } = await formDefinition(client, institutionId, code); context.title = definition.name
     const items = await questions(client, version.form_version_id)
     const pdf = await pdfDoc(definition.name); const start = cover(pdf, context, definition.name); const cursor = pageCursor(pdf); cursor.y = start
     renderQuestions(pdf, cursor, items, () => null, false)
-    signatureBlock(pdf, cursor); finish(pdf, context, `ficha-${code}-${new Date().toISOString().slice(0, 10).replaceAll('-', '')}.pdf`)
+    signatureBlock(pdf, cursor); const blob = finish(pdf, context, `ficha-${code}-${new Date().toISOString().slice(0, 10).replaceAll('-', '')}.pdf`, !preview)
     await audit(client, institutionId, profileId, 'form', definition.form_definition_id, 'form_blank')
+    return blob
   }
 
   async function filledForm(institutionId: string, submissionId: string, profileId?: string) {

@@ -21,6 +21,14 @@ function getDeceRouteSection() {
   return deceIndex >= 0 ? segments[deceIndex + 1] ?? '' : ''
 }
 
+function screenForRoute(section: string): DeceScreen {
+  if (section === 'estudiantes') return 'students'
+  if (section === 'casos') return 'cases'
+  if (section === 'plantillas') return 'forms'
+  if (section === 'envios') return 'submissions'
+  return 'home'
+}
+
 export default function DeceApp() {
   const appShellRef = useRef<HTMLDivElement>(null)
   const integration = useDeceData()
@@ -30,7 +38,7 @@ export default function DeceApp() {
   const [formSetupError, setFormSetupError] = useState('')
   const [formSetupRetry, setFormSetupRetry] = useState(0)
   const [formSetupLoading, setFormSetupLoading] = useState(true)
-  const [screen, setScreen] = useState<DeceScreen>(() => getDeceRouteSection() === 'estudiantes' ? 'students' : getDeceRouteSection() === 'casos' ? 'cases' : 'home')
+  const [screen, setScreen] = useState<DeceScreen>(() => screenForRoute(getDeceRouteSection()))
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
   const [caseStudentId, setCaseStudentId] = useState('')
   const [openCases, setOpenCases] = useState('—')
@@ -80,7 +88,7 @@ export default function DeceApp() {
   }, [integration, formSetupRetry])
 
   useEffect(() => {
-    const syncRoute = () => { const section = getDeceRouteSection(); setScreen(section === 'estudiantes' ? 'students' : section === 'casos' ? 'cases' : 'home') }
+    const syncRoute = () => { setScreen(screenForRoute(getDeceRouteSection())) }
     window.addEventListener('popstate', syncRoute)
     return () => window.removeEventListener('popstate', syncRoute)
   }, [])
@@ -151,7 +159,12 @@ export default function DeceApp() {
 
   const routeTo = (target: DeceScreen) => {
     const basePath = integration?.slug ? `/${integration.slug}/dece` : '/panel/dece'
-    history.pushState(null, '', target === 'students' ? `${basePath}/estudiantes` : target === 'cases' ? `${basePath}/casos` : basePath)
+    const targetPath = target === 'students' || target === 'custom-form' ? `${basePath}/estudiantes`
+      : target === 'cases' ? `${basePath}/casos`
+      : target === 'forms' ? `${basePath}/plantillas`
+      : target === 'submissions' ? `${basePath}/envios`
+      : basePath
+    history.pushState(null, '', targetPath)
     setScreen(target)
   }
 
