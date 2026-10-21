@@ -42,3 +42,6 @@ desktop.ini
 .vite/
 coverage/
 .vercel
+
+# Institutional registration documentation
+!docs/registro-institucional.md
