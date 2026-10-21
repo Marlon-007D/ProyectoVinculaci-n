@@ -1,7 +1,7 @@
 import { lazy, Suspense, type ReactNode } from "react";
 import { useInstitution } from "../../context/InstitutionContext";
 import { useAsync } from "../../hooks/useAsync";
-import { isModuleEnabled, type ExternalModule } from "../../services/moduleSettings";
+import { isModuleEnabled, isPublicModuleEnabled, type ExternalModule } from "../../services/moduleSettings";
 import { PortalSimulatorsPage } from "../../../../features/simulators/pages/PortalSimulatorsPage";
 
 export interface ExternalSectionProps {
@@ -50,13 +50,30 @@ export function ExternalSection({ type, title, properties }: { type: string; tit
 }
 
 function EnabledExternalSection({ type, title, properties }: { type: string; title?: string; properties?: Record<string, unknown> }) {
-  const { institutionId } = useInstitution();
+  const { institutionId, institution } = useInstitution();
   const entry = EXTERNAL_SECTIONS[type];
   const enabled = useAsync(
-    () => (entry ? isModuleEnabled(institutionId, entry.module) : Promise.resolve(false)),
-    [institutionId, type],
+    () => {
+      if (!entry) return Promise.resolve(false);
+      if (type === "dece_info") {
+        return institution?.slug ? isPublicModuleEnabled(institution.slug, "dece") : Promise.resolve(false);
+      }
+      return isModuleEnabled(institutionId, entry.module);
+    },
+    [institutionId, institution?.slug, type],
   );
   if (!entry) return null;
+  if (type === "dece_info" && enabled.state.status === "error") {
+    return (
+      <section className="site-section site-block">
+        <div className="site-container">
+          <p role="alert">No se pudo comprobar si el modulo DECE esta habilitado.</p>
+          {import.meta.env.DEV && <p className="site-muted">{enabled.state.error.message}</p>}
+          <button type="button" className="site-btn" onClick={enabled.reload}>Reintentar</button>
+        </div>
+      </section>
+    );
+  }
   if (enabled.state.status !== "success" || enabled.state.data !== true) return null;
   return <>{entry.render({ institutionId, title, properties })}</>;
 }
