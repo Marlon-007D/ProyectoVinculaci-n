@@ -1,0 +1,29 @@
+.header{position:sticky;top:0;z-index:50;background:#fff;border-bottom:1px solid #e0e8ee;color:#172b44}
+.topbar{min-height:40px;padding:8px max(24px,calc((100% - 1280px)/2));display:flex;justify-content:space-between;align-items:center;gap:16px;background:#0a233f;color:#a8e8df;font-size:12px;font-weight:600}
+.topbar select{max-width:min(48vw,320px);border:1px solid #ffffff40;border-radius:5px;background:#ffffff12;color:#fff;padding:3px 8px;font:inherit}
+.topbar option{color:#172b44}
+.mainRow{max-width:1280px;min-height:96px;margin:auto;padding:12px 24px;display:flex;align-items:center;justify-content:space-between;gap:20px}
+.brand{min-width:0;display:flex;align-items:center;gap:14px;color:#172b44;text-decoration:none}
+.badge{width:48px;height:48px;flex:none;display:grid;place-items:center;border:1px solid #dbe4ea;border-radius:10px;background:#0a233f;color:#fff;font-size:15px;font-weight:800;letter-spacing:.04em}
+.brandText{min-width:0;display:grid;gap:3px}
+.brandText strong{max-width:280px;overflow:hidden;color:#172b44;text-overflow:ellipsis;white-space:nowrap;font-size:16px;text-decoration:underline;text-underline-offset:2px}
+.brandText small{color:#64748b;font-size:10px;font-weight:700;letter-spacing:.06em}
+.desktopNav{display:flex;align-items:center;gap:8px}
+.desktopNav a{position:relative;padding:10px 14px;border:1px solid transparent;border-radius:10px;color:#2875c7;font-size:14px;font-weight:650;text-decoration:none;white-space:nowrap}
+.desktopNav a:hover{background:#f5f8fb}
+.desktopNav a[aria-current="page"]{border-color:#dcefe9;background:#f0faf8;color:#176b68}
+.desktopNav a[aria-current="page"]::after{position:absolute;right:35%;bottom:2px;left:35%;height:3px;border-radius:3px;background:#188b83;content:""}
+.account{display:flex;align-items:center;gap:12px;flex:none;border-left:1px solid #e6ebef;padding-left:14px}
+.identity{display:flex;align-items:center;gap:10px;min-width:0;color:inherit;text-decoration:none}
+.avatar{width:40px;height:40px;flex:none;display:grid;place-items:center;border-radius:50%;background:#0a233f;color:#fff;font-size:14px;font-weight:700}
+.identityText{display:grid;gap:2px;min-width:0}
+.identityText strong{max-width:160px;overflow:hidden;color:#334155;font-size:13px;text-decoration:underline;text-overflow:ellipsis;white-space:nowrap}
+.identityText small,.mobileIdentity small{color:#187d76;font-size:11px;font-weight:700}
+.signOut,.mobileIdentity button{border:0;background:transparent;color:#64748b;padding:8px 4px;font:inherit;cursor:pointer}
+.signOut:hover,.mobileIdentity button:hover{color:#b42335}
+.access{flex:none;padding:10px 14px;border:1px solid #b7ddd5;border-radius:9px;background:#effaf7;color:#165e5a;font-size:13px;font-weight:700;text-decoration:none}
+.menuButton{display:none;border:1px solid #d7e0e6;border-radius:8px;background:#fff;padding:8px 12px;color:#334155;font:inherit;font-size:12px;font-weight:700;cursor:pointer}
+.mobilePanel{display:none}
+@media(max-width:1120px){.mainRow{gap:12px;padding-inline:18px}.desktopNav{gap:2px}.desktopNav a{padding-inline:9px;font-size:13px}.brandText strong{max-width:210px}.identityText strong{max-width:120px}}
+@media(max-width:860px){.mainRow{min-height:76px}.desktopNav,.account,.access{display:none}.menuButton{display:block}.mobilePanel{display:grid;gap:12px;padding:12px 18px 16px;border-top:1px solid #e8edf1}.mobilePanel nav{display:grid;gap:4px}.mobilePanel nav a{padding:10px 12px;border-radius:8px;color:#334155;font-size:14px;font-weight:650;text-decoration:none}.mobilePanel nav a[aria-current="page"]{background:#effaf7;color:#176b68}.mobileIdentity{display:flex;align-items:center;justify-content:space-between;gap:12px;border-top:1px solid #edf0f2;padding:12px 4px 0}.mobileIdentity span{display:grid;gap:3px;min-width:0}.mobileIdentity strong{overflow:hidden;color:#334155;font-size:12px;text-overflow:ellipsis;white-space:nowrap}}
+@media(max-width:520px){.topbar{padding-inline:14px;font-size:10px}.mainRow{padding-inline:14px}.badge{width:42px;height:42px}.brand{gap:9px}.brandText strong{max-width:200px;font-size:14px}.brandText small{font-size:9px}}

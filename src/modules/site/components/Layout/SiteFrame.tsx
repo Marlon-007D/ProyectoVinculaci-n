@@ -11,10 +11,11 @@ interface Props {
   config: SiteConfig;
   menu: { state: AsyncState<MenuNode[]>; reload: () => void };
   homeUrl?: string;
+  header?: ReactNode;
   children: ReactNode;
 }
 
-export function SiteFrame({ config, menu, homeUrl, children }: Props) {
+export function SiteFrame({ config, menu, homeUrl, header, children }: Props) {
   const [params] = useSearchParams();
   const isStandaloneSimulator = Boolean(params.get("simulator"));
   const isStandaloneCourse = params.get("courses") === "1" && Boolean(params.get("course"));
@@ -22,7 +23,7 @@ export function SiteFrame({ config, menu, homeUrl, children }: Props) {
   return (
     <div className={`site-root${isStandaloneSimulator ? " site-root--simulator" : ""}${isStandaloneCourse ? " site-root--course" : ""}`} style={config.themeVars}>
       {!hideSiteChrome && <a className="site-skip" href="#contenido">Saltar al contenido</a>}
-      {!hideSiteChrome && <Header config={config} menu={menu} homeUrl={homeUrl} />}
+      {!hideSiteChrome && (header ?? <Header config={config} menu={menu} homeUrl={homeUrl} />)}
       <main id="contenido" tabIndex={-1} className={`site-main${isStandaloneSimulator ? " site-main--simulator" : ""}${isStandaloneCourse ? " site-main--course" : ""}`}>
         {children}
       </main>
