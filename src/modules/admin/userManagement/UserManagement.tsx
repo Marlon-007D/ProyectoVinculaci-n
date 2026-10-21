@@ -43,6 +43,7 @@ export const UserManagement: React.FC = () => {
   const [roles, setRoles] = useState<RoleOption[]>([]);
   const [members, setMembers] = useState<UserMember[]>([]);
   const [search, setSearch] = useState('');
+  const [roleFilter, setRoleFilter] = useState('');
   const [msg, setMsg] = useState('');
   const [feedbackType, setFeedbackType] = useState<'success' | 'error'>('success');
   const [loadError, setLoadError] = useState('');
@@ -102,11 +103,14 @@ export const UserManagement: React.FC = () => {
     const normalizedSearch = search.trim().toLocaleLowerCase();
     return members.filter((member) => {
       const matchesInstitution = !isPlatformAdmin || !institutionId || member.institution_id === institutionId;
+      const matchesRole = !roleFilter || member.role_name === roleFilter;
       const matchesSearch = !normalizedSearch || [member.email, member.first_name, member.last_name, member.institution_name, formatRole(member.role_name)]
         .some((value) => value?.toLocaleLowerCase().includes(normalizedSearch));
-      return matchesInstitution && matchesSearch;
+      return matchesInstitution && matchesRole && matchesSearch;
     });
-  }, [institutionId, isPlatformAdmin, members, search]);
+  }, [institutionId, isPlatformAdmin, members, roleFilter, search]);
+
+  const filterRoles = useMemo(() => [...new Set(members.map((member) => member.role_name))].sort(), [members]);
 
   const pendingMfaCount = filteredMembers.filter((member) => member.mfa_required && !member.mfa_enabled).length;
 
@@ -246,7 +250,7 @@ export const UserManagement: React.FC = () => {
           <span className={styles.secureLabel}><span aria-hidden="true">●</span> Operación protegida</span>
         </div>
         {!isPlatformAdmin && <p className={styles.scopeNotice}>Las asignaciones se aplican únicamente a <strong>{availableInstitutions[0]?.name ?? 'tu institución asignada'}</strong>.</p>}
-        <form onSubmit={handleAssignUser} className={styles.form}>
+        <form onSubmit={handleAssignUser} className={styles.form} aria-busy={saving}>
           <label className={styles.field} htmlFor="member-email">Correo de la cuenta
             <input id="member-email" type="email" autoComplete="email" placeholder="persona@institucion.edu.ec" value={email} onChange={(event) => setEmail(event.target.value)} required className={styles.input} />
           </label>
@@ -272,9 +276,10 @@ export const UserManagement: React.FC = () => {
             </select>
           </label>}
           <button type="submit" disabled={saving || loading || availableInstitutions.length === 0} className={styles.btnSubmit}>
-            {saving ? 'Guardando…' : 'Asignar rol'}
+            {saving && <span className={styles.buttonSpinner} aria-hidden="true" />}{saving ? ' Preparando invitación…' : 'Asignar rol'}
           </button>
         </form>
+        {saving && <p className={styles.progressNotice} role="status" aria-live="polite">Verificando la cuenta y preparando la asignación o invitación segura…</p>}
         {msg && <p role={feedbackType === 'error' ? 'alert' : 'status'} className={feedbackType === 'error' ? styles.errorFeedback : styles.successFeedback}>{msg}</p>}
       </section>
 
@@ -287,6 +292,11 @@ export const UserManagement: React.FC = () => {
               <option value="">Todas las instituciones</option>
               {availableInstitutions.map((institution) => <option key={institution.institution_id} value={institution.institution_id}>{institution.name}</option>)}
             </select>}
+            <label className={styles.srOnly} htmlFor="membership-role-filter">Filtrar por rol</label>
+            <select id="membership-role-filter" value={roleFilter} onChange={(event) => setRoleFilter(event.target.value)} className={styles.filterSelect}>
+              <option value="">Todos los roles</option>
+              {filterRoles.map((role) => <option key={role} value={role}>{formatRole(role)}</option>)}
+            </select>
             <label className={styles.srOnly} htmlFor="membership-search">Buscar usuarios</label>
             <input id="membership-search" type="search" placeholder="Buscar correo, nombre o rol" value={search} onChange={(event) => setSearch(event.target.value)} className={styles.searchInput} />
           </div>

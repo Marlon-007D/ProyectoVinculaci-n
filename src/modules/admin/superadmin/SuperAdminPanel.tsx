@@ -31,6 +31,7 @@ export const SuperAdminPanel: React.FC = () => {
   const [newInstName, setNewInstName] = useState('');
   const [newInstSlug, setNewInstSlug] = useState('');
   const [moduleSettings, setModuleSettings] = useState<ModuleSetting[]>([]);
+  const [institutionModuleSettings, setInstitutionModuleSettings] = useState<ModuleSetting[]>([]);
   const [loadingModules, setLoadingModules] = useState(false);
   const [moduleLoadError, setModuleLoadError] = useState('');
   const [savingModule, setSavingModule] = useState<string | null>(null);
@@ -45,12 +46,16 @@ export const SuperAdminPanel: React.FC = () => {
   const activeCount = institutions.filter((institution) => institution.is_active).length;
 
   const fetchInstitutions = async () => {
-    const { data, error } = await supabase
-      .from('institutions')
-      .select('institution_id, name, slug, is_active')
-      .order('name');
-    if (error) setLoadError('No se pudieron cargar las instituciones. Revisa la conexión y los permisos de tu cuenta.');
-    else { setInstitutions(data ?? []); setLoadError(''); }
+    const [institutionResult, settingsResult] = await Promise.all([
+      supabase.from('institutions').select('institution_id, name, slug, is_active').order('name'),
+      supabase.rpc('get_accessible_module_settings'),
+    ]);
+    if (institutionResult.error) setLoadError('No se pudieron cargar las instituciones. Revisa la conexión y los permisos de tu cuenta.');
+    else {
+      setInstitutions(institutionResult.data ?? []);
+      setInstitutionModuleSettings(settingsResult.error ? [] : (settingsResult.data ?? []) as ModuleSetting[]);
+      setLoadError('');
+    }
     setLoading(false);
   };
 
@@ -123,12 +128,23 @@ export const SuperAdminPanel: React.FC = () => {
         details: { new_state: !currentState },
       });
       await fetchModuleSettings(institutionId);
+      await fetchInstitutions();
       reloadInstitutions();
     } catch {
       setMessage('No se pudo actualizar el módulo. Revisa los permisos de la cuenta.');
     } finally {
       setSavingModule(null);
     }
+  };
+
+  const activeModuleLabels = (institutionId: string) => institutionModuleSettings
+    .filter((setting) => setting.institution_id === institutionId && setting.is_enabled && setting.module_name !== 'inicio')
+    .map((setting) => INSTITUTION_MODULES.find((module) => module.name === setting.module_name)?.label ?? setting.module_name);
+
+  const openInstitutionPreview = (slug: string) => {
+    const previewUrl = new URL('/portal', window.location.origin);
+    previewUrl.searchParams.set('institution', slug);
+    window.open(previewUrl.toString(), '_blank', 'noopener,noreferrer');
   };
 
   const handleDeleteInstitution = async () => {
@@ -217,15 +233,17 @@ export const SuperAdminPanel: React.FC = () => {
         {loading ? <div className={styles.loadingState}>Cargando instituciones…</div> : (
           <div className={styles.tableWrap}>
             <table className={styles.table}>
-              <thead><tr><th>Institución</th><th>Identificador</th><th>Estado</th><th>Acciones</th></tr></thead>
+              <thead><tr><th>Institución</th><th>Identificador</th><th>Módulos activos</th><th>Estado</th><th>Acciones</th></tr></thead>
               <tbody>
-                {!loadError && institutions.length === 0 && <tr><td colSpan={4} className={styles.emptyState}>Aún no hay instituciones registradas. Puedes crear la primera desde el formulario.</td></tr>}
+                {!loadError && institutions.length === 0 && <tr><td colSpan={5} className={styles.emptyState}>Aún no hay instituciones registradas. Puedes crear la primera desde el formulario.</td></tr>}
                 {institutions.map((inst) => (
                   <tr key={inst.institution_id}>
                     <td><div className={styles.institutionCell}><span className={styles.institutionMark} aria-hidden="true">{inst.name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase()}</span><span><span className={styles.institutionName}>{inst.name}</span><span className={styles.institutionMeta}>Unidad educativa</span></span></div></td>
                     <td><span className={styles.slug}>{inst.slug}</span></td>
+                    <td><div className={styles.moduleBadges}>{activeModuleLabels(inst.institution_id).length > 0 ? activeModuleLabels(inst.institution_id).map((label) => <span key={label} className={styles.moduleBadge}>{label}</span>) : <span className={styles.noModules}>Sin módulos activos</span>}</div></td>
                     <td><span className={`${styles.status} ${!inst.is_active ? styles.statusInactive : ''}`}>{inst.is_active ? 'Activa' : 'Inactiva'}</span></td>
                     <td><div className={styles.actions}>
+                      <button type="button" onClick={() => openInstitutionPreview(inst.slug)} className={styles.btnPreview}>Vista previa de institución</button>
                       <button type="button" onClick={() => { setSelectedInstId(inst.institution_id); fetchModuleSettings(inst.institution_id); }} className={styles.btnSelect}>Gestionar módulos</button>
                       <button type="button" onClick={() => setInstitutionToDelete(inst)} className={styles.btnDelete} aria-label={`Eliminar ${inst.name}`}>Eliminar</button>
                     </div></td>

@@ -155,11 +155,11 @@ function AccessScreen() {
           <p className="mt-2 max-w-md text-[13px] leading-6 text-[#73848d]">{registerMode ? 'Registra tus datos; los permisos se habilitan cuando te asignen un rol.' : accessType === 'superadmin' ? 'Administra instituciones y asigna roles desde el acceso global.' : 'Ingresa de forma segura al espacio y las herramientas de tu institución.'}</p>
         </div>
         <div className="mb-6 grid grid-cols-2 gap-2 rounded-xl bg-[#f3f7f8] p-1.5">
-          <button type="button" aria-pressed={accessType === 'superadmin'} onClick={() => { setAccessType('superadmin'); setRegisterMode(false); setError(''); }} className={`rounded-lg px-3 py-3 text-left transition ${accessType === 'superadmin' ? 'bg-white text-[#0a233f] shadow-sm ring-1 ring-[#dce6ea]' : 'text-[#657981] hover:bg-white/70'}`}>
+          <button type="button" aria-pressed={accessType === 'superadmin'} onClick={() => { setAccessType('superadmin'); setRegisterMode(false); setError(''); }} className={`rounded-lg px-3 py-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#398278] focus-visible:ring-offset-2 ${accessType === 'superadmin' ? 'bg-white text-[#0a233f] shadow-sm ring-1 ring-[#dce6ea]' : 'text-[#657981] hover:bg-white/70'}`}>
             <span className="block text-xs font-bold">Superadministrador</span>
             <span className="mt-1 block text-[10px] leading-relaxed">Acceso global</span>
           </button>
-          <button type="button" aria-pressed={accessType === 'institutional'} onClick={() => { setAccessType('institutional'); setError(''); }} className={`rounded-lg px-3 py-3 text-left transition ${accessType === 'institutional' ? 'bg-white text-[#0a233f] shadow-sm ring-1 ring-[#dce6ea]' : 'text-[#657981] hover:bg-white/70'}`}>
+          <button type="button" aria-pressed={accessType === 'institutional'} onClick={() => { setAccessType('institutional'); setError(''); }} className={`rounded-lg px-3 py-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#398278] focus-visible:ring-offset-2 ${accessType === 'institutional' ? 'bg-white text-[#0a233f] shadow-sm ring-1 ring-[#dce6ea]' : 'text-[#657981] hover:bg-white/70'}`}>
             <span className="block text-xs font-bold">Acceso institucional</span>
             <span className="mt-1 block text-[10px] leading-relaxed">Ingreso por rol asignado</span>
           </button>
@@ -179,16 +179,16 @@ function AccessScreen() {
         <form onSubmit={registerMode ? submitRegistration : submit} className="flex flex-col gap-2">
           {registerMode && <>
             <label htmlFor="register-first-name" className="mt-2 text-[13px] font-semibold text-[#314953]">Nombres</label>
-            <input id="register-first-name" type="text" autoComplete="given-name" value={firstName} onChange={event => setFirstName(event.target.value)} required className="h-11 rounded-lg border border-[#d8e1e4] bg-white px-3 text-[#243c46]" placeholder="Nombres" />
+            <input id="register-first-name" type="text" autoComplete="given-name" value={firstName} onChange={event => setFirstName(event.target.value)} required className="h-11 rounded-lg border border-[#d8e1e4] bg-white px-3 text-[#243c46] outline-none focus:border-[#398278] focus:ring-2 focus:ring-[#398278]/20" placeholder="Nombres" />
             <label htmlFor="register-last-name" className="mt-2 text-[13px] font-semibold text-[#314953]">Apellidos</label>
-            <input id="register-last-name" type="text" autoComplete="family-name" value={lastName} onChange={event => setLastName(event.target.value)} required className="h-11 rounded-lg border border-[#d8e1e4] bg-white px-3 text-[#243c46]" placeholder="Apellidos" />
+            <input id="register-last-name" type="text" autoComplete="family-name" value={lastName} onChange={event => setLastName(event.target.value)} required className="h-11 rounded-lg border border-[#d8e1e4] bg-white px-3 text-[#243c46] outline-none focus:border-[#398278] focus:ring-2 focus:ring-[#398278]/20" placeholder="Apellidos" />
           </>}
           <label htmlFor="email" className="mt-2 text-[13px] font-semibold text-[#314953]">Correo electrónico</label>
-          <input id="email" type="email" autoComplete="username" value={email} onChange={event => setEmail(event.target.value)} required className="h-11 rounded-lg border border-[#d8e1e4] bg-white px-3 text-[#243c46] focus-visible:outline" placeholder="admin@institucion.edu.ec" />
+          <input id="email" type="email" autoComplete="username" value={email} onChange={event => setEmail(event.target.value)} required className="h-11 rounded-lg border border-[#d8e1e4] bg-white px-3 text-[#243c46] outline-none focus:border-[#398278] focus:ring-2 focus:ring-[#398278]/20" placeholder="admin@institucion.edu.ec" />
           {(registerMode || loginMethod === 'password') && <>
           <label htmlFor="password" className="mt-2 text-[13px] font-semibold text-[#314953]">Contraseña</label>
           <div className="relative">
-            <input id="password" type={showPassword ? 'text' : 'password'} autoComplete={registerMode ? 'new-password' : 'current-password'} minLength={registerMode ? 8 : undefined} value={password} onChange={event => setPassword(event.target.value)} required className="h-11 w-full rounded-lg border border-[#d8e1e4] bg-white px-3 pr-12 text-[#243c46]" placeholder="••••••••" />
+            <input id="password" type={showPassword ? 'text' : 'password'} autoComplete={registerMode ? 'new-password' : 'current-password'} minLength={registerMode ? 8 : undefined} value={password} onChange={event => setPassword(event.target.value)} required className="h-11 w-full rounded-lg border border-[#d8e1e4] bg-white px-3 pr-12 text-[#243c46] outline-none focus:border-[#398278] focus:ring-2 focus:ring-[#398278]/20" placeholder="••••••••" />
             <button type="button" aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'} aria-pressed={showPassword} onClick={() => setShowPassword(value => !value)} className="absolute inset-y-0 right-0 grid w-11 place-items-center text-[#647b84] hover:text-[#0a233f] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#398278]">
               <svg viewBox="0 0 24 24" aria-hidden="true" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M2.5 12s3.4-6 9.5-6 9.5 6 9.5 6-3.4 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.6"/><path strokeLinecap="round" d="m4 4 16 16" className={showPassword ? 'hidden' : ''}/></svg>
             </button>
@@ -196,7 +196,7 @@ function AccessScreen() {
           </>}
           {registerMode && <>
             <label htmlFor="confirm-register-password" className="mt-2 text-[13px] font-semibold text-[#314953]">Confirmar contraseña</label>
-            <input id="confirm-register-password" type="password" autoComplete="new-password" minLength={8} value={confirmation} onChange={event => setConfirmation(event.target.value)} required className="h-11 rounded-lg border border-[#d8e1e4] bg-white px-3 text-[#243c46]" />
+            <input id="confirm-register-password" type="password" autoComplete="new-password" minLength={8} value={confirmation} onChange={event => setConfirmation(event.target.value)} required className="h-11 rounded-lg border border-[#d8e1e4] bg-white px-3 text-[#243c46] outline-none focus:border-[#398278] focus:ring-2 focus:ring-[#398278]/20" />
           </>}
           {error && <p role="alert" className="rounded-lg border border-[#f2d1ce] bg-[#fff1f0] px-4 py-3 text-[13px] text-[#9b3838]">{error}</p>}
           {expiredAuthLink && <p role="alert" className="rounded-lg border border-[#f2d1ce] bg-[#fff1f0] px-4 py-3 text-[13px] text-[#9b3838]">Ese enlace vencio o ya se uso. Solicita uno nuevo desde Recuperar contrasena.</p>}
