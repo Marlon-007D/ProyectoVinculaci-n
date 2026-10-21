@@ -1,14 +1,13 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { BrowserRouter, Link, Navigate, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './core/AuthContext';
 import { TenantProvider } from './core/TenantContext';
 import { MfaEnrollment, SuperAdminPanel, UserManagement } from './modules/admin';
 import './App.css';
 
 function AccessScreen() {
-  const { login, register, requestLoginLink, requestPasswordReset } = useAuth();
-  const [accessType, setAccessType] = useState<'superadmin' | 'institutional'>('institutional');
-  const [loginMethod, setLoginMethod] = useState<'password' | 'email_totp'>('password');
+  const { login, register, requestPasswordReset } = useAuth();
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -17,7 +16,6 @@ function AccessScreen() {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [resetSent, setResetSent] = useState(false);
-  const [loginLinkSent, setLoginLinkSent] = useState(false);
   const [registerMode, setRegisterMode] = useState(false);
   const [confirmation, setConfirmation] = useState('');
   const [registered, setRegistered] = useState(false);
@@ -39,16 +37,10 @@ function AccessScreen() {
     setBusy(true);
     setError('');
     try {
-      if (!registerMode && loginMethod === 'email_totp') {
-        const result = await requestLoginLink(email.trim().toLowerCase());
-        if (result.error) setError(`No se pudo enviar el enlace de acceso: ${result.error.message}`);
-        else setLoginLinkSent(true);
-        return;
-      }
       const result = await login(email.trim(), password);
       if (result.error) {
         setError('No se pudo iniciar sesión. Verifica tus credenciales e inténtalo de nuevo.');
-      }
+      } else navigate('/panel/admin', { replace: true });
     } catch {
       setError('No fue posible conectar con el servicio de autenticación.');
     } finally {
@@ -151,31 +143,9 @@ function AccessScreen() {
         </div>
         <div className="mb-6">
           <p className="mb-2 text-[10px] font-bold tracking-[0.16em] text-[#398278]">PORTAL INSTITUCIONAL</p>
-          <h1 className="font-sans text-[27px] font-semibold leading-tight tracking-[-0.035em] text-[#102d42] sm:text-[30px]">{registerMode ? 'Crea tu cuenta' : accessType === 'superadmin' ? 'Ingreso de superadministrador' : 'Bienvenido de nuevo'}</h1>
-          <p className="mt-2 max-w-md text-[13px] leading-6 text-[#73848d]">{registerMode ? 'Registra tus datos; los permisos se habilitan cuando te asignen un rol.' : accessType === 'superadmin' ? 'Administra instituciones y asigna roles desde el acceso global.' : 'Ingresa de forma segura al espacio y las herramientas de tu institución.'}</p>
+          <h1 className="font-sans text-[27px] font-semibold leading-tight tracking-[-0.035em] text-[#102d42] sm:text-[30px]">{registerMode ? 'Crea tu cuenta' : 'Ingreso a la Plataforma Institucional'}</h1>
+          <p className="mt-2 max-w-md text-[13px] leading-6 text-[#73848d]">{registerMode ? 'Registra tus datos; los permisos se habilitan cuando te asignen un rol.' : 'Ingresa con tus credenciales. La plataforma identifica tu rol y te lleva automáticamente a tu espacio de trabajo.'}</p>
         </div>
-        <div className="mb-6 grid grid-cols-2 gap-2 rounded-xl bg-[#f3f7f8] p-1.5">
-          <button type="button" aria-pressed={accessType === 'superadmin'} onClick={() => { setAccessType('superadmin'); setRegisterMode(false); setError(''); }} className={`rounded-lg px-3 py-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#398278] focus-visible:ring-offset-2 ${accessType === 'superadmin' ? 'bg-white text-[#0a233f] shadow-sm ring-1 ring-[#dce6ea]' : 'text-[#657981] hover:bg-white/70'}`}>
-            <span className="block text-xs font-bold">Superadministrador</span>
-            <span className="mt-1 block text-[10px] leading-relaxed">Acceso global</span>
-          </button>
-          <button type="button" aria-pressed={accessType === 'institutional'} onClick={() => { setAccessType('institutional'); setError(''); }} className={`rounded-lg px-3 py-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#398278] focus-visible:ring-offset-2 ${accessType === 'institutional' ? 'bg-white text-[#0a233f] shadow-sm ring-1 ring-[#dce6ea]' : 'text-[#657981] hover:bg-white/70'}`}>
-            <span className="block text-xs font-bold">Acceso institucional</span>
-            <span className="mt-1 block text-[10px] leading-relaxed">Ingreso por rol asignado</span>
-          </button>
-        </div>
-        {!registerMode && <>
-          <p className="mb-2 text-[10px] font-bold tracking-[0.12em] text-[#647b84]">ELIGE CÓMO INICIAR SESIÓN</p>
-          <div className="mb-4 grid grid-cols-2 gap-2">
-            <button type="button" aria-pressed={loginMethod === 'password'} onClick={() => { setLoginMethod('password'); setLoginLinkSent(false); setError(''); }} className={`rounded-xl border p-3 text-left transition ${loginMethod === 'password' ? 'border-[#6a91b5] bg-[#f3f8fc] text-[#0a233f] shadow-[0_4px_14px_rgba(10,35,63,0.06)]' : 'border-[#dce6ea] text-[#657981] hover:bg-[#f8fafb]'}`}>
-              <span className="block text-xs font-bold">Contraseña</span><span className="mt-1 block text-[10px] leading-4 opacity-75">Ingreso directo</span>
-            </button>
-            <button type="button" aria-pressed={loginMethod === 'email_totp'} onClick={() => { setLoginMethod('email_totp'); setLoginLinkSent(false); setError(''); }} className={`rounded-xl border p-3 text-left transition ${loginMethod === 'email_totp' ? 'border-[#6a91b5] bg-[#f3f8fc] text-[#0a233f] shadow-[0_4px_14px_rgba(10,35,63,0.06)]' : 'border-[#dce6ea] text-[#657981] hover:bg-[#f8fafb]'}`}>
-              <span className="block text-xs font-bold">Correo + TOTP</span><span className="mt-1 block text-[10px] leading-4 opacity-75">Enlace seguro y app</span>
-            </button>
-          </div>
-          {loginMethod === 'email_totp' && <p className="mb-3 rounded-lg border border-[#d5e2ee] bg-[#f4f8fc] px-3 py-2.5 text-xs leading-relaxed text-[#526b82]">Te enviaremos un enlace al correo. Al abrirlo, confirmarás el primer paso y luego ingresarás el código de tu app autenticadora.</p>}
-        </>}
         <form onSubmit={registerMode ? submitRegistration : submit} className="flex flex-col gap-2">
           {registerMode && <>
             <label htmlFor="register-first-name" className="mt-2 text-[13px] font-semibold text-[#314953]">Nombres</label>
@@ -184,11 +154,15 @@ function AccessScreen() {
             <input id="register-last-name" type="text" autoComplete="family-name" value={lastName} onChange={event => setLastName(event.target.value)} required className="h-11 rounded-lg border border-[#d8e1e4] bg-white px-3 text-[#243c46] outline-none focus:border-[#398278] focus:ring-2 focus:ring-[#398278]/20" placeholder="Apellidos" />
           </>}
           <label htmlFor="email" className="mt-2 text-[13px] font-semibold text-[#314953]">Correo electrónico</label>
-          <input id="email" type="email" autoComplete="username" value={email} onChange={event => setEmail(event.target.value)} required className="h-11 rounded-lg border border-[#d8e1e4] bg-white px-3 text-[#243c46] outline-none focus:border-[#398278] focus:ring-2 focus:ring-[#398278]/20" placeholder="admin@institucion.edu.ec" />
-          {(registerMode || loginMethod === 'password') && <>
+          <div className="relative">
+          <svg aria-hidden="true" viewBox="0 0 24 24" className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-[#82949c]" fill="none" stroke="currentColor" strokeWidth="1.7"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/></svg>
+          <input id="email" type="email" autoComplete="username" value={email} onChange={event => setEmail(event.target.value)} required className="h-11 w-full rounded-lg border border-[#d8e1e4] bg-white pl-10 pr-3 text-[#243c46] outline-none focus:border-[#398278] focus:ring-2 focus:ring-[#398278]/20" placeholder="admin@institucion.edu.ec" />
+          </div>
+          {(registerMode || true) && <>
           <label htmlFor="password" className="mt-2 text-[13px] font-semibold text-[#314953]">Contraseña</label>
           <div className="relative">
-            <input id="password" type={showPassword ? 'text' : 'password'} autoComplete={registerMode ? 'new-password' : 'current-password'} minLength={registerMode ? 8 : undefined} value={password} onChange={event => setPassword(event.target.value)} required className="h-11 w-full rounded-lg border border-[#d8e1e4] bg-white px-3 pr-12 text-[#243c46] outline-none focus:border-[#398278] focus:ring-2 focus:ring-[#398278]/20" placeholder="••••••••" />
+            <svg aria-hidden="true" viewBox="0 0 24 24" className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-[#82949c]" fill="none" stroke="currentColor" strokeWidth="1.7"><rect x="4" y="10" width="16" height="11" rx="2"/><path strokeLinecap="round" d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+            <input id="password" type={showPassword ? 'text' : 'password'} autoComplete={registerMode ? 'new-password' : 'current-password'} minLength={registerMode ? 8 : undefined} value={password} onChange={event => setPassword(event.target.value)} required className="h-11 w-full rounded-lg border border-[#d8e1e4] bg-white pl-10 pr-12 text-[#243c46] outline-none focus:border-[#398278] focus:ring-2 focus:ring-[#398278]/20" placeholder="••••••••" />
             <button type="button" aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'} aria-pressed={showPassword} onClick={() => setShowPassword(value => !value)} className="absolute inset-y-0 right-0 grid w-11 place-items-center text-[#647b84] hover:text-[#0a233f] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#398278]">
               <svg viewBox="0 0 24 24" aria-hidden="true" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M2.5 12s3.4-6 9.5-6 9.5 6 9.5 6-3.4 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.6"/><path strokeLinecap="round" d="m4 4 16 16" className={showPassword ? 'hidden' : ''}/></svg>
             </button>
@@ -202,16 +176,15 @@ function AccessScreen() {
           {expiredAuthLink && <p role="alert" className="rounded-lg border border-[#f2d1ce] bg-[#fff1f0] px-4 py-3 text-[13px] text-[#9b3838]">Ese enlace vencio o ya se uso. Solicita uno nuevo desde Recuperar contrasena.</p>}
           {resetSent && <p role="status" className="rounded-lg border border-[#cce7df] bg-[#f0faf6] px-4 py-3 text-[13px] text-[#286b58]">Si la cuenta existe, recibiras un enlace para crear una contrasena nueva. Revisa tambien spam; los enlaces anteriores pueden vencer al solicitar otro.</p>}
           {registered && <p role="status" className="rounded-lg border border-[#d5e2ee] bg-[#f3f8fc] px-4 py-3 text-[13px] text-[#245b88]">{registrationNotice}</p>}
-          {loginLinkSent && <p role="status" className="rounded-lg border border-[#cce7df] bg-[#f0faf6] px-4 py-3 text-[13px] text-[#286b58]">Enlace enviado. Revisa tu correo y abre el enlace en este navegador; después escribe el código actual de tu app autenticadora.</p>}
           <button disabled={busy} className="mt-1 h-[45px] rounded-lg bg-brand font-bold text-white transition-colors hover:bg-brand-dark disabled:cursor-wait disabled:opacity-65">
-            {busy ? 'Procesando…' : registerMode ? 'Crear cuenta' : loginMethod === 'email_totp' ? 'Enviar enlace de acceso' : 'Iniciar sesión'}
+            {busy ? 'Procesando…' : registerMode ? 'Crear cuenta' : 'Iniciar sesión'}
           </button>
         </form>
         {!registerMode && <button type="button" disabled={busy} onClick={() => void sendResetLink()} className="mt-4 w-full text-center text-sm font-semibold text-brand underline-offset-4 hover:underline disabled:opacity-60">¿Olvidaste tu contraseña? Recuperar por correo</button>}
-        {accessType === 'institutional' && <button type="button" disabled={busy} onClick={() => { setRegisterMode(value => !value); setLoginMethod('password'); setLoginLinkSent(false); setError(''); setRegistered(false); setResetSent(false); setConfirmation(''); }} className="mt-3 w-full text-center text-sm font-semibold text-brand underline-offset-4 hover:underline disabled:opacity-60">
+        <button type="button" disabled={busy} onClick={() => { setRegisterMode(value => !value); setError(''); setRegistered(false); setResetSent(false); setConfirmation(''); }} className="mt-3 w-full text-center text-sm font-semibold text-brand underline-offset-4 hover:underline disabled:opacity-60">
           {registerMode ? 'Ya tengo cuenta; iniciar sesión' : '¿Aún no tienes cuenta? Regístrate'}
-        </button>}
-        {accessType === 'institutional' && <p className="mb-0 mt-5 text-center text-[11px] text-[#8b989d]">El registro no asigna permisos automáticamente.</p>}
+        </button>
+        <p className="mb-0 mt-5 text-center text-[11px] text-[#8b989d]">El acceso se habilita según los permisos asignados a tu cuenta.</p>
       </section>
       </div>
     </main>
@@ -279,6 +252,8 @@ function PasswordRecoveryScreen() {
 
 export function AdminWorkspace() {
   const { user, role, roleError, loading, isPasswordRecovery } = useAuth();
+  const location = useLocation();
+  const isSuperAdminRoute = location.pathname.startsWith('/panel/superadmin') || location.pathname.startsWith('/system-admin');
 
   if (isPasswordRecovery) return <PasswordRecoveryScreen />;
 
@@ -294,6 +269,11 @@ export function AdminWorkspace() {
   if (!user) {
     return <AccessScreen />;
   }
+
+  if (roleError) return <main className="mx-auto max-w-2xl px-4 py-12"><section className="rounded-xl border border-[#eadfc4] bg-white p-5 text-sm text-[#65573c] shadow-sm"><h1 className="mb-2 text-lg font-bold text-ink">No se pudo verificar tu acceso</h1><p className="mb-0">{roleError}</p></section></main>;
+  if (!role) return <div className="flex min-h-[40vh] items-center justify-center gap-3 text-sm text-[#53656e]"><span className="size-[17px] animate-spin rounded-full border-2 border-[#dce7e7] border-t-[#398278]" />Verificando permisos…</div>;
+  if (role === 'super_admin' && !isSuperAdminRoute) return <Navigate to="/panel/superadmin" replace />;
+  if (role && role !== 'super_admin' && isSuperAdminRoute) return <Navigate to="/panel/admin" replace />;
 
   return (
     <div className="mx-auto max-w-[1180px] px-4 py-6 sm:px-[30px]">
@@ -400,6 +380,8 @@ function AdminRoutes() {
       <Route path="/panel" element={<AdminWorkspace />} />
       <Route path="/admin" element={<Navigate to="/panel/admin" replace />} />
       <Route path="/panel/admin" element={<AdminWorkspace />} />
+      <Route path="/panel/superadmin" element={<AdminWorkspace />} />
+      <Route path="/system-admin" element={<Navigate to="/panel/superadmin" replace />} />
       <Route path="/proyectos/*" element={<IntegrationPlaceholder moduleName="Proyectos" />} />
       <Route path="/panel/proyectos/*" element={<IntegrationPlaceholder moduleName="Proyectos" />} />
       <Route path="/dece/*" element={<IntegrationPlaceholder moduleName="DECE" />} />
