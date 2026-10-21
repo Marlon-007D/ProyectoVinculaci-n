@@ -33,7 +33,7 @@ export default function TemplateManagementPage() {
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [name, setName] = useState('')
-  const [createOpen, setCreateOpen] = useState(false)
+  const [createOpen, setCreateOpen] = useState(() => new URLSearchParams(location.search).get('crear') === '1')
   const [pdfUrl, setPdfUrl] = useState('')
   const [pdfBusy, setPdfBusy] = useState(false)
   const [pdfMessage, setPdfMessage] = useState('')

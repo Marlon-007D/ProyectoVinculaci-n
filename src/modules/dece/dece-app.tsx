@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import styles from './dece.module.css'
 import { ProvisionalShell } from './components/provisional-shell'
-import { dashboardStats } from './data'
 import { AuthorizationFormPage } from './pages/authorization-form'
 import { DashboardPage } from './pages/dashboard'
 import { GeneralFormPage } from './pages/general-form'
@@ -32,16 +31,13 @@ function screenForRoute(section: string): DeceScreen {
 export default function DeceApp() {
   const appShellRef = useRef<HTMLDivElement>(null)
   const integration = useDeceData()
-  const [students, setStudents] = useState<Student[]>([])
-  const [loading, setLoading] = useState(true)
-  const [loadError, setLoadError] = useState('')
+  const [firstName, setFirstName] = useState('')
   const [formSetupError, setFormSetupError] = useState('')
   const [formSetupRetry, setFormSetupRetry] = useState(0)
   const [formSetupLoading, setFormSetupLoading] = useState(true)
   const [screen, setScreen] = useState<DeceScreen>(() => screenForRoute(getDeceRouteSection()))
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
   const [caseStudentId, setCaseStudentId] = useState('')
-  const [openCases, setOpenCases] = useState('—')
   const [section, setSection] = useState(0)
   const [selectedFormCode, setSelectedFormCode] = useState('')
   const [formTemplates, setFormTemplates] = useState<FormTemplate[]>([])
@@ -103,68 +99,26 @@ export default function DeceApp() {
   }, [integration, screen])
 
   useEffect(() => {
-    let current = true
-    if (!integration) { setLoading(false); setLoadError('No hay una institución activa en la sesión.'); return }
-    setLoading(true)
-    void integration.client.from('students')
-      .select('student_id, national_id, first_name, last_name, grade_level')
-      .eq('institution_id', integration.institutionId)
-      .order('first_name')
-      .then(({ data, error }) => {
-        if (!current) return
-        if (error) setLoadError(error.code === '42501' ? 'No tienes permiso para consultar estudiantes de esta institución.' : 'No se pudo cargar el directorio de estudiantes.')
-        else {
-          const colors = ['lavender', 'mint', 'peach', 'blue', 'rose']
-          const rows = (data ?? []) as Array<{ student_id: string; national_id: string | null; first_name: string; last_name: string; grade_level: string | null }>
-          const mapped = rows.map((row, index) => ({
-            recordId: row.student_id,
-            id: row.national_id ?? 'Sin identificación',
-            name: `${row.first_name} ${row.last_name}`.trim(),
-            firstName: row.first_name,
-            lastName: row.last_name,
-            grade: row.grade_level ?? 'Sin grado',
-            initials: row.first_name.split(/\s+/).slice(0, 2).map(part => part[0]).join('').toUpperCase(),
-            color: colors[index % colors.length],
-          }))
-          setStudents(mapped)
-          setSelectedStudent(mapped[0] ?? null)
-          setLoadError(mapped.length ? '' : 'No tienes permiso para consultar estudiantes de esta institución, o no hay registros visibles.')
-        }
-        setLoading(false)
-      })
-    return () => { current = false }
-  }, [integration])
-
-  useEffect(() => {
-    if (!integration) return
-    let live = true
-    void integration.client.from('dece_cases').select('dece_case_id', { count: 'exact', head: true }).eq('institution_id', integration.institutionId).neq('status', 'closed').then(({ count, error }) => {
-      if (!live) return
-      setOpenCases(error ? '—' : String(count ?? 0))
-    })
-    return () => { live = false }
-  }, [integration])
+    if (!integration?.profileId) { setFirstName(''); return }
+    let active = true
+    void integration.client.from('profiles').select('first_name').eq('profile_id', integration.profileId).maybeSingle()
+      .then(({ data, error }) => { if (active) setFirstName(error ? '' : data?.first_name?.trim() ?? '') })
+    return () => { active = false }
+  }, [integration?.client, integration?.profileId])
 
   const syncSavedStudent = useCallback((saved: Student) => {
-    setStudents(current => {
-      const exists = current.some(student => student.recordId === saved.recordId)
-      const next = exists
-        ? current.map(student => student.recordId === saved.recordId ? { ...student, ...saved } : student)
-        : [...current, saved]
-      return next.sort((left, right) => left.firstName?.localeCompare(right.firstName ?? '', 'es') ?? left.name.localeCompare(right.name, 'es'))
-    })
     setSelectedStudent(current => current?.recordId === saved.recordId ? { ...current, ...saved } : current)
-    setLoadError('')
+    window.dispatchEvent(new Event('dece:dashboard-refresh'))
   }, [])
 
-  const routeTo = (target: DeceScreen) => {
+  const routeTo = (target: DeceScreen, intent?: 'create') => {
     const basePath = integration?.slug ? `/${integration.slug}/dece` : '/panel/dece'
     const targetPath = target === 'students' || target === 'custom-form' ? `${basePath}/estudiantes`
       : target === 'cases' ? `${basePath}/casos`
       : target === 'forms' ? `${basePath}/plantillas`
       : target === 'submissions' ? `${basePath}/envios`
       : basePath
-    history.pushState(null, '', targetPath)
+    history.pushState(null, '', `${targetPath}${intent === 'create' ? '?crear=1' : ''}`)
     setScreen(target)
   }
 
@@ -194,14 +148,7 @@ export default function DeceApp() {
     onNavigate: (target: DeceScreen) => openForm(selectedStudent, target),
   } : null
 
-  if (loading) return <div className="container py-5" role="status">Cargando estudiantes…</div>
-  if (loadError && !students.length && screen !== 'students') return <div className="container py-5" role="alert">{loadError}</div>
   if (!integration) return <div className="container py-5" role="alert">No hay una institución activa en la sesión.</div>
-
-  const stats = dashboardStats.map(item => item.label === 'Estudiantes registrados'
-    ? { ...item, value: String(students.length), hint: 'En esta institución' }
-    : item.label === 'Casos abiertos' ? { ...item, value: openCases, hint: 'En esta institución' }
-    : { ...item, value: '—', hint: 'Sin datos disponibles' })
 
   return (
     <div ref={appShellRef} className={styles.appShell}>
@@ -209,13 +156,10 @@ export default function DeceApp() {
         {formSetupLoading && <div className="notice" role="status">Preparando las fichas general y de autorización…</div>}
         {formSetupError && <div className="notice sensitive" role="alert">{formSetupError}<button className="button btn secondary ms-2" type="button" onClick={() => setFormSetupRetry(value => value + 1)}>Reintentar</button></div>}
         {screen === 'home' && (
-          <DashboardPage
-            students={students.slice(0, 3)}
-            featuredStudent={students[0]}
-            stats={stats}
-            onList={() => routeTo('students')}
-            onOpen={openForm}
-          />
+          <DashboardPage onNavigate={routeTo} firstName={firstName}
+            onStudent={studentId => { history.pushState(null, '', `${integration.slug ? `/${integration.slug}/dece` : '/panel/dece'}/estudiantes/${studentId}`); setScreen('students') }}
+            onCase={caseId => { history.pushState(null, '', `${integration.slug ? `/${integration.slug}/dece` : '/panel/dece'}/casos/${caseId}`); setScreen('cases') }}
+            onForm={(studentId, code) => { void integration.client.from('students').select('student_id,national_id,first_name,last_name,grade_level').eq('institution_id', integration.institutionId).eq('student_id', studentId).maybeSingle().then(({ data }) => { if (data) openSubmissionForm({ recordId: data.student_id, id: data.national_id ?? '', firstName: data.first_name, lastName: data.last_name, name: `${data.first_name} ${data.last_name}`.trim(), grade: data.grade_level ?? 'Sin grado', initials: `${data.first_name} ${data.last_name}`.split(/\s+/).slice(0, 2).map((part: string) => part[0]).join('').toUpperCase(), color: 'lavender' }, code) }) }} />
         )}
         {screen === 'students' && <StudentManagementPage onOpenForm={openSubmissionForm} onStudentSaved={syncSavedStudent} onOpenCases={studentId => { setCaseStudentId(studentId); routeTo('cases') }} onOpenCase={caseId => { const basePath = integration?.slug ? `/${integration.slug}/dece` : '/panel/dece'; history.pushState(null, '', `${basePath}/casos/${caseId}`); setScreen('cases') }} />}
         {screen === 'cases' && <CasesPage initialStudentId={caseStudentId} onInitialStudentUsed={clearCaseStudent} />}

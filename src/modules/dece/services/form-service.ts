@@ -517,6 +517,7 @@ export function createDeceFormService(client: SupabaseClient) {
     if (submissionError) throw submissionError
     if (!updatedSubmission) throw new Error('Sin permiso para guardar esta ficha o la ficha ya fue enviada.')
     if (!currentSubmissionId) throw new Error('No se pudo crear la ficha.')
+    window.dispatchEvent(new Event('dece:dashboard-refresh'))
     return currentSubmissionId
   }
 
@@ -527,6 +528,7 @@ export function createDeceFormService(client: SupabaseClient) {
       .select('form_submission_id').maybeSingle()
     if (error) throw error
     if (!data) throw new Error('Sin permiso para enviar esta ficha o el borrador ya no está disponible.')
+    window.dispatchEvent(new Event('dece:dashboard-refresh'))
   }
 
   async function markReviewed(submissionId: string) {
@@ -536,6 +538,7 @@ export function createDeceFormService(client: SupabaseClient) {
       .select('form_submission_id').maybeSingle()
     if (error) throw error
     if (!data) throw new Error('Sin permiso para revisar esta ficha o ya fue revisada.')
+    window.dispatchEvent(new Event('dece:dashboard-refresh'))
   }
 
   async function reopenSubmission(submissionId: string) {
@@ -545,6 +548,7 @@ export function createDeceFormService(client: SupabaseClient) {
       .select('form_submission_id').maybeSingle()
     if (error) throw error
     if (!data) throw new Error('No se pudo reabrir la ficha: debe estar revisada y visible para DECE.')
+    window.dispatchEvent(new Event('dece:dashboard-refresh'))
   }
 
   async function loadOwnSubmission(submissionId: string, studentId: string) {
