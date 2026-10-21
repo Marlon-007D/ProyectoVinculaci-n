@@ -71,7 +71,7 @@ Deno.serve(async (request) => {
       const failedCheck = membershipError ? 'membresías del usuario' : roleError ? 'rol seleccionado' : 'institución seleccionada';
       const validationError = membershipError ?? roleError ?? institutionError;
       console.error(`Falló la consulta de ${failedCheck}:`, validationError);
-      return respond({ error: `Supabase no pudo consultar ${failedCheck}. Código: ${validationError?.code ?? 'sin código'}.` }, 500);
+      return respond({ error: 'No se pudo verificar la autorización. Inténtalo de nuevo.' }, 500);
     }
 
     const inviterRoleIds = [...new Set((inviterMemberships ?? []).map((membership: any) => membership.role_id))];
@@ -80,7 +80,7 @@ Deno.serve(async (request) => {
       : { data: [], error: null };
     if (inviterRolesError) {
       console.error('Falló la consulta de roles del usuario solicitante:', inviterRolesError);
-      return respond({ error: `Supabase no pudo consultar los roles de tu cuenta. Código: ${inviterRolesError.code ?? 'sin código'}.` }, 500);
+      return respond({ error: 'No se pudieron verificar los permisos de tu cuenta. Inténtalo de nuevo.' }, 500);
     }
 
     const inviterRoleNames = new Map((inviterRoles ?? []).map((role: any) => [role.role_id, role.name]));
@@ -93,6 +93,12 @@ Deno.serve(async (request) => {
     if (!targetRole || targetRole.name === 'super_admin') {
       return respond({ error: 'El rol global no se puede asignar desde este formulario.' }, 400);
     }
+    if (isGlobalAdmin && targetRole.name !== 'institution_admin') {
+      return respond({ error: 'El superadministrador solo asigna administradores institucionales.' }, 403);
+    }
+    if (!isGlobalAdmin && !['dece_staff', 'project_manager', 'editor', 'student', 'dece', 'projects_manager', 'content_editor'].includes(targetRole.name)) {
+      return respond({ error: 'Selecciona un rol operativo institucional.' }, 403);
+    }
     if (!isGlobalAdmin && targetRole.name === 'institution_admin') {
       return respond({ error: 'Solo un superadministrador global puede invitar administradores institucionales.' }, 403);
     }
@@ -100,8 +106,8 @@ Deno.serve(async (request) => {
       return respond({ error: 'La institución no existe o está inactiva.' }, 400);
     }
 
-    const { data: invitation, error: inviteError } = await admin.auth.admin.inviteUserByEmail(email, {
-      data: { first_name: firstName, last_name: lastName, phone },
+    const { data: invitation, error: inviteError } = await admin.auth.admin.createUser({
+      email, email_confirm: false, user_metadata: { first_name: firstName, last_name: lastName, phone },
     });
     if (inviteError || !invitation.user) {
       console.error('No se pudo crear la invitación:', inviteError);
@@ -121,29 +127,42 @@ Deno.serve(async (request) => {
     if (profileError || savedProfile?.profile_id !== invitedUser.id) {
       console.error('No se pudo crear el perfil invitado:', profileError);
       return respond({
-        error: `La invitacion se envio, pero no se pudo preparar el perfil (codigo ${profileError?.code ?? 'PROFILE_NOT_SAVED'}). Revisa la migracion de permisos y el registro de la funcion; despues vuelve a asignar el rol a este correo.`,
+        error: 'La cuenta fue creada. No se pudo preparar el perfil. Contacta al administrador.',
         stage: 'profile_upsert',
         code: profileError?.code ?? 'PROFILE_NOT_SAVED',
       }, 500);
     }
 
-    const { error: assignmentError } = await admin.from('memberships').upsert({
+    const { data: pendingRole } = await admin.from('roles').select('role_id').eq('name', 'invitado').single();
+    if (!pendingRole) return respond({ error: 'No se pudo preparar la membresía pendiente.' }, 500);
+    const { error: pendingError } = await admin.from('memberships').upsert({
       institution_id: institutionId,
       profile_id: invitedUser.id,
-      role_id: roleId,
-      is_active: true,
-    }, { onConflict: 'institution_id,profile_id' });
+      role_id: pendingRole.role_id,
+      is_active: false,
+    }, { onConflict: 'institution_id,profile_id', ignoreDuplicates: true });
+    if (pendingError) return respond({ error: 'No se pudo preparar la membresía pendiente.' }, 500);
+    // Revalidate assignment with the caller's session, never with service_role.
+    const caller = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY') ?? '', {
+      global: { headers: { Authorization: authorization! } },
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+    const { error: assignmentError } = await caller.rpc('assign_institution_role', {
+      target_email: email, target_institution_id: institutionId, target_role_id: roleId,
+      target_first_name: firstName, target_last_name: lastName, target_phone: phone,
+    });
 
     if (assignmentError) {
       console.error('No se pudo asignar el rol al usuario invitado:', assignmentError);
       return respond({
-        error: `La invitacion y el perfil se guardaron, pero no se pudo asignar el rol (codigo ${assignmentError.code ?? 'MEMBERSHIP_NOT_SAVED'}). Vuelve a asignar el rol al mismo correo.`,
+        error: assignmentError.message,
         stage: 'membership_upsert',
         code: assignmentError.code ?? 'MEMBERSHIP_NOT_SAVED',
       }, 500);
     }
 
-    return respond({ message: `Invitación enviada a ${email}; el rol ya quedó asignado a ${institution.name}. Al iniciar sesión, deberá configurar la verificación en dos pasos.` });
+    const { data: notice, error: noticeError } = await caller.functions.invoke('notify-approved-member', { body: { profileId: invitedUser.id, institutionId } });
+    return respond({ message: 'Rol asignado correctamente.', notified: !noticeError && notice?.notified === true });
   } catch (error) {
     console.error('Error inesperado al invitar usuario:', error);
     return respond({ error: 'Ocurrió un error al invitar al usuario. Inténtalo nuevamente.' }, 500);

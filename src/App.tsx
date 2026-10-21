@@ -7,6 +7,7 @@ import { ModuleBoundary } from './modules/projects/integration/ModuleBoundary';
 import { InstitutionProvider, useInstitution } from './modules/site/context/InstitutionContext';
 import { DecePublicSection } from './modules/dece/public';
 import AdminRoutes from './modules/admin/AdminRoutes';
+import { RegistrationRoute } from './modules/auth/RegistrationRoute';
 import SimulatorApp from './app/App';
 
 const ModuleRoutes = lazy(() => import('./modules/projects/integration/ModuleRoutes'));
@@ -21,6 +22,7 @@ function RoutesWithAuth() {
   const { user, mfaRequired, mfaEnrollmentRequired } = useAuth();
   if (user && (mfaRequired || mfaEnrollmentRequired)) return <Navigate to="/panel/admin" replace />;
   return <Routes>
+    <Route path="/register" element={<RegistrationRoute />} />
     <Route path="/panel/admin" element={<AdminRoutes />} />
     <Route path="/panel/superadmin" element={<AdminRoutes superadminOnly />} />
     <Route path="/system-admin" element={<Navigate to="/panel/superadmin" replace />} />

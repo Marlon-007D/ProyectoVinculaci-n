@@ -1,6 +1,7 @@
 ﻿import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from './supabaseClient';
+import { registerInstitutionalAccount } from './auth/registerInstitutionalAccount';
 
 interface AuthContextType {
   user: User | null;
@@ -11,7 +12,7 @@ interface AuthContextType {
   loading: boolean;
   login: (email: string, pass: string) => Promise<{ error: Error | null }>;
   requestLoginLink: (email: string) => Promise<{ error: Error | null }>;
-  register: (email: string, password: string, firstName: string, lastName: string) => Promise<{ error: Error | null; confirmationRequired: boolean; existingAccount: boolean }>;
+  register: (email: string, password: string, firstName: string, lastName: string, institutionId: string) => Promise<{ error: Error | null }>;
   isPasswordRecovery: boolean;
   mfaRequired: boolean;
   mfaEnrollmentRequired: boolean;
@@ -120,7 +121,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const memberships = data ?? [];
     if (memberships.length === 0) {
-      setRoleError('No se encontró una membresía visible para esta cuenta. Ejecuta database/superadmin.sql en Supabase y confirma que profile_id coincida con el ID de autenticación.');
+      setRoleError('Tu cuenta aún no tiene una membresía activa. Si acabas de registrarte, espera la aprobación de un administrador de tu institución.');
       return;
     }
 
@@ -236,35 +237,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { error };
   };
 
-  const register = async (email: string, password: string, firstName: string, lastName: string) => {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: window.location.origin,
-        data: { first_name: firstName.trim(), last_name: lastName.trim() },
-      },
-    });
-    if (!error) {
-      if (data.session) await supabase.auth.signOut();
-      return { error: null, confirmationRequired: !data.session, existingAccount: false };
-    }
-
-    // A retry can encounter an account created by a previous request even when
-    // the confirmation email request returned an error. Check using the
-    // password the person just entered before reporting registration failure.
-    const { data: priorSession } = await supabase.auth.getSession();
-    if (priorSession.session) return { error, confirmationRequired: false, existingAccount: false };
-    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-    if (!signInError) {
-      await supabase.auth.signOut();
-      return { error: null, confirmationRequired: false, existingAccount: true };
-    }
-    if (signInError.code === 'email_not_confirmed') {
-      return { error: null, confirmationRequired: true, existingAccount: true };
-    }
-    return { error, confirmationRequired: false, existingAccount: false };
-  };
+  const register = registerInstitutionalAccount;
 
   const verifyMfa = async (code: string) => {
     if (!mfaFactorId || !mfaChallengeId) {

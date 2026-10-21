@@ -2,6 +2,19 @@
 
 This document records the boundary required by the database design. It does not implement or replace Auth.
 
+## Institutional registration update
+
+The current application has a separate Auth integration in `src/core/AuthContext.tsx`.
+At the user's explicit request, `/register` now uses that integration and the
+canonical `profiles`, `memberships`, `roles` and `institutions` tables already used
+by the administration panels. The earlier inventory below describes the simulator
+adapter boundary and is not an inventory of the entire current application.
+See [registro-institucional.md](registro-institucional.md) for the separate SQL
+deployment and verification required for registration. Institution selection is
+only a request: the server creates an inactive `viewer` membership. Browser
+metadata never grants an active membership or an administrative role. This does
+not change the simulator authorization adapter or enable its private operations.
+
 ## Current repository state
 
 - No login, session, approved-membership lookup, role resolver, or authorization provider was found.

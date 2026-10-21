@@ -1,13 +1,16 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../core/AuthContext';
+import { AdminHeader } from './AdminHeader';
+import { InstitutionalLogin } from './InstitutionalLogin';
+import { PendingAccessRoute } from '../auth/PendingAccessRoute';
 import { MfaEnrollment } from './mfa/MfaEnrollment';
 import { SuperAdminPanel } from './superadmin/SuperAdminPanel';
 import { UserManagement } from './userManagement/UserManagement';
 import styles from './AdminRoutes.module.css';
 
 export default function AdminRoutes({ superadminOnly = false }: { superadminOnly?: boolean }) {
-  const { user, role, roleError, loading, login, logout, mfaRequired, mfaEnrollmentRequired, completeMfaEnrollment, verifyMfa, mfaChallengeReady } = useAuth();
+  const { user, role, loading, login, requestPasswordReset, logout, mfaRequired, mfaEnrollmentRequired, completeMfaEnrollment, verifyMfa, mfaChallengeReady } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -32,23 +35,13 @@ export default function AdminRoutes({ superadminOnly = false }: { superadminOnly
   }
 
   if (loading) return <main className={styles.page} role="status">Cargando tu acceso…</main>;
-  if (!user) return <main className={styles.page}><section className={styles.card}>
-    <div className={styles.top}><span className={styles.brand}>UE</span><span className={styles.secure}><i /> Conexión protegida</span></div>
-    <p className={styles.eyebrow}>PORTAL INSTITUCIONAL</p><h1>Ingreso a la Plataforma Institucional</h1>
-    <p className={styles.help}>Inicia sesión con tu correo institucional. Te dirigiremos al espacio que corresponde a tu rol.</p>
-    <form onSubmit={submit} className={styles.form}>
-      <label htmlFor="admin-email">Correo electrónico</label><input id="admin-email" type="email" autoComplete="username" value={email} onChange={e => setEmail(e.target.value)} required />
-      <label htmlFor="admin-password">Contraseña</label><input id="admin-password" type="password" autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)} required />
-      {error && <p className={styles.error} role="alert">{error}</p>}
-      <button disabled={busy}>{busy ? 'Ingresando…' : 'Iniciar sesión'}</button>
-    </form>
-  </section></main>;
+  if (!user) return <InstitutionalLogin email={email} password={password} error={error} busy={busy} onEmailChange={setEmail} onPasswordChange={setPassword} onSubmit={submit} requestPasswordReset={requestPasswordReset} />;
 
   if (mfaEnrollmentRequired) return <MfaEnrollment onEnrolled={completeMfaEnrollment} />;
   if (mfaRequired) return <main className={styles.page}><section className={styles.card}><p className={styles.eyebrow}>VERIFICACIÓN DE CUENTA</p><h1>Confirma tu identidad</h1><p className={styles.help}>Ingresa el código temporal de seis dígitos de tu aplicación autenticadora.</p>{mfaChallengeReady ? <form className={styles.form} onSubmit={async event => { event.preventDefault(); setBusy(true); const result = await verifyMfa(code); setBusy(false); if (result.error) setError('El código no es válido o venció.'); }}><label htmlFor="mfa-code">Código de verificación</label><input id="mfa-code" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={code} onChange={event => setCode(event.target.value.replace(/\D/g, '').slice(0, 6))} required />{error && <p role="alert" className={styles.error}>{error}</p>}<button disabled={busy || code.length !== 6}>{busy ? 'Verificando…' : 'Verificar y continuar'}</button></form> : <p role="alert">No se pudo iniciar la verificación. Cierra sesión e inténtalo de nuevo.</p>}<button onClick={() => void logout()}>Cerrar sesión</button></section></main>;
-  if (!role) return <main className={styles.page}><section className={styles.card}><p role="alert">{roleError ?? 'No se pudo verificar el rol de esta cuenta.'}</p><button onClick={() => void logout()}>Cerrar sesión</button></section></main>;
+  if (!role) return <PendingAccessRoute />;
   if (superadminOnly && role !== 'super_admin') return <Navigate to="/panel/admin" replace />;
-  if (role === 'super_admin') return <main className={styles.admin}><header><strong>Administración global</strong><button onClick={() => void logout()}>Cerrar sesión</button></header><SuperAdminPanel /><UserManagement /></main>;
-  if (role === 'institution_admin') return <main className={styles.admin}><header><strong>Administración institucional</strong><button onClick={() => void logout()}>Cerrar sesión</button></header><UserManagement /></main>;
+  if (role === 'super_admin') return <main className={styles.admin}><AdminHeader scope="global" onLogout={() => void logout()} /><div className={styles.dashboardContent}><SuperAdminPanel /><UserManagement /></div></main>;
+  if (role === 'institution_admin') return <main className={styles.admin}><AdminHeader scope="institution" onLogout={() => void logout()} /><div className={styles.dashboardContent}><UserManagement /></div></main>;
   return <main className={styles.page}><section className={styles.card}><h1>Acceso restringido</h1><p>Tu cuenta aún no tiene un rol administrativo asignado.</p><button onClick={() => void logout()}>Cerrar sesión</button></section></main>;
 }

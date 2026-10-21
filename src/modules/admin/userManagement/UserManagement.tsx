@@ -1,7 +1,10 @@
+import { registrationError } from '../../../core/auth/registrationFlow';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Clock3, ShieldCheck, Users } from 'lucide-react';
 import { supabase } from '../../../core/supabaseClient';
 import { useAuth } from '../../../core/AuthContext';
 import { useTenant } from '../../../core/TenantContext';
+import { canAssignRole, canonicalRole } from '../../../core/auth/institutionalRoles';
 import { logAuditEvent } from '../../../core/auditLogger';
 import styles from './UserManagement.module.css';
 
@@ -16,6 +19,7 @@ interface UserMember {
   institution_name: string;
   mfa_enabled: boolean;
   mfa_required: boolean;
+  is_active: boolean;
 }
 
 const roleLabels: Record<string, string> = {
@@ -23,7 +27,12 @@ const roleLabels: Record<string, string> = {
   dece_staff: 'Equipo DECE',
   project_manager: 'Gestor de proyectos',
   editor: 'Editor de contenidos',
-  viewer: 'Consulta',
+  viewer: 'Pendiente',
+  pending: 'Pendiente',
+  guest: 'Invitado',
+  dece: 'Equipo DECE',
+  projects_manager: 'Gestor de proyectos',
+  content_editor: 'Editor de contenidos',
   student: 'Estudiante',
 };
 const formatRole = (role: string) => roleLabels[role] ?? role.replaceAll('_', ' ');
@@ -72,7 +81,7 @@ export const UserManagement: React.FC = () => {
 
     const [roleResult, membershipResult] = await Promise.all([
       supabase.from('roles').select('role_id, name').order('name'),
-      supabase.rpc('list_accessible_institution_memberships', {
+      supabase.rpc('list_managed_memberships', {
         target_institution_id: targetInstitutionId,
       }),
     ]);
@@ -80,13 +89,13 @@ export const UserManagement: React.FC = () => {
     if (failure) {
       setMembers([]);
       setRoles([]);
-      setLoadError(`No se pudieron cargar los usuarios y roles. ${failure.message}`);
+      setLoadError('No se pudieron cargar los usuarios y roles. Inténtalo de nuevo.');
       setLoading(false);
       return;
     }
 
-    setRoles((roleResult.data ?? []).filter((item) => item.name !== 'super_admin' && (isPlatformAdmin || item.name !== 'institution_admin')));
-    setMembers((membershipResult.data ?? []) as UserMember[]);
+    setRoles((roleResult.data ?? []).filter((item) => canAssignRole(isPlatformAdmin ? 'super_admin' : 'institution_admin', item.name)));
+    setMembers(((membershipResult.data ?? []) as UserMember[]).filter(member => isPlatformAdmin ? member.role_name === 'institution_admin' : member.institution_id === currentInstitutionId));
     setLoading(false);
   }, [currentInstitutionId, isPlatformAdmin, loadingTenant]);
 
@@ -112,7 +121,39 @@ export const UserManagement: React.FC = () => {
 
   const filterRoles = useMemo(() => [...new Set(members.map((member) => member.role_name))].sort(), [members]);
 
+  const pendingRequestCount = members.filter(member => member.institution_id === currentInstitutionId && !member.is_active && canonicalRole(member.role_name) === 'pending').length;
   const pendingMfaCount = filteredMembers.filter((member) => member.mfa_required && !member.mfa_enabled).length;
+
+  const [approvingKey, setApprovingKey] = useState('');
+  async function notifyMember(profileId: string, tenantId: string) {
+    try {
+      const { data, error } = await supabase.functions.invoke('notify-approved-member', { body: { profileId, institutionId: tenantId } });
+      return !error && data?.notified === true;
+    } catch { return false; }
+  }
+  async function retryNotification(member: UserMember) {
+    if (approvingKey) return;
+    setApprovingKey(member.profile_id);
+    const notified = await notifyMember(member.profile_id, member.institution_id);
+    setFeedbackType(notified ? 'success' : 'error');
+    setMsg(notified ? 'Notificación de aprobación enviada correctamente.' : 'La membresía está aprobada. El correo sigue pendiente de envío.');
+    setApprovingKey('');
+  }
+  async function approveMember(member: UserMember, nextRoleId: string) {
+    if (!isInstitutionAdmin || approvingKey || !roles.some(role => role.role_id === nextRoleId)) return;
+    setApprovingKey(member.profile_id);
+    setMsg('');
+    try {
+      const { error } = await supabase.rpc('approve_institution_member', { target_profile_id: member.profile_id, target_institution_id: currentInstitutionId, target_role_id: nextRoleId });
+      if (error) throw error;
+      await logAuditEvent({ action: 'APPROVE_MEMBER', entity: 'memberships', institutionId: currentInstitutionId ?? undefined, details: { profileId: member.profile_id, roleId: nextRoleId } });
+      const notified = await notifyMember(member.profile_id, member.institution_id);
+      setFeedbackType(notified ? 'success' : 'error');
+      setMsg(notified ? 'Solicitud aprobada, rol asignado y notificación enviada correctamente.' : 'La membresía está aprobada y el rol fue asignado. El correo está pendiente de envío.');
+      await loadData();
+    } catch (error) { setFeedbackType('error'); setMsg((await registrationError(error)).message); }
+    finally { setApprovingKey(''); }
+  }
 
   const handleAssignUser = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -134,7 +175,7 @@ export const UserManagement: React.FC = () => {
       setMsg('Ingresa un celular ecuatoriano de 10 dígitos que empiece con 09.');
       return;
     }
-    if (!targetInstitutionId || !selectedRole) {
+    if (!targetInstitutionId || !selectedRole || !canAssignRole(isPlatformAdmin ? 'super_admin' : 'institution_admin', selectedRole.name)) {
       setFeedbackType('error');
       setMsg('Selecciona la institución y el rol que vas a asignar.');
       return;
@@ -154,34 +195,34 @@ export const UserManagement: React.FC = () => {
       if (error) {
         const missingAccount = error.message.includes('No existe una cuenta registrada');
         if (missingAccount && (isPlatformAdmin || (isInstitutionAdmin && availableInstitutions.some(item => item.institution_id === targetInstitutionId)))) {
-          const { data, error: inviteError } = await supabase.functions.invoke('invite-institution-user', {
+          const { data: invitation, error: inviteError } = await supabase.functions.invoke('invite-institution-user', {
             body: { email: normalizedEmail, roleId, institutionId: targetInstitutionId, firstName: normalizedFirstName, lastName: normalizedLastName, phone: normalizedPhone },
           });
           if (inviteError) {
-            const details = typeof inviteError.context?.json === 'function'
-              ? await inviteError.context.json().catch(() => null)
-              : null;
             setFeedbackType('error');
-            setMsg(details?.error ?? `No se pudo enviar la invitación: ${inviteError.message}. Verifica que la función invite-institution-user esté desplegada en Supabase.`);
+            setMsg((await registrationError(inviteError)).message);
             return;
           }
           await logAuditEvent({ action: 'INVITE_AND_ASSIGN_ROLE', entity: 'memberships', details: { email: normalizedEmail, roleId, institutionId: targetInstitutionId }, institutionId: targetInstitutionId });
-          setFeedbackType('success');
-          setMsg(data?.message ?? 'Invitación enviada. La cuenta recibirá un correo para activar su acceso y configurar MFA.');
+          setFeedbackType(invitation?.notified ? 'success' : 'error');
+          setMsg(invitation?.notified ? 'Cuenta aprobada, rol asignado y notificación enviada correctamente.' : 'El rol fue asignado. La notificación por correo está pendiente de envío.');
           clearForm();
           await loadData();
           return;
         }
         setFeedbackType('error');
         setMsg(missingAccount
-          ? 'La cuenta no existe y tu membresia no permite invitar usuarios a esta institucion.'
-          : `No se pudo asignar el rol: ${error.message}`);
+          ? 'La cuenta no existe y tu membresía no permite invitar usuarios a esta institución.'
+          : error.message);
         return;
       }
 
       await logAuditEvent({ action: 'ASSIGN_ROLE', entity: 'memberships', details: { email: normalizedEmail, roleId, institutionId: targetInstitutionId }, institutionId: targetInstitutionId });
-      setFeedbackType('success');
-      setMsg('Rol asignado. Se solicitará configurar TOTP al iniciar sesión si la cuenta aún no lo tiene habilitado.');
+      const { data: managed } = await supabase.rpc('list_managed_memberships', { target_institution_id: targetInstitutionId });
+      const assigned = managed?.find((member: UserMember) => member.email?.toLowerCase() === normalizedEmail);
+      const notified = assigned ? await notifyMember(assigned.profile_id, targetInstitutionId) : false;
+      setFeedbackType(notified ? 'success' : 'error');
+      setMsg(notified ? 'Rol asignado y notificación enviada correctamente.' : 'El rol fue asignado. La notificación por correo está pendiente de envío.');
       clearForm();
       await loadData();
     } catch {
@@ -215,11 +256,11 @@ export const UserManagement: React.FC = () => {
       setPendingRemoval(null);
       await logAuditEvent({ action: 'REMOVE_ROLE', entity: 'memberships', details: { email: member.email, role: member.role_name }, institutionId: member.institution_id });
       setFeedbackType('success');
-      setMsg(`Se quitó el rol de ${member.email} en ${member.institution_name}.`);
+      setMsg('Rol retirado correctamente.');
       await loadData();
-    } catch (error) {
+    } catch {
       setFeedbackType('error');
-      setMsg(`No se pudo quitar el rol: ${error instanceof Error ? error.message : 'Error de conexión.'}`);
+      setMsg('No se pudo quitar el rol. Inténtalo de nuevo.');
     } finally {
       setRemovingKey('');
     }
@@ -230,24 +271,24 @@ export const UserManagement: React.FC = () => {
       <header className={styles.header}>
         <div>
           <p className={styles.eyebrow}>SEGURIDAD Y ACCESOS</p>
-          <h2 id="institution-users-title">Usuarios y roles institucionales</h2>
+          <h2 id="institution-users-title">{isPlatformAdmin ? 'Administradores institucionales' : 'Gestión de Miembros y Solicitudes'}</h2>
           <p className={styles.intro}>{isPlatformAdmin
-            ? 'Administra los roles de cada unidad educativa y consulta el estado de seguridad de sus cuentas.'
-            : 'Administra los permisos de las cuentas pertenecientes a tu institución.'}</p>
+            ? 'Asigna administradores institucionales. Cada plantel gestiona sus roles operativos.'
+            : 'Aprueba solicitudes y asigna roles a los miembros de tu institución.'}</p>
         </div>
         <span className={styles.scopeBadge}>{isPlatformAdmin ? 'Alcance global' : availableInstitutions[0]?.name ?? 'Tu institución'}</span>
       </header>
 
       <div className={styles.summary} aria-label="Resumen de cuentas">
-        <article className={styles.summaryCard}><span className={styles.summaryIcon}>U</span><div><span>Usuarios visibles</span><strong>{loading ? '—' : filteredMembers.length}</strong></div></article>
-        <article className={styles.summaryCard}><span className={`${styles.summaryIcon} ${styles.secureIcon}`}>✓</span><div><span>Con TOTP activo</span><strong>{loading ? '—' : filteredMembers.filter((member) => member.mfa_enabled).length}</strong></div></article>
-        <article className={styles.summaryCard}><span className={`${styles.summaryIcon} ${styles.pendingIcon}`}>!</span><div><span>MFA pendiente</span><strong>{loading ? '—' : pendingMfaCount}</strong></div></article>
+        <article className={styles.summaryCard}><span className={styles.summaryIcon} aria-hidden="true"><Users size={21} /></span><div><span>Usuarios visibles</span><strong>{loading ? '—' : filteredMembers.length}</strong></div></article>
+        <article className={styles.summaryCard}><span className={`${styles.summaryIcon} ${styles.secureIcon}`} aria-hidden="true"><ShieldCheck size={21} /></span><div><span>Con TOTP activo</span><strong>{loading ? '—' : filteredMembers.filter((member) => member.mfa_enabled).length}</strong></div></article>
+        <article className={styles.summaryCard}><span className={`${styles.summaryIcon} ${styles.pendingIcon}`} aria-hidden="true"><Clock3 size={21} /></span><div><span>{isPlatformAdmin ? 'MFA pendiente' : 'Solicitudes pendientes'}</span><strong>{loading ? '—' : isPlatformAdmin ? pendingMfaCount : pendingRequestCount}</strong></div></article>
       </div>
 
       <section className={styles.assignmentCard} aria-labelledby="assign-user-title">
         <div className={styles.sectionHeading}>
-          <div><h3 id="assign-user-title">Asignar un rol</h3><p>Los permisos se limitan a la institución seleccionada. La contraseña nunca se solicita ni se almacena aquí.</p></div>
-          <span className={styles.secureLabel}><span aria-hidden="true">●</span> Operación protegida</span>
+          <div><h3 id="assign-user-title">{isPlatformAdmin ? 'Asignar administrador institucional' : 'Asignar un rol'}</h3><p>Los permisos se limitan a la institución seleccionada. La contraseña nunca se solicita ni se almacena aquí.</p></div>
+          <span className={styles.secureLabel}><ShieldCheck size={14} aria-hidden="true" /> Operación protegida</span>
         </div>
         {!isPlatformAdmin && <p className={styles.scopeNotice}>Las asignaciones se aplican únicamente a <strong>{availableInstitutions[0]?.name ?? 'tu institución asignada'}</strong>.</p>}
         <form onSubmit={handleAssignUser} className={styles.form} aria-busy={saving}>
@@ -315,12 +356,12 @@ export const UserManagement: React.FC = () => {
                   const displayName = `${member.first_name ?? ''} ${member.last_name ?? ''}`.trim();
                   return <tr key={key}>
                     <td><div className={styles.personCell}><span className={styles.avatar} aria-hidden="true">{(displayName || member.email || '?').charAt(0).toUpperCase()}</span><span><strong>{displayName || 'Perfil sin nombre'}</strong><small>{member.email || 'Correo no disponible'}</small></span></div></td>
-                    <td><span className={styles.roleBadge}>{formatRole(member.role_name)}</span></td>
+                    <td><span className={styles.roleBadge}>{formatRole(member.role_name)}</span>{!member.is_active && <small className={styles.membershipState}>Pendiente de aprobación</small>}</td>
                     <td>{member.institution_name || 'Alcance global'}</td>
                     <td><span className={`${styles.mfaBadge} ${mfaClass}`}><span aria-hidden="true" />{mfaStatus}</span></td>
-                    <td>{member.role_name !== 'super_admin' && <button type="button" disabled={removingKey === key} onClick={() => { setMsg(''); setPendingRemoval(member); }} className={styles.btnRemove} aria-label={`Quitar rol de ${member.email}`}>
+                    <td>{!isPlatformAdmin && !['super_admin', 'institution_admin'].includes(member.role_name) && <select className={styles.memberRoleSelect} value="" disabled={Boolean(approvingKey)} aria-label={`Asignar rol a ${member.email}`} onChange={event => void approveMember(member, event.target.value)}><option value="">{member.is_active ? 'Cambiar rol' : 'Aprobar y asignar rol'}</option>{roles.map(role => <option key={role.role_id} value={role.role_id}>{formatRole(role.name)}</option>)}</select>}{(isPlatformAdmin ? member.role_name === 'institution_admin' : !['super_admin', 'institution_admin'].includes(member.role_name)) && <button type="button" disabled={removingKey === key} onClick={() => { setMsg(''); setPendingRemoval(member); }} className={styles.btnRemove} aria-label={`Quitar rol de ${member.email}`}>
                       {removingKey === key ? 'Quitando…' : 'Quitar rol'}
-                    </button>}</td>
+                    </button>}{member.is_active && (isPlatformAdmin ? member.role_name === 'institution_admin' : !['super_admin', 'institution_admin'].includes(member.role_name)) && <button type="button" className={styles.btnRemove} disabled={Boolean(approvingKey)} onClick={() => void retryNotification(member)}>Reintentar notificación</button>}</td>
                   </tr>;
                 })}
               </tbody>

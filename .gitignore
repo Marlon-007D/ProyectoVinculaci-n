@@ -11,7 +11,8 @@ coverage/
 .npm-cache/
 .cache/
 *.tsbuildinfo
-docs/
+docs/*
+!docs/registro-institucional.md
 # Local environment and secrets
 .env
 .env.*

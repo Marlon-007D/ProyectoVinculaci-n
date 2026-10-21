@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Building2, CircleCheck, Clock3, Hash, Plus } from 'lucide-react';
 import { supabase } from '../../../core/supabaseClient';
 import { logAuditEvent } from '../../../core/auditLogger';
 import { useTenant } from '../../../core/TenantContext';
@@ -156,7 +157,7 @@ export const SuperAdminPanel: React.FC = () => {
       target_institution_id: target.institution_id,
     });
     if (error) {
-      setMessage(`No se pudo eliminar la institución. ${error.message}`);
+      setMessage('No se pudo eliminar la institución. Inténtalo de nuevo o revisa los permisos de tu cuenta.');
       setDeletingInstitution(false);
       return;
     }
@@ -171,7 +172,7 @@ export const SuperAdminPanel: React.FC = () => {
       setModuleSettings([]);
     }
     setInstitutionToDelete(null);
-    setMessage(`Se eliminó ${target.name} y sus datos asociados.`);
+    setMessage('Institución y datos asociados eliminados correctamente.');
     setDeletingInstitution(false);
     await fetchInstitutions();
     reloadInstitutions();
@@ -190,15 +191,15 @@ export const SuperAdminPanel: React.FC = () => {
 
       <div className={styles.statsGrid} aria-label="Resumen de instituciones">
         <article className={styles.statCard}>
-          <span className={styles.statIcon} aria-hidden="true">⌂</span>
+          <span className={styles.statIcon} aria-hidden="true"><Building2 size={22} /></span>
           <div><span className={styles.statLabel}>Instituciones registradas</span><strong className={styles.statValue}>{loading ? '—' : institutions.length}</strong></div>
         </article>
         <article className={styles.statCard}>
-          <span className={styles.statIcon} aria-hidden="true">✓</span>
+          <span className={`${styles.statIcon} ${styles.activeIcon}`} aria-hidden="true"><CircleCheck size={22} /></span>
           <div><span className={styles.statLabel}>Instituciones activas</span><strong className={styles.statValue}>{loading ? '—' : activeCount}</strong></div>
         </article>
         <article className={styles.statCard}>
-          <span className={styles.statIcon} aria-hidden="true">◷</span>
+          <span className={`${styles.statIcon} ${styles.inactiveIcon}`} aria-hidden="true"><Clock3 size={22} /></span>
           <div><span className={styles.statLabel}>Instituciones inactivas</span><strong className={styles.statValue}>{loading ? '—' : institutions.length - activeCount}</strong></div>
         </article>
       </div>
@@ -212,12 +213,12 @@ export const SuperAdminPanel: React.FC = () => {
         </div>
         <form onSubmit={handleCreateInstitution} className={styles.formInline}>
           <label className={styles.field}>Nombre de la institución
-            <input type="text" placeholder="Ej. Unidad Educativa Santo Domingo" value={newInstName} onChange={(e) => setNewInstName(e.target.value)} required />
+            <span className={styles.inputWrap}><Building2 size={17} aria-hidden="true" /><input type="text" placeholder="Ej. Unidad Educativa Santo Domingo" value={newInstName} onChange={(e) => setNewInstName(e.target.value)} required /></span>
           </label>
           <label className={styles.field}>Identificador (slug)
-            <input type="text" placeholder="Ej. ue-santo-domingo" value={newInstSlug} onChange={(e) => setNewInstSlug(e.target.value)} required />
+            <span className={styles.inputWrap}><Hash size={17} aria-hidden="true" /><input type="text" placeholder="Ej. ue-santo-domingo" value={newInstSlug} onChange={(e) => setNewInstSlug(e.target.value)} required /></span>
           </label>
-          <button type="submit" className={styles.btnSave}>Crear institución <span aria-hidden="true">＋</span></button>
+          <button type="submit" className={styles.btnSave}>Crear institución <Plus size={17} aria-hidden="true" /></button>
         </form>
       </section>
 
@@ -240,7 +241,7 @@ export const SuperAdminPanel: React.FC = () => {
                   <tr key={inst.institution_id}>
                     <td><div className={styles.institutionCell}><span className={styles.institutionMark} aria-hidden="true">{inst.name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase()}</span><span><span className={styles.institutionName}>{inst.name}</span><span className={styles.institutionMeta}>Unidad educativa</span></span></div></td>
                     <td><span className={styles.slug}>{inst.slug}</span></td>
-                    <td><div className={styles.moduleBadges}>{activeModuleLabels(inst.institution_id).length > 0 ? activeModuleLabels(inst.institution_id).map((label) => <span key={label} className={styles.moduleBadge}>{label}</span>) : <span className={styles.noModules}>Sin módulos activos</span>}</div></td>
+                    <td><div className={styles.moduleBadges}>{activeModuleLabels(inst.institution_id).length > 0 ? activeModuleLabels(inst.institution_id).map((label) => <span key={label} className={styles.moduleBadge} data-module={label}>{label}</span>) : <span className={styles.noModules}>Sin módulos activos</span>}</div></td>
                     <td><span className={`${styles.status} ${!inst.is_active ? styles.statusInactive : ''}`}>{inst.is_active ? 'Activa' : 'Inactiva'}</span></td>
                     <td><div className={styles.actions}>
                       <button type="button" onClick={() => openInstitutionPreview(inst.slug)} className={styles.btnPreview}>Vista previa de institución</button>
