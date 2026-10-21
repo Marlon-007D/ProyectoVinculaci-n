@@ -17,9 +17,23 @@ export function newSnapshot(name: string): PortalSnapshot {
 }
 export function safeUrl(value: unknown): string | undefined {
   if (typeof value !== 'string' || /[\\\s]/.test(value)) return undefined;
-  return /^https:\/\//i.test(value) || /^\/[^/]/.test(value) ? value : undefined;
+  return /^https:\/\//i.test(value) || (value==='/'||/^\/[^/]/.test(value)) ? value : undefined;
 }
 export function textValue(value: unknown): string { return typeof value === 'string' ? value : ''; }
+/** Aliases understood by Axel's public PageSections, preserving existing properties. */
+export function normalizeSnapshot(snapshot: PortalSnapshot): PortalSnapshot {
+  return {...snapshot,sections:snapshot.sections.map((section,position)=>{
+    const p={...section.properties};
+    if(section.type==='banner'){
+      if(typeof p.body==='string')p.subtitle=p.body;
+      if(typeof p.url==='string')p.button_url=p.url;
+      if(typeof p.link_label==='string')p.button_label=p.link_label;
+    }
+    if(section.type==='links'&&typeof p.url==='string'&&p.url)
+      p.items=[{title:textValue(p.link_label)||textValue(p.title)||'Consultar',url:p.url,description:textValue(p.body)}];
+    return {...section,position,properties:p};
+  })};
+}
 export function contrastText(hex: string): string {
   const rgb = [1,3,5].map(i => parseInt(hex.slice(i,i+2),16)/255).map(v => v<=0.04045?v/12.92:((v+0.055)/1.055)**2.4);
   const luminance=0.2126*rgb[0]+0.7152*rgb[1]+0.0722*rgb[2];

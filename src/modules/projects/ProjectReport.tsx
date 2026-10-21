@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import type { Project } from './types';
 import { sumMoney } from './projectValidation';
+import {Download,SlidersHorizontal} from 'lucide-react';
+import {formatMoney,formatProjectDate} from './projectPresentation';
 export function ProjectReport({ project }: { project: Project }) {
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
@@ -17,18 +19,19 @@ export function ProjectReport({ project }: { project: Project }) {
     const link = document.createElement('a'); link.href = url; link.download = `informe-${project.id}.csv`; link.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
-  return <section className="my-6 rounded border p-4">
-    <h3 className="font-bold">Movimientos por fecha y rubro</h3>
-    <div className="my-3 flex flex-wrap gap-4">
+  return <section className="project-report-content">
+    <div className="project-section-heading"><div><p className="project-eyebrow"><SlidersHorizontal size={14} aria-hidden="true"/>CONSULTA DE MOVIMIENTOS</p><h3>Informe de gastos</h3></div><button disabled={invalid||!rows.length} onClick={download}><Download size={16} aria-hidden="true"/>Descargar CSV</button></div>
+    <div className="project-filters report-filters">
       <label>Desde <input type="date" value={from} onChange={e => setFrom(e.target.value)} /></label>
       <label>Hasta <input type="date" value={to} onChange={e => setTo(e.target.value)} /></label>
       <label>Rubro <select value={itemId} onChange={e => setItemId(e.target.value)}><option value="">Todos</option>{project.budget_items?.map(item => <option key={item.budget_item_id} value={item.budget_item_id}>{item.name}</option>)}</select></label>
     </div>
-    {invalid ? <p role="alert">La fecha final debe ser posterior o igual a la inicial.</p> : <>
-      <p>Total del período: <strong>${sumMoney(rows.map(row => row.amount)).toFixed(2)}</strong>. {rows.length} movimientos.</p>
-      <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead><tr><th>Fecha</th><th>Rubro</th><th>Concepto</th><th>USD</th></tr></thead><tbody>{rows.map(row => <tr key={row.expense_id}><td>{row.date}</td><td>{row.item}</td><td>{row.description}</td><td>{row.amount.toFixed(2)}</td></tr>)}</tbody></table></div>
-      <button type="button" className="mt-3 rounded bg-blue-700 px-4 py-2 text-white" onClick={download}>Descargar informe CSV</button>
-      <p className="mt-2 text-xs">Informe interno. El saldo global incluye todos los movimientos, independientemente del filtro.</p>
+    {(from||to||itemId)&&<button type="button" className="project-text-button" onClick={()=>{setFrom('');setTo('');setItemId('');}}>Restablecer filtros</button>}
+    {invalid ? <p className="project-error" role="alert">La fecha final debe ser posterior o igual a la inicial.</p> : <>
+      <div className="project-report-total"><div><span>Total del período consultado</span><strong>{formatMoney(sumMoney(rows.map(row=>row.amount)))}</strong></div><span>{rows.length} movimientos</span></div>
+      <p className="project-muted">Desde: {from?formatProjectDate(from):'el inicio'} · Hasta: {to?formatProjectDate(to):'la última fecha registrada'} · Rubro: {project.budget_items.find(item=>item.budget_item_id===itemId)?.name??'todos'}.</p>
+      {rows.length?<div className="project-table" role="region" aria-label="Movimientos del informe" tabIndex={0}><table><thead><tr><th scope="col">Fecha</th><th scope="col">Rubro</th><th scope="col">Concepto</th><th scope="col">Importe</th></tr></thead><tbody>{rows.map(row=><tr key={row.expense_id}><td className="project-nowrap">{formatProjectDate(row.date)}</td><td>{row.item}</td><td>{row.description}</td><td className="project-amount">{formatMoney(row.amount)}</td></tr>)}</tbody></table></div>:<p className="project-inline-empty">No hay gastos que coincidan con este período y rubro.</p>}
+      <p className="project-form-help">Informe interno. El saldo global incluye todos los movimientos, independientemente del filtro.</p>
     </>}
   </section>;
 }

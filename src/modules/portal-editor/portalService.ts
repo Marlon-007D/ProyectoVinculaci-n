@@ -1,10 +1,10 @@
 import { supabase } from '../../core/supabaseClient';
 import { getUserInstitutions } from '../../core/institutionService';
-import { newSnapshot, safeUrl, sectionTypes, type PortalSnapshot } from './contract';
+import { newSnapshot, normalizeSnapshot, safeUrl, sectionTypes, type PortalSnapshot } from './contract';
 import { parseSnapshot } from '../site/utils/snapshot';
 import type { Json } from '../site/types/common';
 
-export interface PortalDraft { page_id:string;revision:number;status:string;snapshot:PortalSnapshot }
+export interface PortalDraft { page_id:string;revision:number;status:string;snapshot:PortalSnapshot;published_slug?:string }
 interface PageRow {page_id:string;institution_id:string;title:string;slug:string;status:string;is_homepage:boolean}
 interface VersionRow {publication_version_id:string;page_id:string;version_number:number;content_snapshot:PortalSnapshot & {publication_state?:string};published_by:string|null}
 async function actor(institutionId:string,publish=false){
@@ -49,7 +49,10 @@ export async function listPortalPages(institutionId:string):Promise<PortalDraft[
   if(error)throw error;
   return Promise.all((data??[]).map(async page=>{
     const versions=await pageVersions(page.page_id);const latest=versions[0];
-    return {page_id:page.page_id,status:page.status,revision:latest?.version_number??0,snapshot:latest?.content_snapshot?.schema_version===1?latest.content_snapshot:await existingSnapshot(page)};
+    const draft=await supabase.from('portal_editor_drafts').select('revision,snapshot').eq('page_id',page.page_id).maybeSingle();if(draft.error)throw draft.error;
+    const published_slug=page.status==='published'?page.slug:undefined;
+    if(draft.data)return {page_id:page.page_id,status:page.status,revision:draft.data.revision,snapshot:draft.data.snapshot as PortalSnapshot,published_slug};
+    return {page_id:page.page_id,status:page.status,revision:latest?.version_number??0,snapshot:latest?.content_snapshot?.schema_version===1?latest.content_snapshot:await existingSnapshot(page),published_slug};
   }));
 }
 function validate(snapshot:PortalSnapshot){
@@ -57,54 +60,24 @@ function validate(snapshot:PortalSnapshot){
   if(!snapshot.theme.font_family.trim()||snapshot.theme.font_family.length>100)throw new Error('Introduce una tipografía de hasta 100 caracteres.');
   if(!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(snapshot.slug)||snapshot.slug.length>100)throw new Error('Usa una ruta en minúsculas, con números o guiones.');
   if(!/^#[0-9a-f]{6}$/i.test(snapshot.theme.primary_color)||!/^#[0-9a-f]{6}$/i.test(snapshot.theme.secondary_color))throw new Error('Selecciona colores válidos.');
-  if(snapshot.settings.logo_url&&!/^https:\/\//.test(snapshot.settings.logo_url))throw new Error('El logotipo debe usar HTTPS.');
+  if(snapshot.settings.logo_url&&(!safeUrl(snapshot.settings.logo_url)||!snapshot.settings.logo_url.startsWith('https://')))throw new Error('El logotipo debe usar HTTPS.');
   if(snapshot.sections.length>40||snapshot.menus.length>30)throw new Error('Usa como máximo 40 secciones y 30 enlaces.');
-  for(const menu of snapshot.menus)if(!menu.label.trim()||!safeUrl(menu.url))throw new Error('Revisa el texto y destino de los enlaces.');
-  for(const section of snapshot.sections){const p=section.properties;if(p.url&&!safeUrl(p.url))throw new Error('Hay un enlace de sección no válido.');if(p.image_url&&(!safeUrl(p.image_url)||!String(p.image_url).startsWith('https://')||!String(p.alt??'').trim()))throw new Error('Cada imagen necesita una URL HTTPS y texto alternativo.');}
+  for(const menu of snapshot.menus)if(!menu.label.trim()||menu.label.length>100||menu.url.length>255||!safeUrl(menu.url))throw new Error('Revisa el texto y destino de los enlaces.');
+  if(!['classic','cards','editorial'].includes(snapshot.template))throw new Error('Selecciona una plantilla válida.');
+  for(const section of snapshot.sections){if(!Object.hasOwn(sectionTypes,section.type))throw new Error('Tipo de sección no compatible.');const p=section.properties;if(p.url&&!safeUrl(p.url))throw new Error('Hay un enlace de sección no válido.');if(p.image_url&&(!safeUrl(p.image_url)||!String(p.image_url).startsWith('https://')||!String(p.alt??'').trim()))throw new Error('Cada imagen necesita una URL HTTPS y texto alternativo.');}
 }
-/** No RPC, DDL, grants or new tables. Versions hold the existing JSON snapshot contract. */
-export async function savePortal(institutionId:string,pageId:string|null,expectedRevision:number,snapshot:PortalSnapshot,publish:boolean){
-  validate(snapshot);const user=await actor(institutionId,publish);
-  let page:PageRow;
-  if(pageId){const result=await supabase.from('pages').select('page_id,institution_id,title,slug,status,is_homepage').eq('institution_id',institutionId).eq('page_id',pageId).single();if(result.error)throw result.error;page=result.data;}
-  else {
-    const existing=await supabase.from('pages').select('page_id,institution_id,title,slug,status,is_homepage').eq('institution_id',institutionId).eq('slug',snapshot.slug).maybeSingle();if(existing.error)throw existing.error;
-    if(existing.data)throw new Error('Ya existe una página con esa ruta. Recarga el listado y selecciónala para editarla.');
-    else{const result=await supabase.from('pages').insert({institution_id:institutionId,title:snapshot.title,slug:snapshot.slug,is_homepage:false,status:'draft'}).select('page_id,institution_id,title,slug,status,is_homepage').single();if(result.error)throw result.error;page=result.data;}
-  }
-  const latest=(await pageVersions(page.page_id))[0];
-  if((latest?.version_number??0)!==expectedRevision)throw new Error('La página tiene una versión más reciente. Recarga el listado y selecciónala antes de guardar.');
-  if(publish){
-    // Check catalog compatibility before changing any existing configuration.
-    const types=[...new Set(snapshot.sections.map(s=>s.type))];
-    if(types.length){const catalog=await supabase.from('section_type_schemas').select('type').in('type',types).eq('is_active',true);if(catalog.error)throw catalog.error;const available=new Set(catalog.data?.map(t=>t.type));const missing=types.filter(type=>!available.has(type));if(missing.length)throw new Error('Estos tipos no están habilitados en el catálogo existente: '+missing.join(', '));}
-  }
-  const saved=await supabase.from('publication_versions').insert({page_id:page.page_id,version_number:expectedRevision+1,content_snapshot:{...snapshot,publication_state:'draft'},published_by:null}).select('publication_version_id').single();
-  if(saved.error)throw saved.error;
-  if(publish){
-    try{
-      const settingsTheme=await supabase.from('site_settings').select('theme_id').eq('institution_id',institutionId).maybeSingle();if(settingsTheme.error)throw settingsTheme.error;
-      const themeId=settingsTheme.data?.theme_id;
-      let appearance:Record<string,unknown>={};
-      if(themeId){const current=await supabase.from('themes').select('appearance_config').eq('institution_id',institutionId).eq('theme_id',themeId).single();if(current.error)throw current.error;appearance=current.data.appearance_config??{};}
-      const themeValues={...snapshot.theme,appearance_config:{...appearance,template:snapshot.template}};
-      const theme=themeId?await supabase.from('themes').update(themeValues).eq('institution_id',institutionId).eq('theme_id',themeId).select('theme_id').single():await supabase.from('themes').insert({institution_id:institutionId,name:snapshot.settings.site_title.trim().slice(0,100),...themeValues}).select('theme_id').single();if(theme.error)throw theme.error;
-      const settings=await supabase.from('site_settings').upsert({institution_id:institutionId,...snapshot.settings,logo_url:snapshot.settings.logo_url||null,theme_id:theme.data.theme_id},{onConflict:'institution_id'}).select('site_setting_id').single();if(settings.error)throw settings.error;
-      const sections=await supabase.from('page_sections').delete().eq('page_id',page.page_id);if(sections.error)throw sections.error;
-      if(snapshot.sections.length){const insert=await supabase.from('page_sections').insert(snapshot.sections.map((s,position)=>({page_id:page.page_id,type:s.type,position,is_visible:s.is_visible,properties:s.properties})));if(insert.error)throw insert.error;}
-      const menu=await supabase.from('menus').delete().eq('institution_id',institutionId);if(menu.error)throw menu.error;
-      if(snapshot.menus.length){const insert=await supabase.from('menus').insert(snapshot.menus.map((m,position)=>({institution_id:institutionId,label:m.label,url:m.url,position,parent_id:null,is_external:m.url.startsWith('https://')})));if(insert.error)throw insert.error;}
-      if(snapshot.is_homepage){const homes=await supabase.from('pages').update({is_homepage:false}).eq('institution_id',institutionId).eq('is_homepage',true).neq('page_id',page.page_id);if(homes.error)throw homes.error;}
-      const update=await supabase.from('pages').update({title:snapshot.title,slug:snapshot.slug,is_homepage:snapshot.is_homepage,status:'published'}).eq('institution_id',institutionId).eq('page_id',page.page_id).select('page_id').single();if(update.error)throw update.error;
-      // Only this last successful update makes the new snapshot visible in our public renderer.
-      const commit=await supabase.from('publication_versions').update({content_snapshot:{...snapshot,publication_state:'published'},published_by:user.id}).eq('publication_version_id',saved.data.publication_version_id).eq('page_id',page.page_id).select('publication_version_id').single();if(commit.error)throw commit.error;
-    }catch(cause){const detail=cause&&typeof cause==='object'&&'message'in cause?String(cause.message):'Operación no disponible';throw new Error(`El borrador se guardó, pero la publicación no terminó. Puede haber cambios parciales de configuración. Recarga la página antes de reintentar. ${detail}`);}
-  }
-  return {page_id:page.page_id,revision:expectedRevision+1,status:publish?'published':page.status,snapshot};
+/** The server saves a private draft or publishes the entire configuration atomically. */
+export async function savePortal(institutionId:string,pageId:string|null,expectedRevision:number,snapshot:PortalSnapshot,publish:boolean):Promise<PortalDraft>{
+  snapshot=normalizeSnapshot(snapshot);
+  validate(snapshot);await actor(institutionId,publish);
+  const {data,error}=await supabase.rpc('portal_editor_save',{
+    target_institution:institutionId,target_page:pageId,expected_revision:expectedRevision,snapshot,publish,
+  });
+  if(error)throw error;return data as PortalDraft;
 }
 export async function loadPublishedPortal(institutionSlug:string,pageSlug:string|null){
   const institution=await supabase.from('institutions').select('institution_id,slug').eq('slug',institutionSlug).eq('is_active',true).maybeSingle();if(institution.error)throw institution.error;if(!institution.data)return null;
-  const module=await supabase.from('module_settings').select('is_enabled').eq('institution_id',institution.data.institution_id).eq('module_name','portal').maybeSingle();if(module.error)throw module.error;if(module.data?.is_enabled===false)return null;
+  const module=await supabase.from('module_settings').select('is_enabled').eq('institution_id',institution.data.institution_id).eq('module_name','portal').maybeSingle();if(module.error)throw module.error;if(module.data?.is_enabled!==true)return null;
   const pages=await supabase.from('pages').select('page_id,institution_id,title,slug,status,is_homepage').eq('institution_id',institution.data.institution_id).eq('status','published');if(pages.error)throw pages.error;if(!pages.data?.length)return null;
   const versions=await supabase.from('publication_versions').select('page_id,version_number,content_snapshot').in('page_id',pages.data.map(p=>p.page_id)).or('content_snapshot->>publication_state.is.null,content_snapshot->>publication_state.eq.published').order('version_number',{ascending:false});if(versions.error)throw versions.error;
   const latest=new Map<string,PortalSnapshot>();for(const version of versions.data??[])if(!latest.has(version.page_id))latest.set(version.page_id,version.content_snapshot as PortalSnapshot);
@@ -124,6 +97,8 @@ export async function loadPublishedPortal(institutionSlug:string,pageSlug:string
   }
   const news=snapshot.sections.some(s=>s.is_visible&&s.type==='news')?await supabase.from('news').select('title,summary,cover_image_url').eq('institution_id',institution.data.institution_id).eq('is_published',true).order('published_at',{ascending:false}).limit(12):{data:[],error:null};
   const staff=snapshot.sections.some(s=>s.is_visible&&s.type==='staff')?await supabase.from('staff').select('full_name,position,photo_url').eq('institution_id',institution.data.institution_id).eq('is_public',true).order('position_order').limit(30):{data:[],error:null};
-  if(news.error)throw news.error;if(staff.error)throw staff.error;
-  return {snapshot,slug:institutionSlug,news:(news.data??[]).map(n=>({title:n.title,body:n.summary,image_url:n.cover_image_url})),staff:(staff.data??[]).map(s=>({title:s.full_name,body:s.position,image_url:s.photo_url}))};
+  const events=snapshot.sections.some(s=>s.is_visible&&s.type==='events')?await supabase.from('events').select('title,description,event_date,location').eq('institution_id',institution.data.institution_id).order('event_date',{ascending:false}).limit(12):{data:[],error:null};
+  const honors=snapshot.sections.some(s=>s.is_visible&&s.type==='honors')?await supabase.from('public_honors').select('student_name,achievement,photo_url').eq('institution_id',institution.data.institution_id).limit(12):{data:[],error:null};
+  for(const result of [news,staff,events,honors])if(result.error)throw result.error;
+  return {snapshot,slug:institutionSlug,news:(news.data??[]).map(n=>({title:n.title,body:n.summary,image_url:n.cover_image_url})),staff:(staff.data??[]).map(s=>({title:s.full_name,body:s.position,image_url:s.photo_url})),events:(events.data??[]).map(e=>({title:e.title,body:[e.description,e.event_date,e.location].filter(Boolean).join(' · ')})),honors:(honors.data??[]).map(h=>({title:h.student_name,body:h.achievement,image_url:h.photo_url}))};
 }
