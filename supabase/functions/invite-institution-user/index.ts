@@ -25,7 +25,11 @@ Deno.serve(async (request) => {
   }
 
   const admin = createClient(supabaseUrl, serviceRoleKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
+    db: { schema: 'public' },
+    auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false },
+    // Keep privileged database writes independent of the caller's JWT.
+    // getUser(token) validates the caller without signing this client in.
+    global: { headers: { Authorization: `Bearer ${serviceRoleKey}` } },
   });
 
   try {
@@ -39,7 +43,10 @@ Deno.serve(async (request) => {
     const lastName = String(body.lastName ?? '').trim();
     const phone = String(body.phone ?? '').trim();
     const roleId = String(body.roleId ?? '');
-    const institutionId = String(body.institutionId ?? '');
+    const institutionId = String(body.institutionId ?? body.tenant_id ?? '');
+    if (body.institutionId && body.tenant_id && body.institutionId !== body.tenant_id) {
+      return respond({ error: 'Los identificadores de institucion no coinciden.' }, 400);
+    }
     if (!firstName || !lastName) {
       return respond({ error: 'Los nombres y apellidos son obligatorios para crear el perfil.' }, 400);
     }
@@ -51,7 +58,11 @@ Deno.serve(async (request) => {
     }
 
     const [{ data: inviterMemberships, error: membershipError }, { data: targetRole, error: roleError }, { data: institution, error: institutionError }] = await Promise.all([
-      admin.from('memberships').select('institution_id, role_id').eq('profile_id', inviter.id),
+      admin.from('memberships')
+        .select('institution_id, role_id, institutions!fk_memberships_institution!inner(is_active)')
+        .eq('profile_id', inviter.id)
+        .eq('is_active', true)
+        .eq('institutions.is_active', true),
       admin.from('roles').select('role_id, name').eq('role_id', roleId).maybeSingle(),
       admin.from('institutions').select('institution_id, name, is_active').eq('institution_id', institutionId).maybeSingle(),
     ]);
@@ -98,31 +109,38 @@ Deno.serve(async (request) => {
     }
 
     const invitedUser = invitation.user;
-    const { error: profileError } = await admin.from('profiles').upsert({
+    const { data: savedProfile, error: profileError } = await admin.from('profiles').upsert({
       profile_id: invitedUser.id,
       first_name: firstName,
       last_name: lastName,
       phone,
       email,
       mfa_required: true,
-    }, { onConflict: 'profile_id' });
+    }, { onConflict: 'profile_id' }).select('profile_id').single();
 
-    if (profileError) {
-      await admin.auth.admin.deleteUser(invitedUser.id);
+    if (profileError || savedProfile?.profile_id !== invitedUser.id) {
       console.error('No se pudo crear el perfil invitado:', profileError);
-      return respond({ error: 'La invitación se creó, pero no se pudo preparar el perfil. Vuelve a intentarlo.' }, 500);
+      return respond({
+        error: `La invitacion se envio, pero no se pudo preparar el perfil (codigo ${profileError?.code ?? 'PROFILE_NOT_SAVED'}). Revisa la migracion de permisos y el registro de la funcion; despues vuelve a asignar el rol a este correo.`,
+        stage: 'profile_upsert',
+        code: profileError?.code ?? 'PROFILE_NOT_SAVED',
+      }, 500);
     }
 
     const { error: assignmentError } = await admin.from('memberships').upsert({
       institution_id: institutionId,
       profile_id: invitedUser.id,
       role_id: roleId,
+      is_active: true,
     }, { onConflict: 'institution_id,profile_id' });
 
     if (assignmentError) {
-      await admin.auth.admin.deleteUser(invitedUser.id);
       console.error('No se pudo asignar el rol al usuario invitado:', assignmentError);
-      return respond({ error: 'No se pudo asignar el rol. Revisa la configuración de memberships y vuelve a intentarlo.' }, 500);
+      return respond({
+        error: `La invitacion y el perfil se guardaron, pero no se pudo asignar el rol (codigo ${assignmentError.code ?? 'MEMBERSHIP_NOT_SAVED'}). Vuelve a asignar el rol al mismo correo.`,
+        stage: 'membership_upsert',
+        code: assignmentError.code ?? 'MEMBERSHIP_NOT_SAVED',
+      }, 500);
     }
 
     return respond({ message: `Invitación enviada a ${email}; el rol ya quedó asignado a ${institution.name}. Al iniciar sesión, deberá configurar la verificación en dos pasos.` });

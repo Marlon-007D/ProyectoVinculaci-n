@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Link, Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider, useAuth } from './core/AuthContext';
 import { TenantProvider } from './core/TenantContext';
 import { MfaEnrollment, SuperAdminPanel, UserManagement } from './modules/admin';
@@ -363,21 +363,51 @@ function MfaChallengeScreen() {
   );
 }
 
+function IntegrationPlaceholder({ moduleName }: { moduleName: string }) {
+  return (
+    <main className="mx-auto max-w-3xl px-6 py-16 text-center">
+      <p className="text-xs font-bold tracking-[0.16em] text-[#398278]">INTEGRACION DE MODULOS</p>
+      <h1 className="mt-3 text-2xl font-bold text-ink">{moduleName}</h1>
+      <p className="mx-auto mt-3 max-w-xl text-sm text-muted">
+        Esta rama conserva la arquitectura administrativa y de seguridad. El modulo funcional se integra desde su rama de equipo correspondiente.
+      </p>
+      <Link to="/panel/admin" className="mt-6 inline-flex rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white">Ir a administracion</Link>
+    </main>
+  );
+}
+
 function AdminRoutes() {
   const { user, logout, isPasswordRecovery, mfaRequired, mfaEnrollmentRequired, completeMfaEnrollment } = useAuth();
   if (isPasswordRecovery) return <PasswordRecoveryScreen />;
   if (user && mfaRequired) return <MfaChallengeScreen />;
   if (user && mfaEnrollmentRequired) return <MfaEnrollment onEnrolled={completeMfaEnrollment} />;
   return <>
-    <header className="flex items-center justify-between border-b border-line bg-white px-6 py-4">
-      <a href="/panel/admin" className="font-bold text-brand">Administración institucional</a>
-      {user && <button type="button" onClick={() => void logout()} className="text-sm font-semibold text-brand">Cerrar sesión</button>}
+    <header className="border-b border-line bg-white px-6 py-4">
+      <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4">
+        <Link to="/panel/admin" className="font-bold text-brand">Administracion institucional</Link>
+        <nav aria-label="Navegacion principal" className="flex flex-wrap items-center gap-3 text-sm font-semibold text-muted">
+          <Link to="/panel">Inicio</Link>
+          <Link to="/proyectos">Proyectos</Link>
+          <Link to="/dece">DECE</Link>
+          <Link to="/simuladores">Simuladores</Link>
+          <Link to="/portal">Portal Web</Link>
+        </nav>
+        {user && <button type="button" onClick={() => void logout()} className="text-sm font-semibold text-brand">Cerrar sesion</button>}
+      </div>
     </header>
     <Routes>
       <Route path="/" element={<Navigate to="/panel/admin" replace />} />
-      <Route path="/panel" element={<Navigate to="/panel/admin" replace />} />
+      <Route path="/panel" element={<AdminWorkspace />} />
       <Route path="/admin" element={<Navigate to="/panel/admin" replace />} />
       <Route path="/panel/admin" element={<AdminWorkspace />} />
+      <Route path="/proyectos/*" element={<IntegrationPlaceholder moduleName="Proyectos" />} />
+      <Route path="/panel/proyectos/*" element={<IntegrationPlaceholder moduleName="Proyectos" />} />
+      <Route path="/dece/*" element={<IntegrationPlaceholder moduleName="DECE" />} />
+      <Route path="/panel/dece/*" element={<IntegrationPlaceholder moduleName="DECE" />} />
+      <Route path="/simuladores/*" element={<IntegrationPlaceholder moduleName="Simuladores" />} />
+      <Route path="/panel/simuladores/*" element={<IntegrationPlaceholder moduleName="Simuladores" />} />
+      <Route path="/portal/*" element={<IntegrationPlaceholder moduleName="Portal Web" />} />
+      <Route path="/panel/portal/*" element={<IntegrationPlaceholder moduleName="Portal Web" />} />
       <Route path="*" element={<main className="p-8">Página no disponible. <a href="/panel/admin">Ir a administración</a></main>} />
     </Routes>
   </>;

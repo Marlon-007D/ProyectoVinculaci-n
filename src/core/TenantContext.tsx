@@ -99,7 +99,8 @@ export function TenantProvider({ children }: { children: ReactNode }) {
           const { data, error } = await supabase
             .from('memberships')
             .select('institution_id, institutions!fk_memberships_institution(institution_id, name, slug, is_active), roles!fk_memberships_role(name)')
-            .eq('profile_id', user.id);
+            .eq('profile_id', user.id)
+            .eq('is_active', true);
 
           if (!error && data) {
             const institutions: Institution[] = data.flatMap((membership: any) => {

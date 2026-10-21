@@ -110,7 +110,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const { data, error } = await supabase
       .from('memberships')
       .select('institution_id, role_id')
-      .eq('profile_id', userId);
+      .eq('profile_id', userId)
+      .eq('is_active', true);
 
     if (error) {
       setRoleError('No se pudo consultar tu rol. Verifica que esté aplicada la migración de acceso de superadministrador.');

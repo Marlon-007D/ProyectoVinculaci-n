@@ -1,3 +1,19 @@
+-- Bootstrap for fresh databases; hardened again by 20261020100000.
+ALTER TABLE public.memberships ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT TRUE;
+CREATE OR REPLACE FUNCTION public.is_super_admin()
+RETURNS BOOLEAN LANGUAGE sql STABLE SECURITY DEFINER SET search_path = ''
+AS $$
+  SELECT auth.uid() IS NOT NULL AND EXISTS (
+    SELECT 1 FROM public.memberships m
+    JOIN public.roles r ON r.role_id = m.role_id
+    JOIN public.institutions i ON i.institution_id = m.institution_id
+    WHERE m.profile_id = auth.uid() AND m.is_active AND i.is_active
+      AND r.name::text = 'super_admin'
+  );
+$$;
+REVOKE ALL ON FUNCTION public.is_super_admin() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.is_super_admin() TO authenticated, service_role;
+
 -- Registrar los roles válidos del enum.
 -- No agregar "superadmin": el valor correcto es "super_admin".
 INSERT INTO public.roles (name, description)

@@ -29,9 +29,11 @@ const roleLabels: Record<string, string> = {
 const formatRole = (role: string) => roleLabels[role] ?? role.replaceAll('_', ' ');
 
 export const UserManagement: React.FC = () => {
-  const { role: currentRole, institutionId: currentInstitutionId } = useAuth();
-  const { institutions: tenantInstitutions, loadingTenant } = useTenant();
+  const { role: currentRole } = useAuth();
+  const { institutions: tenantInstitutions, loadingTenant, activeInstitution } = useTenant();
+  const currentInstitutionId = activeInstitution?.institution_id ?? null;
   const isPlatformAdmin = currentRole === 'super_admin';
+  const isInstitutionAdmin = activeInstitution?.role === 'institution_admin';
   const [email, setEmail] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -51,8 +53,8 @@ export const UserManagement: React.FC = () => {
 
   const availableInstitutions = useMemo(() => isPlatformAdmin
     ? tenantInstitutions
-    : tenantInstitutions.filter((item) => item.institution_id === currentInstitutionId),
-  [isPlatformAdmin, tenantInstitutions, currentInstitutionId]);
+    : tenantInstitutions.filter((item) => item.role === 'institution_admin'),
+  [isPlatformAdmin, tenantInstitutions]);
 
   const loadData = useCallback(async () => {
     if (loadingTenant) return;
@@ -82,7 +84,7 @@ export const UserManagement: React.FC = () => {
       return;
     }
 
-    setRoles((roleResult.data ?? []).filter((item) => item.name !== 'super_admin'));
+    setRoles((roleResult.data ?? []).filter((item) => item.name !== 'super_admin' && (isPlatformAdmin || item.name !== 'institution_admin')));
     setMembers((membershipResult.data ?? []) as UserMember[]);
     setLoading(false);
   }, [currentInstitutionId, isPlatformAdmin, loadingTenant]);
@@ -147,7 +149,7 @@ export const UserManagement: React.FC = () => {
 
       if (error) {
         const missingAccount = error.message.includes('No existe una cuenta registrada');
-        if (missingAccount && isPlatformAdmin) {
+        if (missingAccount && (isPlatformAdmin || (isInstitutionAdmin && availableInstitutions.some(item => item.institution_id === targetInstitutionId)))) {
           const { data, error: inviteError } = await supabase.functions.invoke('invite-institution-user', {
             body: { email: normalizedEmail, roleId, institutionId: targetInstitutionId, firstName: normalizedFirstName, lastName: normalizedLastName, phone: normalizedPhone },
           });
@@ -168,7 +170,7 @@ export const UserManagement: React.FC = () => {
         }
         setFeedbackType('error');
         setMsg(missingAccount
-          ? 'La cuenta todavía no existe. Solicita al superadministrador global que envíe la invitación.'
+          ? 'La cuenta no existe y tu membresia no permite invitar usuarios a esta institucion.'
           : `No se pudo asignar el rol: ${error.message}`);
         return;
       }
