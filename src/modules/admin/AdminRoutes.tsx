@@ -32,7 +32,7 @@ export default function AdminRoutes({ superadminOnly = false }: { superadminOnly
     if (!activeInstitution) return;
     const institution = activeInstitution;
     let destination = '';
-    if (role === 'dece_staff') destination = '/' + institution.slug + '/dece';
+    if (role === 'dece_staff') destination = '/panel/dece';
     else if (role === 'student') destination = '/' + institution.slug + '/mi-ficha';
     else if (role === 'project_manager') destination = '/panel/proyectos?institution=' + encodeURIComponent(institution.institution_id);
     else if (role === 'editor') destination = '/panel/portal?institution=' + encodeURIComponent(institution.institution_id);
