@@ -10,7 +10,6 @@ import { SiteApp } from './modules/site';
 import { SimuladoresApp } from './app/SimuladoresApp';
 import { InstitutionalLayout } from './components/layout/InstitutionalLayout';
 import { InstitutionalPanel } from './pages/InstitutionalPanel';
-import { InstitutionalEntryPage } from './pages/InstitutionalEntryPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import './App.css';
 
@@ -355,10 +354,12 @@ function ProjectsPageWrapper() {
 }
 
 function ModuleGate({ moduleName, children }: { moduleName: InstitutionModuleName; children: ReactNode }) {
+  const { user, loading: authLoading } = useAuth();
   const { activeInstitution, loadingTenant, modulePermissionError, hasModuleAccess } = useTenant();
+  if (moduleName === 'inicio' && !authLoading && !user) return <Navigate to="/panel/admin" replace />;
   if (loadingTenant) return <div className="mx-auto max-w-3xl p-8 text-sm text-slate-600">Cargando permisos de la institucion...</div>;
   if (!activeInstitution) {
-    if (moduleName === 'inicio') return <InstitutionalEntryPage />;
+    if (moduleName === 'inicio') return <Navigate to="/panel/admin" replace />;
     return <div className="mx-auto max-w-3xl p-8 text-sm text-slate-600">No hay una institución activa disponible para esta cuenta.</div>;
   }
   if (modulePermissionError) return <div className="mx-auto max-w-3xl p-8"><section role="alert" className="rounded-xl border border-rose-200 bg-white p-6 text-sm text-rose-800">{modulePermissionError}</section></div>;
@@ -394,6 +395,12 @@ function DecePageWrapper() {
   );
 }
 
+function TenantSiteApp() {
+  const { activeInstitution } = useTenant();
+  if (!activeInstitution) return <Navigate to="/panel/admin" replace />;
+  return <SiteApp institutionId={activeInstitution.institution_id} />;
+}
+
 function AppRoutes() {
   const { user, isPasswordRecovery, mfaRequired, mfaEnrollmentRequired, completeMfaEnrollment } = useAuth();
 
@@ -404,20 +411,20 @@ function AppRoutes() {
   return (
     <Routes>
       <Route element={<InstitutionalLayout />}>
-        <Route index element={<Navigate to="/panel" replace />} />
+        <Route index element={<Navigate to="/panel/admin" replace />} />
         <Route path="inicio" element={<Navigate to="/panel" replace />} />
         <Route path="panel" element={<ModuleGate moduleName="inicio"><InstitutionalPanel /></ModuleGate>} />
         <Route path="panel/proyectos" element={<ModuleGate moduleName="projects"><ProjectsPageWrapper /></ModuleGate>} />
         <Route path="panel/dece" element={<ModuleGate moduleName="dece"><DecePageWrapper /></ModuleGate>} />
         <Route path="panel/simuladores" element={<ModuleGate moduleName="simuladores"><SimuladoresApp /></ModuleGate>} />
-        <Route path="panel/portal/*" element={<ModuleGate moduleName="portal"><SiteApp /></ModuleGate>} />
+        <Route path="panel/portal/*" element={<ModuleGate moduleName="portal"><TenantSiteApp /></ModuleGate>} />
         <Route path="panel/admin" element={<AdminWorkspace />} />
         <Route path="panel/superadmin" element={<AdminWorkspace />} />
         <Route path="system-admin" element={<Navigate to="/panel/superadmin" replace />} />
         <Route path="proyectos" element={<Navigate to="/panel/proyectos" replace />} />
         <Route path="dece" element={<Navigate to="/panel/dece" replace />} />
         <Route path="simuladores" element={<Navigate to="/panel/simuladores" replace />} />
-        <Route path="portal/*" element={<ModuleGate moduleName="portal"><SiteApp /></ModuleGate>} />
+        <Route path="portal/*" element={<ModuleGate moduleName="portal"><TenantSiteApp /></ModuleGate>} />
         <Route path="admin" element={<Navigate to="/panel/admin" replace />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
