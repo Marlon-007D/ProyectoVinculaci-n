@@ -1,8 +1,17 @@
-import { useEffect, useState, type FormEvent } from 'react';
-import { BrowserRouter, Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
+import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './core/AuthContext';
-import { TenantProvider } from './core/TenantContext';
+import { TenantProvider, useTenant, type InstitutionModuleName } from './core/TenantContext';
+import { supabase } from './core/supabaseClient';
 import { MfaEnrollment, SuperAdminPanel, UserManagement } from './modules/admin';
+import { ProjectsWorkspace } from './modules/projects/ProjectsWorkspace';
+import { DeceApp, DeceDataProvider } from './modules/dece';
+import { SiteApp } from './modules/site';
+import { SimuladoresApp } from './app/SimuladoresApp';
+import { InstitutionalLayout } from './components/layout/InstitutionalLayout';
+import { InstitutionalPanel } from './pages/InstitutionalPanel';
+import { InstitutionalEntryPage } from './pages/InstitutionalEntryPage';
+import { NotFoundPage } from './pages/NotFoundPage';
 import './App.css';
 
 function AccessScreen() {
@@ -126,7 +135,7 @@ function AccessScreen() {
             <div><p className="text-sm font-semibold">Acceso protegido por roles</p><p className="mt-1 text-xs leading-5 text-slate-300">Cada cuenta entra únicamente a las funciones que tiene asignadas.</p></div>
           </div>
           <div className="mt-5 flex flex-wrap gap-2 border-t border-white/10 pt-4">
-            {['Instituciones', 'Usuarios', 'Roles', 'Auditoría'].map(item => <span key={item} className="rounded-full border border-white/10 bg-white/[0.06] px-3 py-1.5 text-[10px] font-medium text-slate-200">{item}</span>)}
+            {['Proyectos', 'DECE', 'Simuladores', 'Portal web'].map(item => <span key={item} className="rounded-full border border-white/10 bg-white/[0.06] px-3 py-1.5 text-[10px] font-medium text-slate-200">{item}</span>)}
           </div>
         </div>
         <p className="relative mt-8 text-[10px] tracking-wide text-slate-400">PLATAFORMA INSTITUCIONAL EDUCATIVA</p>
@@ -149,28 +158,25 @@ function AccessScreen() {
         <form onSubmit={registerMode ? submitRegistration : submit} className="flex flex-col gap-2">
           {registerMode && <>
             <label htmlFor="register-first-name" className="mt-2 text-[13px] font-semibold text-[#314953]">Nombres</label>
-            <input id="register-first-name" type="text" autoComplete="given-name" value={firstName} onChange={event => setFirstName(event.target.value)} required className="h-11 rounded-lg border border-[#d8e1e4] bg-white px-3 text-[#243c46] outline-none focus:border-[#398278] focus:ring-2 focus:ring-[#398278]/20" placeholder="Nombres" />
+            <input id="register-first-name" type="text" autoComplete="given-name" value={firstName} onChange={event => setFirstName(event.target.value)} required className="h-11 rounded-lg border border-[#d8e1e4] bg-white px-3 text-[#243c46]" placeholder="Nombres" />
             <label htmlFor="register-last-name" className="mt-2 text-[13px] font-semibold text-[#314953]">Apellidos</label>
-            <input id="register-last-name" type="text" autoComplete="family-name" value={lastName} onChange={event => setLastName(event.target.value)} required className="h-11 rounded-lg border border-[#d8e1e4] bg-white px-3 text-[#243c46] outline-none focus:border-[#398278] focus:ring-2 focus:ring-[#398278]/20" placeholder="Apellidos" />
+            <input id="register-last-name" type="text" autoComplete="family-name" value={lastName} onChange={event => setLastName(event.target.value)} required className="h-11 rounded-lg border border-[#d8e1e4] bg-white px-3 text-[#243c46]" placeholder="Apellidos" />
           </>}
           <label htmlFor="email" className="mt-2 text-[13px] font-semibold text-[#314953]">Correo electrónico</label>
-          <div className="relative">
-          <svg aria-hidden="true" viewBox="0 0 24 24" className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-[#82949c]" fill="none" stroke="currentColor" strokeWidth="1.7"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/></svg>
-          <input id="email" type="email" autoComplete="username" value={email} onChange={event => setEmail(event.target.value)} required className="h-11 w-full rounded-lg border border-[#d8e1e4] bg-white pl-10 pr-3 text-[#243c46] outline-none focus:border-[#398278] focus:ring-2 focus:ring-[#398278]/20" placeholder="admin@institucion.edu.ec" />
-          </div>
-          {(registerMode || true) && <>
+          <div className="relative"><svg aria-hidden="true" viewBox="0 0 24 24" className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-[#82949c]" fill="none" stroke="currentColor" strokeWidth="1.7"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/></svg><input id="email" type="email" autoComplete="username" value={email} onChange={event => setEmail(event.target.value)} required className="h-11 w-full rounded-lg border border-[#d8e1e4] bg-white pl-10 pr-3 text-[#243c46] focus-visible:outline" placeholder="admin@institucion.edu.ec" /></div>
+          <>
           <label htmlFor="password" className="mt-2 text-[13px] font-semibold text-[#314953]">Contraseña</label>
           <div className="relative">
             <svg aria-hidden="true" viewBox="0 0 24 24" className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-[#82949c]" fill="none" stroke="currentColor" strokeWidth="1.7"><rect x="4" y="10" width="16" height="11" rx="2"/><path strokeLinecap="round" d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
-            <input id="password" type={showPassword ? 'text' : 'password'} autoComplete={registerMode ? 'new-password' : 'current-password'} minLength={registerMode ? 8 : undefined} value={password} onChange={event => setPassword(event.target.value)} required className="h-11 w-full rounded-lg border border-[#d8e1e4] bg-white pl-10 pr-12 text-[#243c46] outline-none focus:border-[#398278] focus:ring-2 focus:ring-[#398278]/20" placeholder="••••••••" />
+            <input id="password" type={showPassword ? 'text' : 'password'} autoComplete={registerMode ? 'new-password' : 'current-password'} minLength={registerMode ? 8 : undefined} value={password} onChange={event => setPassword(event.target.value)} required className="h-11 w-full rounded-lg border border-[#d8e1e4] bg-white pl-10 pr-12 text-[#243c46]" placeholder="••••••••" />
             <button type="button" aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'} aria-pressed={showPassword} onClick={() => setShowPassword(value => !value)} className="absolute inset-y-0 right-0 grid w-11 place-items-center text-[#647b84] hover:text-[#0a233f] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#398278]">
               <svg viewBox="0 0 24 24" aria-hidden="true" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M2.5 12s3.4-6 9.5-6 9.5 6 9.5 6-3.4 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.6"/><path strokeLinecap="round" d="m4 4 16 16" className={showPassword ? 'hidden' : ''}/></svg>
             </button>
           </div>
-          </>}
+          </>
           {registerMode && <>
             <label htmlFor="confirm-register-password" className="mt-2 text-[13px] font-semibold text-[#314953]">Confirmar contraseña</label>
-            <input id="confirm-register-password" type="password" autoComplete="new-password" minLength={8} value={confirmation} onChange={event => setConfirmation(event.target.value)} required className="h-11 rounded-lg border border-[#d8e1e4] bg-white px-3 text-[#243c46] outline-none focus:border-[#398278] focus:ring-2 focus:ring-[#398278]/20" />
+            <input id="confirm-register-password" type="password" autoComplete="new-password" minLength={8} value={confirmation} onChange={event => setConfirmation(event.target.value)} required className="h-11 rounded-lg border border-[#d8e1e4] bg-white px-3 text-[#243c46]" />
           </>}
           {error && <p role="alert" className="rounded-lg border border-[#f2d1ce] bg-[#fff1f0] px-4 py-3 text-[13px] text-[#9b3838]">{error}</p>}
           {expiredAuthLink && <p role="alert" className="rounded-lg border border-[#f2d1ce] bg-[#fff1f0] px-4 py-3 text-[13px] text-[#9b3838]">Ese enlace vencio o ya se uso. Solicita uno nuevo desde Recuperar contrasena.</p>}
@@ -273,7 +279,7 @@ export function AdminWorkspace() {
   if (roleError) return <main className="mx-auto max-w-2xl px-4 py-12"><section className="rounded-xl border border-[#eadfc4] bg-white p-5 text-sm text-[#65573c] shadow-sm"><h1 className="mb-2 text-lg font-bold text-ink">No se pudo verificar tu acceso</h1><p className="mb-0">{roleError}</p></section></main>;
   if (!role) return <div className="flex min-h-[40vh] items-center justify-center gap-3 text-sm text-[#53656e]"><span className="size-[17px] animate-spin rounded-full border-2 border-[#dce7e7] border-t-[#398278]" />Verificando permisos…</div>;
   if (role === 'super_admin' && !isSuperAdminRoute) return <Navigate to="/panel/superadmin" replace />;
-  if (role && role !== 'super_admin' && isSuperAdminRoute) return <Navigate to="/panel/admin" replace />;
+  if (role !== 'super_admin' && isSuperAdminRoute) return <Navigate to="/panel/admin" replace />;
 
   return (
     <div className="mx-auto max-w-[1180px] px-4 py-6 sm:px-[30px]">
@@ -343,58 +349,90 @@ function MfaChallengeScreen() {
   );
 }
 
-function IntegrationPlaceholder({ moduleName }: { moduleName: string }) {
+function ProjectsPageWrapper() {
+  const navigate = useNavigate();
+  return <ProjectsWorkspace onLogin={() => navigate('/panel/admin')} />;
+}
+
+function ModuleGate({ moduleName, children }: { moduleName: InstitutionModuleName; children: ReactNode }) {
+  const { activeInstitution, loadingTenant, modulePermissionError, hasModuleAccess } = useTenant();
+  if (loadingTenant) return <div className="mx-auto max-w-3xl p-8 text-sm text-slate-600">Cargando permisos de la institucion...</div>;
+  if (!activeInstitution) {
+    if (moduleName === 'inicio') return <InstitutionalEntryPage />;
+    return <div className="mx-auto max-w-3xl p-8 text-sm text-slate-600">No hay una institución activa disponible para esta cuenta.</div>;
+  }
+  if (modulePermissionError) return <div className="mx-auto max-w-3xl p-8"><section role="alert" className="rounded-xl border border-rose-200 bg-white p-6 text-sm text-rose-800">{modulePermissionError}</section></div>;
+  if (!hasModuleAccess(moduleName)) {
+    return <div className="mx-auto max-w-3xl p-8"><section className="rounded-xl border border-amber-200 bg-white p-6 text-sm text-amber-900">Este modulo no esta habilitado para {activeInstitution.name}. Solicita al superadministrador que lo active.</section></div>;
+  }
+  return <>{children}</>;
+}
+
+function DecePageWrapper() {
+  const { activeInstitution } = useTenant();
+  const integration = useMemo(() => {
+    if (!activeInstitution) return null;
+    return {
+      client: supabase,
+      institutionId: activeInstitution.institution_id,
+      getStudentId: (student: { recordId?: string }) => student.recordId ?? null,
+    };
+  }, [activeInstitution]);
+
+  if (!integration) {
+    return (
+      <div className="mx-auto max-w-3xl p-8 text-sm text-slate-600">
+        No hay una institución activa disponible para esta cuenta.
+      </div>
+    );
+  }
+
   return (
-    <main className="mx-auto max-w-3xl px-6 py-16 text-center">
-      <p className="text-xs font-bold tracking-[0.16em] text-[#398278]">INTEGRACION DE MODULOS</p>
-      <h1 className="mt-3 text-2xl font-bold text-ink">{moduleName}</h1>
-      <p className="mx-auto mt-3 max-w-xl text-sm text-muted">
-        Esta rama conserva la arquitectura administrativa y de seguridad. El modulo funcional se integra desde su rama de equipo correspondiente.
-      </p>
-      <Link to="/panel/admin" className="mt-6 inline-flex rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white">Ir a administracion</Link>
-    </main>
+    <DeceDataProvider value={integration}>
+      <DeceApp />
+    </DeceDataProvider>
   );
 }
 
-function AdminRoutes() {
-  const { user, logout, isPasswordRecovery, mfaRequired, mfaEnrollmentRequired, completeMfaEnrollment } = useAuth();
+function AppRoutes() {
+  const { user, isPasswordRecovery, mfaRequired, mfaEnrollmentRequired, completeMfaEnrollment } = useAuth();
+
   if (isPasswordRecovery) return <PasswordRecoveryScreen />;
   if (user && mfaRequired) return <MfaChallengeScreen />;
   if (user && mfaEnrollmentRequired) return <MfaEnrollment onEnrolled={completeMfaEnrollment} />;
-  return <>
-    <header className="border-b border-line bg-white px-6 py-4">
-      <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4">
-        <Link to="/panel/admin" className="font-bold text-brand">Administracion institucional</Link>
-        <nav aria-label="Navegacion principal" className="flex flex-wrap items-center gap-3 text-sm font-semibold text-muted">
-          <Link to="/panel">Inicio</Link>
-          <Link to="/proyectos">Proyectos</Link>
-          <Link to="/dece">DECE</Link>
-          <Link to="/simuladores">Simuladores</Link>
-          <Link to="/portal">Portal Web</Link>
-        </nav>
-        {user && <button type="button" onClick={() => void logout()} className="text-sm font-semibold text-brand">Cerrar sesion</button>}
-      </div>
-    </header>
+
+  return (
     <Routes>
-      <Route path="/" element={<Navigate to="/panel/admin" replace />} />
-      <Route path="/panel" element={<AdminWorkspace />} />
-      <Route path="/admin" element={<Navigate to="/panel/admin" replace />} />
-      <Route path="/panel/admin" element={<AdminWorkspace />} />
-      <Route path="/panel/superadmin" element={<AdminWorkspace />} />
-      <Route path="/system-admin" element={<Navigate to="/panel/superadmin" replace />} />
-      <Route path="/proyectos/*" element={<IntegrationPlaceholder moduleName="Proyectos" />} />
-      <Route path="/panel/proyectos/*" element={<IntegrationPlaceholder moduleName="Proyectos" />} />
-      <Route path="/dece/*" element={<IntegrationPlaceholder moduleName="DECE" />} />
-      <Route path="/panel/dece/*" element={<IntegrationPlaceholder moduleName="DECE" />} />
-      <Route path="/simuladores/*" element={<IntegrationPlaceholder moduleName="Simuladores" />} />
-      <Route path="/panel/simuladores/*" element={<IntegrationPlaceholder moduleName="Simuladores" />} />
-      <Route path="/portal/*" element={<IntegrationPlaceholder moduleName="Portal Web" />} />
-      <Route path="/panel/portal/*" element={<IntegrationPlaceholder moduleName="Portal Web" />} />
-      <Route path="*" element={<main className="p-8">Página no disponible. <a href="/panel/admin">Ir a administración</a></main>} />
+      <Route element={<InstitutionalLayout />}>
+        <Route index element={<Navigate to="/panel" replace />} />
+        <Route path="inicio" element={<Navigate to="/panel" replace />} />
+        <Route path="panel" element={<ModuleGate moduleName="inicio"><InstitutionalPanel /></ModuleGate>} />
+        <Route path="panel/proyectos" element={<ModuleGate moduleName="projects"><ProjectsPageWrapper /></ModuleGate>} />
+        <Route path="panel/dece" element={<ModuleGate moduleName="dece"><DecePageWrapper /></ModuleGate>} />
+        <Route path="panel/simuladores" element={<ModuleGate moduleName="simuladores"><SimuladoresApp /></ModuleGate>} />
+        <Route path="panel/portal/*" element={<ModuleGate moduleName="portal"><SiteApp /></ModuleGate>} />
+        <Route path="panel/admin" element={<AdminWorkspace />} />
+        <Route path="panel/superadmin" element={<AdminWorkspace />} />
+        <Route path="system-admin" element={<Navigate to="/panel/superadmin" replace />} />
+        <Route path="proyectos" element={<Navigate to="/panel/proyectos" replace />} />
+        <Route path="dece" element={<Navigate to="/panel/dece" replace />} />
+        <Route path="simuladores" element={<Navigate to="/panel/simuladores" replace />} />
+        <Route path="portal/*" element={<ModuleGate moduleName="portal"><SiteApp /></ModuleGate>} />
+        <Route path="admin" element={<Navigate to="/panel/admin" replace />} />
+        <Route path="*" element={<NotFoundPage />} />
+      </Route>
     </Routes>
-  </>;
+  );
 }
 
 export default function App() {
-  return <BrowserRouter><AuthProvider><TenantProvider><AdminRoutes /></TenantProvider></AuthProvider></BrowserRouter>;
+  return (
+    <BrowserRouter>
+      <AuthProvider>
+        <TenantProvider>
+          <AppRoutes />
+        </TenantProvider>
+      </AuthProvider>
+    </BrowserRouter>
+  );
 }

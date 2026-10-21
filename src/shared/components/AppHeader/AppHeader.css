@@ -1,0 +1,11 @@
+.topbar { display: flex; align-items: center; min-height: 60px; padding: 0 clamp(20px, 3vw, 44px); border-bottom: 1px solid var(--line); background: var(--topbar-surface); }
+.tenant-chip { display: flex; align-items: center; gap: 9px; color: var(--accent); font-size: 13px; font-weight: 700; }.tenant-icon { flex: none; }
+.student-chip { display: flex; align-items: center; gap: 10px; margin-left: auto; }.profile-icon { flex: none; color: var(--accent); }
+.student-chip p { display: grid; gap: 1px; margin: 0; font-size: 12px; }.student-chip b { font-size: 13px; }.student-chip small { color: #847b89; }
+.topbar-breadcrumbs { display:flex; align-items:center; flex:1; min-width:0; gap:7px; overflow-x:auto; color:#716979; scrollbar-width:thin; }
+.topbar-breadcrumb-item { display:inline-flex; align-items:center; flex:none; gap:7px; white-space:nowrap; font-size:13px; }
+.topbar-breadcrumb-item > svg { color:#aaa2ab; }
+.topbar-breadcrumb-item button { padding:5px 2px; border:0; color:var(--accent); background:transparent; font:600 13px 'DM Sans',sans-serif; cursor:pointer; }
+.topbar-breadcrumb-item button:hover { text-decoration:underline; text-underline-offset:3px; }
+.topbar-breadcrumb-item [aria-current="page"] { color:#4d4553; font-weight:600; }
+@media(max-width:620px){.topbar{min-height:52px;padding:0 14px}.tenant-chip{gap:6px;font-size:12px}.tenant-icon{width:18px;height:18px}.student-chip p{display:none}}
