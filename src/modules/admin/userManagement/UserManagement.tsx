@@ -70,11 +70,13 @@ export const UserManagement: React.FC = () => {
       return;
     }
 
+    const membershipQuery = supabase.from('memberships')
+      .select('profile_id, institution_id, role_id')
+      .eq('is_active', true);
+    if (targetInstitutionId) membershipQuery.eq('institution_id', targetInstitutionId);
     const [roleResult, membershipResult] = await Promise.all([
       supabase.from('roles').select('role_id, name').order('name'),
-      supabase.rpc('list_accessible_institution_memberships', {
-        target_institution_id: targetInstitutionId,
-      }),
+      membershipQuery,
     ]);
     const failure = roleResult.error ?? membershipResult.error;
     if (failure) {
@@ -86,9 +88,40 @@ export const UserManagement: React.FC = () => {
     }
 
     setRoles((roleResult.data ?? []).filter((item) => item.name !== 'super_admin' && (isPlatformAdmin || item.name !== 'institution_admin')));
-    setMembers((membershipResult.data ?? []) as UserMember[]);
+    type MembershipRow = { profile_id: string; institution_id: string; role_id: string };
+    type ProfileRow = { profile_id: string; email: string; first_name: string; last_name: string; mfa_enabled: boolean; mfa_required: boolean };
+    const memberships = (membershipResult.data ?? []) as MembershipRow[];
+    const profileIds = [...new Set(memberships.map((item) => item.profile_id))];
+    const profileResult = profileIds.length
+      ? await supabase.from('profiles')
+        .select('profile_id, email, first_name, last_name, mfa_enabled, mfa_required')
+        .in('profile_id', profileIds)
+      : { data: [], error: null };
+    if (profileResult.error) {
+      setMembers([]);
+      setLoadError('No se pudieron cargar los perfiles. ' + profileResult.error.message);
+      setLoading(false);
+      return;
+    }
+    const profileById = new Map(((profileResult.data ?? []) as ProfileRow[]).map((item) => [item.profile_id, item]));
+    const roleById = new Map(((roleResult.data ?? []) as RoleOption[]).map((item) => [item.role_id, item.name]));
+    const institutionNameById = new Map(tenantInstitutions.map((item) => [item.institution_id, item.name]));
+    setMembers(memberships.map((membership) => {
+      const profile = profileById.get(membership.profile_id);
+      return {
+        profile_id: membership.profile_id,
+        institution_id: membership.institution_id,
+        email: profile?.email ?? '',
+        first_name: profile?.first_name ?? '',
+        last_name: profile?.last_name ?? '',
+        role_name: roleById.get(membership.role_id) ?? 'unknown',
+        institution_name: institutionNameById.get(membership.institution_id) ?? '',
+        mfa_enabled: profile?.mfa_enabled ?? false,
+        mfa_required: profile?.mfa_required ?? false,
+      };
+    }));
     setLoading(false);
-  }, [currentInstitutionId, isPlatformAdmin, loadingTenant]);
+  }, [currentInstitutionId, isPlatformAdmin, loadingTenant, tenantInstitutions]);
 
   useEffect(() => {
     if (loadingTenant) return;

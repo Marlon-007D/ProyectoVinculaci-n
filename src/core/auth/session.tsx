@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Navigate, useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import { DeceApp, DeceDataProvider } from '../../modules/dece'
 import ConfigurableForm from '../../modules/dece/pages/student-form/configurable-form'
@@ -8,7 +8,7 @@ import { createDeceFormService } from '../../modules/dece/services/form-service'
 import PdfActionButton from '../../modules/dece/components/pdf-action-button'
 import './student-portal.css'
 
-type Membership = { institution_id: string; role: { name: string } | { name: string }[] | null; institution: { name: string; slug: string } | { name: string; slug: string }[] | null }
+type Membership = { institution_id: string; role: { name: string } | { name: string }[] | null; institution: { name: string; slug: string; is_active: boolean } | { name: string; slug: string; is_active: boolean }[] | null }
 type ActiveSession = { userId: string; email: string; institutionId: string; institutionName: string; slug: string; role: string }
 type OwnSubmission = Awaited<ReturnType<ReturnType<typeof createDeceFormService>['loadOwnSubmission']>>
 type HistoryItem = { id: string; versionId: string; status: 'draft' | 'submitted' | 'reviewed'; updatedAt: string; name: string; versionNumber: number }
@@ -46,7 +46,11 @@ function debugPortalSummary(kind: 'rpc_error' | 'empty_response' | 'unmapped_row
 function routeFor(session: ActiveSession) {
   if (session.role === 'dece_staff') return `/${session.slug}/dece`
   if (session.role === 'student') return `/${session.slug}/mi-ficha`
-  if (session.role === 'institution_admin') return `/${session.slug}/admin`
+  if (session.role === 'institution_admin') return '/panel/admin?institution=' + encodeURIComponent(session.institutionId)
+  if (session.role === 'super_admin') return '/panel/superadmin?institution=' + encodeURIComponent(session.institutionId)
+  if (session.role === 'project_manager') return '/panel/proyectos?institution=' + encodeURIComponent(session.institutionId)
+  if (session.role === 'editor') return '/panel/portal?institution=' + encodeURIComponent(session.institutionId)
+  if (session.role === 'viewer') return '/proyectos?transparency=1&institution=' + encodeURIComponent(session.slug)
   return `/${session.slug}/sin-modulos`
 }
 
@@ -65,13 +69,14 @@ export function SessionProvider() {
 
   async function memberships(userId: string, email: string) {
     const { data, error: queryError } = await supabase.from('memberships')
-      .select('institution_id, role:roles(name), institution:institutions(name, slug)')
+      .select('institution_id, role:roles(name), institution:institutions(name, slug, is_active)')
       .eq('profile_id', userId)
+      .eq('is_active', true)
     if (queryError) throw queryError
     return ((data ?? []) as unknown as Membership[]).flatMap(row => {
       const role = one(row.role)?.name
       const institution = one(row.institution)
-      return role && institution ? [{ userId, email, institutionId: row.institution_id, institutionName: institution.name, slug: institution.slug, role }] : []
+      return role && institution?.is_active ? [{ userId, email, institutionId: row.institution_id, institutionName: institution.name, slug: institution.slug, role }] : []
     })
   }
 
@@ -125,7 +130,7 @@ function LoginOrRoute({ session, onAuthenticated, error, setError }: { session: 
   if (allowed.length && !allowed.includes(session.role)) return <main className="container py-5"><h1>403 · Sin acceso</h1><p>Tu rol no tiene permiso para ver este módulo.</p></main>
   if (path[1] === 'sin-modulos') return <main className="container py-5"><h1>Sin módulos disponibles</h1><p>Tu rol aún no tiene módulos habilitados.</p></main>
   if (!allowed.length) { history.replaceState(null, '', routeFor(session)); return <main className="container py-5">Abriendo tu módulo…</main> }
-  if (session.role === 'institution_admin') return <main className="container py-5"><h1>Administración</h1><p>Módulo institucional en preparación.</p></main>
+  if (session.role === 'institution_admin') return <Navigate to={routeFor(session)} replace />
   if (session.role === 'student') return <StudentFicha session={session} />
   return <DeceStaffModule session={session} />
 }

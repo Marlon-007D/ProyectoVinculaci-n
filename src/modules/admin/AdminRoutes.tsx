@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../core/AuthContext';
+import { useTenant } from '../../core/TenantContext';
 import { MfaEnrollment } from './mfa/MfaEnrollment';
 import { SuperAdminPanel } from './superadmin/SuperAdminPanel';
 import { UserManagement } from './userManagement/UserManagement';
@@ -8,6 +9,7 @@ import styles from './AdminRoutes.module.css';
 
 export default function AdminRoutes({ superadminOnly = false }: { superadminOnly?: boolean }) {
   const { user, role, roleError, loading, login, logout, mfaRequired, mfaEnrollmentRequired, completeMfaEnrollment, verifyMfa, mfaChallengeReady } = useAuth();
+  const { activeInstitution, loadingTenant } = useTenant();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -17,10 +19,26 @@ export default function AdminRoutes({ superadminOnly = false }: { superadminOnly
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!user || !role) return;
-    if (role === 'super_admin') navigate('/panel/superadmin', { replace: true });
-    else if (location.pathname === '/panel/superadmin' || location.pathname === '/system-admin') navigate('/panel/admin', { replace: true });
-  }, [user, role, location.pathname, navigate]);
+    if (!user || !role || loading || mfaRequired || mfaEnrollmentRequired || loadingTenant) return;
+    if (role === 'super_admin') {
+      if (location.pathname !== '/panel/superadmin') navigate('/panel/superadmin', { replace: true });
+      return;
+    }
+    if (role === 'institution_admin') {
+      if (location.pathname === '/panel/superadmin' || location.pathname === '/system-admin')
+        navigate('/panel/admin', { replace: true });
+      return;
+    }
+    if (!activeInstitution) return;
+    const institution = activeInstitution;
+    let destination = '';
+    if (role === 'dece_staff') destination = '/' + institution.slug + '/dece';
+    else if (role === 'student') destination = '/' + institution.slug + '/mi-ficha';
+    else if (role === 'project_manager') destination = '/panel/proyectos?institution=' + encodeURIComponent(institution.institution_id);
+    else if (role === 'editor') destination = '/panel/portal?institution=' + encodeURIComponent(institution.institution_id);
+    else if (role === 'viewer') destination = '/proyectos?transparency=1&institution=' + encodeURIComponent(institution.slug);
+    if (destination && location.pathname.startsWith('/panel/')) navigate(destination, { replace: true });
+  }, [activeInstitution, loading, loadingTenant, mfaEnrollmentRequired, mfaRequired, role, location.pathname, navigate, user]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setBusy(true); setError('');

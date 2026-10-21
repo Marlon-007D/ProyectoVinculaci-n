@@ -12,6 +12,7 @@ const Session=createContext<Context|null>(null);
 export function ModuleSessionProvider({port,children}:{port:ModuleAccessPort;children:ReactNode}){
   const [state,setState]=useState<AccessState>({kind:'checking'});
   const [selected,setSelected]=useState<{owner:string;institution:string}|null>(null);
+  const requestedInstitution=new URLSearchParams(window.location.search).get('institution');
   const [busy,setBusy]=useState(false);const [message,setMessage]=useState('');
   const generation=useRef(0);const mounted=useRef(false);const lock=useRef(false);
   const reload=useCallback(()=>{
@@ -29,6 +30,10 @@ export function ModuleSessionProvider({port,children}:{port:ModuleAccessPort;chi
     finally{lock.current=false;if(mounted.current)setBusy(false);}
   }
   const institutions=state.kind==='ready'?state.institutions:[];
+  useEffect(()=>{
+    if(state.kind==='ready'&&requestedInstitution&&state.institutions.some(item=>item.institution_id===requestedInstitution))
+      setSelected({owner:state.userId,institution:requestedInstitution});
+  },[requestedInstitution,state]);
   const activeInstitution=institutions.find(item=>state.kind==='ready'&&selected?.owner===state.userId&&item.institution_id===selected.institution)??institutions[0]??null;
   return <Session.Provider value={{state,busy,message,institutions,activeInstitution,
     setActiveInstitution:institution=>{if(state.kind==='ready')setSelected(institution?{owner:state.userId,institution:institution.institution_id}:null);},

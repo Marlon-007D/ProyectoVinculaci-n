@@ -23,14 +23,14 @@ interface Props {
 
 export function InstitutionProvider({ institutionId, children }: Props) {
   const { slug } = useParams();
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
   const basePath = useBasePath();
   const ref = useMemo<InstitutionRef>(() => {
     if (institutionId) return { id: institutionId };
     if (slug) return { slug };
     const r = getInstitutionRef();
     return r;
-  }, [institutionId, slug]);
+  }, [institutionId, slug, search]);
 
   const found = useAsync(() => {
     if (ref.id) return getInstitutionById(ref.id);

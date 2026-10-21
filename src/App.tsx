@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes, useLocation, useParams } from 'react-router-dom';
 import { AuthProvider, useAuth } from './core/AuthContext';
 import { TenantProvider } from './core/TenantContext';
 import { SiteApp } from './modules/site';
@@ -26,7 +26,14 @@ function PublicDeceRoute() {
 
 function RoutesWithAuth() {
   const { user, mfaRequired, mfaEnrollmentRequired } = useAuth();
-  if (user && (mfaRequired || mfaEnrollmentRequired)) return <Navigate to="/panel/admin" replace />;
+  const location = useLocation();
+  const mfaScreen = location.pathname === '/panel/admin' || location.pathname === '/panel/superadmin';
+  const institutionSessionPath = /^\/[^/]+\/(?:login|dece|mi-ficha|admin|sin-modulos)(?:\/|$)/.test(location.pathname);
+  const protectedRoute = location.pathname.startsWith('/panel/')
+    || institutionSessionPath
+    || (location.pathname.startsWith('/proyectos') && !new URLSearchParams(location.search).has('transparency'));
+  if (user && (mfaRequired || mfaEnrollmentRequired) && protectedRoute && !mfaScreen)
+    return <Navigate to={'/panel/admin' + location.search} replace />;
   return <Routes>
     <Route path="/panel/admin" element={<AdminRoutes />} />
     <Route path="/panel/superadmin" element={<AdminRoutes superadminOnly />} />
