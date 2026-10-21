@@ -1,5 +1,5 @@
 import { createContext, useContext, useMemo, type ReactNode } from "react";
-import { useParams } from "react-router-dom";
+import { Navigate, useLocation, useParams } from "react-router-dom";
 import { useAsync } from "../hooks/useAsync";
 import { useBasePath } from "../hooks/useBasePath";
 import { getInstitutionBySlug } from "../services/institutions";
@@ -23,6 +23,7 @@ interface Props {
 
 export function InstitutionProvider({ institutionId, children }: Props) {
   const { slug } = useParams();
+  const { pathname } = useLocation();
   const basePath = useBasePath();
   const ref = useMemo<InstitutionRef>(() => {
     if (institutionId) return { id: institutionId };
@@ -35,6 +36,10 @@ export function InstitutionProvider({ institutionId, children }: Props) {
     () => (ref.id || !ref.slug ? Promise.resolve(null) : getInstitutionBySlug(ref.slug)),
     [ref.id, ref.slug],
   );
+
+  if (!ref.id && !ref.slug && (pathname === "/" || pathname === "/panel")) {
+    return <Navigate to="/panel/admin" replace />;
+  }
 
   const value = useMemo<InstitutionValue | null>(() => {
     if (ref.id) return { institutionId: ref.id, institution: null, basePath };

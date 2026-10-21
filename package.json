@@ -15,7 +15,8 @@
     "test:db-crud": "node --experimental-strip-types --test tests/integration/invoice-repository.test.mjs tests/integration/invoice-rest.test.mjs",
     "test:security": "node --disable-warning=ExperimentalWarning --experimental-strip-types --test tests/security/*.test.mjs",
     "typecheck": "tsc -b",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "portable": "node server.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.117.3",
