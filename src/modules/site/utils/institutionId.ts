@@ -11,5 +11,6 @@ export function getInstitutionRef(): InstitutionRef {
   const envId = import.meta.env.VITE_INSTITUTION_ID as string | undefined;
   if (envId) return { id: envId };
   const envSlug = import.meta.env.VITE_INSTITUTION_SLUG as string | undefined;
-  return envSlug ? { slug: envSlug } : {};
+  const defaultSlug = import.meta.env.VITE_DEFAULT_INSTITUTION_SLUG as string | undefined;
+  return { slug: envSlug || defaultSlug || "ue-luz-de-america" };
 }

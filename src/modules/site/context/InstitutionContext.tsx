@@ -2,7 +2,7 @@ import { createContext, useContext, useMemo, type ReactNode } from "react";
 import { Navigate, useLocation, useParams } from "react-router-dom";
 import { useAsync } from "../hooks/useAsync";
 import { useBasePath } from "../hooks/useBasePath";
-import { getInstitutionBySlug } from "../services/institutions";
+import { getInstitutionById, getInstitutionBySlug } from "../services/institutions";
 import type { Institution } from "../types/institution";
 import { getInstitutionRef, type InstitutionRef } from "../utils/institutionId";
 import { ErrorState } from "../components/states/ErrorState";
@@ -23,30 +23,30 @@ interface Props {
 
 export function InstitutionProvider({ institutionId, children }: Props) {
   const { slug } = useParams();
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
   const basePath = useBasePath();
   const ref = useMemo<InstitutionRef>(() => {
     if (institutionId) return { id: institutionId };
     if (slug) return { slug };
     const r = getInstitutionRef();
     return r;
-  }, [institutionId, slug]);
+  }, [institutionId, slug, search]);
 
-  const found = useAsync(
-    () => (ref.id || !ref.slug ? Promise.resolve(null) : getInstitutionBySlug(ref.slug)),
-    [ref.id, ref.slug],
-  );
+  const found = useAsync(() => {
+    if (ref.id) return getInstitutionById(ref.id);
+    if (ref.slug) return getInstitutionBySlug(ref.slug);
+    return Promise.resolve(null);
+  }, [ref.id, ref.slug]);
 
   if (!ref.id && !ref.slug && (pathname === "/" || pathname === "/panel")) {
     return <Navigate to="/panel/admin" replace />;
   }
 
   const value = useMemo<InstitutionValue | null>(() => {
-    if (ref.id) return { institutionId: ref.id, institution: null, basePath };
     if (found.state.status === "success" && found.state.data)
       return { institutionId: found.state.data.institution_id, institution: found.state.data, basePath };
     return null;
-  }, [ref.id, found.state, basePath]);
+  }, [found.state, basePath]);
 
   if (value) return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
   if (!ref.id && !ref.slug)

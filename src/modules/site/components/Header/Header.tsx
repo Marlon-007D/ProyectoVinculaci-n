@@ -1,12 +1,16 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import type { AsyncState } from "../../types/common";
 import type { MenuNode } from "../../types/menu";
 import type { SiteConfig } from "../../types/site";
+import type { Institution } from "../../types/institution";
+import { useInstitution } from "../../context/InstitutionContext";
+import { getActiveInstitutions } from "../../services/institutions";
 import { AccessibilityControls } from "../Accessibility/AccessibilityControls";
 import { AsyncView } from "../states/AsyncView";
 import { MobileNavigation } from "../Navigation/MobileNavigation";
 import { Navigation } from "../Navigation/Navigation";
+import styles from "./Header.module.css";
 
 interface Props {
   config: SiteConfig;
@@ -29,12 +33,50 @@ export function Header({ config, menu, homeUrl = "/" }: Props) {
   const [logoFailed, setLogoFailed] = useState(false);
   const letter = config.name.trim().charAt(0).toUpperCase() || "I";
   const contact = [config.email, config.phone].filter(Boolean).join("  ·  ");
+  const { institution } = useInstitution();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [institutions, setInstitutions] = useState<Institution[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void getActiveInstitutions()
+      .then((items) => { if (!cancelled) setInstitutions(items); })
+      .catch(() => { if (!cancelled) setInstitutions([]); });
+    return () => { cancelled = true; };
+  }, []);
+
+  const institutionOptions = institution
+    ? [institution, ...institutions.filter((item) => item.institution_id !== institution.institution_id)]
+    : institutions;
+  function changeInstitution(slug: string) {
+    const params = new URLSearchParams(location.search);
+    params.set("institution", slug);
+    const query = params.toString();
+    navigate({ pathname: "/", search: query ? "?" + query : "" });
+  }
   return (
     <>
       <div className="site-topbar">
         <div className="site-container site-topbar__inner">
           <span>Portal institucional</span>
           <div className="site-topbar__end">
+            {institution && <label className={styles.institutionPicker}>
+              <span>Institución</span>
+              <select
+                aria-label="Seleccionar institución"
+                value={institution.slug}
+                onChange={(event) => changeInstitution(event.target.value)}
+              >
+                {institutionOptions.map((item) => <option key={item.institution_id} value={item.slug}>{item.name}</option>)}
+              </select>
+            </label>}
+            {institution && <Link
+              className={styles.loginLink}
+              to={{ pathname: "/" + institution.slug + "/login", search: "?institution=" + encodeURIComponent(institution.institution_id) }}
+            >
+              Iniciar sesión
+            </Link>}
             {contact && <span>{contact}</span>}
             <AccessibilityControls />
           </div>

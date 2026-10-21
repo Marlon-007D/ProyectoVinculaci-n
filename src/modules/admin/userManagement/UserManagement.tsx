@@ -97,7 +97,7 @@ export const UserManagement: React.FC = () => {
     setRoles((roleResult.data ?? []).filter((item) => canAssignRole(isPlatformAdmin ? 'super_admin' : 'institution_admin', item.name)));
     setMembers(((membershipResult.data ?? []) as UserMember[]).filter(member => isPlatformAdmin ? member.role_name === 'institution_admin' : member.institution_id === currentInstitutionId));
     setLoading(false);
-  }, [currentInstitutionId, isPlatformAdmin, loadingTenant]);
+  }, [currentInstitutionId, isPlatformAdmin, loadingTenant, tenantInstitutions]);
 
   useEffect(() => {
     if (loadingTenant) return;

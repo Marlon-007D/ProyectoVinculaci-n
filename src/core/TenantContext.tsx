@@ -135,7 +135,12 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   }, [user, role, loading, mfaRequired, revision]);
   const current = !loading && user && state?.owner === user.id ? state : null;
   const institutions = current?.institutions ?? [];
-  const activeInstitution = institutions.find(item => item.institution_id === selectedId) ?? institutions[0] ?? null;
+  const requestedInstitutionId = new URLSearchParams(window.location.search).get('institution');
+  useEffect(() => {
+    if (requestedInstitutionId && institutions.some((item) => item.institution_id === requestedInstitutionId))
+      setSelectedId(requestedInstitutionId);
+  }, [requestedInstitutionId, institutions]);
+  const activeInstitution = institutions.find(item => item.institution_id === selectedId) ?? institutions.find(item => item.institution_id === requestedInstitutionId) ?? institutions[0] ?? null;
   const hasModuleAccess = (moduleName: InstitutionModuleName) => activeInstitution?.module_permissions[moduleName] === true;
   return <TenantContext.Provider value={{
     institutions, activeInstitution, loadingTenant: loading || mfaRequired || Boolean(user && !current),
