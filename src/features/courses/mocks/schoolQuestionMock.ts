@@ -228,10 +228,12 @@ function createChallengeGrid(words: string[], seedText: string): string[] {
   }))
   const directions = [[0, 1], [0, -1], [1, 0], [-1, 0], [1, 1], [1, -1], [-1, 1], [-1, -1]]
   const occupied = new Map<number, string>()
-  words.forEach(word => {
+  words.forEach((word, wordIndex) => {
     const letters = [...word.toUpperCase()]
+    const diagonalDirections = directions.filter(([rowStep, colStep]) => rowStep !== 0 && colStep !== 0)
+    const allowedDirections = wordIndex < 2 ? diagonalDirections : directions
     for (let attempt = 0; attempt < 5000; attempt++) {
-      const [rowStep, colStep] = directions[random(directions.length)]
+      const [rowStep, colStep] = allowedDirections[random(allowedDirections.length)]
       const row = random(size)
       const col = random(size)
       const endRow = row + rowStep * (letters.length - 1)
@@ -296,8 +298,8 @@ export function getSchoolQuestionSet(courseId: string, topicTitle: string): Asse
     multipleChoiceVersions,
     multipleSelectVersions,
     wordSearchVersions: [
-      { ...set.wordSearch, prompt: `Encuentra vocabulario relacionado con «${topic.title}».`, words: completedSearchWords, grid: createChallengeGrid(completedSearchWords, `${courseId}-${topic.title}-general`) },
-      { ...set.wordSearch, prompt: `Localiza conceptos clave de «${topic.title}».`, words: completedSearchWords, grid: createChallengeGrid(completedSearchWords, `${courseId}-${topic.title}-topic`) },
+      { ...set.wordSearch, prompt: `Encuentra vocabulario relacionado con «${topic.title}». Las palabras pueden aparecer en horizontal, vertical o diagonal.`, words: completedSearchWords, grid: createChallengeGrid(completedSearchWords, `${courseId}-${topic.title}-general`) },
+      { ...set.wordSearch, prompt: `Localiza conceptos clave de «${topic.title}». Las palabras pueden aparecer en horizontal, vertical o diagonal.`, words: completedSearchWords, grid: createChallengeGrid(completedSearchWords, `${courseId}-${topic.title}-topic`) },
     ],
   }
   return getAssessmentOverride(courseId, topicTitle) ?? versions

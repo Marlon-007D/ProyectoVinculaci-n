@@ -1,0 +1,211 @@
+.page {
+  color-scheme: light dark;
+  --honors-primary: var(--site-accent, #6750a4);
+  --honors-primary-container: color-mix(in srgb, var(--honors-primary) 14%, #ffffff);
+  --honors-on-primary-container: #1c1b1f;
+  --honors-surface: #fbf8ff;
+  --honors-surface-container: #f1edf6;
+  --honors-card-surface: #ffffff;
+  --honors-on-surface: #1c1b1f;
+  --honors-on-surface-variant: #49454f;
+  --honors-outline: #797581;
+  --honors-outline-variant: #e4dfea;
+  background: var(--honors-surface);
+  color: var(--honors-on-surface);
+}
+
+.page :global(.site-hero) {
+  min-height: 0;
+  padding: clamp(2.5rem, 7vw, 5rem) 0;
+  text-align: center;
+  color: #1c1b1f;
+  background: var(--honors-surface-container);
+}
+
+.page :global(.site-root .site-hero h2),
+.page :global(.site-root .site-hero p) {
+  color: var(--honors-on-surface);
+}
+
+.page :global(.site-hero h2) {
+  margin-right: auto;
+  margin-left: auto;
+  max-width: 42rem;
+  margin-bottom: .75rem;
+  font-size: clamp(2rem, 5vw, 3.25rem);
+  letter-spacing: -.035em;
+}
+
+.page :global(.site-hero p) {
+  margin-right: auto;
+  margin-left: auto;
+  max-width: 42rem;
+}
+
+.page :global(.site-hero__eyebrow) {
+  width: fit-content;
+  margin: 0 auto 1.25rem !important;
+  padding: .35rem .75rem;
+  border: 1px solid color-mix(in srgb, var(--honors-primary) 30%, transparent);
+  border-radius: 999px;
+  background: var(--honors-primary-container);
+  color: var(--honors-on-primary-container) !important;
+  letter-spacing: .04em;
+}
+
+.page :global(.site-hero__eyebrow)::before {
+  background: var(--honors-primary);
+}
+
+.section {
+  padding: clamp(2.5rem, 6vw, 4rem) 0;
+  background: var(--honors-surface);
+}
+
+.section h2 {
+  color: var(--honors-on-surface);
+  text-align: center;
+}
+
+.cards {
+  justify-content: center;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.cards :global(.site-card) {
+  min-width: 0;
+  padding: 1.25rem;
+  border-color: var(--honors-outline-variant);
+  border-radius: 1.25rem;
+  background: var(--honors-card-surface);
+  box-shadow: none;
+  transition: border-color .18s ease, background-color .18s ease;
+  text-align: center;
+}
+
+.cards :global(.site-card:hover),
+.cards :global(.site-card:focus-within) {
+  transform: none;
+  border-color: var(--honors-primary);
+  background: var(--honors-surface);
+  box-shadow: none;
+}
+
+.cards :global(.site-card h3) {
+  margin: .75rem 0 .35rem;
+  color: var(--honors-on-surface);
+  font-size: 1.15rem;
+  letter-spacing: -.01em;
+}
+
+.cards :global(.site-card .site-person__role) {
+  color: var(--honors-on-primary-container);
+  font-weight: 600;
+}
+
+.cards :global(.site-card .site-muted) {
+  color: var(--honors-on-surface-variant);
+}
+
+.cards :global(.site-card .site-avatar) {
+  width: 3.5rem;
+  height: 3.5rem;
+  margin: 0 0 .25rem;
+  border: 1px solid color-mix(in srgb, var(--honors-primary) 30%, transparent);
+  background: var(--honors-primary-container);
+  color: var(--honors-on-primary-container);
+  font-family: inherit;
+  font-weight: 700;
+  box-shadow: none;
+}
+
+.profile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .75rem;
+}
+
+.photo {
+  display: block;
+  width: 5rem;
+  height: 5rem;
+  overflow: hidden;
+  border: 1px solid var(--honors-outline-variant);
+  border-radius: 50%;
+  background: var(--honors-surface-container);
+}
+
+.photo :global(img) {
+  width: 100%;
+  height: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  object-position: center;
+}
+
+.avatar {
+  width: 5rem;
+  height: 5rem;
+  margin: 0 auto;
+}
+
+.details {
+  min-width: 0;
+  text-align: center;
+}
+
+.details h3 {
+  overflow-wrap: anywhere;
+}
+
+.cards :global(.site-card img) {
+  border-radius: .85rem;
+}
+
+.cards .photo :global(img) {
+  border-radius: 50%;
+}
+
+@media (max-width: 420px) {
+  .photo,
+  .avatar {
+    width: 4rem;
+    height: 4rem;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .page {
+    --honors-primary: color-mix(in srgb, var(--site-accent, #6750a4) 55%, #d0bcff);
+    --honors-primary-container: #4f378b;
+    --honors-on-primary-container: #f2eaff;
+    --honors-surface: #141218;
+    --honors-surface-container: #211f26;
+    --honors-card-surface: #211f26;
+    --honors-on-surface: #e6e1e9;
+    --honors-on-surface-variant: #cac4d0;
+    --honors-outline: #938f99;
+    --honors-outline-variant: #49454f;
+  }
+
+  .page :global(.site-root .site-hero) {
+    background: var(--honors-surface-container);
+  }
+
+  .page :global(.site-root .site-hero__eyebrow) {
+    border-color: color-mix(in srgb, var(--honors-primary) 45%, transparent);
+    color: var(--honors-on-primary-container) !important;
+  }
+
+  .cards :global(.site-card:hover),
+  .cards :global(.site-card:focus-within) {
+    background: var(--honors-surface-container);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cards :global(.site-card) { transition: none; }
+}
