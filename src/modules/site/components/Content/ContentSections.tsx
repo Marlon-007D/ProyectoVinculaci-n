@@ -141,9 +141,13 @@ export function HonorsSection({ title = "Cuadro de honor", limit = 6, className 
                   <div className={className ? honorsStyles.details : undefined}>
                     <h3>{h.student_name}</h3>
                     <p className="site-person__role">{h.achievement}</p>
-                    <p className="site-muted">{[h.grade_level, h.score != null ? `Promedio ${Number(h.score).toFixed(2)}` : null].filter(Boolean).join(" · ")}</p>
                   </div>
                 </div>
+                {className && <div className={honorsStyles.metadata}>
+                  {h.grade_level && <span><span className={honorsStyles.metadataIcon} aria-hidden="true">school</span>{h.grade_level}</span>}
+                  {h.score != null && <span><span className={honorsStyles.metadataIcon} aria-hidden="true">grade</span>Promedio {Number(h.score).toFixed(2)}</span>}
+                </div>}
+                {!className && <p className="site-muted">{[h.grade_level, h.score != null ? `Promedio ${Number(h.score).toFixed(2)}` : null].filter(Boolean).join(" · ")}</p>}
               </li>
             ))}
           </ul>

@@ -43,7 +43,7 @@ const demoOfficialHonors: AcademicContentEntry[] = OFFICIAL_DISTINCTIONS.map((di
   title: 'Asignación de demostración',
   description: '',
   periodId: 'academic-demo-1',
-  status: 'draft',
+  status: 'published',
   date: '',
   location: '',
   studentName: demoStudentNames[index],

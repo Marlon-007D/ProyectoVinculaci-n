@@ -1,9 +1,10 @@
-import { demoEvents, demoHonors, demoNews, demoStaff, demoTheme, isDemoMode } from "../lib/demo";
+import { demoEvents, demoNews, demoStaff, demoTheme, isDemoMode } from "../lib/demo";
 import { getSupabase } from "../lib/supabase";
 import { toServiceError } from "../lib/errors";
 import type { EventItem, Honor, NewsItem, StaffMember, ThemeRow } from "../types/content";
 import { getAcademicContent } from "../../../features/academic-content/services/academicContentStorage";
 import { getAcademicContentSections } from "../../../features/academic-content/utils/contentSections";
+import { getStudentAvatar } from "../../../features/honors/utils/studentAvatar";
 import type { AcademicContentEntry } from "../../../features/academic-content/types/academicContent.types";
 
 type ManagedNewsItem = NewsItem & { academicEntry?: AcademicContentEntry };
@@ -111,27 +112,19 @@ export async function getStaff(institutionId: string, position?: string): Promis
 }
 
 export async function getHonors(institutionId: string, limit = 12): Promise<Honor[]> {
-  const managedHonors: Honor[] = getAcademicContent()
+  const academicContent = getAcademicContent();
+  const managedHonors: Honor[] = academicContent
     .filter((entry) => entry.kind === "honor" && entry.status === "published")
     .map((entry) => ({
       honor_id: entry.id,
       institution_id: institutionId,
       achievement: entry.distinction || entry.title,
       score: null,
-      photo_url: entry.imageUrl ?? null,
+      photo_url: entry.imageUrl ?? getStudentAvatar(entry.studentName) ?? null,
       student_name: entry.studentName,
       grade_level: entry.grade || null,
     }));
-  if (managedHonors.length > 0) return managedHonors.slice(0, limit);
-  if (isDemoMode()) return demoHonors.slice(0, limit);
-  const { data, error } = await getSupabase()
-    .from("public_honors")
-    .select("honor_id, institution_id, achievement, score, photo_url, student_name, grade_level")
-    .eq("institution_id", institutionId)
-    .order("score", { ascending: false, nullsFirst: false })
-    .limit(limit);
-  if (error) throw toServiceError(error, "No se pudo cargar el cuadro de honor.");
-  return (data ?? []) as Honor[];
+  return managedHonors.slice(0, limit);
 }
 
 export async function getEvents(institutionId: string, limit = 4): Promise<EventItem[]> {
