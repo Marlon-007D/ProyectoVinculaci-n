@@ -6,6 +6,7 @@ import { SiteApp } from './modules/site';
 import { ModuleBoundary } from './modules/projects/integration/ModuleBoundary';
 import { InstitutionProvider, useInstitution } from './modules/site/context/InstitutionContext';
 import { InstitutionSessionLayout } from './modules/site/components/Layout/InstitutionSessionLayout';
+import { PrivateWorkspace } from './modules/site/components/Layout/PrivateWorkspace';
 import { InstitutionalHeader } from './modules/site/components/Header/InstitutionalHeader';
 import { InstitutionalPanel } from './pages/InstitutionalPanel';
 import { DecePublicSection } from './modules/dece/public';
@@ -14,6 +15,7 @@ import { supabase } from './core/supabaseClient';
 import { SessionProvider } from './core/auth/session';
 import AdminRoutes from './modules/admin/AdminRoutes';
 import SimulatorApp from './app/App';
+import { AcademicManagementRoutes } from './features/feats/pages/AcademicManagementRoutes';
 
 const ModuleRoutes = lazy(() => import('./modules/projects/integration/ModuleRoutes'));
 const modulePage = <ModuleBoundary><Suspense fallback={<p role="status">Cargando módulo…</p>}><ModuleRoutes /></Suspense></ModuleBoundary>;
@@ -35,9 +37,18 @@ function PublicDeceRoute() {
 
 function AdminRoutesWithInstitutionalChrome({ superadminOnly = false }: { superadminOnly?: boolean }) {
   const { activeInstitution } = useTenant();
+  const { user } = useAuth();
   const adminRoutes = <AdminRoutes superadminOnly={superadminOnly} />;
-  if (!activeInstitution) return <><InstitutionalHeader />{adminRoutes}</>;
-  return <InstitutionProvider institutionId={activeInstitution.institution_id}><InstitutionSessionLayout>{adminRoutes}</InstitutionSessionLayout></InstitutionProvider>;
+  const content = user ? <PrivateWorkspace>{adminRoutes}</PrivateWorkspace> : adminRoutes;
+  if (!activeInstitution) return <><InstitutionalHeader />{content}</>;
+  return <InstitutionProvider institutionId={activeInstitution.institution_id}><InstitutionSessionLayout>{content}</InstitutionSessionLayout></InstitutionProvider>;
+}
+
+function AcademicManagementWithInstitutionalChrome() {
+  const { activeInstitution } = useTenant();
+  const workspace = <PrivateWorkspace><AcademicManagementRoutes /></PrivateWorkspace>;
+  if (!activeInstitution) return <><InstitutionalHeader />{workspace}</>;
+  return <InstitutionProvider institutionId={activeInstitution.institution_id}><InstitutionSessionLayout>{workspace}</InstitutionSessionLayout></InstitutionProvider>;
 }
 
 function DeceWorkspaceRoute() {
@@ -89,6 +100,9 @@ function RoutesWithAuth() {
     <Route path="/panel" element={<InstitutionalPanelWithChrome />} />
     <Route path="/panel/admin" element={<AdminRoutesWithInstitutionalChrome />} />
     <Route path="/panel/superadmin" element={<AdminRoutesWithInstitutionalChrome superadminOnly />} />
+    <Route path="/panel/cursos" element={<AcademicManagementWithInstitutionalChrome />} />
+    <Route path="/panel/cursos/*" element={<AcademicManagementWithInstitutionalChrome />} />
+    <Route path="/panel/publicaciones/*" element={<AcademicManagementWithInstitutionalChrome />} />
     <Route path="/panel/dece" element={<DeceWorkspaceWithInstitutionalChrome />} />
     <Route path="/panel/dece/*" element={<DeceWorkspaceWithInstitutionalChrome />} />
     <Route path="/system-admin" element={<Navigate to="/panel/superadmin" replace />} />

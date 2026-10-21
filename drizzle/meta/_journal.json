@@ -50,6 +50,20 @@
       "when": 1792267900999,
       "tag": "0006_invoice_session_persistence",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1792615622318,
+      "tag": "0007_add_course_catalog",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1792615722318,
+      "tag": "0008_course_catalog_data",
+      "breakpoints": true
     }
   ]
 }

@@ -2,10 +2,11 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { ArrowLeft, BookOpenText, ChevronLeft, ChevronRight, ClipboardList, Clock3, FileText, FolderKanban, Layers3, Plus, Save, Search, Trash2 } from 'lucide-react'
 import type { AssessmentQuestionSet } from '../../courses/mocks/schoolQuestionMock'
 import { getSchoolQuestionSet } from '../../courses/mocks/schoolQuestionMock'
-import type { SchoolSubject } from '../../courses/mocks/schoolCoursesMock'
+import type { SchoolModule, SchoolSubject } from '../../courses/types/courseCatalog.types'
 import { useCourseCategories } from '../../courses/hooks/useCourseCategories'
 import { useSchoolCourses } from '../../courses/hooks/useSchoolCourses'
-import { createBlankLesson, deleteSchoolCourse, getSchoolCourseLesson, saveSchoolCourse, saveSchoolCourseLesson } from '../../courses/services/schoolCourseStore'
+import { useTenant } from '../../../core/TenantContext'
+import { createBlankLesson, deleteSchoolCourse, saveSchoolCourse } from '../../courses/services/schoolCourseStore'
 import { getAssessmentSettings, saveAssessmentOverride, saveAssessmentSettings, type AssessmentSettings } from '../../courses/services/schoolAssessmentStore'
 import { saveCourseCategories } from '../../courses/services/courseCategoriesStore'
 import type { TemarioLesson } from '../../courses/types/schoolTemario.types'
@@ -73,21 +74,22 @@ function generateGrid(words: string[], seed: string): string[] {
   return grid.map(row => row.join(' '))
 }
 
-function makeQuestionSet(courseId: string, title: string): AssessmentQuestionSet {
-  return structuredClone(getSchoolQuestionSet(courseId, title))
+function makeQuestionSet(course: SchoolSubject, title: string): AssessmentQuestionSet {
+  return structuredClone(getSchoolQuestionSet(course.id, title, course))
 }
 
-function filledLesson(courseId: string, topicIndex: number): TemarioLesson {
-  return fitLesson(getSchoolCourseLesson(courseId, topicIndex))
+function filledLesson(course: SchoolSubject, topicIndex: number): TemarioLesson {
+  return fitLesson(course.units[topicIndex]?.lesson ?? createBlankLesson())
 }
 
-function assignedCategories(categories: ReturnType<typeof useCourseCategories>, courseId: string) {
+function assignedCategories(categories: SchoolModule[], courseId: string) {
   return categories.filter(category => category.courseIds.includes(courseId)).map(category => category.id)
 }
 
 export function AdminCoursesPage() {
-  const courses = useSchoolCourses()
-  const categories = useCourseCategories()
+  const { courses } = useSchoolCourses()
+  const { categories } = useCourseCategories()
+  const { activeInstitution } = useTenant()
   const [search, setSearch] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [page, setPage] = useState(1)
@@ -115,8 +117,8 @@ export function AdminCoursesPage() {
   const pageCount = Math.max(1, Math.ceil(filteredCourses.length / pageSize))
   const currentPage = Math.min(page, pageCount)
   const visibleCourses = filteredCourses.slice((currentPage - 1) * pageSize, currentPage * pageSize)
-  const currentLesson = draft ? lessons[activeTopic] ?? filledLesson(draft.id, activeTopic) : null
-  const currentQuestions = draft && currentLesson ? questionSets[activeTopic] ?? makeQuestionSet(draft.id, draft.units[activeTopic]?.title ?? '') : null
+  const currentLesson = draft ? lessons[activeTopic] ?? filledLesson(draft, activeTopic) : null
+  const currentQuestions = draft && currentLesson ? questionSets[activeTopic] ?? makeQuestionSet(draft, draft.units[activeTopic]?.title ?? '') : null
 
   useEffect(() => {
     if (page > pageCount) setPage(pageCount)
@@ -124,8 +126,8 @@ export function AdminCoursesPage() {
 
   const openEditor = (course: SchoolSubject, isNew = false) => {
     const nextCourse = structuredClone(course)
-    const nextLessons = Object.fromEntries(nextCourse.units.map((_, index) => [index, isNew ? createBlankLesson() : filledLesson(nextCourse.id, index)]))
-    const nextQuestions = Object.fromEntries(nextCourse.units.map((unit, index) => [index, makeQuestionSet(nextCourse.id, unit.title)]))
+    const nextLessons = Object.fromEntries(nextCourse.units.map((_, index) => [index, isNew ? createBlankLesson() : filledLesson(nextCourse, index)]))
+    const nextQuestions = Object.fromEntries(nextCourse.units.map((unit, index) => [index, makeQuestionSet(nextCourse, unit.title)]))
     setDraft(nextCourse)
     setLessons(nextLessons)
     setQuestionSets(nextQuestions)
@@ -146,7 +148,7 @@ export function AdminCoursesPage() {
     setQuestionSets(current => ({ ...current, [activeTopic]: transform(currentQuestions) }))
   }
 
-  const handleSave = (event: FormEvent<HTMLFormElement>) => {
+  const handleSave = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (!draft) return
     const name = draft.name.trim()
@@ -174,8 +176,10 @@ export function AdminCoursesPage() {
     }
     const savedCourse = { ...draft, name, description, coverImage: draft.coverImage.trim(), units: draft.units.map(unit => ({ title: unit.title.trim(), description: unit.description.trim() })) }
     try {
-      saveSchoolCourse(savedCourse)
-      Object.entries(lessons).forEach(([index, lesson]) => saveSchoolCourseLesson(savedCourse.id, Number(index), fitLesson(lesson)))
+      if (!activeInstitution) throw new Error('No hay institución activa.')
+      const categorySlug = selectedCategoryIds[0] ?? categories.find(category => category.courseIds.includes(savedCourse.id))?.id ?? categories[0]?.id
+      if (!categorySlug) throw new Error('Crea una categoría antes de agregar cursos.')
+      await saveSchoolCourse(activeInstitution.institution_id, savedCourse, categorySlug, lessons)
       Object.entries(questionSets).forEach(([index, questions]) => {
         const topicTitle = savedCourse.units[Number(index)]?.title
         if (topicTitle) saveAssessmentOverride(savedCourse.id, topicTitle, cleanQuestionSet(questions, `${savedCourse.id}-${topicTitle}`))
@@ -187,23 +191,24 @@ export function AdminCoursesPage() {
           ? [...new Set([...category.courseIds, savedCourse.id])]
           : category.courseIds.filter(id => id !== savedCourse.id),
       }))
-      saveCourseCategories(updatedCategories)
+      await saveCourseCategories(activeInstitution.institution_id, updatedCategories)
       setDraft(savedCourse)
       setEditorError('')
       setCoursePage('list')
       setPage(1)
     } catch {
-      setEditorError('No se pudieron guardar los cambios en este navegador.')
+      setEditorError('No se pudieron guardar los cambios en la base de datos. Revisa la conexión, la categoría y tus permisos.')
     }
   }
 
-  const deleteCourse = (course: SchoolSubject) => {
+  const deleteCourse = async (course: SchoolSubject) => {
     if (pendingDelete !== course.id) {
       setPendingDelete(course.id)
       return
     }
     try {
-      deleteSchoolCourse(course.id)
+      if (!activeInstitution) throw new Error('No hay institución activa.')
+      await deleteSchoolCourse(activeInstitution.institution_id, course.id)
       setPendingDelete(null)
     } catch {
       setPendingDelete(null)
@@ -247,7 +252,7 @@ export function AdminCoursesPage() {
             const title = `Tema ${topicIndex + 1}`
             setDraft(current => current ? { ...current, units: [...current.units, { title, description: '' }] } : current)
             setLessons(current => ({ ...current, [topicIndex]: createBlankLesson() }))
-            setQuestionSets(current => ({ ...current, [topicIndex]: makeQuestionSet(draft.id, title) }))
+            setQuestionSets(current => ({ ...current, [topicIndex]: makeQuestionSet(draft, title) }))
             setActiveTopic(topicIndex)
           }}><Plus size={16} />Añadir tema</button></div>
           <div className={styles.topicTabs} role="tablist" aria-label="Temas del curso">

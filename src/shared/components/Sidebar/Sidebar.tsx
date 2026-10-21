@@ -2,7 +2,7 @@ import { ArrowLeftRight, Atom, Award, BarChart3, BookOpen, CalendarDays, Calenda
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { AppRoute, SimulatorRoute } from '../../../app/router/AppRouter'
-import { schoolModulesMock } from '../../../features/courses/mocks/schoolModulesMock'
+import { useCourseCategories } from '../../../features/courses/hooks/useCourseCategories'
 import { sanitizeHtml } from '../../utils/sanitizeHtml'
 import './Sidebar.css'
 
@@ -29,6 +29,7 @@ type Group = 'courses' | 'reports'
 type Subgroup = 'school-courses' | 'simulators' | 'publications' | null
 
 export function Sidebar({ active, activeModuleId, collapsed, onSelect, onSelectModule, onToggle }: Props) {
+  const { categories } = useCourseCategories()
   const [openGroup, setOpenGroup] = useState<Group | null>(null)
   const [openSubgroup, setOpenSubgroup] = useState<Subgroup>(null)
   const [searchQuery, setSearchQuery] = useState('')
@@ -71,7 +72,7 @@ export function Sidebar({ active, activeModuleId, collapsed, onSelect, onSelectM
   const moduleMatchesLabel = matches('módulos') || matches('submódulos') || matches('cursos')
   const simulatorMatchesLabel = matches('simuladores')
   const publicationMatchesLabel = matches('publicaciones') || matches('reportes')
-  const filteredModules = schoolModulesMock.filter(module => !searching || moduleMatchesLabel || matches(module.name))
+  const filteredModules = categories.filter(module => !searching || moduleMatchesLabel || matches(module.name))
   const filteredSimulators = items.filter(item => !searching || simulatorMatchesLabel || matches(item.label))
   const filteredPublications = publications.filter(item => !searching || publicationMatchesLabel || matches(item.label))
   const showModules = openSubgroup === 'school-courses' || (searching && filteredModules.length > 0)

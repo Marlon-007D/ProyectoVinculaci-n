@@ -1,13 +1,44 @@
-.page{width:min(100% - 32px,1280px);margin:0 auto;padding:42px 0 56px;color:#172b44}
-.intro{margin-bottom:38px}
-.intro h1{margin:0 0 8px;font-size:clamp(28px,3vw,38px);line-height:1.15;font-weight:750;letter-spacing:-.025em}
-.intro p{margin:0;color:#64748b;font-size:16px;line-height:1.6}
-.page h2{margin:0 0 16px;font-size:20px;font-weight:700}
-.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
-.card{min-height:190px;display:flex;flex-direction:column;justify-content:space-between;gap:22px;padding:22px;border:1px solid #e0e8ee;border-radius:14px;background:#fff}
-.card h3{margin:0 0 8px;font-size:17px;font-weight:700}
-.card p{margin:0;color:#5f6e7d;font-size:14px;line-height:1.55}
-.card a{align-self:flex-start;padding:9px 14px;border:1px solid #b7ddd5;border-radius:8px;background:#effaf7;color:#165e5a;font-size:13px;font-weight:700;text-decoration:none}
-.card a:hover{background:#dff4ef}
-@media(max-width:900px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:600px){.page{padding-top:28px}.grid{grid-template-columns:1fr}.card{min-height:160px}}
+.workspace{width:min(100%,1600px);min-height:calc(100vh - 136px);margin:0 auto;display:grid;grid-template-columns:270px minmax(0,1fr);background:#f8f9fc;color:#202124}
+.aside{position:sticky;top:136px;align-self:start;min-height:calc(100vh - 136px);display:flex;flex-direction:column;padding:24px 14px 20px 20px;border-right:1px solid #e4e7ed;background:#f8f9fc}
+.asideHeading{display:flex;align-items:center;gap:12px;padding:4px 10px 24px}
+.asideHeading>span:last-child{display:grid;gap:3px;min-width:0}
+.asideHeading strong{overflow:hidden;color:#30343b;font-size:14px;font-weight:650;text-overflow:ellipsis;white-space:nowrap}
+.asideHeading small{color:#747985;font-size:12px}
+.asideMark{width:38px;height:38px;display:grid;place-items:center;flex:none;border-radius:12px;background:#e8eaf6;color:#514b8b;font-size:12px;font-weight:750}
+.moduleNav{display:grid;gap:5px}
+.groupLabel{margin:0;padding:12px 12px 6px;color:#747985;font-size:10px;font-weight:700;letter-spacing:.09em}
+.navGroup{display:grid;gap:4px;margin-top:8px}
+.navGroup .groupLabel{padding-top:8px}
+.workspace .navLink{min-height:44px;display:flex;align-items:center;gap:13px;padding:0 13px;border-radius:12px;color:#4d515a;font-size:13px;font-weight:550;text-decoration:none;transition:background-color .15s,color .15s}
+.navLink svg{flex:none;color:#626875;stroke-width:1.8}
+.workspace .navLink:hover{background:#eef0f5;color:#252832}
+.workspace .navLink[aria-current="page"]{background:#e9eaf6;color:#494481;font-weight:650}
+.workspace .navLink[aria-current="page"] svg{color:#514b8b}
+.asideNote{display:grid;grid-template-columns:22px minmax(0,1fr);gap:5px 10px;margin:auto 6px 0;padding:15px 13px;border:1px solid #e4e5ef;border-radius:14px;background:#f1f1f8;color:#514b8b}
+.asideNote svg{grid-row:span 2;margin-top:1px}
+.asideNote strong{color:#373649;font-size:12px;font-weight:650}
+.asideNote p{grid-column:2;margin:0;color:#6f7180;font-size:11px;line-height:1.55}
+.main{min-width:0;padding:42px clamp(22px,4vw,64px) 56px;background:#f8f9fc}
+.pageHeader{max-width:900px;margin:0 0 38px}
+.eyebrow{margin:0 0 9px;color:#67618f;font-size:11px;font-weight:700;letter-spacing:.12em}
+.workspace .pageHeader h1{margin:0;color:#202124;font-family:Inter,Roboto,Arial,sans-serif;font-size:clamp(28px,3vw,38px);font-weight:650;letter-spacing:-.03em;line-height:1.2}
+.pageHeader>p:last-child{margin:10px 0 0;color:#626773;font-size:15px;line-height:1.6}
+.modulesSection{max-width:1200px}
+.sectionHeading{display:flex;align-items:end;justify-content:space-between;gap:16px;margin-bottom:18px}
+.workspace .sectionHeading h2{margin:0;color:#30343b;font-family:Inter,Roboto,Arial,sans-serif;font-size:19px;font-weight:650;letter-spacing:-.01em}
+.sectionHeading p{margin:5px 0 0;color:#747985;font-size:13px}
+.sectionHeading>span{padding:5px 10px;border:1px solid #e0e2e9;border-radius:999px;background:#fff;color:#626773;font-size:11px;font-weight:600;white-space:nowrap}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.card{min-height:196px;display:flex;flex-direction:column;align-items:flex-start;padding:20px;border:1px solid #dfe2e9;border-radius:16px;background:#fff;transition:border-color .15s,background-color .15s}
+.card:hover{border-color:#b8b6d3;background:#fefeff}
+.cardIcon{width:40px;height:40px;display:grid;place-items:center;border-radius:12px;background:#f0eff8;color:#5b548e}
+.cardIcon svg{stroke-width:1.8}
+.cardText{margin:15px 0 17px}
+.workspace .cardText h3{margin:0 0 6px;color:#30343b;font-family:Inter,Roboto,Arial,sans-serif;font-size:15px;font-weight:650;line-height:1.35}
+.cardText p{margin:0;color:#6c707a;font-size:13px;line-height:1.55}
+.workspace .cardLink{display:inline-flex;align-items:center;gap:6px;margin-top:auto;color:#514b8b;font-size:12px;font-weight:650;text-decoration:none}
+.workspace .cardLink:hover{text-decoration:underline;text-underline-offset:3px}
+.empty{padding:20px;border:1px solid #dfe2e9;border-radius:14px;background:#fff;color:#6c707a;font-size:14px}
+@media(max-width:1050px){.workspace{grid-template-columns:230px minmax(0,1fr)}.aside{padding-inline:12px}.main{padding-inline:28px}.grid{grid-template-columns:1fr}}
+@media(max-width:760px){.workspace{display:block;min-height:calc(100vh - 116px)}.aside{position:static;min-height:0;padding:15px 16px;border-right:0;border-bottom:1px solid #e4e7ed}.asideHeading{padding:2px 3px 12px}.moduleNav{display:flex;align-items:center;gap:4px;overflow-x:auto;padding-bottom:2px}.moduleNav>.groupLabel,.navGroup>.groupLabel{display:none}.navGroup{display:flex;flex:none;gap:4px;margin:0}.navLink{min-height:40px;flex:none;gap:8px;padding-inline:11px;white-space:nowrap;font-size:12px}.navLink svg{width:16px;height:16px}.asideNote{display:none}.main{padding:28px 18px 42px}.pageHeader{margin-bottom:28px}}
+@media(max-width:520px){.sectionHeading{align-items:flex-start}.sectionHeading>span{padding:4px 8px}.grid{grid-template-columns:1fr}.card{min-height:170px;padding:17px}.pageHeader h1{font-size:28px}}

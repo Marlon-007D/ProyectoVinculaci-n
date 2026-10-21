@@ -181,7 +181,6 @@ export const SuperAdminPanel: React.FC = () => {
     <div className={styles.panelContainer}>
       <section className={styles.hero}>
         <div>
-          <p className={styles.eyebrow}>ADMINISTRACIÓN GLOBAL</p>
           <h1>Instituciones educativas</h1>
           <p className={styles.heroCopy}>Administra las unidades de la red, revisa su estado y configura los módulos disponibles para cada institución.</p>
         </div>

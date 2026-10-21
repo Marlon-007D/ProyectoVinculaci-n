@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom'
 import { Atom, BookOpen, ChartNoAxesCombined, ChevronRight, ClipboardCheck, Dumbbell, FlaskConical, GraduationCap, Landmark, Languages, Laptop, Lightbulb, Palette, Ruler, Sigma } from 'lucide-react'
 import { useCourseCategories } from '../hooks/useCourseCategories'
 import { useSchoolCourses } from '../hooks/useSchoolCourses'
-import { getSchoolCourseLesson } from '../services/schoolCourseStore'
 import { QuestionBank } from '../components/QuestionBank'
 import { CourseTemario } from '../components/CourseTemario'
 import './SchoolCoursesPage.css'
@@ -42,8 +41,8 @@ function CourseBreadcrumbs({ items }: { items: { label: string; onClick?: () => 
 }
 
 export function SchoolCoursesPage({ selectedModuleId = null, selectedCourseId = null, evaluationActive = false, onSelectModule = noop, onSelectCourse = noop, courseHrefFor, onBackToModules = noop, onBackToModule = noop, onTopicChange = noop, onEvaluationChange = noop }: Props) {
-  const schoolModules = useCourseCategories()
-  const schoolCourses = useSchoolCourses()
+  const { categories: schoolModules } = useCourseCategories()
+  const { courses: schoolCourses } = useSchoolCourses()
   const [selectedTopic, setSelectedTopic] = useState(0)
   const [isSectionLoading, setIsSectionLoading] = useState(false)
   const sectionLoadingTimer = useRef<number | null>(null)
@@ -70,7 +69,7 @@ export function SchoolCoursesPage({ selectedModuleId = null, selectedCourseId = 
   const selectedModule = schoolModules.find(module => module.id === selectedModuleId)
   if (selectedCourse) {
     const topic = selectedCourse.units[selectedTopic]
-    const topicLesson = getSchoolCourseLesson(selectedCourse.id, selectedTopic)
+    const topicLesson = topic?.lesson
     const topicIcons = [BookOpen, Ruler, ChartNoAxesCombined, Sigma]
     return <section className={`page-content school-courses-page course-detail-page${evaluationActive ? ' course-evaluation-page' : ''}`}>
       <section className="course-topics-section" aria-label="Resumen del tema">

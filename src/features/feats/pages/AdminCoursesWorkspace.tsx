@@ -13,8 +13,8 @@ interface Props { onLogout: () => void }
 
 export function AdminCoursesWorkspace({ onLogout }: Props) {
   const [section, setSection] = useState<Section>('home')
-  const categories = useCourseCategories()
-  const courses = useSchoolCourses()
+  const { categories } = useCourseCategories()
+  const { courses } = useSchoolCourses()
 
   return <div className={styles.shell}>
     <aside className={styles.aside} aria-label="Administración de cursos">

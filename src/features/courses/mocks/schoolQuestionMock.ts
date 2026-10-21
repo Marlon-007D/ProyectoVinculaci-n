@@ -1,6 +1,5 @@
-import { getSchoolCourses } from '../services/schoolCourseStore'
 import { getAssessmentOverride } from '../services/schoolAssessmentStore'
-import { schoolCoursesMock as schoolCoursesMockDefault } from './schoolCoursesMock'
+import type { SchoolSubject } from '../types/courseCatalog.types'
 
 export type MultipleChoiceQuestion = { prompt: string; options: string[]; answer: number }
 export type MultipleSelectQuestion = { prompt: string; options: string[]; answers: number[]; optionImages: { imageUrl: string; imageAlt: string }[] }
@@ -266,12 +265,8 @@ function selectQuestion(prompt: string, correctTerms: string[], distractors: str
   return { prompt, options, answers: correct.map((_, index) => index), optionImages: optionImages.slice(0, 4) }
 }
 
-export function getSchoolQuestionSet(courseId: string, topicTitle: string): AssessmentQuestionSet {
+export function getSchoolQuestionSet(courseId: string, topicTitle: string, course: SchoolSubject): AssessmentQuestionSet {
   const set = schoolQuestionMock[courseId] ?? fallbackSet
-  const courses = getSchoolCourses()
-  const course = courses.find(item => item.id === courseId)
-    ?? courses.find(item => item.id === 'ciencias')
-    ?? schoolCoursesMockDefault.find(item => item.id === 'ciencias')!
   const topicIndex = Math.max(0, course.units.findIndex(unit => unit.title === topicTitle))
   const topic = course.units[topicIndex] ?? course.units[0] ?? { title: topicTitle, description: '' }
   const otherTopicTerms = course.units.filter((_, index) => index !== topicIndex).flatMap(unit => topicWords(unit.title))

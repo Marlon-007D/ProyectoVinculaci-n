@@ -12,10 +12,11 @@ interface Props {
   menu: { state: AsyncState<MenuNode[]>; reload: () => void };
   homeUrl?: string;
   header?: ReactNode;
+  hideFooter?: boolean;
   children: ReactNode;
 }
 
-export function SiteFrame({ config, menu, homeUrl, header, children }: Props) {
+export function SiteFrame({ config, menu, homeUrl, header, hideFooter = false, children }: Props) {
   const [params] = useSearchParams();
   const isStandaloneSimulator = Boolean(params.get("simulator"));
   const isStandaloneCourse = params.get("courses") === "1" && Boolean(params.get("course"));
@@ -27,7 +28,7 @@ export function SiteFrame({ config, menu, homeUrl, header, children }: Props) {
       <main id="contenido" tabIndex={-1} className={`site-main${isStandaloneSimulator ? " site-main--simulator" : ""}${isStandaloneCourse ? " site-main--course" : ""}`}>
         {children}
       </main>
-      {!hideSiteChrome && <Footer config={config} tree={menu.state.status === "success" ? menu.state.data : []} />}
+      {!hideSiteChrome && !hideFooter && <Footer config={config} tree={menu.state.status === "success" ? menu.state.data : []} />}
     </div>
   );
 }

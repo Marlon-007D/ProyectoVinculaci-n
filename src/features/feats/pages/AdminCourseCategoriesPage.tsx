@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { ChevronLeft, ChevronRight, FolderKanban, Image, Pencil, Plus, Save, Search, Tag, Trash2, X } from 'lucide-react'
-import type { SchoolModule } from '../../courses/mocks/schoolModulesMock'
+import type { SchoolModule, SchoolSubject } from '../../courses/types/courseCatalog.types'
 import { useCourseCategories } from '../../courses/hooks/useCourseCategories'
 import { useSchoolCourses } from '../../courses/hooks/useSchoolCourses'
+import { useTenant } from '../../../core/TenantContext'
 import { saveCourseCategories } from '../../courses/services/courseCategoriesStore'
 import styles from './AdminCourseCategoriesPage.module.css'
 
@@ -24,13 +25,14 @@ function normalize(value: string) {
   return value.toLocaleLowerCase('es').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim()
 }
 
-function categoryCover(category: SchoolModule, courses: ReturnType<typeof useSchoolCourses>) {
+function categoryCover(category: SchoolModule, courses: SchoolSubject[]) {
   return category.coverImage || courses.find(course => course.id === category.courseIds[0])?.coverImage || ''
 }
 
 export function AdminCourseCategoriesPage() {
-  const categories = useCourseCategories()
-  const courses = useSchoolCourses()
+  const { categories } = useCourseCategories()
+  const { courses } = useSchoolCourses()
+  const { activeInstitution } = useTenant()
   const [search, setSearch] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [page, setPage] = useState(1)
@@ -70,7 +72,7 @@ export function AdminCourseCategoriesPage() {
     setFormOpen(true)
   }
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     const name = draft.name.trim()
     const description = draft.description.trim()
@@ -98,22 +100,24 @@ export function AdminCourseCategoriesPage() {
       const next = draft.id
         ? categories.map(item => item.id === draft.id ? category : item)
         : [...categories, category]
-      saveCourseCategories(next)
+      if (!activeInstitution) throw new Error('No hay institución activa.')
+      await saveCourseCategories(activeInstitution.institution_id, next)
       setPage(1)
       setFormOpen(false)
       setDraft(emptyDraft())
     } catch {
-      setFormError('No se pudo guardar en este navegador. Revisa el espacio disponible y vuelve a intentar.')
+      setFormError('No se pudo guardar en la base de datos. Revisa tu conexión y permisos.')
     }
   }
 
-  const deleteCategory = (category: SchoolModule) => {
+  const deleteCategory = async (category: SchoolModule) => {
     try {
-      saveCourseCategories(categories.filter(item => item.id !== category.id))
+      if (!activeInstitution) throw new Error('No hay institución activa.')
+      await saveCourseCategories(activeInstitution.institution_id, categories.filter(item => item.id !== category.id))
       setPendingDeleteId(null)
       setDeleteError('')
     } catch {
-      setDeleteError('No se pudo eliminar la categoría de este navegador.')
+      setDeleteError('No se pudo eliminar la categoría de la base de datos.')
     }
   }
 

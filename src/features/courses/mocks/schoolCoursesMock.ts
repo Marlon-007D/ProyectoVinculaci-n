@@ -1,10 +1,6 @@
-export interface SchoolSubject {
-  id: string
-  name: string
-  description: string
-  coverImage: string
-  units: { title: string; description: string }[]
-}
+import type { SchoolSubject } from '../types/courseCatalog.types'
+
+export type { SchoolSubject } from '../types/courseCatalog.types'
 
 export const schoolCoursesMock: SchoolSubject[] = [
   {
