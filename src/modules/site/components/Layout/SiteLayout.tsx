@@ -12,7 +12,7 @@ export function SiteLayout() {
   const institutionSlug = new URLSearchParams(search).get("institution");
   const homeUrl = (basePath || "/") + (institutionSlug ? "?institution=" + encodeURIComponent(institutionSlug) : "");
   return (
-    <SiteFrame config={config} menu={menu} homeUrl={homeUrl}>
+    <SiteFrame config={config} menu={menu} homeUrl={homeUrl} showPublicSidebar>
       <Outlet />
     </SiteFrame>
   );

@@ -5,6 +5,7 @@ import type { SiteConfig } from "../../types/site";
 import { useSearchParams } from "react-router-dom";
 import { Footer } from "../Footer/Footer";
 import { Header } from "../Header/Header";
+import { PublicSidebar } from "../Navigation/PublicSidebar";
 import "../../styles/layout.css";
 
 interface Props {
@@ -13,10 +14,11 @@ interface Props {
   homeUrl?: string;
   header?: ReactNode;
   hideFooter?: boolean;
+  showPublicSidebar?: boolean;
   children: ReactNode;
 }
 
-export function SiteFrame({ config, menu, homeUrl, header, hideFooter = false, children }: Props) {
+export function SiteFrame({ config, menu, homeUrl, header, hideFooter = false, showPublicSidebar = false, children }: Props) {
   const [params] = useSearchParams();
   const isStandaloneSimulator = Boolean(params.get("simulator"));
   const isStandaloneCourse = params.get("courses") === "1" && Boolean(params.get("course"));
@@ -25,10 +27,22 @@ export function SiteFrame({ config, menu, homeUrl, header, hideFooter = false, c
     <div className={`site-root${isStandaloneSimulator ? " site-root--simulator" : ""}${isStandaloneCourse ? " site-root--course" : ""}`} style={config.themeVars}>
       {!hideSiteChrome && <a className="site-skip" href="#contenido">Saltar al contenido</a>}
       {!hideSiteChrome && (header ?? <Header config={config} menu={menu} homeUrl={homeUrl} />)}
-      <main id="contenido" tabIndex={-1} className={`site-main${isStandaloneSimulator ? " site-main--simulator" : ""}${isStandaloneCourse ? " site-main--course" : ""}`}>
-        {children}
-      </main>
-      {!hideSiteChrome && !hideFooter && <Footer config={config} tree={menu.state.status === "success" ? menu.state.data : []} />}
+      {showPublicSidebar && !hideSiteChrome ? (
+        <div className="site-page-layout">
+          {menu.state.status === "success" && <PublicSidebar config={config} tree={menu.state.data} />}
+          <div className="site-page-content">
+            <main id="contenido" tabIndex={-1} className="site-main">{children}</main>
+            {!hideFooter && <Footer config={config} tree={menu.state.status === "success" ? menu.state.data : []} />}
+          </div>
+        </div>
+      ) : (
+        <>
+          <main id="contenido" tabIndex={-1} className={`site-main${isStandaloneSimulator ? " site-main--simulator" : ""}${isStandaloneCourse ? " site-main--course" : ""}`}>
+            {children}
+          </main>
+          {!hideSiteChrome && !hideFooter && <Footer config={config} tree={menu.state.status === "success" ? menu.state.data : []} />}
+        </>
+      )}
     </div>
   );
 }

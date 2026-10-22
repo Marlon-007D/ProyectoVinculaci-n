@@ -15,17 +15,17 @@
 }
 
 .section {
-  padding: clamp(1.5rem, 3vw, 2.5rem) 0 clamp(2.5rem, 5vw, 4rem);
+  padding-block: var(--site-section-space, clamp(2.75rem, 5vw, 4rem));
   background: var(--honors-surface);
 }
 
 .page :global(.site-section.site-block) {
-  padding: clamp(1.5rem, 3vw, 2.5rem) 0 clamp(2.5rem, 5vw, 4rem);
+  padding-block: var(--site-section-space, clamp(2.75rem, 5vw, 4rem));
   background: var(--honors-surface);
 }
 
 .page :global(.site-section.site-block) h2 {
-  margin: 0 0 1.5rem;
+  margin: 0 0 var(--site-section-gap, 1.5rem);
   color: var(--honors-on-surface);
   text-align: center;
   font-family: Roboto, var(--site-font), sans-serif;
