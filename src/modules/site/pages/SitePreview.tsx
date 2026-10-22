@@ -30,10 +30,10 @@ export function SitePreview() {
     <HonorsSection title="Distinciones oficiales" limit={100} className={honorsStyles.section} />
   </main>;
   if (params.get("courses") === "1") return <SchoolCoursesPage selectedModuleId={selectedModuleId} selectedCourseId={selectedCourseId} evaluationActive={evaluationActive} onSelectModule={moduleId => setParams(current => { const next = new URLSearchParams(current); next.set("courses", "1"); next.set("module", moduleId); next.delete("course"); return next })} onSelectCourse={courseId => setParams(current => { const next = new URLSearchParams(current); next.set("course", courseId); return next })} courseHrefFor={courseId => { const next = new URLSearchParams(params); if (selectedModuleId) next.set("module", selectedModuleId); next.set("course", courseId); next.set("courses", "1"); return `${location.pathname}?${next.toString()}` }} onBackToModules={() => { setEvaluationActive(false); setParams(current => { const next = new URLSearchParams(current); next.delete("module"); next.delete("course"); return next }) }} onBackToModule={() => { setEvaluationActive(false); setParams(current => { const next = new URLSearchParams(current); next.delete("course"); return next }) }} onEvaluationChange={setEvaluationActive} />;
-  if (newsId) return <AsyncView state={article.state} onRetry={article.reload} emptyTitle="No encontramos esta noticia" emptyMessage="Puede que se haya retirado o que el enlace no sea válido.">
+  if (newsId) return <AsyncView state={article.state} onRetry={article.reload} loadingVariant="article" emptyTitle="No encontramos esta noticia" emptyMessage="Puede que se haya retirado o que el enlace no sea válido.">
     {(entry) => <AcademicPostPreviewPage entry={entry} onBack={() => setParams(current => { const next = new URLSearchParams(current); next.delete("noticia"); return next; })} />}
   </AsyncView>;
-  if (eventId) return <AsyncView state={eventArticle.state} onRetry={eventArticle.reload} emptyTitle="No encontramos este evento" emptyMessage="Puede que se haya retirado o que el enlace no sea válido.">
+  if (eventId) return <AsyncView state={eventArticle.state} onRetry={eventArticle.reload} loadingVariant="article" emptyTitle="No encontramos este evento" emptyMessage="Puede que se haya retirado o que el enlace no sea válido.">
     {(entry) => <AcademicPostPreviewPage entry={entry} onBack={() => setParams(current => { const next = new URLSearchParams(current); next.delete("evento"); return next; })} />}
   </AsyncView>;
 
@@ -42,6 +42,7 @@ export function SitePreview() {
       <AsyncView
         state={current.state}
         onRetry={current.reload}
+        loadingVariant="page"
         emptyTitle="No hay página publicada"
         emptyMessage="Esta dirección no tiene una página publicada."
       >

@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import type { MenuNode } from "../../types/menu";
 import { useLocation } from "react-router-dom";
 import { MenuLink } from "./MenuLink";
+import { NavigationIcon } from "./NavigationIcon";
 
 export function withSimulatorChoices(node: MenuNode): MenuNode {
   if (node.label.trim().toLocaleLowerCase("es") !== "simuladores") return node;
@@ -63,7 +64,7 @@ function NavItem({ node }: { node: MenuNode }) {
   if (node.children.length === 0)
     return (
       <li className="site-nav__item">
-        <MenuLink node={node} className="site-nav__link" />
+        <MenuLink node={node} className="site-nav__link" leadingIcon={<NavigationIcon label={node.label} />} />
       </li>
     );
 
@@ -78,6 +79,7 @@ function NavItem({ node }: { node: MenuNode }) {
         aria-controls={subId}
         onClick={() => setOpen((o) => !o)}
       >
+        <NavigationIcon label={node.label} />
         {node.label}
         <span aria-hidden="true" className="site-nav__caret">▾</span>
       </button>

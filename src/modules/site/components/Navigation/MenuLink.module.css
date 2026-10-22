@@ -1,0 +1,6 @@
+.content {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  min-width: 0;
+}

@@ -10,10 +10,15 @@ export function useAsync<T>(
 ): { state: AsyncState<NonNullable<T>>; reload: () => void } {
   const [state, setState] = useState<AsyncState<NonNullable<T>>>({ status: "loading" });
   const [tick, setTick] = useState(0);
+  const [stateKey, setStateKey] = useState<{ deps: readonly unknown[]; tick: number } | null>(null);
+  const stateMatchesRequest = stateKey?.tick === tick
+    && stateKey.deps.length === deps.length
+    && stateKey.deps.every((value, index) => Object.is(value, deps[index]));
 
   useEffect(() => {
     let cancelled = false;
     setState({ status: "loading" });
+    setStateKey({ deps: [...deps], tick });
     load()
       .then((data) => {
         if (!cancelled)
@@ -29,5 +34,5 @@ export function useAsync<T>(
   }, [...deps, tick]);
 
   const reload = useCallback(() => setTick((t) => t + 1), []);
-  return { state, reload };
+  return { state: stateMatchesRequest ? state : { status: "loading" }, reload };
 }

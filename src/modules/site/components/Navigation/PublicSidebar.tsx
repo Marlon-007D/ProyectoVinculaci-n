@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { MenuNode } from "../../types/menu";
 import type { SiteConfig } from "../../types/site";
 import { MenuLink } from "./MenuLink";
@@ -41,13 +42,28 @@ function SidebarItems({ tree, nested = false }: { tree: MenuNode[]; nested?: boo
 }
 
 export function PublicSidebar({ tree, config }: { tree: MenuNode[]; config: SiteConfig }) {
-  return <aside className={styles.sidebar} aria-label="Navegación del portal">
-    <div className={styles.brand}>
-      {config.logoUrl ? <img src={config.logoUrl} alt="" className={styles.logo} /> : <span className={styles.logoFallback} aria-hidden="true">{config.name.trim().charAt(0).toUpperCase()}</span>}
-      <div className={styles.brandText}><strong>{config.name}</strong><span>Portal institucional</span></div>
+  const [collapsed, setCollapsed] = useState(false);
+
+  return <aside className={`${styles.sidebar} ${collapsed ? styles.collapsed : ""}`} aria-label="Navegación del portal">
+    <div className={styles.top}>
+      <button
+        className={styles.toggle}
+        type="button"
+        onClick={() => setCollapsed((value) => !value)}
+        aria-label={collapsed ? "Expandir menú" : "Contraer menú"}
+        aria-controls="site-public-navigation"
+        aria-expanded={!collapsed}
+        title={collapsed ? "Expandir menú" : "Contraer menú"}
+      >
+        <span className={styles.toggleIcon} aria-hidden="true">{collapsed ? "left_panel_open" : "left_panel_close"}</span>
+      </button>
+      <div className={styles.brand}>
+        {config.logoUrl ? <img src={config.logoUrl} alt="" className={styles.logo} /> : <span className={styles.logoFallback} aria-hidden="true">{config.name.trim().charAt(0).toUpperCase()}</span>}
+        <div className={styles.brandText}><strong>{config.name}</strong><span>Portal institucional</span></div>
+      </div>
     </div>
     <p className={styles.caption}>Explorar</p>
-    <nav aria-label="Secciones del portal">
+    <nav id="site-public-navigation" aria-label="Secciones del portal">
       <ul className={styles.list}>
         {tree.map((raw) => {
           const simulatorNode = withSimulatorChoices(raw);
@@ -55,7 +71,7 @@ export function PublicSidebar({ tree, config }: { tree: MenuNode[]; config: Site
           return <li key={node.menu_id}>
             <div className={styles.item}>
               <span className={styles.icon} data-tone={toneFor(node.label)} aria-hidden="true">{iconFor(node.label)}</span>
-              <MenuLink node={node} className={styles.link} />
+              <MenuLink node={node} className={styles.link} collapsed={collapsed} />
             </div>
             {node.children.length > 0 && <SidebarItems tree={node.children} nested />}
           </li>;
