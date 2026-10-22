@@ -6,6 +6,6 @@ import './ConverterPage.css'
 export function ConverterPage() {
   const converter = useConverter()
   return <section className="page-content converter-page">
-    <div className="simulator-grid"><ConverterForm {...converter} onKind={converter.changeKind} onAmount={converter.setAmount} onFrom={converter.setFrom} onTo={converter.setTo} onSwap={converter.swap} /><ConverterResult {...converter} /></div>
+    <div className="converter-single-card"><ConverterForm {...converter} onKind={converter.changeKind} onAmount={converter.setAmount} onFrom={converter.setFrom} onTo={converter.setTo} onSwap={converter.swap} /><ConverterResult {...converter} /></div>
   </section>
 }

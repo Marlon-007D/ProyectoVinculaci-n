@@ -1,0 +1,55 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1792266050974,
+      "tag": "0000_baseline_invoice_catalog",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1792266063993,
+      "tag": "0001_enforce_invoice_catalog_security",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792266196095,
+      "tag": "0002_add_simulated_invoices",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1792266205940,
+      "tag": "0003_enforce_simulated_invoice_security",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792267378577,
+      "tag": "0004_public_invoice_catalog",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1792267397820,
+      "tag": "0005_invoice_product_images",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792267900999,
+      "tag": "0006_invoice_session_persistence",
+      "breakpoints": true
+    }
+  ]
+}

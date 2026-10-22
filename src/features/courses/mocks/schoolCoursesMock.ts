@@ -2,6 +2,7 @@ export interface SchoolSubject {
   id: string
   name: string
   description: string
+  coverImage: string
   units: { title: string; description: string }[]
 }
 
@@ -10,6 +11,7 @@ export const schoolCoursesMock: SchoolSubject[] = [
     id: 'matematica',
     name: 'Matemática',
     description: 'Números, relaciones, geometría y resolución de problemas.',
+    coverImage: 'https://images.unsplash.com/photo-1728816658265-873fbca07dbf?auto=format&fit=crop&w=900&q=80',
     units: [
       { title: 'Números enteros, potencias y raíces', description: 'Representa operaciones con números enteros y reconoce las propiedades de potencias y raíces.' },
       { title: 'Ecuaciones e inecuaciones', description: 'Plantea y resuelve expresiones algebraicas para modelar situaciones.' },
@@ -21,6 +23,7 @@ export const schoolCoursesMock: SchoolSubject[] = [
     id: 'lengua',
     name: 'Lengua y Literatura',
     description: 'Lectura crítica, comunicación oral y producción de textos.',
+    coverImage: 'https://images.unsplash.com/photo-1517401220137-9462c929bf9f?auto=format&fit=crop&w=900&q=80',
     units: [
       { title: 'Lectura y comprensión crítica', description: 'Identifica ideas principales, intención comunicativa e información implícita.' },
       { title: 'Textos de divulgación científica', description: 'Reconoce cómo se explica y comunica información científica a distintos lectores.' },
@@ -32,6 +35,7 @@ export const schoolCoursesMock: SchoolSubject[] = [
     id: 'ciencias',
     name: 'Ciencias Naturales',
     description: 'Seres vivos, ambiente, materia y exploración científica.',
+    coverImage: 'https://images.unsplash.com/photo-1532094349884-543bc11b234d?auto=format&fit=crop&w=900&q=80',
     units: [
       { title: 'Célula y organización de los seres vivos', description: 'Describe la célula como unidad básica y sus funciones en los organismos.' },
       { title: 'Ecosistemas y flujo de energía', description: 'Explica las relaciones entre organismos, ambiente y cadenas alimenticias.' },
@@ -43,6 +47,7 @@ export const schoolCoursesMock: SchoolSubject[] = [
     id: 'estudios-sociales',
     name: 'Estudios Sociales',
     description: 'Historia, territorio, ciudadanía y diversidad del Ecuador.',
+    coverImage: 'https://images.unsplash.com/photo-1723306744533-bed5a4f696dc?auto=format&fit=crop&w=900&q=80',
     units: [
       { title: 'Historia e identidad del Ecuador', description: 'Reconoce procesos históricos que forman la identidad local y nacional.' },
       { title: 'Geografía y regiones del país', description: 'Interpreta mapas y relaciona las regiones con sus características.' },
@@ -54,6 +59,7 @@ export const schoolCoursesMock: SchoolSubject[] = [
     id: 'ingles',
     name: 'Inglés',
     description: 'Comunicación en inglés para situaciones cotidianas.',
+    coverImage: 'https://images.unsplash.com/photo-1597167100957-1dfa110c1c14?auto=format&fit=crop&w=900&q=80',
     units: [
       { title: 'Presentaciones e información personal', description: 'Intercambia saludos, datos personales e información básica.' },
       { title: 'Rutinas y actividades diarias', description: 'Describe hábitos y actividades usando vocabulario cotidiano.' },
@@ -65,6 +71,7 @@ export const schoolCoursesMock: SchoolSubject[] = [
     id: 'educacion-fisica',
     name: 'Educación Física',
     description: 'Movimiento, juego, expresión corporal y cuidado personal.',
+    coverImage: 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?auto=format&fit=crop&w=900&q=80',
     units: [
       { title: 'Juegos y prácticas deportivas', description: 'Participa en juegos aplicando reglas y habilidades motrices.' },
       { title: 'Condición física y autocuidado', description: 'Identifica prácticas de actividad física y cuidado personal.' },
@@ -76,6 +83,7 @@ export const schoolCoursesMock: SchoolSubject[] = [
     id: 'educacion-cultural',
     name: 'Educación Cultural y Artística',
     description: 'Creación, apreciación artística y expresión cultural.',
+    coverImage: 'https://images.unsplash.com/photo-1712933388268-e96e5d3261fb?auto=format&fit=crop&w=900&q=80',
     units: [
       { title: 'Elementos del lenguaje visual', description: 'Experimenta con color, forma, línea y composición.' },
       { title: 'Música, ritmo y paisaje sonoro', description: 'Explora ritmos, sonidos y expresiones musicales del entorno.' },
@@ -87,6 +95,7 @@ export const schoolCoursesMock: SchoolSubject[] = [
     id: 'emprendimiento',
     name: 'Emprendimiento y Gestión',
     description: 'Ideas, planificación y uso responsable de recursos.',
+    coverImage: 'https://images.unsplash.com/photo-1556761175-b413da4baf72?auto=format&fit=crop&w=900&q=80',
     units: [
       { title: 'Ideas y necesidades de la comunidad', description: 'Observa necesidades cercanas y propone ideas para atenderlas.' },
       { title: 'Planificación de un proyecto', description: 'Define objetivos, tareas y recursos para una iniciativa sencilla.' },
@@ -98,6 +107,7 @@ export const schoolCoursesMock: SchoolSubject[] = [
     id: 'ciudadania',
     name: 'Educación para la Ciudadanía',
     description: 'Convivencia democrática, derechos y responsabilidades.',
+    coverImage: 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&w=900&q=80',
     units: [
       { title: 'Derechos y responsabilidades', description: 'Relaciona derechos con responsabilidades en la vida cotidiana.' },
       { title: 'Normas y acuerdos de convivencia', description: 'Construye acuerdos para una convivencia justa y respetuosa.' },
@@ -109,6 +119,7 @@ export const schoolCoursesMock: SchoolSubject[] = [
     id: 'informatica',
     name: 'Informática',
     description: 'Herramientas digitales, ciudadanía y pensamiento computacional.',
+    coverImage: 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=900&q=80',
     units: [
       { title: 'Partes del computador', description: 'Identifica componentes de entrada, salida y procesamiento.' },
       { title: 'Archivos y herramientas digitales', description: 'Organiza información y utiliza herramientas digitales para tareas escolares.' },

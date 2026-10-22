@@ -1,35 +1,29 @@
 import { AppError } from '../../../../core/errors/AppError'
-import { supabaseClient } from '../../../../core/supabase/supabaseClient'
 import { sampleInvoiceProducts } from '../mocks/invoiceMock'
 import type { InvoiceProduct } from '../types/invoice.types'
 
-interface DatabaseInvoiceProduct {
-  id: string
-  description: string
-  unit_price: number | string
-  source_name: string
-  source_url: string
-}
-
 export interface InvoiceProductCatalog {
   products: InvoiceProduct[]
-  source: 'database' | 'mock'
+  source: 'local'
 }
 
-export async function getInvoiceProductCatalog(): Promise<InvoiceProductCatalog> {
-  if (!supabaseClient.isConfigured) return { products: sampleInvoiceProducts.map(product => ({ ...product })), source: 'mock' }
+export interface InvoiceCatalogRepository {
+  list(): Promise<InvoiceProduct[]>
+}
 
-  const rows = await supabaseClient.request<DatabaseInvoiceProduct[]>(
-    'invoice_products?select=id,description,unit_price,source_name,source_url&is_active=eq.true&order=description.asc',
-  )
-  const products = rows.map(row => ({
-    id: row.id,
-    description: row.description,
-    unitPrice: Number(row.unit_price),
-    sourceName: row.source_name,
-    sourceUrl: row.source_url,
-  })).filter(product => product.id && product.description && Number.isFinite(product.unitPrice) && product.unitPrice > 0)
+/** Uses the checked-in seed catalog for the standalone educational simulator. */
+export class LocalInvoiceCatalogRepository implements InvoiceCatalogRepository {
+  async list(): Promise<InvoiceProduct[]> {
+    return sampleInvoiceProducts.map(product => ({ ...product }))
+  }
+}
 
-  if (products.length === 0) throw new AppError('La base de datos no tiene productos activos con precios válidos.')
-  return { products, source: 'database' }
+const localCatalogRepository = new LocalInvoiceCatalogRepository()
+
+export async function getInvoiceProductCatalog(
+  repository: InvoiceCatalogRepository = localCatalogRepository,
+): Promise<InvoiceProductCatalog> {
+  const products = await repository.list()
+  if (products.length === 0) throw new AppError('No hay productos disponibles para la simulación.')
+  return { products, source: 'local' }
 }

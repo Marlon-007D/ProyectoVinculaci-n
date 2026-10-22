@@ -1,0 +1,92 @@
+.invoice-penguin-guide {
+  position: fixed;
+  z-index: 8;
+  right: 22px;
+  bottom: 20px;
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  width: min(390px, calc(100vw - 32px));
+  pointer-events: none;
+  transition: bottom .38s ease, top .32s ease;
+}
+
+.invoice-penguin-guide.is-raised { bottom: 112px; }
+.invoice-penguin-guide.is-later-step { bottom: 198px; }
+.invoice-penguin-guide.is-top-follow {
+  top: 106px;
+  right: 22px;
+  bottom: auto;
+}
+.invoice-penguin-guide.is-inline {
+  position: static;
+  width: min(390px, 100%);
+  margin: 0 0 0 auto;
+  transition: none;
+}
+
+.invoice-penguin-guide-bubble {
+  position: relative;
+  min-width: 0;
+  padding: 13px 14px;
+  border: 1px solid #e5e1e8;
+  border-radius: 19px;
+  color: var(--text, #3d3543);
+  background: #fff;
+}
+
+.invoice-penguin-guide-bubble::after {
+  position: absolute;
+  right: -7px;
+  bottom: 23px;
+  width: 12px;
+  height: 12px;
+  background: #fff;
+  content: '';
+  transform: rotate(45deg);
+}
+
+.invoice-penguin-guide-bubble p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.invoice-penguin-guide > .penguin-mascot {
+  flex: none;
+  width: 74px;
+  height: 74px;
+  pointer-events: none;
+}
+
+@media (max-width: 640px) {
+  .invoice-penguin-guide {
+    right: 12px;
+    bottom: calc(82px + env(safe-area-inset-bottom));
+    width: min(340px, calc(100vw - 24px));
+    gap: 6px;
+  }
+
+  .invoice-penguin-guide.is-raised { bottom: calc(166px + env(safe-area-inset-bottom)); }
+  .invoice-penguin-guide.is-later-step { bottom: calc(226px + env(safe-area-inset-bottom)); }
+  .invoice-penguin-guide.is-top-follow {
+    top: calc(88px + env(safe-area-inset-top));
+    right: 12px;
+    bottom: auto;
+  }
+
+  .invoice-penguin-guide-bubble {
+    padding: 10px 11px;
+    border-radius: 16px;
+  }
+
+  .invoice-penguin-guide-bubble p { font-size: 12px; }
+  .invoice-penguin-guide > .penguin-mascot { width: 58px; height: 58px; pointer-events: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .invoice-penguin-guide *,
+  .invoice-penguin-guide *::before,
+  .invoice-penguin-guide *::after,
+  .invoice-penguin-guide { animation: none !important; transition: none !important; }
+}

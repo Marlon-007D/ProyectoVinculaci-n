@@ -1,424 +1,116 @@
 import { supabase } from '../../core/supabaseClient';
-import type { BudgetItem, Expense, Project, ProjectMember } from './types';
-import { sumMoney } from './projectValidation';
-
-interface ExpenseRow extends Omit<Expense, 'date'> { expense_date: string }
-interface ItemRow extends Omit<BudgetItem, 'spent_amount' | 'expenses'> { expenses: ExpenseRow[] }
-interface ProjectRow extends Omit<Project, 'id' | 'name' | 'budget_total' | 'budget_items' | 'members'> {
-  project_id: string; title: string; total_budget: number; budget_items: ItemRow[];
-  project_members: ProjectMember[];
+import { ecuadorToday, isCalendarDate, isMoney, MAX_STORED_MONEY, projectDateWindow, remainingMoney, sumMoney, toCents, validateProjectDates, type ProjectAcademicPeriod } from './projectValidation';
+import type { BudgetItem, Expense, MemberOption, Project, ProjectMember } from './types';
+interface ProfileRow { profile_id: string; first_name: string; last_name: string; email: string }
+interface MemberRow { full_name?:string; email?:string; project_member_id: string; project_id: string; profile_id: string; role: ProjectMember['role']; profiles?: ProfileRow | null }
+interface ExpenseRow { expense_id: string; budget_item_id: string; description: string; amount: number; expense_date: string }
+interface ItemRow { budget_item_id: string; project_id: string; name: string; allocated_amount: number; expenses?: ExpenseRow[] }
+interface ProjectRow { is_active: boolean; project_id: string; institution_id: string; title: string; description: string; total_budget: number; is_public: boolean; start_date: string; end_date: string; updated_at?: string; budget_items?: ItemRow[]; project_members?: MemberRow[] }
+const columns='project_id,institution_id,title,description,total_budget,is_public,is_active,start_date,end_date,updated_at,budget_items(budget_item_id,project_id,name,allocated_amount,expenses(expense_id,budget_item_id,description,amount,expense_date)),project_members(project_member_id,project_id,profile_id,role,full_name,email)';
+const memberFromRow=(m:MemberRow):ProjectMember=>({...m,full_name:m.full_name??(m.profiles?[m.profiles.first_name,m.profiles.last_name].filter(Boolean).join(' '):'Perfil no visible'),email:m.email??m.profiles?.email??''});
+const expenseFromRow=(e:ExpenseRow):Expense=>({...e,amount:Number(e.amount),date:e.expense_date});
+export function mapProject(row:ProjectRow):Project {
+  return {id:row.project_id,institution_id:row.institution_id,name:row.title,description:row.description??'',budget_total:Number(row.total_budget),is_public:row.is_public,is_active:row.is_active,start_date:row.start_date??'',end_date:row.end_date??'',updated_at:row.updated_at,
+    budget_items:(row.budget_items??[]).map(b=>({...b,allocated_amount:Number(b.allocated_amount),spent_amount:sumMoney((b.expenses??[]).map(e=>Number(e.amount))),expenses:(b.expenses??[]).map(expenseFromRow)})),members:(row.project_members??[]).map(memberFromRow)};
 }
-function expenseFromRow(row: ExpenseRow): Expense {
-  return { ...row, date: row.expense_date, amount: Number(row.amount) };
-}
-export function mapProject(row: ProjectRow): Project {
-  return {
-    id: row.project_id, institution_id: row.institution_id, name: row.title,
-    description: row.description ?? '', budget_total: Number(row.total_budget),
-    is_active: row.is_active, is_public: row.is_public,
-    start_date: row.start_date ?? '', end_date: row.end_date ?? '',
-    created_at: row.created_at, updated_at: row.updated_at,
-    budget_items: (row.budget_items ?? []).map(item => ({
-      ...item, allocated_amount: Number(item.allocated_amount),
-      expenses: (item.expenses ?? []).map(expenseFromRow),
-      spent_amount: sumMoney((item.expenses ?? []).map(expense => Number(expense.amount))),
-    })),
-    members: (row.project_members ?? []).map(member => ({ ...member, hours_assigned: Number(member.hours_assigned ?? 0) })),
-  };
-}
-export function projectError(error: unknown): string {
-  if (typeof error === 'object' && error !== null && 'code' in error
-    && ['PGRST202', 'PGRST204', '42703', '42P01'].includes(String(error.code))) {
-    return 'La base de datos necesita la actualización del módulo de proyectos. Solicita al responsable técnico que la aplique.';
-  }
-  return error && typeof error === 'object' && 'message' in error ? String(error.message) : 'No se pudo completar la operación. Inténtalo de nuevo.';
-}
-// Scoped to one institution; uses atomic RPC when available in Supabase, with seamless persistent sync fallback.
-export function createProjectService(institutionId: string) {
-  if (!institutionId) throw new Error('Selecciona una institución.');
-
-  const storageKey = `vinculacion_projects_${institutionId}`;
-
-  function getStoredProjects(): Project[] {
-    try {
-      const raw = localStorage.getItem(storageKey);
-      return raw ? (JSON.parse(raw) as Project[]) : [];
-    } catch {
-      return [];
+export function projectError(error:unknown):string {
+  if(error&&typeof error==='object'&&'code' in error){
+    if(error.code==='42501'){
+      const detail='message'in error?String(error.message):'';
+      const table=detail.match(/permission denied for table ([a-zA-Z_][a-zA-Z_0-9]*)/i)?.[1];
+      return `Supabase rechazó el acceso${table?` a la tabla ${table}`:''} (código 42501). Tu sesión no tiene permiso para esta operación. El responsable de accesos debe revisar tu membresía y los permisos existentes. No se ha confirmado ningún cambio.`;
     }
+    if(['42703','42P01','PGRST200','PGRST204'].includes(String(error.code)))return 'La estructura disponible no coincide con la consulta. Revisa el esquema y los permisos existentes con el responsable técnico.';
+    if(error.code==='23505')return 'Ese registro ya existe. Actualiza los datos antes de continuar.';
   }
-
-  function saveStoredProjects(projects: Project[]) {
-    try {
-      localStorage.setItem(storageKey, JSON.stringify(projects));
-      // Notificar cambio para vistas públicas y sincronización
-      window.dispatchEvent(new CustomEvent('projects-data-changed'));
-    } catch {
-      // Ignorar quota errors
-    }
+  return error&&typeof error==='object'&&'message' in error?String(error.message):'No se pudo completar la operación. Comprueba la conexión e inténtalo de nuevo.';
+}
+function checkMoney(amount:number,positive=true){if(!isMoney(amount)||amount>MAX_STORED_MONEY||(positive?amount<=0:amount<0))throw new Error('Introduce un importe válido con máximo dos decimales y dentro de la capacidad del registro.');}
+export function createProjectService(institutionId:string,today:()=>string=ecuadorToday) {
+  if(!institutionId)throw new Error('Selecciona una institución.');
+  async function operation<T>(operation:string,payload:Record<string,unknown>):Promise<T>{
+    const {data,error}=await supabase.rpc('project_operation',{target_institution:institutionId,operation,payload});
+    if(error)throw error;return data as T;
   }
-
-  async function write(action: string, payload: Record<string, unknown>) {
-    const { data, error } = await supabase.rpc('project_operation', {
-      target_institution: institutionId,
-      operation: action,
-      payload,
-    });
-    if (error) throw error;
-    return data;
+  async function getAcademicPeriod():Promise<ProjectAcademicPeriod|null>{
+    const {data,error}=await supabase.from('academic_periods').select('academic_period_id,name,start_date,end_date').eq('institution_id',institutionId).eq('is_active',true).limit(2);
+    if(error){if(error.code==='42501')return null;throw error;}
+    if(!data?.length)return null;
+    if(data.length!==1)throw new Error('Hay más de un período lectivo activo. Solicita al responsable académico que revise cuál corresponde.');
+    projectDateWindow(data[0],today());return data[0];
   }
-
+  async function getProject(id:string){
+    const {data,error}=await supabase.from('projects').select(columns).eq('institution_id',institutionId).eq('project_id',id).single();
+    if(error)throw error;return mapProject(data as unknown as ProjectRow);
+  }
+  async function getBudget(projectId:string,budgetId:string){
+    const project=await getProject(projectId);const item=project.budget_items.find(b=>b.budget_item_id===budgetId);
+    if(!item)throw new Error('Rubro no disponible en este proyecto.');return {project,item};
+  }
+  async function getMemberOptions():Promise<MemberOption[]>{
+    const {data,error}=await supabase.rpc('project_member_options',{target_institution:institutionId});
+    if(error)throw error;
+    return (data??[]) as MemberOption[];
+  }
   return {
-    async getProjects(): Promise<{ data: Project[]; source: 'supabase' | 'local' }> {
-      try {
-        const { data, error } = await supabase
-          .from('projects')
-          .select('*, budget_items(*, expenses(*)), project_members(*)')
-          .eq('institution_id', institutionId)
-          .order('created_at', { ascending: false });
-
-        if (!error && Array.isArray(data) && data.length > 0) {
-          const mapped = (data as ProjectRow[]).map(mapProject);
-          saveStoredProjects(mapped);
-          return { data: mapped, source: 'supabase' };
-        }
-      } catch {
-        // Continuar con almacenamiento local persistente
-      }
-
-      const stored = getStoredProjects();
-      return { data: stored, source: 'local' };
+    getProject,getMemberOptions,getAcademicPeriod,
+    async setStatus(projectId:string,active:boolean){await operation('set_status',{project_id:projectId,active});},
+    async getProjects():Promise<{data:Project[];source:'supabase'}>{
+      const {data,error}=await supabase.from('projects').select(columns).eq('institution_id',institutionId).order('created_at',{ascending:false});
+      if(error)throw error;return {data:(data??[]).map(row=>mapProject(row as unknown as ProjectRow)),source:'supabase'};
     },
-
-    async createProject(input: {
-      name: string;
-      description: string;
-      budget_total: number;
-      start_date: string;
-      end_date: string;
-    }) {
-      try {
-        const row = await write('create_project', input);
-        const mapped = mapProject(row as ProjectRow);
-        const current = getStoredProjects();
-        saveStoredProjects([mapped, ...current.filter(p => p.id !== mapped.id)]);
-        return { data: mapped, source: 'supabase' as const };
-      } catch (err) {
-        // Si el RPC aún no está migrado en Supabase por el DBA, persistir localmente y probar inserción directa
-        const newProj: Project = {
-          id: crypto.randomUUID(),
-          institution_id: institutionId,
-          name: input.name,
-          description: input.description,
-          budget_total: input.budget_total,
-          is_active: true,
-          is_public: false,
-          start_date: input.start_date,
-          end_date: input.end_date,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          budget_items: [],
-          members: [],
-        };
-
-        try {
-          await supabase.from('projects').insert({
-            project_id: newProj.id,
-            institution_id: institutionId,
-            title: newProj.name,
-            description: newProj.description,
-            total_budget: newProj.budget_total,
-            is_public: false,
-            start_date: newProj.start_date || null,
-            end_date: newProj.end_date || null,
-          });
-        } catch {
-          // Ignorar error de RLS si la migración de políticas está pendiente
-        }
-
-        const current = getStoredProjects();
-        saveStoredProjects([newProj, ...current]);
-        return { data: newProj, source: 'local' as const };
-      }
+    async createProject(input:{name:string;description:string;budget_total:number;start_date:string;end_date:string}){
+      checkMoney(input.budget_total,false);
+      if(!input.name.trim()||input.name.length>255)throw new Error('Introduce un nombre de hasta 255 caracteres.');
+      validateProjectDates(input.start_date,input.end_date,undefined,today());
+      const period=await getAcademicPeriod();
+      validateProjectDates(input.start_date,input.end_date,period??undefined,today());
+      const data=await operation<ProjectRow>('create_project',{...input,name:input.name.trim(),description:input.description.trim()});
+      return {data:mapProject(data),source:'supabase' as const};
     },
-
-    async toggleProjectStatus(projectId: string): Promise<boolean> {
-      try {
-        const res = await write('toggle_status', { project_id: projectId });
-        const current = getStoredProjects();
-        const updated = current.map(p => (p.id === projectId ? { ...p, is_active: Boolean(res.is_active) } : p));
-        saveStoredProjects(updated);
-        return Boolean(res.is_active);
-      } catch {
-        const current = getStoredProjects();
-        const target = current.find(p => p.id === projectId);
-        const newStatus = target ? !target.is_active : true;
-        const updated = current.map(p => (p.id === projectId ? { ...p, is_active: newStatus } : p));
-        saveStoredProjects(updated);
-        return newStatus;
-      }
+    async setPublication(projectId:string,published:boolean){
+      await getProject(projectId);
+      const data=await operation<ProjectRow>('publish',{project_id:projectId,published});return data.is_public;
     },
-
-    async setPublication(projectId: string, published: boolean): Promise<boolean> {
-      try {
-        const res = await write('publish', { project_id: projectId, published });
-        const current = getStoredProjects();
-        const updated = current.map(p => (p.id === projectId ? { ...p, is_public: Boolean(res.is_public) } : p));
-        saveStoredProjects(updated);
-        return Boolean(res.is_public);
-      } catch {
-        const current = getStoredProjects();
-        const updated = current.map(p => (p.id === projectId ? { ...p, is_public: published } : p));
-        saveStoredProjects(updated);
-        return published;
-      }
+    async addBudgetItem(projectId:string,name:string,amount:number):Promise<BudgetItem>{
+      checkMoney(amount);if(!name.trim())throw new Error('Escribe el nombre del rubro.');
+      const project=await getProject(projectId);
+      if(toCents(sumMoney(project.budget_items.map(b=>b.allocated_amount)))+toCents(amount)>toCents(project.budget_total))throw new Error('Los rubros superan el presupuesto disponible.');
+      const data=await operation<ItemRow>('add_budget',{project_id:projectId,name:name.trim(),amount});
+      return {...data,allocated_amount:Number(data.allocated_amount),spent_amount:0,expenses:[]};
     },
-
-    async addBudgetItem(projectId: string, name: string, allocatedAmount: number): Promise<BudgetItem> {
-      try {
-        const item = await write('add_budget', { project_id: projectId, name, amount: allocatedAmount });
-        const budgetItem: BudgetItem = {
-          ...item,
-          allocated_amount: Number(item.allocated_amount),
-          spent_amount: 0,
-          expenses: [],
-        };
-        const current = getStoredProjects();
-        const updated = current.map(p => {
-          if (p.id === projectId) {
-            return { ...p, budget_items: [...(p.budget_items || []), budgetItem] };
-          }
-          return p;
-        });
-        saveStoredProjects(updated);
-        return budgetItem;
-      } catch {
-        const newItem: BudgetItem = {
-          budget_item_id: crypto.randomUUID(),
-          project_id: projectId,
-          name,
-          allocated_amount: allocatedAmount,
-          spent_amount: 0,
-          created_at: new Date().toISOString(),
-          expenses: [],
-        };
-        try {
-          await supabase.from('budget_items').insert({
-            budget_item_id: newItem.budget_item_id,
-            project_id: projectId,
-            name,
-            allocated_amount: allocatedAmount,
-          });
-        } catch {
-          // Fallback a almacenamiento local
-        }
-        const current = getStoredProjects();
-        const updated = current.map(p => {
-          if (p.id === projectId) {
-            return { ...p, budget_items: [...(p.budget_items || []), newItem] };
-          }
-          return p;
-        });
-        saveStoredProjects(updated);
-        return newItem;
-      }
+    async updateBudgetItem(projectId:string,budgetId:string,name:string,amount:number){
+      checkMoney(amount);if(!name.trim())throw new Error('Escribe el nombre del rubro.');
+      const {project,item}=await getBudget(projectId,budgetId);
+      if(toCents(amount)<toCents(item.spent_amount))throw new Error('La asignación no puede ser menor al gasto ejecutado.');
+      const other=sumMoney(project.budget_items.filter(b=>b.budget_item_id!==budgetId).map(b=>b.allocated_amount));
+      if(toCents(other)+toCents(amount)>toCents(project.budget_total))throw new Error('Los rubros superan el presupuesto del proyecto.');
+      await operation('update_budget',{project_id:projectId,budget_item_id:budgetId,name:name.trim(),amount});
     },
-
-    async deleteBudgetItem(projectId: string, budgetItemId: string): Promise<void> {
-      try {
-        await write('delete_budget', { project_id: projectId, budget_item_id: budgetItemId });
-      } catch {
-        try {
-          await supabase.from('budget_items').delete().eq('budget_item_id', budgetItemId);
-        } catch {
-          // Ignorar
-        }
-      }
-      const current = getStoredProjects();
-      const updated = current.map(p => {
-        if (p.id === projectId) {
-          return { ...p, budget_items: (p.budget_items || []).filter(b => b.budget_item_id !== budgetItemId) };
-        }
-        return p;
-      });
-      saveStoredProjects(updated);
+    async deleteBudgetItem(projectId:string,budgetId:string){
+      const {item}=await getBudget(projectId,budgetId);if(item.expenses.length)throw new Error('No se puede eliminar un rubro con gastos.');
+      await operation('delete_budget',{project_id:projectId,budget_item_id:budgetId});
     },
-
-    async addExpense(
-      budgetItemId: string,
-      projectId: string,
-      amount: number,
-      description: string,
-      invoiceNumber: string,
-      date: string
-    ): Promise<Expense> {
-      try {
-        const exp = expenseFromRow(
-          await write('add_expense', {
-            project_id: projectId,
-            budget_item_id: budgetItemId,
-            amount,
-            description,
-            invoice_number: invoiceNumber,
-            date,
-          })
-        );
-        const current = getStoredProjects();
-        const updated = current.map(p => {
-          if (p.id === projectId) {
-            return {
-              ...p,
-              budget_items: (p.budget_items || []).map(b => {
-                if (b.budget_item_id === budgetItemId) {
-                  return {
-                    ...b,
-                    spent_amount: sumMoney([(b.spent_amount || 0), amount]),
-                    expenses: [exp, ...(b.expenses || [])],
-                  };
-                }
-                return b;
-              }),
-            };
-          }
-          return p;
-        });
-        saveStoredProjects(updated);
-        return exp;
-      } catch {
-        const newExp: Expense = {
-          expense_id: crypto.randomUUID(),
-          budget_item_id: budgetItemId,
-          amount,
-          description,
-          invoice_number: invoiceNumber,
-          date: date || new Date().toISOString().split('T')[0],
-          created_at: new Date().toISOString(),
-        };
-        try {
-          await supabase.from('expenses').insert({
-            expense_id: newExp.expense_id,
-            budget_item_id: budgetItemId,
-            amount,
-            description,
-            invoice_number: invoiceNumber,
-            expense_date: newExp.date,
-          });
-        } catch {
-          // Ignorar
-        }
-        const current = getStoredProjects();
-        const updated = current.map(p => {
-          if (p.id === projectId) {
-            return {
-              ...p,
-              budget_items: (p.budget_items || []).map(b => {
-                if (b.budget_item_id === budgetItemId) {
-                  return {
-                    ...b,
-                    spent_amount: sumMoney([(b.spent_amount || 0), amount]),
-                    expenses: [newExp, ...(b.expenses || [])],
-                  };
-                }
-                return b;
-              }),
-            };
-          }
-          return p;
-        });
-        saveStoredProjects(updated);
-        return newExp;
-      }
+    async addExpense(budgetId:string,projectId:string,amount:number,description:string,date:string):Promise<Expense>{
+      checkMoney(amount);if(!description.trim()||!isCalendarDate(date))throw new Error('Completa el concepto y una fecha válida del gasto.');
+      const {item}=await getBudget(projectId,budgetId);
+      if(toCents(amount)>toCents(remainingMoney(item.allocated_amount,item.spent_amount)))throw new Error('El gasto supera el saldo disponible del rubro.');
+      const data=await operation<ExpenseRow>('add_expense',{project_id:projectId,budget_item_id:budgetId,amount,description:description.trim(),date});
+      return expenseFromRow(data);
     },
-
-    async deleteExpense(budgetItemId: string, projectId: string, expenseId: string): Promise<void> {
-      try {
-        await write('delete_expense', {
-          project_id: projectId,
-          budget_item_id: budgetItemId,
-          expense_id: expenseId,
-        });
-      } catch {
-        try {
-          await supabase.from('expenses').delete().eq('expense_id', expenseId);
-        } catch {
-          // Ignorar
-        }
-      }
-      const current = getStoredProjects();
-      const updated = current.map(p => {
-        if (p.id === projectId) {
-          return {
-            ...p,
-            budget_items: (p.budget_items || []).map(b => {
-              if (b.budget_item_id === budgetItemId) {
-                const removed = (b.expenses || []).find(e => e.expense_id === expenseId);
-                const sub = removed ? removed.amount : 0;
-                return {
-                  ...b,
-                  spent_amount: Math.max(0, (b.spent_amount || 0) - sub),
-                  expenses: (b.expenses || []).filter(e => e.expense_id !== expenseId),
-                };
-              }
-              return b;
-            }),
-          };
-        }
-        return p;
-      });
-      saveStoredProjects(updated);
+    async deleteExpense(budgetId:string,projectId:string,expenseId:string){
+      const {item}=await getBudget(projectId,budgetId);if(!item.expenses.some(e=>e.expense_id===expenseId))throw new Error('Gasto no disponible en este rubro.');
+      await operation('delete_expense',{project_id:projectId,budget_item_id:budgetId,expense_id:expenseId});
     },
-
-    async addProjectMember(
-      projectId: string,
-      member: Pick<ProjectMember, 'full_name' | 'email' | 'role' | 'hours_assigned'>
-    ): Promise<ProjectMember> {
-      try {
-        const mem = await write('add_member', { ...member, project_id: projectId });
-        const current = getStoredProjects();
-        const updated = current.map(p => {
-          if (p.id === projectId) {
-            return { ...p, members: [...(p.members || []), mem] };
-          }
-          return p;
-        });
-        saveStoredProjects(updated);
-        return mem;
-      } catch {
-        const newMem: ProjectMember = {
-          project_member_id: crypto.randomUUID(),
-          project_id: projectId,
-          full_name: member.full_name,
-          email: member.email,
-          role: member.role,
-          hours_assigned: member.hours_assigned,
-          created_at: new Date().toISOString(),
-        };
-        const current = getStoredProjects();
-        const updated = current.map(p => {
-          if (p.id === projectId) {
-            return { ...p, members: [...(p.members || []), newMem] };
-          }
-          return p;
-        });
-        saveStoredProjects(updated);
-        return newMem;
-      }
+    async addProjectMember(projectId:string,member:{profile_id:string;role:ProjectMember['role']}):Promise<void>{
+      if(!member.role.trim()||member.role.trim().length>100)throw new Error('Introduce una responsabilidad de hasta 100 caracteres.');
+      await getProject(projectId);
+      const options=await getMemberOptions();if(!options.some(p=>p.profile_id===member.profile_id))throw new Error('Selecciona un perfil de esta institución.');
+      await operation('add_member',{project_id:projectId,profile_id:member.profile_id,role:member.role.trim()});
     },
-
-    async removeProjectMember(projectId: string, memberId: string): Promise<void> {
-      try {
-        await write('delete_member', { project_id: projectId, project_member_id: memberId });
-      } catch {
-        // Ignorar
-      }
-      const current = getStoredProjects();
-      const updated = current.map(p => {
-        if (p.id === projectId) {
-          return { ...p, members: (p.members || []).filter(m => m.project_member_id !== memberId) };
-        }
-        return p;
-      });
-      saveStoredProjects(updated);
+    async removeProjectMember(projectId:string,memberId:string){
+      await getProject(projectId);
+      await operation('delete_member',{project_id:projectId,project_member_id:memberId});
     },
   };
 }

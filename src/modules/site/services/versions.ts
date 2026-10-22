@@ -1,3 +1,4 @@
+import { isDemoMode, demoVersions } from "../lib/demo";
 import { getSupabase } from "../lib/supabase";
 import { toServiceError } from "../lib/errors";
 import type { NewPublicationVersionInput, PublicationVersion } from "../types/version";
@@ -5,6 +6,7 @@ import type { NewPublicationVersionInput, PublicationVersion } from "../types/ve
 const TABLE = "publication_versions";
 
 export async function getVersions(pageId: string): Promise<PublicationVersion[]> {
+  if (isDemoMode()) return demoVersions(pageId);
   const { data, error } = await getSupabase()
     .from(TABLE)
     .select("*")
@@ -15,6 +17,7 @@ export async function getVersions(pageId: string): Promise<PublicationVersion[]>
 }
 
 export async function getLastVersion(pageId: string): Promise<PublicationVersion | null> {
+  if (isDemoMode()) return demoVersions(pageId)[0] ?? null;
   const { data, error } = await getSupabase()
     .from(TABLE)
     .select("*")
@@ -27,6 +30,7 @@ export async function getLastVersion(pageId: string): Promise<PublicationVersion
 }
 
 export async function getVersion(pageId: string, versionNumber: number): Promise<PublicationVersion | null> {
+  if (isDemoMode()) return demoVersions(pageId).find((v) => v.version_number === versionNumber) ?? null;
   const { data, error } = await getSupabase()
     .from(TABLE)
     .select("*")

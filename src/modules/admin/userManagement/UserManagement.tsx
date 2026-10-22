@@ -29,9 +29,11 @@ const roleLabels: Record<string, string> = {
 const formatRole = (role: string) => roleLabels[role] ?? role.replaceAll('_', ' ');
 
 export const UserManagement: React.FC = () => {
-  const { role: currentRole, institutionId: currentInstitutionId } = useAuth();
-  const { institutions: tenantInstitutions, loadingTenant } = useTenant();
+  const { role: currentRole } = useAuth();
+  const { institutions: tenantInstitutions, loadingTenant, activeInstitution } = useTenant();
+  const currentInstitutionId = activeInstitution?.institution_id ?? null;
   const isPlatformAdmin = currentRole === 'super_admin';
+  const isInstitutionAdmin = activeInstitution?.role === 'institution_admin';
   const [email, setEmail] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -41,6 +43,7 @@ export const UserManagement: React.FC = () => {
   const [roles, setRoles] = useState<RoleOption[]>([]);
   const [members, setMembers] = useState<UserMember[]>([]);
   const [search, setSearch] = useState('');
+  const [roleFilter, setRoleFilter] = useState('');
   const [msg, setMsg] = useState('');
   const [feedbackType, setFeedbackType] = useState<'success' | 'error'>('success');
   const [loadError, setLoadError] = useState('');
@@ -51,8 +54,8 @@ export const UserManagement: React.FC = () => {
 
   const availableInstitutions = useMemo(() => isPlatformAdmin
     ? tenantInstitutions
-    : tenantInstitutions.filter((item) => item.institution_id === currentInstitutionId),
-  [isPlatformAdmin, tenantInstitutions, currentInstitutionId]);
+    : tenantInstitutions.filter((item) => item.role === 'institution_admin'),
+  [isPlatformAdmin, tenantInstitutions]);
 
   const loadData = useCallback(async () => {
     if (loadingTenant) return;
@@ -67,11 +70,13 @@ export const UserManagement: React.FC = () => {
       return;
     }
 
+    const membershipQuery = supabase.from('memberships')
+      .select('profile_id, institution_id, role_id')
+      .eq('is_active', true);
+    if (targetInstitutionId) membershipQuery.eq('institution_id', targetInstitutionId);
     const [roleResult, membershipResult] = await Promise.all([
       supabase.from('roles').select('role_id, name').order('name'),
-      supabase.rpc('list_accessible_institution_memberships', {
-        target_institution_id: targetInstitutionId,
-      }),
+      membershipQuery,
     ]);
     const failure = roleResult.error ?? membershipResult.error;
     if (failure) {
@@ -82,10 +87,41 @@ export const UserManagement: React.FC = () => {
       return;
     }
 
-    setRoles((roleResult.data ?? []).filter((item) => item.name !== 'super_admin'));
-    setMembers((membershipResult.data ?? []) as UserMember[]);
+    setRoles((roleResult.data ?? []).filter((item) => item.name !== 'super_admin' && (isPlatformAdmin || item.name !== 'institution_admin')));
+    type MembershipRow = { profile_id: string; institution_id: string; role_id: string };
+    type ProfileRow = { profile_id: string; email: string; first_name: string; last_name: string; mfa_enabled: boolean; mfa_required: boolean };
+    const memberships = (membershipResult.data ?? []) as MembershipRow[];
+    const profileIds = [...new Set(memberships.map((item) => item.profile_id))];
+    const profileResult = profileIds.length
+      ? await supabase.from('profiles')
+        .select('profile_id, email, first_name, last_name, mfa_enabled, mfa_required')
+        .in('profile_id', profileIds)
+      : { data: [], error: null };
+    if (profileResult.error) {
+      setMembers([]);
+      setLoadError('No se pudieron cargar los perfiles. ' + profileResult.error.message);
+      setLoading(false);
+      return;
+    }
+    const profileById = new Map(((profileResult.data ?? []) as ProfileRow[]).map((item) => [item.profile_id, item]));
+    const roleById = new Map(((roleResult.data ?? []) as RoleOption[]).map((item) => [item.role_id, item.name]));
+    const institutionNameById = new Map(tenantInstitutions.map((item) => [item.institution_id, item.name]));
+    setMembers(memberships.map((membership) => {
+      const profile = profileById.get(membership.profile_id);
+      return {
+        profile_id: membership.profile_id,
+        institution_id: membership.institution_id,
+        email: profile?.email ?? '',
+        first_name: profile?.first_name ?? '',
+        last_name: profile?.last_name ?? '',
+        role_name: roleById.get(membership.role_id) ?? 'unknown',
+        institution_name: institutionNameById.get(membership.institution_id) ?? '',
+        mfa_enabled: profile?.mfa_enabled ?? false,
+        mfa_required: profile?.mfa_required ?? false,
+      };
+    }));
     setLoading(false);
-  }, [currentInstitutionId, isPlatformAdmin, loadingTenant]);
+  }, [currentInstitutionId, isPlatformAdmin, loadingTenant, tenantInstitutions]);
 
   useEffect(() => {
     if (loadingTenant) return;
@@ -100,11 +136,14 @@ export const UserManagement: React.FC = () => {
     const normalizedSearch = search.trim().toLocaleLowerCase();
     return members.filter((member) => {
       const matchesInstitution = !isPlatformAdmin || !institutionId || member.institution_id === institutionId;
+      const matchesRole = !roleFilter || member.role_name === roleFilter;
       const matchesSearch = !normalizedSearch || [member.email, member.first_name, member.last_name, member.institution_name, formatRole(member.role_name)]
         .some((value) => value?.toLocaleLowerCase().includes(normalizedSearch));
-      return matchesInstitution && matchesSearch;
+      return matchesInstitution && matchesRole && matchesSearch;
     });
-  }, [institutionId, isPlatformAdmin, members, search]);
+  }, [institutionId, isPlatformAdmin, members, roleFilter, search]);
+
+  const filterRoles = useMemo(() => [...new Set(members.map((member) => member.role_name))].sort(), [members]);
 
   const pendingMfaCount = filteredMembers.filter((member) => member.mfa_required && !member.mfa_enabled).length;
 
@@ -147,7 +186,7 @@ export const UserManagement: React.FC = () => {
 
       if (error) {
         const missingAccount = error.message.includes('No existe una cuenta registrada');
-        if (missingAccount && isPlatformAdmin) {
+        if (missingAccount && (isPlatformAdmin || (isInstitutionAdmin && availableInstitutions.some(item => item.institution_id === targetInstitutionId)))) {
           const { data, error: inviteError } = await supabase.functions.invoke('invite-institution-user', {
             body: { email: normalizedEmail, roleId, institutionId: targetInstitutionId, firstName: normalizedFirstName, lastName: normalizedLastName, phone: normalizedPhone },
           });
@@ -168,7 +207,7 @@ export const UserManagement: React.FC = () => {
         }
         setFeedbackType('error');
         setMsg(missingAccount
-          ? 'La cuenta todavía no existe. Solicita al superadministrador global que envíe la invitación.'
+          ? 'La cuenta no existe y tu membresia no permite invitar usuarios a esta institucion.'
           : `No se pudo asignar el rol: ${error.message}`);
         return;
       }
@@ -244,7 +283,7 @@ export const UserManagement: React.FC = () => {
           <span className={styles.secureLabel}><span aria-hidden="true">●</span> Operación protegida</span>
         </div>
         {!isPlatformAdmin && <p className={styles.scopeNotice}>Las asignaciones se aplican únicamente a <strong>{availableInstitutions[0]?.name ?? 'tu institución asignada'}</strong>.</p>}
-        <form onSubmit={handleAssignUser} className={styles.form}>
+        <form onSubmit={handleAssignUser} className={styles.form} aria-busy={saving}>
           <label className={styles.field} htmlFor="member-email">Correo de la cuenta
             <input id="member-email" type="email" autoComplete="email" placeholder="persona@institucion.edu.ec" value={email} onChange={(event) => setEmail(event.target.value)} required className={styles.input} />
           </label>
@@ -270,9 +309,10 @@ export const UserManagement: React.FC = () => {
             </select>
           </label>}
           <button type="submit" disabled={saving || loading || availableInstitutions.length === 0} className={styles.btnSubmit}>
-            {saving ? 'Guardando…' : 'Asignar rol'}
+            {saving && <span className={styles.buttonSpinner} aria-hidden="true" />}{saving ? ' Preparando invitación…' : 'Asignar rol'}
           </button>
         </form>
+        {saving && <p className={styles.progressNotice} role="status" aria-live="polite">Verificando la cuenta y preparando la asignación o invitación segura…</p>}
         {msg && <p role={feedbackType === 'error' ? 'alert' : 'status'} className={feedbackType === 'error' ? styles.errorFeedback : styles.successFeedback}>{msg}</p>}
       </section>
 
@@ -285,6 +325,11 @@ export const UserManagement: React.FC = () => {
               <option value="">Todas las instituciones</option>
               {availableInstitutions.map((institution) => <option key={institution.institution_id} value={institution.institution_id}>{institution.name}</option>)}
             </select>}
+            <label className={styles.srOnly} htmlFor="membership-role-filter">Filtrar por rol</label>
+            <select id="membership-role-filter" value={roleFilter} onChange={(event) => setRoleFilter(event.target.value)} className={styles.filterSelect}>
+              <option value="">Todos los roles</option>
+              {filterRoles.map((role) => <option key={role} value={role}>{formatRole(role)}</option>)}
+            </select>
             <label className={styles.srOnly} htmlFor="membership-search">Buscar usuarios</label>
             <input id="membership-search" type="search" placeholder="Buscar correo, nombre o rol" value={search} onChange={(event) => setSearch(event.target.value)} className={styles.searchInput} />
           </div>

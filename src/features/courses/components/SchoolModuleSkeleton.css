@@ -1,0 +1,26 @@
+.school-module-skeleton { padding-top: 18px; }
+.school-module-skeleton-header { display: flex; align-items: center; justify-content: space-between; gap: 24px; margin-bottom: 26px; }
+.school-module-skeleton-heading { display: grid; gap: 12px; }
+.school-skeleton-block { display: block; border-radius: 8px; background: linear-gradient(90deg, var(--accent-soft) 25%, color-mix(in srgb, var(--accent-container) 68%, white) 48%, var(--accent-soft) 72%); background-size: 220% 100%; animation: school-module-skeleton-shimmer 1.5s ease-in-out infinite; }
+.school-skeleton-kicker { width: 92px; height: 16px; }
+.school-skeleton-title { width: clamp(210px, 24vw, 300px); height: 42px; border-radius: 12px; }
+.school-skeleton-description { width: clamp(280px, 34vw, 430px); height: 20px; }
+.school-skeleton-count { width: 88px; height: 34px; border-radius: 999px; }
+.school-module-skeleton-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: start; }
+.school-module-skeleton-card { display: grid; gap: 12px; min-width: 0; min-height: 235px; padding: 22px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); }
+.school-module-skeleton-card-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.school-skeleton-icon { width: 42px; height: 42px; border-radius: 13px; }
+.school-skeleton-topics { width: 66px; height: 14px; }
+.school-skeleton-course-title { width: 58%; height: 23px; }
+.school-skeleton-course-description { width: 94%; height: 16px; }
+.school-skeleton-course-description.short { width: 68%; }
+.school-module-skeleton-sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
+@keyframes school-module-skeleton-shimmer { to { background-position: -220% 0; } }
+@media (max-width: 900px) { .school-module-skeleton-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 620px) {
+  .school-module-skeleton-header { align-items: flex-start; flex-direction: column; gap: 14px; }
+  .school-skeleton-description { max-width: calc(100vw - 48px); }
+  .school-module-skeleton-grid { grid-template-columns: minmax(0, 1fr); }
+  .school-module-skeleton-card { min-height: 190px; padding: 19px; }
+}
+@media (prefers-reduced-motion: reduce) { .school-skeleton-block { animation: none; } }

@@ -1,0 +1,28 @@
+{
+  "format": "simulaedu-public-schema-manifest/v1",
+  "createdAt": "2026-10-17T20:03:22.674Z",
+  "tables": [
+    {
+      "name": "invoice_items"
+    },
+    {
+      "name": "invoice_products"
+    },
+    {
+      "name": "invoices"
+    }
+  ],
+  "policies": [],
+  "foreignKeys": [
+    {
+      "table_name": "invoice_items",
+      "conname": "invoice_items_invoice_id_invoices_id_fk",
+      "definition": "FOREIGN KEY (invoice_id) REFERENCES invoices(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "invoice_items",
+      "conname": "invoice_items_product_id_invoice_products_id_fk",
+      "definition": "FOREIGN KEY (product_id) REFERENCES invoice_products(id) ON DELETE RESTRICT"
+    }
+  ]
+}

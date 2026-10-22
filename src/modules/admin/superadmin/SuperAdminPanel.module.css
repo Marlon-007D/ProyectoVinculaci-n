@@ -44,10 +44,15 @@
 .institutionName { display: block; color: var(--navy); font-weight: 750; }
 .institutionMeta { display: block; margin-top: .15rem; color: #8997a7; font-size: .7rem; }
 .slug { display: inline-block; padding: .32rem .55rem; border: 1px solid #e2e9ee; border-radius: .5rem; background: #f8fafc; color: #627287; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .72rem; }
+.moduleBadges { display: flex; flex-wrap: wrap; gap: .35rem; min-width: 12rem; }
+.moduleBadge { display: inline-flex; align-items: center; min-height: 1.65rem; padding: .2rem .48rem; border: 1px solid #cde7e3; border-radius: 999px; background: #f0faf8; color: #176b65; font-size: .64rem; font-weight: 800; white-space: nowrap; }
+.noModules { color: #8997a7; font-size: .72rem; font-style: italic; }
 .status { display: inline-flex; align-items: center; gap: .4rem; padding: .34rem .6rem; border: 1px solid #cce9dc; border-radius: 999px; background: #f0faf5; color: #14734c; font-size: .7rem; font-weight: 750; }
 .status::before { width: .4rem; height: .4rem; border-radius: 50%; background: currentColor; content: ''; }
 .statusInactive { border-color: #e4e7eb; background: #f7f8fa; color: #748094; }
 .actions { display: flex; align-items: center; gap: .5rem; }
+.btnPreview { min-height: 2.4rem; padding: .55rem .8rem; border: 1px solid #b8d7e7; border-radius: .65rem; background: #f5fbff; color: #246387; font-size: .75rem; font-weight: 700; cursor: pointer; white-space: nowrap; }
+.btnPreview:hover { border-color: #80b8d3; background: #eaf7fd; }
 .btnDelete { min-height: 2.4rem; padding: .55rem .8rem; border: 1px solid #f0cdca; border-radius: .65rem; background: #fff; color: #a83232; font-size: .75rem; font-weight: 700; cursor: pointer; }
 .btnDelete:hover { border-color: #e6aaa5; background: #fff5f4; }
 .emptyState { padding: 2.2rem 1rem !important; color: #728196 !important; text-align: center; }

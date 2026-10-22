@@ -1,8 +1,10 @@
-import { schoolCoursesMock } from './schoolCoursesMock'
+import { getSchoolCourses } from '../services/schoolCourseStore'
+import { getAssessmentOverride } from '../services/schoolAssessmentStore'
+import { schoolCoursesMock as schoolCoursesMockDefault } from './schoolCoursesMock'
 
-type MultipleChoiceQuestion = { prompt: string; options: string[]; answer: number }
-type MultipleSelectQuestion = { prompt: string; options: string[]; answers: number[]; optionImages: { imageUrl: string; imageAlt: string }[] }
-type WordSearchQuestion = { prompt: string; words: string[]; grid: string[] }
+export type MultipleChoiceQuestion = { prompt: string; options: string[]; answer: number }
+export type MultipleSelectQuestion = { prompt: string; options: string[]; answers: number[]; optionImages: { imageUrl: string; imageAlt: string }[] }
+export type WordSearchQuestion = { prompt: string; words: string[]; grid: string[] }
 
 export interface CourseQuestionSet {
   multipleChoice: MultipleChoiceQuestion
@@ -135,6 +137,83 @@ export const schoolQuestionMock: Record<string, CourseQuestionSet> = {
   },
 }
 
+type TopicAssessmentOverride = {
+  choices: MultipleChoiceQuestion[]
+  selects: Array<Omit<MultipleSelectQuestion, 'optionImages'>>
+  matching: CourseQuestionSet['matching']
+}
+
+const topicAssessmentOverrides: Record<string, TopicAssessmentOverride> = {
+  'matematica:0': {
+    choices: [
+      { prompt: 'Calcula: −3² + 2³.', options: ['−1', '17', '1', '−17'], answer: 0 },
+      { prompt: '¿Qué igualdad aplica correctamente las propiedades de las potencias?', options: ['2⁴ · 2³ = 2⁷', '2⁴ · 2³ = 4⁷', '2⁴ + 2³ = 2⁷', '2⁴ ÷ 2³ = 2⁷'], answer: 0 },
+      { prompt: 'Una temperatura baja de 4 °C a −7 °C. ¿Cuál fue la variación?', options: ['−11 °C', '−3 °C', '11 °C', '3 °C'], answer: 0 },
+    ],
+    selects: [
+      { prompt: 'Selecciona todas las expresiones cuyo valor es 16.', options: ['2⁴', '√256', '4²', '2³'], answers: [0, 1, 2] },
+      { prompt: 'Marca las afirmaciones verdaderas sobre números enteros.', options: ['−8 < −3', 'El opuesto de −12 es 12', '0 es positivo', '−5 + 5 = 0'], answers: [1, 3] },
+      { prompt: 'Selecciona los resultados correctos.', options: ['(−4)² = 16', '√49 = 7', '2⁵ = 10', '−3² = 9'], answers: [0, 1] },
+      { prompt: '¿Qué operaciones dan como resultado un número negativo?', options: ['−6 + 2', '3 − 9', '(−4)(−2)', '√36'], answers: [0, 1] },
+    ],
+    matching: { prompt: 'Relaciona cada representación con el resultado correcto.', pairs: [
+      { imageUrl: 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?auto=format&fit=crop&w=360&q=80', imageAlt: 'Expresiones matemáticas en una pizarra', match: '3³ = 27' },
+      { imageUrl: 'https://images.unsplash.com/photo-1455390582262-044cdead277a?auto=format&fit=crop&w=360&q=80', imageAlt: 'Procedimiento matemático escrito', match: '√81 = 9' },
+    ], options: ['√81 = 9', '3³ = 27'] },
+  },
+  'matematica:1': {
+    choices: [
+      { prompt: 'Resuelve la ecuación: 3x − 7 = 11.', options: ['x = 6', 'x = 4', 'x = 18', 'x = −6'], answer: 0 },
+      { prompt: '¿Qué valor satisface 5(x − 2) ≤ 15?', options: ['x = 5', 'x = 6', 'x = 8', 'x = 10'], answer: 0 },
+      { prompt: 'Al sumar 4 a ambos miembros de x − 4 = 9, se obtiene:', options: ['x = 13', 'x = 5', '4x = 13', 'x − 8 = 9'], answer: 0 },
+    ],
+    selects: [
+      { prompt: 'Selecciona valores que satisfacen x + 3 > 8.', options: ['x = 6', 'x = 5', 'x = 8', 'x = 4'], answers: [0, 2] },
+      { prompt: 'Marca pasos válidos para resolver 2x + 5 = 17.', options: ['Restar 5 a ambos miembros', 'Dividir ambos miembros entre 2', 'Multiplicar 17 por 5', 'Cambiar 2x por x²'], answers: [0, 1] },
+      { prompt: '¿Qué ecuaciones tienen solución x = 4?', options: ['x + 6 = 10', '3x = 12', 'x − 4 = 4', '2x + 1 = 9'], answers: [0, 1, 3] },
+      { prompt: 'Selecciona expresiones equivalentes a 4x − 8.', options: ['4(x − 2)', '2(2x − 4)', '4x + 8', '8(x − 1)'], answers: [0, 1] },
+    ],
+    matching: { prompt: 'Relaciona cada ecuación con su solución.', pairs: [
+      { imageUrl: 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?auto=format&fit=crop&w=360&q=80', imageAlt: 'Ecuaciones en una pizarra', match: '2x + 3 = 11 → x = 4' },
+      { imageUrl: 'https://images.unsplash.com/photo-1455390582262-044cdead277a?auto=format&fit=crop&w=360&q=80', imageAlt: 'Procedimiento de resolución escrito', match: 'x − 5 = 2 → x = 7' },
+    ], options: ['x − 5 = 2 → x = 7', '2x + 3 = 11 → x = 4'] },
+  },
+  'matematica:2': {
+    choices: [
+      { prompt: 'Un triángulo tiene base 12 cm y altura 7 cm. ¿Cuál es su área?', options: ['42 cm²', '84 cm²', '19 cm²', '38 cm²'], answer: 0 },
+      { prompt: '¿A cuántos centímetros equivalen 2,5 metros?', options: ['250 cm', '25 cm', '2 500 cm', '0,25 cm'], answer: 0 },
+      { prompt: 'Un rectángulo mide 8 m por 5 m. ¿Cuál es su perímetro?', options: ['26 m', '40 m', '13 m', '20 m'], answer: 0 },
+    ],
+    selects: [
+      { prompt: 'Selecciona las magnitudes que se miden en unidades cuadradas.', options: ['Área de un patio', 'Superficie de una pared', 'Longitud de una cuerda', 'Masa de una mochila'], answers: [0, 1] },
+      { prompt: 'Marca equivalencias correctas.', options: ['1 km = 1 000 m', '3 m = 300 cm', '1 m² = 100 cm²', '500 cm = 5 m'], answers: [0, 1, 3] },
+      { prompt: 'Selecciona figuras que tienen todos sus lados iguales.', options: ['Cuadrado', 'Rombo', 'Rectángulo', 'Triángulo escaleno'], answers: [0, 1] },
+      { prompt: 'Para hallar el área de un triángulo se necesita conocer:', options: ['Base', 'Altura perpendicular', 'Perímetro', 'Radio'], answers: [0, 1] },
+    ],
+    matching: { prompt: 'Relaciona cada cálculo con la magnitud que obtiene.', pairs: [
+      { imageUrl: 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?auto=format&fit=crop&w=360&q=80', imageAlt: 'Diagramas geométricos', match: 'b · h ÷ 2 → área' },
+      { imageUrl: 'https://images.unsplash.com/photo-1455390582262-044cdead277a?auto=format&fit=crop&w=360&q=80', imageAlt: 'Medidas anotadas', match: '2(largo + ancho) → perímetro' },
+    ], options: ['2(largo + ancho) → perímetro', 'b · h ÷ 2 → área'] },
+  },
+  'matematica:3': {
+    choices: [
+      { prompt: 'En los datos 4, 6, 6, 8, 10, ¿cuál es la mediana?', options: ['6', '8', '6,8', '4'], answer: 0 },
+      { prompt: 'Una bolsa tiene 3 fichas rojas y 1 azul. ¿Cuál es la probabilidad de extraer una roja?', options: ['3/4', '1/4', '1/3', '4/3'], answer: 0 },
+      { prompt: 'En una encuesta, 18 de 30 estudiantes prefieren fútbol. ¿Qué porcentaje representa?', options: ['60 %', '18 %', '40 %', '80 %'], answer: 0 },
+    ],
+    selects: [
+      { prompt: 'Selecciona situaciones donde conviene usar una gráfica de barras.', options: ['Comparar ventas por mes', 'Mostrar cantidad de estudiantes por curso', 'Medir la temperatura cada hora', 'Comparar preferencias de colores'], answers: [0, 1, 3] },
+      { prompt: 'Marca eventos imposibles al lanzar un dado común.', options: ['Obtener 7', 'Obtener un número par', 'Obtener 0', 'Obtener un número menor que 7'], answers: [0, 2] },
+      { prompt: 'Selecciona medidas de tendencia central.', options: ['Media', 'Mediana', 'Moda', 'Rango'], answers: [0, 1, 2] },
+      { prompt: 'En el conjunto 2, 2, 5, 7, 7, ¿qué afirmaciones son correctas?', options: ['La moda es 2 y 7', 'La mediana es 5', 'La media es 7', 'Hay cinco datos'], answers: [0, 1, 3] },
+    ],
+    matching: { prompt: 'Relaciona cada situación con el concepto estadístico adecuado.', pairs: [
+      { imageUrl: 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?auto=format&fit=crop&w=360&q=80', imageAlt: 'Datos y gráficos', match: 'Valor central de datos ordenados → mediana' },
+      { imageUrl: 'https://images.unsplash.com/photo-1455390582262-044cdead277a?auto=format&fit=crop&w=360&q=80', imageAlt: 'Registro de resultados', match: 'Resultado más frecuente → moda' },
+    ], options: ['Resultado más frecuente → moda', 'Valor central de datos ordenados → mediana'] },
+  },
+}
+
 const fallbackSet = schoolQuestionMock.ciencias
 function createChallengeGrid(words: string[], seedText: string): string[] {
   const size = 8
@@ -187,32 +266,39 @@ function selectQuestion(prompt: string, correctTerms: string[], distractors: str
 
 export function getSchoolQuestionSet(courseId: string, topicTitle: string): AssessmentQuestionSet {
   const set = schoolQuestionMock[courseId] ?? fallbackSet
-  const course = schoolCoursesMock.find(item => item.id === courseId) ?? schoolCoursesMock.find(item => item.id === 'ciencias')!
+  const courses = getSchoolCourses()
+  const course = courses.find(item => item.id === courseId)
+    ?? courses.find(item => item.id === 'ciencias')
+    ?? schoolCoursesMockDefault.find(item => item.id === 'ciencias')!
   const topicIndex = Math.max(0, course.units.findIndex(unit => unit.title === topicTitle))
-  const topic = course.units[topicIndex]
+  const topic = course.units[topicIndex] ?? course.units[0] ?? { title: topicTitle, description: '' }
   const otherTopicTerms = course.units.filter((_, index) => index !== topicIndex).flatMap(unit => topicWords(unit.title))
   const titleTerms = topicWords(topic.title)
   const descriptionTerms = topicWords(topic.description)
   const topicSearchWords = [...new Set([...titleTerms, ...descriptionTerms, ...set.wordSearch.words.map(word => topicWords(word)[0]).filter(Boolean)])].slice(0, 10)
   const completedSearchWords = [...topicSearchWords, ...set.wordSearch.words.filter(word => !topicSearchWords.includes(word))].slice(0, 10)
   const selectImages = set.multipleSelect.optionImages
+  const override = topicAssessmentOverrides[`${courseId}:${topicIndex}`]
+  const multipleChoiceVersions = override?.choices ?? [
+    { prompt: `¿Qué tema estás estudiando en ${course.name}?`, options: course.units.map(unit => unit.title), answer: topicIndex },
+    { prompt: `¿Qué objetivo corresponde a «${topic.title}»?`, options: course.units.map(unit => unit.description), answer: topicIndex },
+    { prompt: `¿Cuál de estos temas se relaciona directamente con «${topic.title}»?`, options: [topic.title, ...course.units.filter((_, index) => index !== topicIndex).slice(0, 3).map(unit => unit.title)], answer: 0 },
+  ]
+  const multipleSelectVersions = override?.selects.map(question => ({ ...question, optionImages: selectImages })) ?? [
+    selectQuestion(`Selecciona palabras clave que aparecen en «${topic.title}».`, titleTerms, otherTopicTerms, selectImages),
+    selectQuestion(`Marca conceptos importantes para estudiar «${topic.title}».`, descriptionTerms, otherTopicTerms, selectImages),
+    selectQuestion(`Elige las ideas relacionadas con el propósito de «${topic.title}».`, titleTerms.slice(-2), descriptionTerms.filter(term => !titleTerms.includes(term)).concat(otherTopicTerms), selectImages),
+    selectQuestion(`Selecciona dos conceptos que ayudan a repasar «${topic.title}».`, descriptionTerms.slice(0, 2), titleTerms.concat(otherTopicTerms), selectImages),
+  ]
   const versions: AssessmentQuestionSet = {
     ...set,
-    multipleChoiceVersions: [
-      { prompt: `¿Qué tema estás estudiando en ${course.name}?`, options: course.units.map(unit => unit.title), answer: topicIndex },
-      { prompt: `¿Qué objetivo corresponde a «${topic.title}»?`, options: course.units.map(unit => unit.description), answer: topicIndex },
-      { prompt: `¿Cuál de estos temas se relaciona directamente con «${topic.title}»?`, options: [topic.title, ...course.units.filter((_, index) => index !== topicIndex).slice(0, 3).map(unit => unit.title)], answer: 0 },
-    ],
-    multipleSelectVersions: [
-      selectQuestion(`Selecciona palabras clave que aparecen en «${topic.title}».`, titleTerms, otherTopicTerms, selectImages),
-      selectQuestion(`Marca conceptos importantes para estudiar «${topic.title}».`, descriptionTerms, otherTopicTerms, selectImages),
-      selectQuestion(`Elige las ideas relacionadas con el propósito de «${topic.title}».`, titleTerms.slice(-2), descriptionTerms.filter(term => !titleTerms.includes(term)).concat(otherTopicTerms), selectImages),
-      selectQuestion(`Selecciona dos conceptos que ayudan a repasar «${topic.title}».`, descriptionTerms.slice(0, 2), titleTerms.concat(otherTopicTerms), selectImages),
-    ],
+    matching: override?.matching ?? set.matching,
+    multipleChoiceVersions,
+    multipleSelectVersions,
     wordSearchVersions: [
       { ...set.wordSearch, prompt: `Encuentra vocabulario relacionado con «${topic.title}».`, words: completedSearchWords, grid: createChallengeGrid(completedSearchWords, `${courseId}-${topic.title}-general`) },
       { ...set.wordSearch, prompt: `Localiza conceptos clave de «${topic.title}».`, words: completedSearchWords, grid: createChallengeGrid(completedSearchWords, `${courseId}-${topic.title}-topic`) },
     ],
   }
-  return versions
+  return getAssessmentOverride(courseId, topicTitle) ?? versions
 }

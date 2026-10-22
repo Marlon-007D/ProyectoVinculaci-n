@@ -1,444 +1,123 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { ProjectDetails } from './ProjectDetails';
+import {moduleClass} from './projectStyles';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { Institution } from './integration/ModuleSession';
 import { createProjectService, projectError } from './projectService';
-import type { Institution } from '../../core/TenantContext';
-import { isMoney, sumMoney } from './projectValidation';
+import { ecuadorToday, MAX_STORED_MONEY, projectDateWindow, sumMoney, remainingMoney, validateProjectDates, type ProjectAcademicPeriod } from './projectValidation';
+import { ProjectDetails } from './ProjectDetails';
 import type { Project } from './types';
-
-export const ProjectsDashboard = ({ institution }: { institution: Institution }) => {
-  const projectService = useMemo(() => createProjectService(institution.institution_id), [institution.institution_id]);
-  const [busy, setBusy] = useState(false);
-  const inFlight = useRef(false);
-  const loadId = useRef(0);
-  const [loadError, setLoadError] = useState('');
-  async function mutate(action: () => Promise<void>) {
-    if (inFlight.current) return;
-    inFlight.current = true;
-    setBusy(true);
-    setErrorMsg('');
-    try { await action(); } catch (cause) { setErrorMsg(projectError(cause)); }
-    finally { inFlight.current = false; setBusy(false); }
-  }
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [source, setSource] = useState<'supabase' | 'local'>('supabase');
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-  const [errorMsg, setErrorMsg] = useState('');
-
-  // Filtros y busqueda
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
-
-  const [newProject, setNewProject] = useState({
-    name: '',
-    description: '',
-    budget_total: '',
-    start_date: '',
-    end_date: '',
-  });
-
-  const loadProjects = useCallback(async () => {
-    const request = ++loadId.current;
-    setLoading(true);
-    setLoadError('');
+import { ArrowUpRight, CalendarDays, FolderPlus, Globe2, LockKeyhole, Plus, RefreshCw, Search, Users } from 'lucide-react';
+import { FinancialProgress, ProjectBadge, ProjectEmpty, ProjectLoading, ProjectMetrics } from './ProjectVisuals';
+import { filterProjectList, formatMoney, formatProjectDate } from './projectPresentation';
+export function ProjectsDashboard({ institution }: {
+    institution: Institution;
+}) {
+    const service = useMemo(() => createProjectService(institution.institution_id), [institution.institution_id]);
+    const [projects, setProjects] = useState<Project[]>([]);
+    const [selected, setSelected] = useState<Project | null>(null);
+    const [error, setError] = useState('');
+    const [busy, setBusy] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const [period, setPeriod] = useState<ProjectAcademicPeriod | null>(null);
+    const [periodError, setPeriodError] = useState('');
+    const [startDate, setStartDate] = useState('');
+    const [endDate, setEndDate] = useState('');
+    const [budget, setBudget] = useState('');
+    const [search, setSearch] = useState('');
+    const [publication, setPublication] = useState('all');
+    const [status, setStatus] = useState('all');
+    const [sort, setSort] = useState('default');
+    const createPanel = useRef<HTMLDetailsElement>(null);
+    const firstInput = useRef<HTMLInputElement>(null);
+    const request = useRef(0);
+    const lock = useRef(false);
+    const load = useCallback(async () => {
+        const id = ++request.current;
+        const [projectResult, periodResult] = await Promise.allSettled([service.getProjects(), service.getAcademicPeriod()]);
+        if (id !== request.current)
+            return;
+        if (projectResult.status === 'fulfilled')
+            setProjects(projectResult.value.data);
+        else {
+            setProjects([]);
+            setError(projectError(projectResult.reason));
+        }
+        if (periodResult.status === 'fulfilled')
+            setPeriod(periodResult.value);
+        else {
+            setPeriod(null);
+            setPeriodError(projectError(periodResult.reason));
+        }
+        setLoading(false);
+    }, [service]);
+    useEffect(() => { const pending = request; void load(); return () => { pending.current++; }; }, [load]);
+    function refresh() { setLoading(true); setError(''); setPeriodError(''); return load(); }
+    async function create(event: React.FormEvent<HTMLFormElement>) {
+        event.preventDefault();
+        if (lock.current)
+            return;
+        const form = event.currentTarget;
+        const data = new FormData(form);
+        lock.current = true;
+        setBusy(true);
+        setError('');
+        try {
+            const result = await service.createProject({ name: String(data.get('name')), description: String(data.get('description')), budget_total: Number(data.get('budget')), start_date: startDate, end_date: endDate });
+            setProjects(old => [result.data, ...old]);
+            form.reset();
+            setStartDate('');
+            setEndDate('');
+            setBudget('');
+            setSelected(result.data);
+        }
+        catch (e) {
+            setError(projectError(e));
+        }
+        finally {
+            lock.current = false;
+            setBusy(false);
+        }
+    }
+    let bounds: {
+        min: string;
+        max: string;
+    } | null = null;
+    let dateError = '';
     try {
-      const res = await projectService.getProjects();
-      if (request !== loadId.current) return;
-      setProjects(res.data);
-      setSource(res.source);
-    } catch (cause) {
-      if (request === loadId.current) { setProjects([]); setLoadError(projectError(cause)); }
-    } finally {
-      if (request === loadId.current) setLoading(false);
+        bounds = projectDateWindow(period, ecuadorToday());
+        if (startDate && endDate)
+            validateProjectDates(startDate, endDate, period ?? undefined, ecuadorToday());
     }
-  }, [projectService]);
-  useEffect(() => { void loadProjects(); return () => { loadId.current++; }; }, [loadProjects]);
-
-  const handleAddProject = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrorMsg('');
-
-    const budget = parseFloat(newProject.budget_total);
-
-    if (!isMoney(budget) || budget > 100000 || !newProject.name.trim()) {
-      setErrorMsg('Escribe un nombre y un presupuesto entre $0 y $100.000, con máximo dos decimales.');
-      return;
+    catch (cause) {
+        dateError = projectError(cause);
     }
-
-    if (newProject.start_date && newProject.end_date) {
-      const start = new Date(newProject.start_date);
-      const end = new Date(newProject.end_date);
-
-      if (end < start) {
-        setErrorMsg('La fecha de fin no puede ser anterior a la fecha de inicio.');
-        return;
-      }
-
-      const diffTime = Math.abs(end.getTime() - start.getTime());
-      const diffYears = diffTime / (1000 * 60 * 60 * 24 * 365);
-
-      if (diffYears > 3) {
-        setErrorMsg('La duracion del proyecto no debe exceder los 3 anos.');
-        return;
-      }
-    }
-
-    try {
-      const res = await projectService.createProject({
-        name: newProject.name.trim(),
-        description: newProject.description.trim(),
-        budget_total: budget,
-        start_date: newProject.start_date,
-        end_date: newProject.end_date,
-      });
-
-      setProjects(prev => [res.data, ...prev]);
-      setSource(res.source);
-      setIsModalOpen(false);
-      setNewProject({ name: '', description: '', budget_total: '', start_date: '', end_date: '' });
-    } catch (cause) {
-      setErrorMsg(projectError(cause));
-    }
-  };
-
-  const handleToggleStatus = async (projectId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    const newStatus = await projectService.toggleProjectStatus(projectId);
-    setProjects(prev => prev.map(p => (p.id === projectId ? { ...p, is_active: newStatus } : p)));
-  };
-
-  const handleProjectUpdated = (updatedProj: Project) => {
-    setSelectedProject(updatedProj);
-    setProjects(prev => prev.map(p => (p.id === updatedProj.id ? updatedProj : p)));
-  };
-
-  // Filtrado de proyectos
-  const filteredProjects = useMemo(() => {
-    return projects.filter(p => {
-      const matchesSearch =
-        p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.description.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesStatus =
-        statusFilter === 'all' ? true : statusFilter === 'active' ? p.is_active : !p.is_active;
-      return matchesSearch && matchesStatus;
-    });
-  }, [projects, searchQuery, statusFilter]);
-
-  // Metricas globales
-  const totalProjectsCount = projects.length;
-  const activeProjectsCount = projects.filter(p => p.is_active).length;
-  const globalTotalBudget = sumMoney(projects.map(project => project.budget_total));
-  const globalSpentBudget = sumMoney(projects.flatMap(project => (project.budget_items ?? []).map(item => item.spent_amount)));
-
-  if (selectedProject) {
-    return (
-      <ProjectDetails
-        project={selectedProject}
-        institutionName={institution.name}
-        canPublish={['super_admin', 'institution_admin'].includes(institution.role)}
-        onBack={() => setSelectedProject(null)}
-        onProjectUpdate={handleProjectUpdated}
-      />
-    );
-  }
-
-  return (
-    <fieldset disabled={busy} className="min-h-screen p-6 md:p-10 bg-gray-50 text-gray-800">
-      {(loadError || errorMsg) && <p role="alert" className="mb-4 rounded border border-red-200 bg-red-50 p-4 text-red-800">{loadError || errorMsg}</p>}
-      {/* Encabezado principal */}
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 bg-white p-6 rounded-md border border-gray-200 shadow-sm gap-4">
-        <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-semibold text-gray-900 tracking-tight">
-              Proyectos · {institution.name}
-            </h1>
-            <span
-              className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border ${
-                source === 'supabase'
-                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                  : 'bg-amber-50 text-amber-700 border-amber-200'
-              }`}
-            >
-              <span className={`size-1.5 rounded-full ${source === 'supabase' ? 'bg-emerald-500' : 'bg-amber-500'}`} />
-              {loading ? 'Consultando…' : loadError ? 'Consulta fallida' : source === 'supabase' ? 'Datos de Supabase' : 'Guardado en este navegador'}
-            </span>
-          </div>
-          <p className="text-xs text-gray-500 mt-1">
-            Planificacion, asignacion de partidas presupuestarias, registro de facturas y seguimiento de equipos de vinculacion.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            disabled={loading} onClick={() => void loadProjects()}
-            className="text-gray-600 hover:text-gray-900 px-3 py-2 text-xs border border-gray-200 rounded bg-white hover:bg-gray-50 transition-colors"
-            title="Recargar desde Supabase"
-          >
-            Actualizar
-          </button>
-          <button
-            onClick={() => {
-              setErrorMsg('');
-              setIsModalOpen(true);
-            }}
-            className="bg-blue-600 text-white py-2 px-5 rounded hover:bg-blue-700 transition-colors text-sm font-medium"
-          >
-            Nuevo Proyecto
-          </button>
-        </div>
-      </header>
-
-      {/* Tarjetas KPI de resumen general */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <div className="bg-white p-5 rounded-md border border-gray-200 shadow-sm">
-          <span className="text-gray-500 text-xs font-semibold uppercase tracking-wider block">Total Proyectos</span>
-          <p className="text-2xl font-bold text-gray-900 mt-1">{totalProjectsCount}</p>
-          <span className="text-xs text-gray-400 mt-1 block">Iniciativas registradas</span>
-        </div>
-
-        <div className="bg-white p-5 rounded-md border border-gray-200 shadow-sm">
-          <span className="text-gray-500 text-xs font-semibold uppercase tracking-wider block">Proyectos Activos</span>
-          <p className="text-2xl font-bold text-emerald-600 mt-1">{activeProjectsCount}</p>
-          <span className="text-xs text-gray-400 mt-1 block">En ejecucion actual</span>
-        </div>
-
-        <div className="bg-white p-5 rounded-md border border-gray-200 shadow-sm">
-          <span className="text-gray-500 text-xs font-semibold uppercase tracking-wider block">Presupuesto Asignado</span>
-          <p className="text-2xl font-bold text-gray-900 mt-1">
-            ${globalTotalBudget.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-          </p>
-          <span className="text-xs text-gray-400 mt-1 block">Presupuesto global</span>
-        </div>
-
-        <div className="bg-white p-5 rounded-md border border-gray-200 shadow-sm">
-          <span className="text-gray-500 text-xs font-semibold uppercase tracking-wider block">Gastos Ejecutados</span>
-          <p className="text-2xl font-bold text-red-600 mt-1">
-            ${globalSpentBudget.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-          </p>
-          <span className="text-xs text-gray-400 mt-1 block">
-            {globalTotalBudget > 0 ? Math.round((globalSpentBudget / globalTotalBudget) * 100) : 0}% de ejecucion
-          </span>
-        </div>
-      </div>
-
-      {/* Barra de filtros y busqueda */}
-      <div className="bg-white p-4 rounded-md border border-gray-200 shadow-sm mb-6 flex flex-col sm:flex-row justify-between items-center gap-3">
-        <div className="w-full sm:w-96">
-          <input
-            type="text"
-            placeholder="Buscar por nombre o descripcion..."
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            className="w-full px-3 py-2 text-xs border border-gray-300 rounded focus:border-blue-500 outline-none"
-          />
-        </div>
-
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          <label className="text-xs text-gray-500 font-medium">Estado:</label>
-          <select
-            value={statusFilter}
-            onChange={e => setStatusFilter(e.target.value as 'all' | 'active' | 'inactive')}
-            className="px-3 py-2 text-xs border border-gray-300 rounded bg-white text-gray-700 outline-none"
-          >
-            <option value="all">Todos los proyectos ({projects.length})</option>
-            <option value="active">Solo activos ({activeProjectsCount})</option>
-            <option value="inactive">Solo inactivos ({projects.length - activeProjectsCount})</option>
-          </select>
-        </div>
-      </div>
-
-      {/* Lista de proyectos */}
-      {loading ? (
-        <div className="bg-white rounded-md p-12 text-center border border-gray-200 shadow-sm">
-          <div className="inline-block size-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mb-2" />
-          <p className="text-gray-500 text-sm">Cargando proyectos desde el servicio...</p>
-        </div>
-      ) : filteredProjects.length === 0 ? (
-        <div className="bg-white rounded-md p-12 text-center border border-gray-200 shadow-sm">
-          <p className="text-gray-600 font-medium text-sm">No se encontraron proyectos registrados con los criterios seleccionados.</p>
-          <p className="text-gray-400 text-xs mt-1">Haz clic en "Nuevo Proyecto" para registrar uno.</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {filteredProjects.map(project => {
-            const projectSpent = (project.budget_items || []).reduce((acc, b) => acc + (b.spent_amount || 0), 0);
-            const percent = project.budget_total > 0 ? Math.min(100, Math.round((projectSpent / project.budget_total) * 100)) : 0;
-            const rubrosCount = (project.budget_items || []).length;
-            const membersCount = (project.members || []).length;
-
-            return (
-              <div key={project.id} className="bg-white border border-gray-200 rounded-md p-5 shadow-sm flex flex-col justify-between hover:border-gray-300 transition-colors">
-                <div>
-                  <div className="flex justify-between items-start mb-3 gap-2">
-                    <h2 className="text-base font-semibold text-gray-900 leading-snug line-clamp-2" title={project.name}>
-                      {project.name}
-                    </h2>
-                    <span
-                      className={`px-2 py-0.5 rounded text-xs font-medium shrink-0 border ${
-                        project.is_active
-                          ? 'bg-green-50 text-green-700 border-green-200'
-                          : 'bg-gray-100 text-gray-600 border-gray-200'
-                      }`}
-                    >
-                      {project.is_active ? 'Activo' : 'Inactivo'}
-                    </span>
-                  </div>
-
-                  {project.description && (
-                    <p className="text-gray-600 text-xs mb-4 line-clamp-3 leading-relaxed">
-                      {project.description}
-                    </p>
-                  )}
-
-                  <div className="grid grid-cols-2 gap-3 text-xs text-gray-500 mb-4 bg-gray-50 p-2.5 rounded border border-gray-100">
-                    <div>
-                      <span className="block font-medium text-gray-700">Inicio</span>
-                      {project.start_date || 'No definida'}
-                    </div>
-                    <div>
-                      <span className="block font-medium text-gray-700">Fin</span>
-                      {project.end_date || 'No definida'}
-                    </div>
-                  </div>
-
-                  <div className="mb-4">
-                    <div className="flex justify-between items-baseline mb-1">
-                      <span className="text-xs text-gray-600">Presupuesto</span>
-                      <span className="text-sm font-bold text-gray-900">
-                        ${project.budget_total.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                      </span>
-                    </div>
-
-                    <div className="flex justify-between text-xs text-gray-500 mb-1">
-                      <span>Ejecutado: ${projectSpent.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
-                      <span>{percent}%</span>
-                    </div>
-
-                    <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
-                      <div
-                        className={`h-1.5 rounded-full ${percent > 90 ? 'bg-red-500' : percent > 60 ? 'bg-amber-500' : 'bg-emerald-500'}`}
-                        style={{ width: `${percent}%` }}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-4 text-xs text-gray-500 mb-4 pt-2 border-t border-gray-100">
-                    <span>Partidas: <strong className="text-gray-700">{rubrosCount}</strong></span>
-                    <span>Equipo: <strong className="text-gray-700">{membersCount} miembros</strong></span>
-                  </div>
-                </div>
-
-                <div className="pt-3 border-t border-gray-100 flex items-center gap-2">
-                  <button
-                    onClick={() => setSelectedProject(project)}
-                    className="flex-1 bg-blue-600 text-white py-1.5 px-3 rounded text-xs font-medium hover:bg-blue-700 transition-colors text-center"
-                  >
-                    Ver Detalles
-                  </button>
-                  <button
-                    onClick={event => void mutate(() => handleToggleStatus(project.id, event))}
-                    className="px-2.5 py-1.5 text-xs text-gray-600 border border-gray-200 rounded bg-gray-50 hover:bg-gray-100 transition-colors"
-                    title={project.is_active ? 'Pausar proyecto' : 'Activar proyecto'}
-                  >
-                    {project.is_active ? 'Pausar' : 'Activar'}
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Modal Registrar Proyecto */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-gray-900/50 flex justify-center items-center z-50 p-4">
-          <div className="bg-white rounded-md p-6 max-w-lg w-full shadow-lg">
-            <div className="flex justify-between items-center mb-5 border-b border-gray-100 pb-3">
-              <h2 className="text-lg font-semibold text-gray-900">Registrar Proyecto de Vinculacion</h2>
-              <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-700">✕</button>
-            </div>
-
-            {errorMsg && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded">
-                {errorMsg}
-              </div>
-            )}
-
-            <form onSubmit={event => { event.preventDefault(); void mutate(() => handleAddProject(event)); }} className="flex flex-col gap-4">
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Nombre del Proyecto</label>
-                <input
-                  type="text" required maxLength={120}
-                  placeholder="Ej. Capacitacion Tecnologica en Comunidades Rurales"
-                  value={newProject.name}
-                  onChange={e => setNewProject({ ...newProject, name: e.target.value })}
-                  className="w-full p-2 text-sm border border-gray-300 rounded focus:border-blue-500 outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Descripción y objetivos públicos</label>
-                <textarea
-                  rows={3} maxLength={500}
-                  placeholder="Objetivos y actividades. Evita nombres o identificaciones de beneficiarios."
-                  value={newProject.description}
-                  onChange={e => setNewProject({ ...newProject, description: e.target.value })}
-                  className="w-full p-2 text-sm border border-gray-300 rounded focus:border-blue-500 outline-none resize-none"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Fecha de Inicio</label>
-                  <input
-                    type="date" required
-                    value={newProject.start_date}
-                    onChange={e => setNewProject({ ...newProject, start_date: e.target.value })}
-                    className="w-full p-2 text-sm border border-gray-300 rounded focus:border-blue-500 outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Fecha de Finalizacion</label>
-                  <input
-                    type="date" required
-                    value={newProject.end_date}
-                    onChange={e => setNewProject({ ...newProject, end_date: e.target.value })}
-                    className="w-full p-2 text-sm border border-gray-300 rounded focus:border-blue-500 outline-none"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Presupuesto Aprobado ($)</label>
-                <input
-                  type="number" required min="1" max="100000" step="0.01"
-                  placeholder="Ej. 12000.00"
-                  value={newProject.budget_total}
-                  onChange={e => setNewProject({ ...newProject, budget_total: e.target.value })}
-                  className="w-full p-2 text-sm border border-gray-300 rounded focus:border-blue-500 outline-none"
-                />
-              </div>
-
-              <div className="flex justify-end gap-3 mt-4 pt-4 border-t border-gray-100">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 text-xs text-gray-600 bg-gray-100 rounded hover:bg-gray-200"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 text-xs text-white bg-blue-600 rounded hover:bg-blue-700 font-medium"
-                >
-                  Guardar Proyecto
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-    </fieldset>
-  );
-};
+    const total = sumMoney(projects.map(p => p.budget_total));
+    const spent = sumMoney(projects.flatMap(p => p.budget_items.map(b => b.spent_amount)));
+    const visible = filterProjectList(projects, p => ({ name: p.name, description: p.description, active: p.is_active, budget: p.budget_total, spent: sumMoney(p.budget_items.map(b => b.spent_amount)), public: p.is_public }), { query: search, status, publication, sort });
+    function clearFilters() { setSearch(''); setPublication('all'); setStatus('all'); setSort('default'); }
+    function openCreate() { if (createPanel.current) {
+        createPanel.current.open = true;
+        createPanel.current.scrollIntoView({ block: 'start' });
+        firstInput.current?.focus({ preventScroll: true });
+    } }
+    if (selected)
+        return <ProjectDetails project={selected} institutionName={institution.name} canPublish={['super_admin', 'institution_admin'].includes(institution.role)} onBack={() => { setSelected(null); void refresh(); }} onProjectUpdate={p => { setSelected(p); setProjects(old => old.map(item => item.id === p.id ? p : item)); }}/>;
+    return <div className={moduleClass("project-panel project-dashboard")}><header className={moduleClass("project-hero")}><div className={moduleClass("project-hero-copy")}><p className={moduleClass("project-eyebrow")}>GESTIÓN INSTITUCIONAL · {institution.name}</p><h1>Proyectos que construyen comunidad.</h1><p>Organiza tu equipo, distribuye el presupuesto y da seguimiento a cada gasto desde un solo lugar.</p><div className={moduleClass("project-hero-actions")}><button className={moduleClass("project-primary")} disabled={loading || busy} onClick={openCreate}><Plus size={18} aria-hidden="true"/>Nuevo proyecto</button><button className={moduleClass("project-hero-secondary")} disabled={loading || busy} onClick={() => void refresh()}><RefreshCw size={16} aria-hidden="true"/>Actualizar</button></div></div><div className={moduleClass("project-hero-aside")}><FolderPlus size={32} aria-hidden="true"/><span>TU ESPACIO DE TRABAJO</span><strong>{loading || error ? '—' : projects.filter(p => p.is_active).length}</strong><p>proyectos en ejecución</p></div></header>
+    {error && <p role="alert" className={moduleClass("project-error")}>{error}</p>}
+    <ProjectMetrics count={projects.length} budget={total} spent={spent} available={!loading && !error}/>
+    <details className={moduleClass("project-card project-create")} ref={createPanel}><summary><Plus size={18} aria-hidden="true"/><span>Crear un proyecto<small>Define su objetivo, presupuesto y período de ejecución.</small></span></summary>
+      {loading ? <p role="status">Comprobando fechas…</p> : periodError ? <p role="alert" className={moduleClass("project-error")}>No se pudo comprobar la configuración académica. {periodError}</p> : period ? <p id="project-period-help">Año lectivo: <strong>{period.name}</strong> · {period.start_date} al {period.end_date}. El proyecto debe comenzar hoy o después y terminar dentro de este período, como máximo a un año desde hoy.</p> : <p id="project-period-help">Puedes registrar las fechas del proyecto: inicio desde hoy y final igual o posterior, como máximo a un año desde hoy. El período lectivo institucional no está disponible para comprobar sus límites.</p>}
+      {dateError && <p id="project-date-error" role="alert" className={moduleClass("project-error")}>{dateError}</p>}
+      <form onSubmit={create}><fieldset disabled={busy || loading || !bounds || Boolean(periodError)} className={moduleClass("project-form-grid")}>
+      <label>Nombre del proyecto<input ref={firstInput} name="name" required maxLength={255} placeholder="Por ejemplo: Huerto escolar comunitario"/></label><label>Presupuesto aprobado (USD)<input name="budget" type="number" required min="0" max={MAX_STORED_MONEY} step="0.01" value={budget} onChange={event => setBudget(event.target.value)} aria-describedby="project-budget-help" placeholder="0,00"/></label>
+      <label>Fecha de inicio<input name="start" type="date" required min={bounds?.min} max={bounds?.max} value={startDate} onChange={event => setStartDate(event.target.value)} aria-describedby="project-period-help"/></label><label>Fecha de finalización<input name="end" type="date" required min={startDate && bounds && startDate > bounds.min ? startDate : bounds?.min} max={bounds?.max} value={endDate} onChange={event => setEndDate(event.target.value)} aria-describedby="project-period-help"/></label>
+      <p className={moduleClass("project-wide project-form-help")} id="project-budget-help">Registra el monto autorizado para este proyecto. Puedes usar USD 0 si no requiere financiamiento. El saldo de otros proyectos no representa fondos disponibles para uno nuevo.</p>
+      <label className={moduleClass("project-wide")}>Objetivo y descripción pública<textarea name="description" required rows={3} placeholder="¿Qué se quiere lograr y a quién beneficiará?"/><small>Este texto podrá mostrarse en Transparencia cuando un administrador apruebe el resumen.</small></label><button className={moduleClass("project-primary")} type="submit" disabled={Boolean(dateError)}><Plus size={16} aria-hidden="true"/>{busy ? 'Guardando…' : 'Crear proyecto'}</button>
+    </fieldset></form></details>
+    <div className={moduleClass("project-section-heading")}><div><p className={moduleClass("project-eyebrow")}>CARTERA DE PROYECTOS</p><h2>Todo bajo seguimiento</h2></div><span>{!loading && !error ? `${projects.length} registrados` : 'Consultando información'}</span></div>
+    <div className={moduleClass("project-filters")}><label className={moduleClass("project-search")}>Buscar proyecto<div><Search size={17} aria-hidden="true"/><input type="search" placeholder="Nombre u objetivo…" value={search} onChange={e => setSearch(e.target.value)}/></div></label><label>Estado<select value={status} onChange={e => setStatus(e.target.value)}><option value="all">Todos los estados</option><option value="active">En ejecución</option><option value="closed">Cerrados</option></select></label><label>Visibilidad<select value={publication} onChange={e => setPublication(e.target.value)}><option value="all">Todos</option><option value="public">Resumen público</option><option value="private">Privados</option></select></label><label>Ordenar por<select value={sort} onChange={e => setSort(e.target.value)}><option value="default">Orden original</option><option value="name">Nombre A–Z</option><option value="budget">Mayor presupuesto</option><option value="spent">Mayor gasto</option></select></label></div>
+    {!loading && !error && <div className={moduleClass("project-results")}><span role="status">{visible.length} de {projects.length} proyectos</span>{(search || status !== 'all' || publication !== 'all' || sort !== 'default') && <button className={moduleClass("project-text-button")} onClick={clearFilters}>Limpiar filtros</button>}</div>}
+    {loading ? <ProjectLoading /> : !error && <div className={moduleClass("project-grid project-list-grid")}>{visible.map(p => { const used = sumMoney(p.budget_items.map(b => b.spent_amount)); return <article className={moduleClass("project-card project-list-card")} key={p.id}><div className={moduleClass("project-card-top")}><ProjectBadge active={p.is_active}/><span className={moduleClass("project-visibility")}>{p.is_public ? <Globe2 size={14} aria-hidden="true"/> : <LockKeyhole size={14} aria-hidden="true"/>}{p.is_public ? 'Público' : 'Privado'}</span></div><h3>{p.name}</h3><p className={moduleClass("project-card-description")}>{p.description}</p><div className={moduleClass("project-card-dates")}><CalendarDays size={15} aria-hidden="true"/><span>{formatProjectDate(p.start_date)} — {formatProjectDate(p.end_date)}</span></div><dl className={moduleClass("project-card-money")}><div><dt>Presupuesto</dt><dd>{formatMoney(p.budget_total)}</dd></div><div><dt>Saldo</dt><dd>{formatMoney(remainingMoney(p.budget_total, used))}</dd></div></dl><FinancialProgress budget={p.budget_total} spent={used} compact/><footer><span><Users size={15} aria-hidden="true"/>{p.members.length} participantes · {p.budget_items.length} rubros</span><button onClick={() => setSelected(p)} aria-label={`Gestionar ${p.name}`}>Gestionar<ArrowUpRight size={17} aria-hidden="true"/></button></footer></article>; })}</div>}
+    {!loading && !error && !projects.length && <ProjectEmpty title="Tu próximo proyecto empieza aquí" action={<button className={moduleClass("project-primary")} onClick={openCreate}><Plus size={16} aria-hidden="true"/>Crear el primer proyecto</button>}>Registra el objetivo y el presupuesto. Después podrás añadir rubros, gastos y participantes.</ProjectEmpty>}
+    {!loading && !error && projects.length > 0 && !visible.length && <ProjectEmpty title="No encontramos coincidencias" action={<button onClick={clearFilters}>Ver todos los proyectos</button>}>Prueba con otro nombre o ajusta los filtros de estado y visibilidad.</ProjectEmpty>}
+  </div>;
+}

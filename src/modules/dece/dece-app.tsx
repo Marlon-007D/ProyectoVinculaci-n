@@ -111,8 +111,12 @@ export default function DeceApp() {
     window.dispatchEvent(new Event('dece:dashboard-refresh'))
   }, [])
 
+  const getBasePath = () => location.pathname.startsWith('/panel/dece')
+    ? '/panel/dece'
+    : integration?.slug ? `/${integration.slug}/dece` : '/panel/dece'
+
   const routeTo = (target: DeceScreen, intent?: 'create') => {
-    const basePath = integration?.slug ? `/${integration.slug}/dece` : '/panel/dece'
+    const basePath = getBasePath()
     const targetPath = target === 'students' || target === 'custom-form' ? `${basePath}/estudiantes`
       : target === 'cases' ? `${basePath}/casos`
       : target === 'forms' ? `${basePath}/plantillas`
@@ -157,11 +161,11 @@ export default function DeceApp() {
         {formSetupError && <div className="notice sensitive" role="alert">{formSetupError}<button className="button btn secondary ms-2" type="button" onClick={() => setFormSetupRetry(value => value + 1)}>Reintentar</button></div>}
         {screen === 'home' && (
           <DashboardPage onNavigate={routeTo} firstName={firstName}
-            onStudent={studentId => { history.pushState(null, '', `${integration.slug ? `/${integration.slug}/dece` : '/panel/dece'}/estudiantes/${studentId}`); setScreen('students') }}
-            onCase={caseId => { history.pushState(null, '', `${integration.slug ? `/${integration.slug}/dece` : '/panel/dece'}/casos/${caseId}`); setScreen('cases') }}
+            onStudent={studentId => { history.pushState(null, '', `${getBasePath()}/estudiantes/${studentId}`); setScreen('students') }}
+            onCase={caseId => { history.pushState(null, '', `${getBasePath()}/casos/${caseId}`); setScreen('cases') }}
             onForm={(studentId, code) => { void integration.client.from('students').select('student_id,national_id,first_name,last_name,grade_level').eq('institution_id', integration.institutionId).eq('student_id', studentId).maybeSingle().then(({ data }) => { if (data) openSubmissionForm({ recordId: data.student_id, id: data.national_id ?? '', firstName: data.first_name, lastName: data.last_name, name: `${data.first_name} ${data.last_name}`.trim(), grade: data.grade_level ?? 'Sin grado', initials: `${data.first_name} ${data.last_name}`.split(/\s+/).slice(0, 2).map((part: string) => part[0]).join('').toUpperCase(), color: 'lavender' }, code) }) }} />
         )}
-        {screen === 'students' && <StudentManagementPage onOpenForm={openSubmissionForm} onStudentSaved={syncSavedStudent} onOpenCases={studentId => { setCaseStudentId(studentId); routeTo('cases') }} onOpenCase={caseId => { const basePath = integration?.slug ? `/${integration.slug}/dece` : '/panel/dece'; history.pushState(null, '', `${basePath}/casos/${caseId}`); setScreen('cases') }} />}
+        {screen === 'students' && <StudentManagementPage onOpenForm={openSubmissionForm} onStudentSaved={syncSavedStudent} onOpenCases={studentId => { setCaseStudentId(studentId); routeTo('cases') }} onOpenCase={caseId => { history.pushState(null, '', `${getBasePath()}/casos/${caseId}`); setScreen('cases') }} />}
         {screen === 'cases' && <CasesPage initialStudentId={caseStudentId} onInitialStudentUsed={clearCaseStudent} />}
         {screen === 'forms' && <FormManagementPage />}
         {screen === 'submissions' && <FormSubmissionsPage onOpen={openSubmissionForm} />}

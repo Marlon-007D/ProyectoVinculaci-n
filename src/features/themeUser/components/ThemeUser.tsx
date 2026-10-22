@@ -3,10 +3,10 @@ import { themeOptions } from '../mocks/themeOptions'
 import type { ThemeName } from '../types/themeUser.types'
 import './ThemeUser.css'
 
-interface Props { theme: ThemeName; collapsed: boolean; open: boolean; onChange: (theme: ThemeName, origin: { x: number; y: number }) => void; onToggle: () => void }
+interface Props { theme: ThemeName; collapsed: boolean; open: boolean; placement?: 'sidebar' | 'topbar'; onChange: (theme: ThemeName, origin: { x: number; y: number }) => void; onToggle: () => void }
 
-export function ThemeUser({ theme, collapsed, open, onChange, onToggle }: Props) {
-  return <div className={`theme-user${open ? ' is-open' : ''}${collapsed ? ' is-collapsed' : ''}`}>
+export function ThemeUser({ theme, collapsed, open, placement = 'sidebar', onChange, onToggle }: Props) {
+  return <div className={`theme-user${open ? ' is-open' : ''}${collapsed ? ' is-collapsed' : ''}${placement === 'topbar' ? ' is-topbar' : ''}`}>
     <button className="theme-trigger" type="button" aria-expanded={open} aria-controls="theme-user-options" onClick={onToggle}>
       <Palette size={19} />
       {!collapsed && <><span className="theme-trigger-label">Tema</span><ChevronDown className="theme-chevron" size={16} /></>}

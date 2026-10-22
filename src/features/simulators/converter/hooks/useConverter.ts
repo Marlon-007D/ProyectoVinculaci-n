@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react'
 import type { ConversionKind, ConversionUnit } from '../types/converter.types'
 import { conversionOptions, convertValue } from '../utils/conversions'
 
+const MAX_AMOUNT = 1_000_000
+
 export function useConverter() {
   const [kind, setKind] = useState<ConversionKind>('currency')
   const [amount, setAmount] = useState<number | ''>(25)
@@ -10,10 +12,11 @@ export function useConverter() {
   const options = conversionOptions[kind]
   const result = useMemo(() => convertValue(kind, Number(amount) || 0, from, to), [kind, amount, from, to])
   const isValid = amount !== ''
+  const setAmountLimited = (value: number | '') => setAmount(value === '' ? '' : Math.min(MAX_AMOUNT, Math.max(0, value)))
   const changeKind = (next: ConversionKind) => {
     const nextOptions = conversionOptions[next]
     setKind(next); setFrom(nextOptions[0].code); setTo(nextOptions[1].code)
   }
   const swap = () => { setFrom(to); setTo(from) }
-  return { kind, amount, from, to, options, result, isValid, setAmount, setFrom, setTo, changeKind, swap }
+  return { kind, amount, from, to, options, result, isValid, setAmount: setAmountLimited, setFrom, setTo, changeKind, swap }
 }

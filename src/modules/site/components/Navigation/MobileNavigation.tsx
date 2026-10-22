@@ -2,10 +2,14 @@ import { useEffect, useId, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import type { MenuNode } from "../../types/menu";
 import { MenuLink } from "./MenuLink";
+import { withSimulatorChoices } from "./Navigation";
 
 function MobileItem({ node, close }: { node: MenuNode; close: () => void }) {
   const [open, setOpen] = useState(false);
   const subId = useId();
+  const location = useLocation();
+  const params = new URLSearchParams(location.search);
+  const learningActive = node.label === "Aprendizaje" && (params.get("courses") === "1" || params.has("simulator") || params.get("slug") === "simuladores");
   if (node.children.length === 0)
     return (
       <li>
@@ -14,7 +18,7 @@ function MobileItem({ node, close }: { node: MenuNode; close: () => void }) {
     );
   return (
     <li>
-      <button type="button" className="site-mnav__link site-mnav__toggle" aria-expanded={open} aria-controls={subId} onClick={() => setOpen((o) => !o)}>
+      <button type="button" className="site-mnav__link site-mnav__toggle" aria-expanded={open} aria-controls={subId} aria-current={learningActive ? "page" : undefined} onClick={() => setOpen((o) => !o)}>
         {node.label}
         <span aria-hidden="true">{open ? "−" : "+"}</span>
       </button>
@@ -55,9 +59,10 @@ export function MobileNavigation({ tree }: { tree: MenuNode[] }) {
       </button>
       <nav id={panelId} className="site-mnav__panel" aria-label="Principal (móvil)" hidden={!open}>
         <ul className="site-mnav__list">
-          {tree.map((n) => (
-            <MobileItem key={n.menu_id} node={n} close={() => setOpen(false)} />
-          ))}
+          {tree.map((item) => {
+            const node = withSimulatorChoices(item);
+            return <MobileItem key={node.menu_id} node={node} close={() => setOpen(false)} />;
+          })}
         </ul>
       </nav>
     </div>

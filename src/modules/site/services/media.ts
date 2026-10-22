@@ -1,3 +1,4 @@
+import { isDemoMode, demoMedia } from "../lib/demo";
 import { getSupabase } from "../lib/supabase";
 import { toServiceError } from "../lib/errors";
 import type { MediaAsset } from "../types/media";
@@ -10,6 +11,7 @@ export async function getMediaList(
   institutionId: string,
   { publicOnly = true }: ListMediaOptions = {},
 ): Promise<MediaAsset[]> {
+  if (isDemoMode()) return demoMedia;
   let query = getSupabase()
     .from("media_assets")
     .select("*")
@@ -22,6 +24,7 @@ export async function getMediaList(
 }
 
 export async function getMedia(mediaAssetId: string): Promise<MediaAsset | null> {
+  if (isDemoMode()) return demoMedia.find((a) => a.media_asset_id === mediaAssetId) ?? null;
   const { data, error } = await getSupabase()
     .from("media_assets")
     .select("*")

@@ -83,19 +83,6 @@ export function TenantProvider({ children }: { children: ReactNode }) {
         return { institutions, error: null };
       };
 
-      // La RPC entrega todas las instituciones al superadmin global y solo las
-      // membresías propias al resto de administradores.
-      try {
-        const { data, error } = await supabase.rpc('project_institutions');
-        if (!error && Array.isArray(data) && data.length > 0) {
-          const result = await attachEnabledModules(data as Institution[]);
-          if (!cancelled) setState({ owner: user.id, institutions: result.institutions, error: null, modulePermissionError: result.error });
-          return;
-        }
-      } catch {
-        // Si la RPC falla, no se infieren instituciones desde la tabla completa.
-      }
-
       try {
         if (role === 'super_admin') {
           const { data, error } = await supabase
@@ -112,7 +99,8 @@ export function TenantProvider({ children }: { children: ReactNode }) {
           const { data, error } = await supabase
             .from('memberships')
             .select('institution_id, institutions!fk_memberships_institution(institution_id, name, slug, is_active), roles!fk_memberships_role(name)')
-            .eq('profile_id', user.id);
+            .eq('profile_id', user.id)
+            .eq('is_active', true);
 
           if (!error && data) {
             const institutions: Institution[] = data.flatMap((membership: any) => {
@@ -136,7 +124,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
         setState({
           owner: user.id,
           institutions: [],
-          error: 'No se pudieron cargar las instituciones asignadas a esta cuenta. Verifica la función project_institutions y sus permisos en Supabase.',
+          error: 'No se pudieron cargar las instituciones asignadas a esta cuenta. Verifica las membresias y sus permisos en Supabase.',
           modulePermissionError: null,
         });
       }
@@ -147,7 +135,12 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   }, [user, role, loading, mfaRequired, revision]);
   const current = !loading && user && state?.owner === user.id ? state : null;
   const institutions = current?.institutions ?? [];
-  const activeInstitution = institutions.find(item => item.institution_id === selectedId) ?? institutions[0] ?? null;
+  const requestedInstitutionId = new URLSearchParams(window.location.search).get('institution');
+  useEffect(() => {
+    if (requestedInstitutionId && institutions.some((item) => item.institution_id === requestedInstitutionId))
+      setSelectedId(requestedInstitutionId);
+  }, [requestedInstitutionId, institutions]);
+  const activeInstitution = institutions.find(item => item.institution_id === selectedId) ?? institutions.find(item => item.institution_id === requestedInstitutionId) ?? institutions[0] ?? null;
   const hasModuleAccess = (moduleName: InstitutionModuleName) => activeInstitution?.module_permissions[moduleName] === true;
   return <TenantContext.Provider value={{
     institutions, activeInstitution, loadingTenant: loading || mfaRequired || Boolean(user && !current),

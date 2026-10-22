@@ -1,0 +1,33 @@
+.home-page { display: grid; gap: 22px; padding-top: 25px; }
+.home-heading h1 { margin: 0; color: #342d39; font: 600 clamp(27px, 4vw, 36px)/1.15 'Outfit', sans-serif; letter-spacing: -.5px; }
+.home-section-heading span { color: var(--accent); font-size: 11px; font-weight: 700; letter-spacing: .08em; }
+.home-section-heading h2 { margin: 4px 0 0; color: var(--text); font: 600 21px 'Outfit', sans-serif; }
+.home-dashboard { display: grid; grid-template-columns: minmax(0, 1.8fr) minmax(245px, 1fr); gap: 18px; align-items: center; }
+.home-shortcuts { display: grid; align-items: center; min-width: 0; }
+.home-shortcut-card { position: relative; isolation: isolate; display: block; overflow: hidden; min-width: 0; min-height: 300px; padding: 28px; border: 0; border-radius: 32px; color: #fff; background: var(--accent-ink); text-align: left; cursor: pointer; animation: home-card-arrive .35s ease both; transition: transform .25s ease; }
+.home-shortcut-card::after { position: absolute; inset: 0; z-index: -1; background: linear-gradient(180deg, rgb(18 17 24 / 8%) 0%, rgb(18 17 24 / 8%) 35%, rgb(18 17 24 / 78%) 100%); content: ''; }
+.home-shortcut-card:hover { transform: scale(1.012); }
+.home-shortcut-copy { position: absolute; right: 76px; bottom: 28px; left: 28px; z-index: 1; display: grid; gap: 6px; min-width: 0; }
+.home-shortcut-card strong { font-size: clamp(20px, 2.5vw, 26px); line-height: 1.2; }
+.home-shortcut-card small { max-width: 46ch; color: rgb(255 255 255 / 90%); font-size: 14px; line-height: 1.45; }
+.home-shortcut-arrow { position: absolute; right: 24px; bottom: 25px; z-index: 1; display: grid; place-items: center; width: 42px; height: 42px; border-radius: 50%; color: #302a32; background: #fff; }
+.home-shortcut-photo { position: absolute; inset: 0; z-index: -2; display: block; width: 100%; height: 100%; object-fit: cover; background: var(--accent-soft); transition: transform .4s ease; }
+.home-shortcut-card:hover .home-shortcut-photo { transform: scale(1.035); }
+.home-shortcut-icon { position: absolute; top: 22px; left: 22px; z-index: 1; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; color: #302a32; background: rgb(255 255 255 / 90%); }
+.home-shortcut-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.home-penguin-panel { display: grid; grid-template-columns: minmax(0, 1fr) 104px; align-items: center; align-self: center; gap: 8px; min-width: 0; min-height: 0; padding: 0; border: 0; background: transparent; }
+.home-penguin-speech { position: relative; z-index: 1; width: 100%; padding: 16px 20px; border: 0; border-radius: 28px; color: var(--accent-ink); background: var(--surface); }
+.home-penguin-speech::after { position: absolute; top: 50%; right: -8px; z-index: -1; width: 18px; height: 18px; background: var(--surface); content: ''; transform: translateY(-50%) rotate(45deg); }
+.home-penguin-speech p { min-height: 3.1em; margin: 0; color: var(--text); font-size: 13px; line-height: 1.5; }
+.home-typing-cursor { display: inline-block; width: 1px; height: 1em; margin-left: 2px; vertical-align: text-bottom; background: var(--accent); animation: home-cursor-blink .8s steps(2, start) infinite; }
+.home-penguin-character { display: grid; place-items: center; min-height: 110px; }
+.home-penguin-character > .penguin-mascot { width: 104px; height: 104px; overflow: visible; }
+.home-penguin-character .penguin-character { transform-box: fill-box; transform-origin: center bottom; animation: home-penguin-bounce 1.7s ease-in-out infinite; }
+.home-penguin-character .penguin-wing { transform-box: fill-box; transform-origin: center bottom; animation: home-penguin-wave .8s ease-in-out infinite alternate; }
+@keyframes home-penguin-bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+@keyframes home-penguin-wave { from { transform: rotate(-5deg); } to { transform: rotate(12deg); } }
+@keyframes home-cursor-blink { to { visibility: hidden; } }
+@keyframes home-card-arrive { from { opacity: 0; transform: translateY(5px) scale(.99); } to { opacity: .94; transform: translateY(0) scale(1); } }
+@media (max-width: 1050px) { .home-dashboard { grid-template-columns: minmax(0, 1fr); }.home-penguin-panel { grid-template-columns: minmax(0, 1fr) 90px; min-height: 0; gap: 12px; }.home-penguin-character { grid-column: 2; grid-row: 1; width: 90px; min-height: 90px; }.home-penguin-character > .penguin-mascot { width: 88px; height: 88px; }.home-penguin-speech { grid-column: 1; grid-row: 1; } }
+@media (max-width: 620px) { .home-page { gap: 18px; padding-top: 20px; }.home-shortcut-card { min-height: 220px; padding: 18px; border-radius: 26px; }.home-shortcut-icon { top: 16px; left: 16px; width: 40px; height: 40px; }.home-shortcut-copy { right: 66px; bottom: 20px; left: 20px; }.home-shortcut-card strong { font-size: 20px; }.home-shortcut-card small { font-size: 13px; }.home-shortcut-arrow { right: 16px; bottom: 16px; width: 38px; height: 38px; }.home-penguin-panel { grid-template-columns: minmax(0, 1fr) 64px; gap: 8px; }.home-penguin-character { grid-column: 2; grid-row: 1; min-height: 64px; }.home-penguin-character > .penguin-mascot { width: 64px; height: 64px; } }
+@media (prefers-reduced-motion: reduce) { .home-shortcut-card { animation: none; transition: none; }.home-penguin-character .penguin-character,.home-penguin-character .penguin-wing,.home-typing-cursor { animation: none; } }

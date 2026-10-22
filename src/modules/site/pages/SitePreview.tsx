@@ -1,57 +1,52 @@
 import { useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useLocation, useSearchParams } from "react-router-dom";
 import { AsyncView } from "../components/states/AsyncView";
-import { MediaPreview } from "../components/Media/MediaPreview";
-import { VersionList } from "../components/Version/VersionList";
-import { VersionPreview } from "../components/Version/VersionPreview";
-import { useMediaList } from "../hooks/useMedia";
+import { PageSections } from "../components/Page/PageSections";
 import { usePage } from "../hooks/usePage";
-import { usePageVersion, useVersions } from "../hooks/useVersions";
+import { usePageVersion } from "../hooks/useVersions";
+import { parseSnapshot } from "../utils/snapshot";
+import { PortalSimulatorsPage } from "../../../features/simulators/pages/PortalSimulatorsPage";
+import { SchoolCoursesPage } from "../../../features/courses/pages/SchoolCoursesPage";
+import { AcademicPostPreviewPage } from "../../../features/academic-content/pages/AcademicPostPreviewPage";
+import { useEventArticle, useNewsArticle } from "../hooks/useContent";
+import { HonorsSection } from "../components/Content/ContentSections";
 
 export function SitePreview() {
-  const [params] = useSearchParams();
-  const files = useMediaList();
+  const [params, setParams] = useSearchParams();
+  const location = useLocation();
+  const selectedModuleId = params.get("module");
+  const selectedCourseId = params.get("course");
+  const newsId = params.get("noticia");
+  const eventId = params.get("evento");
+  const [evaluationActive, setEvaluationActive] = useState(false);
   const page = usePage(params.get("slug") ?? undefined);
+  const article = useNewsArticle(newsId);
+  const eventArticle = useEventArticle(eventId);
   const pageId = page.state.status === "success" ? page.state.data.page_id : null;
-  const versions = useVersions(pageId);
-  const [selected, setSelected] = useState<number | undefined>();
-  const current = usePageVersion(pageId, selected);
+  const current = usePageVersion(pageId, undefined);
+  if (params.get("simulator")) return <PortalSimulatorsPage />;
+  if (params.get("honores") === "1") return <main className="site-honors-page">
+    <section className="site-hero site-hero--compact"><div className="site-container"><p className="site-hero__eyebrow">Comunidad educativa</p><h2>Cuadro de honor</h2><p>Reconocemos el esfuerzo, la constancia y los logros de nuestros estudiantes.</p></div></section>
+    <HonorsSection title="Estudiantes reconocidos" limit={100} pdfDocument />
+  </main>;
+  if (params.get("courses") === "1") return <SchoolCoursesPage selectedModuleId={selectedModuleId} selectedCourseId={selectedCourseId} evaluationActive={evaluationActive} onSelectModule={moduleId => setParams(current => { const next = new URLSearchParams(current); next.set("courses", "1"); next.set("module", moduleId); next.delete("course"); return next })} onSelectCourse={courseId => setParams(current => { const next = new URLSearchParams(current); next.set("course", courseId); return next })} courseHrefFor={courseId => { const next = new URLSearchParams(params); if (selectedModuleId) next.set("module", selectedModuleId); next.set("course", courseId); next.set("courses", "1"); return `${location.pathname}?${next.toString()}` }} onBackToModules={() => { setEvaluationActive(false); setParams(current => { const next = new URLSearchParams(current); next.delete("module"); next.delete("course"); return next }) }} onBackToModule={() => { setEvaluationActive(false); setParams(current => { const next = new URLSearchParams(current); next.delete("course"); return next }) }} onEvaluationChange={setEvaluationActive} />;
+  if (newsId) return <AsyncView state={article.state} onRetry={article.reload} emptyTitle="No encontramos esta noticia" emptyMessage="Puede que se haya retirado o que el enlace no sea válido.">
+    {(entry) => <AcademicPostPreviewPage entry={entry} onBack={() => setParams(current => { const next = new URLSearchParams(current); next.delete("noticia"); return next; })} />}
+  </AsyncView>;
+  if (eventId) return <AsyncView state={eventArticle.state} onRetry={eventArticle.reload} emptyTitle="No encontramos este evento" emptyMessage="Puede que se haya retirado o que el enlace no sea válido.">
+    {(entry) => <AcademicPostPreviewPage entry={entry} onBack={() => setParams(current => { const next = new URLSearchParams(current); next.delete("evento"); return next; })} />}
+  </AsyncView>;
 
   return (
-    <div className="site-container site-section">
-      <h1>Vista de prueba</h1>
-      <p>Página temporal de desarrollo (Fases 3 a 5).</p>
-
-      <h2>Archivos públicos</h2>
-      <AsyncView state={files.state} onRetry={files.reload} emptyMessage="No hay archivos públicos.">
-        {(list) => (
-          <ul className="site-grid">
-            {list.map((a) => (
-              <li key={a.media_asset_id} className="site-card"><MediaPreview asset={a} /></li>
-            ))}
-          </ul>
-        )}
-      </AsyncView>
-
-      <h2>Versiones de la página</h2>
+    <>
       <AsyncView
-        state={page.state}
-        onRetry={page.reload}
+        state={current.state}
+        onRetry={current.reload}
         emptyTitle="No hay página publicada"
-        emptyMessage="Agrega ?slug=mi-pagina a la dirección o marca una página como inicio."
+        emptyMessage="Esta dirección no tiene una página publicada."
       >
-        {(p) => (
-          <>
-            <p>Página: <strong>{p.title}</strong> ({p.slug})</p>
-            <AsyncView state={versions.state} onRetry={versions.reload} emptyTitle="Esta página aún no tiene versiones">
-              {(list) => <VersionList versions={list} selected={selected} onSelect={setSelected} />}
-            </AsyncView>
-            <AsyncView state={current.state} onRetry={current.reload} emptyTitle="No existe esa versión">
-              {(v) => <VersionPreview version={v} />}
-            </AsyncView>
-          </>
-        )}
+        {(v) => <PageSections sections={parseSnapshot(v.content_snapshot).sections} />}
       </AsyncView>
-    </div>
+    </>
   );
 }

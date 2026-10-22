@@ -1,2 +1,19 @@
 .result-card { border: 1px solid var(--line); border-radius: 14px; background: #fff; }
-.reset-button:focus-visible { outline: 3px solid var(--accent-focus); outline-offset: 2px; }
+.interest-result-heading { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+.interest-result-card { min-width: 0; container-type: inline-size; }
+.interest-result-heading .penguin-mascot { flex: none; width: 60px; height: 60px; overflow: visible; }
+.interest-penguin-speech { position: relative; max-width: 24ch; padding: 9px 12px; border: 1px solid var(--accent-focus); border-radius: 18px; color: var(--accent-ink); background: var(--accent-soft); font-size: 12px; line-height: 1.4; }
+.interest-penguin-speech::before, .interest-penguin-speech::after { position: absolute; top: calc(50% - 5px); width: 0; height: 0; border-top: 5px solid transparent; border-bottom: 5px solid transparent; content: ''; }
+.interest-penguin-speech::before { left: -8px; border-right: 8px solid var(--accent-focus); }
+.interest-penguin-speech::after { left: -6px; top: calc(50% - 4px); border-top-width: 4px; border-bottom-width: 4px; border-right: 7px solid var(--accent-soft); }
+.interest-result-heading .penguin-mascot .penguin-character { transform-box: fill-box; transform-origin: center bottom; animation: interest-penguin-bounce .62s ease-out 2; }
+.interest-result-heading .penguin-mascot .penguin-wing { transform-box: fill-box; transform-origin: center bottom; animation: interest-penguin-wave .42s ease-in-out 3 alternate; }
+.result-card .interest-result-value { max-width: 100%; font-size:clamp(20px,2.5vw,32px); font-size: clamp(18px,var(--amount-fit-size),34px); line-height: 1.12; letter-spacing: -.025em; white-space: nowrap; animation: interest-value-pop .5s cubic-bezier(.2,1.5,.45,1) both; }
+.interest-result-card .result-breakdown div { display:grid; grid-template-columns:minmax(0,1fr); align-items:start; gap:6px; }
+.interest-result-card .result-breakdown dt { min-width:0; }
+.interest-result-card .result-breakdown dd { min-width:0; max-width:100%; margin-inline-start:0; font-size:16px; font-variant-numeric:tabular-nums; text-align:left; overflow-wrap:anywhere; }
+@keyframes interest-penguin-bounce { 0%,100% { transform: translateY(0) scale(1); } 45% { transform: translateY(-5px) scale(1.04,.97); } }
+@keyframes interest-penguin-wave { from { transform: rotate(-5deg); } to { transform: rotate(14deg) translateY(-3px); } }
+@keyframes interest-value-pop { 0% { opacity: .35; transform: translateY(10px) scale(.86); } 70% { transform: translateY(-2px) scale(1.04); } 100% { opacity: 1; transform: translateY(0) scale(1); } }
+@media(max-width:620px){.interest-result-heading{gap:8px}.interest-result-heading .penguin-mascot{width:48px;height:48px}.interest-penguin-speech{max-width:22ch;padding:8px 10px;font-size:12px;line-height:1.35;border-radius:16px}.interest-penguin-speech::before{top:calc(50% - 4px);left:-7px;border-top-width:4px;border-bottom-width:4px;border-right-width:7px}.interest-penguin-speech::after{top:calc(50% - 3px);left:-5px;border-top-width:3px;border-bottom-width:3px;border-right-width:6px}}
+@media(prefers-reduced-motion:reduce){.interest-result-heading .penguin-mascot .penguin-character,.interest-result-heading .penguin-mascot .penguin-wing,.interest-result-value{animation:none}}

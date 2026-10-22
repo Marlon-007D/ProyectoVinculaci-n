@@ -111,7 +111,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const { data, error } = await supabase
       .from('memberships')
       .select('institution_id, role_id')
-      .eq('profile_id', userId);
+      .eq('profile_id', userId)
+      .eq('is_active', true);
 
     if (error) {
       setRoleError('No se pudo consultar tu rol. Verifica que esté aplicada la migración de acceso de superadministrador.');
@@ -135,7 +136,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     const roleNameById = new Map((roles ?? []).map((item) => [item.role_id, item.name]));
-    const membership = memberships.find((item) => roleNameById.get(item.role_id) === 'super_admin') ?? memberships[0];
+    const requestedInstitutionId = new URLSearchParams(window.location.search).get('institution');
+    const scopedMembership = memberships.find((item) => item.institution_id === requestedInstitutionId);
+    const membership = memberships.find((item) => roleNameById.get(item.role_id) === 'super_admin') ?? scopedMembership ?? memberships[0];
     const assignedRole = roleNameById.get(membership.role_id) ?? null;
     setRole(assignedRole);
     setInstitutionId(membership?.institution_id ?? null);

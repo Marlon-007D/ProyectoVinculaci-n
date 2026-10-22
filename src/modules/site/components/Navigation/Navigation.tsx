@@ -1,12 +1,39 @@
 import { useEffect, useId, useRef, useState } from "react";
 import type { MenuNode } from "../../types/menu";
+import { useLocation } from "react-router-dom";
 import { MenuLink } from "./MenuLink";
+
+export function withSimulatorChoices(node: MenuNode): MenuNode {
+  if (node.label.trim().toLocaleLowerCase("es") !== "simuladores") return node;
+  const simulatorLink: MenuNode = { ...node, menu_id: `${node.menu_id}-simulators-link`, parent_id: node.menu_id, children: [], depth: node.depth + 1, label: "Simuladores" };
+  const coursesLink: MenuNode = { ...node, menu_id: `${node.menu_id}-courses-link`, parent_id: node.menu_id, children: [], depth: node.depth + 1, label: "Cursos", url: "/?courses=1", position: 0 };
+  return { ...node, label: "Aprendizaje", url: "#", children: [coursesLink, simulatorLink, ...node.children] };
+}
+
+export function withHonorChoice(node: MenuNode): MenuNode {
+  if (node.label.trim().toLocaleLowerCase("es") !== "institución") return node;
+  const honorLink: MenuNode = {
+    ...node,
+    menu_id: `${node.menu_id}-honors-link`,
+    parent_id: node.menu_id,
+    children: [],
+    depth: node.depth + 1,
+    label: "Cuadro de honor",
+    url: "/?honores=1",
+    position: node.children.length,
+    is_external: false,
+  };
+  return { ...node, children: [...node.children, honorLink] };
+}
 
 function NavItem({ node }: { node: MenuNode }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLLIElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const subId = useId();
+  const location = useLocation();
+  const params = new URLSearchParams(location.search);
+  const learningActive = node.label === "Aprendizaje" && (params.get("courses") === "1" || params.has("simulator") || params.get("slug") === "simuladores");
 
   useEffect(() => {
     if (!open) return;
@@ -47,6 +74,7 @@ function NavItem({ node }: { node: MenuNode }) {
         type="button"
         className="site-nav__link site-nav__toggle"
         aria-expanded={open}
+        aria-current={learningActive ? "page" : undefined}
         aria-controls={subId}
         onClick={() => setOpen((o) => !o)}
       >
@@ -66,9 +94,10 @@ export function Navigation({ tree }: { tree: MenuNode[] }) {
   return (
     <nav className="site-nav" aria-label="Principal">
       <ul className="site-nav__list">
-        {tree.map((n) => (
-          <NavItem key={n.menu_id} node={n} />
-        ))}
+        {tree.map((item) => {
+          const node = withHonorChoice(withSimulatorChoices(item));
+          return <NavItem key={node.menu_id} node={node} />;
+        })}
       </ul>
     </nav>
   );

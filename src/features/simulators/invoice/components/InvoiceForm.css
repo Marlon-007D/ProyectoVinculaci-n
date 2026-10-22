@@ -3,3 +3,14 @@
 .primary-button:focus-visible, .secondary-button:focus-visible, .text-button:focus-visible { outline: 3px solid var(--accent-focus); outline-offset: 2px; }
 .invoice-field-error { color: #b3261e; font-size: 12px; font-weight: 500; line-height: 1.35; }
 .form-grid input[aria-invalid="true"], .form-grid select[aria-invalid="true"], .table-row input[aria-invalid="true"], .table-row select[aria-invalid="true"] { border-color: #b3261e; }
+.invoice-products-skeleton { --invoice-skeleton: color-mix(in srgb, var(--accent) 10%, white); --invoice-skeleton-strong: color-mix(in srgb, var(--accent) 17%, white); display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.invoice-product-skeleton-card { display: grid; grid-template-columns: 112px minmax(0, 1fr); min-height: 150px; overflow: hidden; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.invoice-product-skeleton-card > i,.invoice-product-skeleton-card b,.invoice-product-skeleton-card span { background: linear-gradient(100deg,var(--invoice-skeleton) 25%,var(--invoice-skeleton-strong) 42%,var(--invoice-skeleton) 62%); background-size: 250% 100%; animation: invoice-product-skeleton-wave 1.25s ease-in-out infinite; }
+.invoice-product-skeleton-card > i { display: block; min-height: 150px; }
+.invoice-product-skeleton-card > div { display: grid; align-content: center; gap: 12px; padding: 16px; }
+.invoice-product-skeleton-card b,.invoice-product-skeleton-card span { display: block; height: 13px; border-radius: 8px; }
+.invoice-product-skeleton-card b { width: 88%; height: 17px; }.invoice-product-skeleton-card span:last-child { width: 55%; }
+@keyframes invoice-product-skeleton-wave { to { background-position-x: -250%; } }
+@media(max-width:960px) { .invoice-products-skeleton { grid-template-columns: 1fr; } }
+@media(max-width:620px) { .invoice-products-skeleton { grid-template-columns: minmax(0, 1fr); gap: 12px; }.invoice-product-skeleton-card { display: flex; flex-direction: column; min-height: 0; }.invoice-product-skeleton-card > i { min-height: 0; height: clamp(88px, 34vw, 124px); }.invoice-product-skeleton-card > div { gap: 8px; padding: 12px 14px; } }
+@media(prefers-reduced-motion:reduce) { .invoice-product-skeleton-card > i,.invoice-product-skeleton-card b,.invoice-product-skeleton-card span { animation: none; } }

@@ -1,14 +1,7 @@
 import type { InvoiceDraft, InvoiceLine, InvoiceProduct, SavedInvoice } from '../types/invoice.types'
+import productSeed from '../../../../../db/seeds/data/invoice-products.json'
 
-export const invoiceTaxRate = 0.15
-
-export const sampleInvoiceProducts: InvoiceProduct[] = [
-  { id: 'notebook', description: 'Cuaderno universitario 1 línea, 100 hojas', unitPrice: 1.2, sourceName: 'Donald Papelería', sourceUrl: 'https://donald.ec/products/escribe-cuaderno-universitario-1-linea-100h' },
-  { id: 'marker', description: 'Marcador permanente punta biselada', unitPrice: 0.63, sourceName: 'Materiales de Arte PRECISE', sourceUrl: 'https://arteprecise.com/tienda/categoria-producto/marcadores/' },
-  { id: 'bond-paper', description: 'Resma papel bond blanco A4, 75 g', unitPrice: 4.65, sourceName: 'Super Paco en Rappi', sourceUrl: 'https://www.rappi.com.ec/p/resma-de-papel-bond-blanco-075grs-a-142702' },
-  { id: 'loose-sheets', description: 'Paquete de hojas A4, 50 hojas', unitPrice: 0.59, sourceName: 'Donald Papelería', sourceUrl: 'https://donald.ec/collections/escribe' },
-  { id: 'folder-pack', description: 'Folder de cartulina manila, paquete x5', unitPrice: 1.29, sourceName: 'Super Paco en Rappi', sourceUrl: 'https://www.rappi.com.ec/p/resma-de-papel-bond-blanco-075grs-a-142702' },
-]
+export const sampleInvoiceProducts: InvoiceProduct[] = productSeed.map(product => ({ ...product, isAvailable: product.stock > 0 }))
 
 export const sampleInvoiceQuantities = Array.from({ length: 10 }, (_, index) => index + 1)
 

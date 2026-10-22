@@ -1,5 +1,6 @@
 import type { AcademicContentEntry } from '../types/academicContent.types'
 import { tenantInstitution } from '../../../core/config/tenant'
+import { OFFICIAL_DISTINCTIONS } from '../../honors/utils/honorRules'
 
 const rows: Array<Omit<AcademicContentEntry, 'id' | 'updatedAt'> & { id?: string }> = [
   { kind: 'period', institutionId: tenantInstitution.id, title: '2026–2027', description: '', periodId: '', status: 'published', date: '', location: '', studentName: '', grade: '', distinction: '', startDate: '2026-05-04', endDate: '2027-03-11', isCurrent: true },
@@ -21,20 +22,43 @@ const rows: Array<Omit<AcademicContentEntry, 'id' | 'updatedAt'> & { id?: string
   { id: 'news-pl-garden-draft', kind: 'news', institutionId: tenantInstitution.id, title: 'El huerto escolar se prepara para una nueva siembra', description: 'Estudiantes y docentes planifican la siembra de hortalizas en el huerto de la institución como parte de las actividades de ciencias naturales.', periodId: 'academic-demo-1', status: 'draft', date: '2026-10-28', location: '', studentName: '', grade: '', distinction: '', startDate: '', endDate: '', isCurrent: false, author: 'Equipo docente' },
   { kind: 'event', institutionId: tenantInstitution.id, title: 'Feria de ciencias', description: 'Exposición de proyectos de aula y experimentos.', periodId: 'academic-demo-1', status: 'published', date: '2026-06-18', location: 'Patio central', studentName: '', grade: '', distinction: '', startDate: '', endDate: '', isCurrent: false },
   { id: 'event-pl-family-workshop-draft', kind: 'event', institutionId: tenantInstitution.id, title: 'Taller de lectura para familias', description: 'Encuentro para compartir estrategias sencillas de lectura en casa y actividades para acompañar a niñas y niños.', periodId: 'academic-demo-1', status: 'draft', date: '2026-11-12', location: 'Biblioteca de la institución', studentName: '', grade: '', distinction: '', startDate: '', endDate: '', isCurrent: false, author: 'Equipo docente' },
-  { id: 'honor-pl-sofia', kind: 'honor', institutionId: tenantInstitution.id, title: 'Reconocimiento académico', description: '', periodId: 'academic-demo-1', status: 'published', date: '', location: '', studentName: 'Sofía Paredes', grade: 'Décimo año', distinction: 'Excelencia académica', startDate: '', endDate: '', isCurrent: false },
-  { id: 'honor-pl-mateo', kind: 'honor', institutionId: tenantInstitution.id, title: 'Reconocimiento académico', description: '', periodId: 'academic-demo-1', status: 'published', date: '', location: '', studentName: 'Mateo Cedeño', grade: 'Décimo año', distinction: 'Mérito académico', startDate: '', endDate: '', isCurrent: false },
-  { id: 'honor-pl-valentina', kind: 'honor', institutionId: tenantInstitution.id, title: 'Reconocimiento académico', description: '', periodId: 'academic-demo-1', status: 'published', date: '', location: '', studentName: 'Valentina Zambrano', grade: 'Noveno año', distinction: 'Excelencia académica', startDate: '', endDate: '', isCurrent: false },
-  { id: 'honor-pl-joaquin', kind: 'honor', institutionId: tenantInstitution.id, title: 'Reconocimiento académico', description: '', periodId: 'academic-demo-1', status: 'published', date: '', location: '', studentName: 'Joaquín Moreira', grade: 'Octavo año', distinction: 'Mérito en ciencias', startDate: '', endDate: '', isCurrent: false },
-  { id: 'honor-pl-camila', kind: 'honor', institutionId: tenantInstitution.id, title: 'Reconocimiento académico', description: '', periodId: 'academic-demo-1', status: 'published', date: '', location: '', studentName: 'Camila Vera', grade: 'Décimo año', distinction: 'Mérito en literatura', startDate: '', endDate: '', isCurrent: false },
-  { id: 'honor-pl-andres', kind: 'honor', institutionId: tenantInstitution.id, title: 'Reconocimiento académico', description: '', periodId: 'academic-demo-1', status: 'published', date: '', location: '', studentName: 'Andrés Mera', grade: 'Noveno año', distinction: 'Excelencia académica', startDate: '', endDate: '', isCurrent: false },
-  { id: 'honor-pl-isabella', kind: 'honor', institutionId: tenantInstitution.id, title: 'Reconocimiento académico', description: '', periodId: 'academic-demo-1', status: 'published', date: '', location: '', studentName: 'Isabella Loor', grade: 'Octavo año', distinction: 'Mérito académico', startDate: '', endDate: '', isCurrent: false },
-  { id: 'honor-pl-david', kind: 'honor', institutionId: tenantInstitution.id, title: 'Reconocimiento académico', description: '', periodId: 'academic-demo-1', status: 'published', date: '', location: '', studentName: 'David Mina', grade: 'Décimo año', distinction: 'Mérito deportivo', startDate: '', endDate: '', isCurrent: false },
-  { id: 'honor-pl-luciana', kind: 'honor', institutionId: tenantInstitution.id, title: 'Reconocimiento académico', description: '', periodId: 'academic-demo-1', status: 'published', date: '', location: '', studentName: 'Luciana Galarza', grade: 'Noveno año', distinction: 'Excelencia académica', startDate: '', endDate: '', isCurrent: false },
 ]
 
-export const sampleAcademicContent: AcademicContentEntry[] = rows.map((row, index) => ({
+const baseEntries: AcademicContentEntry[] = rows.map((row, index) => ({
   ...row,
   id: row.id ?? `academic-demo-${index + 1}`,
   periodId: row.kind === 'period' && !row.id ? `academic-demo-${index + 1}` : row.periodId,
   updatedAt: '2026-09-29T12:00:00.000Z',
 }))
+
+const demoStudentNames = [
+  'Emilia Zambrano', 'Mateo Cedeño', 'Sofía Paredes', 'Joaquín Moreira', 'Valentina Vera',
+  'Andrés Mera', 'Camila Loor', 'Daniel Mina', 'Luciana Galarza',
+]
+
+const demoOfficialHonors: AcademicContentEntry[] = OFFICIAL_DISTINCTIONS.map((distinction, index) => ({
+  id: `honor-demo-official-${index + 1}`,
+  institutionId: tenantInstitution.id,
+  kind: 'honor',
+  title: 'Asignación de demostración',
+  description: '',
+  periodId: 'academic-demo-1',
+  status: 'draft',
+  date: '',
+  location: '',
+  studentName: demoStudentNames[index],
+  grade: 'Tercero de Bachillerato',
+  distinction,
+  honorCategory: 'official',
+  officialOrder: index + 1,
+  schedule: 'Matutina',
+  modality: 'Presencial',
+  campus: 'Sede principal',
+  isDemo: true,
+  startDate: '',
+  endDate: '',
+  isCurrent: false,
+  updatedAt: '2026-10-16T12:00:00.000Z',
+}))
+
+export const sampleAcademicContent: AcademicContentEntry[] = [...baseEntries, ...demoOfficialHonors]

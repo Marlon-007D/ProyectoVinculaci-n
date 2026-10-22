@@ -7,5 +7,12 @@
 .theme-option { position: relative; display: grid; place-items: center; width: 38px; height: 38px; padding: 0; border: 0; border-radius: 50%; background: transparent; }.theme-option:hover, .theme-option[aria-pressed="true"] { background: var(--accent-soft); }
 .theme-option-swatch { width: 23px; height: 23px; border: 1px solid #0002; border-radius: 50%; }.theme-option > svg { position: absolute; right: -1px; bottom: -1px; padding: 2px; border-radius: 50%; color: white; background: var(--accent); }
 .theme-trigger:focus-visible, .theme-option:focus-visible { outline: 3px solid var(--accent-focus); outline-offset: 2px; }
+.theme-user.is-topbar { margin: 0 0 0 auto; padding: 0; border: 0; }
+.theme-user.is-topbar::before { display: none; }
+.theme-user.is-topbar .theme-trigger { width: auto; min-width: 116px; min-height: 40px; padding: 0 12px; border: 0; color: var(--accent); background: var(--accent-soft); }
+.theme-user.is-topbar .theme-trigger:hover { color: var(--accent); background: var(--accent-container); }
+.theme-user.is-topbar .theme-trigger > span:not(.theme-trigger-swatch) { color: var(--accent); }
+.theme-user.is-topbar .theme-chevron { color: var(--accent); }
+.theme-user.is-topbar .theme-options { top: calc(100% + 8px); right: 0; bottom: auto; left: auto; }
 .sidebar.is-collapsed .theme-user { display: grid; justify-items: center; }.sidebar.is-collapsed .theme-trigger { justify-content: center; width: 56px; padding: 0; }.sidebar.is-collapsed .theme-trigger-swatch { position: absolute; right: 11px; bottom: 17px; width: 10px; height: 10px; }.sidebar.is-collapsed .theme-options { top: auto; bottom: 0; left: calc(100% + 8px); width: 170px; }
-@media(max-width:620px){.theme-options{width:192px}.sidebar.is-collapsed .theme-options{left:calc(100% + 8px)}}
+@media(max-width:620px){.theme-options{width:192px}.sidebar.is-collapsed .theme-options{left:calc(100% + 8px)}.theme-user.is-topbar .theme-trigger{justify-content:center;gap:7px;min-width:42px;width:42px;padding:0}.theme-user.is-topbar .theme-trigger-label,.theme-user.is-topbar .theme-chevron{display:none}.theme-user.is-topbar .theme-trigger-swatch{width:10px;height:10px}.theme-user.is-topbar .theme-options{right:0;left:auto}.topbar:has(.invoice-navbar-tabs) .invoice-navbar-tabs{flex:1 1 auto;width:auto}.topbar:has(.invoice-navbar-tabs) .theme-user.is-topbar{margin-left:8px}}

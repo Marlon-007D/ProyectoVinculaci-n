@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import type { Json } from "./common";
 
 export interface SiteSettingsRow {
@@ -24,4 +25,5 @@ export interface SiteConfig {
   phone?: string;
   footerText?: string;
   social: SocialLink[];
+  themeVars?: CSSProperties;
 }

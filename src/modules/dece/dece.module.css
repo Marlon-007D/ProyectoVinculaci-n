@@ -1,4 +1,25 @@
 ﻿.appShell{
+    --color-background:#f7f7fa;
+    --color-surface:#fff;
+    --color-border:#d2cfdb;
+    --color-primary:#6757a5;
+    --color-primary-hover:#57468f;
+    --color-primary-soft:#f1eef8;
+    --color-secondary:#718096;
+    --color-secondary-soft:#f3f5f7;
+    --color-tertiary:#577d9c;
+    --color-tertiary-soft:#eaf1f6;
+    --color-text:#232132;
+    --color-text-muted:#777487;
+    --color-sidebar-background:#fff;
+    --color-sidebar-text:#575465;
+    --color-danger:#9f2934;
+    --color-success:#287456;
+    --color-warning:#7a5200;
+    --font-size-h1:1.6rem;
+    --font-size-h2:1.15rem;
+    --font-size-h3:1rem;
+    --visual-scale:1;
     min-height:100vh;
     display:flex;
     background:var(--color-background)}.appShell :global(.sidebar){width:250px;background:var(--color-sidebar-background);

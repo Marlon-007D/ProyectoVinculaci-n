@@ -41,3 +41,18 @@ export function buildMenuTree(items: Menu[]): MenuNode[] {
 export function flattenLeaves(tree: MenuNode[]): MenuNode[] {
   return tree.flatMap((n) => (n.children.length ? flattenLeaves(n.children) : [n]));
 }
+
+export function filterVisibleMenus(items: Menu[]): Menu[] {
+  const hidden = new Set<string>(items.filter((m) => m.is_visible === false).map((m) => m.menu_id));
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const m of items) {
+      if (!hidden.has(m.menu_id) && m.parent_id && hidden.has(m.parent_id)) {
+        hidden.add(m.menu_id);
+        changed = true;
+      }
+    }
+  }
+  return items.filter((m) => !hidden.has(m.menu_id));
+}
