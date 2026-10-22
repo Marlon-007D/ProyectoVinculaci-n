@@ -212,3 +212,81 @@
 @media (prefers-reduced-motion: reduce) {
   .page .cards :global(.site-card) { transition: none; }
 }
+
+/* Public honors use the same fixed composition as the management board. */
+.page .officialSlots {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.12fr) minmax(0, 1fr) !important;
+  grid-template-areas: "first flag second" "city-first city city-second" "school-first school school-second" !important;
+  column-gap: 1rem !important;
+  row-gap: 2rem !important;
+  max-width: 70rem !important;
+  margin: 1rem auto 0 !important;
+  padding: 0 !important;
+}
+
+.officialCard {
+  display: grid !important;
+  align-content: start !important;
+  gap: .75rem !important;
+  min-width: 0 !important;
+  padding: 1rem !important;
+  border: 0 !important;
+  border-radius: 1rem !important;
+  background: #fff !important;
+  color: #243746 !important;
+  box-shadow: none !important;
+}
+
+.nationalFirst { grid-area: first !important; }
+.nationalSecond { grid-area: second !important; }
+.cityFirst { grid-area: city-first !important; }
+.citySecond { grid-area: city-second !important; }
+.schoolFirst { grid-area: school-first !important; }
+.schoolSecond { grid-area: school-second !important; }
+
+.flagBearer,
+.cityBearer,
+.schoolBearer {
+  z-index: 1 !important;
+  transform: translateY(-22px) !important;
+}
+
+.flagBearer { grid-area: flag !important; background: #fff0bf !important; color: #684f0c !important; }
+.cityBearer { grid-area: city !important; background: #e2f1e6 !important; color: #2f6847 !important; }
+.schoolBearer { grid-area: school !important; background: #ece0f6 !important; color: #5b4672 !important; }
+
+.officialHeader { display: flex !important; align-items: flex-start !important; gap: .75rem !important; min-width: 0 !important; }
+.officialPhoto,
+.officialAvatar {
+  display: grid !important;
+  place-items: center !important;
+  width: 4.25rem !important;
+  height: 4.25rem !important;
+  flex: none !important;
+  overflow: hidden !important;
+  border: 0 !important;
+  border-radius: 50% !important;
+  background: #f3f6f8 !important;
+  color: #455968 !important;
+  font-weight: 700 !important;
+}
+
+.officialPhoto :global(img) { width: 100% !important; height: 100% !important; object-fit: cover !important; object-position: center !important; }
+.flagPhoto { border-radius: 0 !important; clip-path: polygon(50% 0%,61% 6%,73% 3%,81% 10%,84% 22%,95% 29%,100% 40%,94% 50%,100% 60%,95% 71%,84% 78%,81% 90%,73% 97%,61% 94%,50% 100%,39% 94%,27% 97%,19% 90%,16% 78%,5% 71%,0% 60%,6% 50%,0% 40%,5% 29%,16% 22%,19% 10%,27% 3%,39% 6%) !important; }
+.officialCopy { display: grid !important; gap: .4rem !important; min-width: 0 !important; padding-top: .15rem !important; }
+.officialCopy strong { color: inherit !important; font-size: 1rem !important; font-weight: 700 !important; line-height: 1.35 !important; }
+.officialCopy > span { display: flex !important; align-items: center !important; flex-wrap: wrap !important; gap: .5rem !important; color: inherit !important; font-size: .8125rem !important; line-height: 1.45 !important; }
+.officialCopy > span svg { width: 1.5rem !important; height: 1rem !important; flex: none !important; }
+.officialMeta { display: flex !important; justify-content: center !important; padding-top: .75rem !important; }
+.officialMeta > span { display: inline-flex !important; align-items: center !important; gap: .5rem !important; min-height: 2.25rem !important; padding: .44rem .75rem !important; border: 0 !important; border-radius: .75rem !important; background: #edf3fa !important; color: #40586a !important; font-size: .875rem !important; font-weight: 500 !important; }
+.officialMeta b { width: 1px !important; height: .875rem !important; background: #c8d7d9 !important; }
+.metadataIcon { font-family: "Material Symbols Rounded" !important; font-size: 1rem !important; font-style: normal !important; font-weight: normal !important; font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 20 !important; }
+.flagBearer .officialMeta > span { background: #ffedaa !important; color: #684f0c !important; }
+.cityBearer .officialMeta > span { background: #d3eadb !important; color: #2f6847 !important; }
+.schoolBearer .officialMeta > span { background: #e4d5f0 !important; color: #5b4672 !important; }
+
+@media (max-width: 760px) {
+  .page .officialSlots { grid-template-columns: 1fr !important; grid-template-areas: none !important; }
+  .nationalFirst,.nationalSecond,.cityFirst,.citySecond,.schoolFirst,.schoolSecond,.flagBearer,.cityBearer,.schoolBearer { grid-area: auto !important; transform: none !important; }
+}

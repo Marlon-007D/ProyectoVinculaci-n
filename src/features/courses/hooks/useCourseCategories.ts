@@ -8,10 +8,13 @@ export function useCourseCategories() {
   const institutionId = activeInstitution?.institution_id
   const [categories, setCategories] = useState<SchoolModule[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
   const reload = useCallback(async () => {
-    if (!institutionId) { setCategories([]); return }
+    if (!institutionId) { setCategories([]); setError(null); setLoading(false); return }
+    setLoading(true)
     try { setCategories(await getCourseCategories(institutionId)); setError(null) }
     catch { setError('No se pudieron cargar las categorías desde la base de datos.') }
+    finally { setLoading(false) }
   }, [institutionId])
 
   useEffect(() => {
@@ -19,5 +22,5 @@ export function useCourseCategories() {
     return subscribeToCourseCategories(() => { void reload() })
   }, [reload])
 
-  return { categories, loading: Boolean(institutionId) && !error && categories.length === 0, error, reload, institutionId }
+  return { categories, loading, error, reload, institutionId }
 }

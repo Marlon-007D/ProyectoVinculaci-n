@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { supabase } from './supabaseClient';
 import { useAuth } from './AuthContext';
 
@@ -37,6 +37,10 @@ interface TenantContextType {
 const TenantContext = createContext<TenantContextType | undefined>(undefined);
 export function TenantProvider({ children }: { children: ReactNode }) {
   const { user, role, loading, mfaRequired } = useAuth();
+  const activeUserId = useRef(user?.id ?? null);
+  const activeRequestKey = useRef<string | null>(null);
+  const startedRequestKey = useRef<string | null>(null);
+  activeUserId.current = user?.id ?? null;
   const [state, setState] = useState<{
     owner: string;
     institutions: Institution[];
@@ -46,8 +50,15 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [revision, setRevision] = useState(0);
   useEffect(() => {
-    if (!user || loading || mfaRequired) return;
-    let cancelled = false;
+    if (!user || loading || mfaRequired) {
+      activeRequestKey.current = null;
+      startedRequestKey.current = null;
+      return;
+    }
+    const requestKey = `${user.id}:${role ?? ''}:${revision}`;
+    activeRequestKey.current = requestKey;
+    if (startedRequestKey.current === requestKey) return;
+    startedRequestKey.current = requestKey;
 
     const loadInstitutions = async () => {
       const attachEnabledModules = async (items: Institution[]) => {
@@ -92,7 +103,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
           if (!error && data) {
             const institutions = data.map((item) => ({ ...item, role, projects_enabled: true })) as Institution[];
             const result = await attachEnabledModules(institutions);
-            if (!cancelled) setState({ owner: user.id, institutions: result.institutions, error: null, modulePermissionError: result.error });
+            if (activeUserId.current === user.id && activeRequestKey.current === requestKey) setState({ owner: user.id, institutions: result.institutions, error: null, modulePermissionError: result.error });
             return;
           }
         } else {
@@ -111,7 +122,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
             });
             if (institutions.length > 0) {
               const result = await attachEnabledModules(institutions);
-              if (!cancelled) setState({ owner: user.id, institutions: result.institutions, error: null, modulePermissionError: result.error });
+              if (activeUserId.current === user.id && activeRequestKey.current === requestKey) setState({ owner: user.id, institutions: result.institutions, error: null, modulePermissionError: result.error });
               return;
             }
           }
@@ -120,7 +131,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
         // Reportar el error de asignación debajo.
       }
 
-      if (!cancelled) {
+      if (activeUserId.current === user.id && activeRequestKey.current === requestKey) {
         setState({
           owner: user.id,
           institutions: [],
@@ -131,7 +142,6 @@ export function TenantProvider({ children }: { children: ReactNode }) {
     };
 
     void loadInstitutions();
-    return () => { cancelled = true; };
   }, [user, role, loading, mfaRequired, revision]);
   const current = !loading && user && state?.owner === user.id ? state : null;
   const institutions = current?.institutions ?? [];

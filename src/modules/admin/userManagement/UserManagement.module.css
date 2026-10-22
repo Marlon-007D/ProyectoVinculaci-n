@@ -71,6 +71,14 @@
 .btnRemove:disabled { cursor: wait; opacity: .55; }
 .emptyState { padding: 2rem 1rem !important; color: #728196 !important; text-align: center; }
 .loadingState { padding: 1.4rem; color: #718096; font-size: .8rem; text-align: center; }
+.skeletonRow td { height: 4.4rem; }
+.skeleton { display: block; border-radius: .55rem; background: linear-gradient(100deg, #edf1f4 25%, #f8fafb 42%, #edf1f4 62%); background-size: 220% 100%; animation: user-skeleton-shimmer 1.4s ease-in-out infinite; }
+.skeletonPerson { width: min(13rem, 90%); height: 2.1rem; }
+.skeletonRole { width: 8rem; height: 1.6rem; border-radius: 999px; }
+.skeletonInstitution { width: min(10rem, 90%); height: .8rem; }
+.skeletonMfa { width: 6rem; height: 1.6rem; border-radius: 999px; }
+.skeletonAction { width: 5rem; height: 2rem; }
+@keyframes user-skeleton-shimmer { to { background-position: -220% 0; } }
 .modalBackdrop { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: 1rem; background: rgba(8, 24, 41, .62); backdrop-filter: blur(4px); }
 .confirmModal { width: min(100%, 29rem); padding: 1.55rem; border: 1px solid #dce4eb; border-radius: 1rem; background: #fff; box-shadow: 0 24px 70px rgba(4, 20, 38, .28); color: #12253b; }
 .modalEyebrow { display: block; margin-bottom: .55rem; color: #a83232; font-size: .63rem; font-weight: 800; letter-spacing: .13em; }

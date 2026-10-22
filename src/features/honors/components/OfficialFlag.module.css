@@ -1,0 +1,8 @@
+.flag {
+  display: block;
+  width: 24px;
+  height: 16px;
+  flex: none;
+  overflow: hidden;
+  border-radius: 3px;
+}

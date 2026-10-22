@@ -123,6 +123,7 @@ export async function getHonors(institutionId: string, limit = 12): Promise<Hono
       photo_url: entry.imageUrl ?? getStudentAvatar(entry.studentName) ?? null,
       student_name: entry.studentName,
       grade_level: entry.grade || null,
+      schedule: entry.schedule || 'Matutina',
     }));
   return managedHonors.slice(0, limit);
 }

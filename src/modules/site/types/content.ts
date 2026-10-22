@@ -39,6 +39,7 @@ export interface Honor {
   photo_url: string | null;
   student_name: string;
   grade_level: string | null;
+  schedule?: string | null;
 }
 
 export interface EventItem {

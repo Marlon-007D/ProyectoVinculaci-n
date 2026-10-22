@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { supabase } from '../../../core/supabaseClient';
 import { logAuditEvent } from '../../../core/auditLogger';
 import { useTenant } from '../../../core/TenantContext';
@@ -41,6 +41,7 @@ export const SuperAdminPanel: React.FC = () => {
   const [message, setMessage] = useState('');
   const [institutionToDelete, setInstitutionToDelete] = useState<Institution | null>(null);
   const [deletingInstitution, setDeletingInstitution] = useState(false);
+  const initialLoadStarted = useRef(false);
   const { reloadInstitutions } = useTenant();
   const selectedInstitution = institutions.find((institution) => institution.institution_id === selectedInstId);
   const activeCount = institutions.filter((institution) => institution.is_active).length;
@@ -79,7 +80,11 @@ export const SuperAdminPanel: React.FC = () => {
     }
   };
 
-  useEffect(() => { void fetchInstitutions(); }, []);
+  useEffect(() => {
+    if (initialLoadStarted.current) return;
+    initialLoadStarted.current = true;
+    void fetchInstitutions();
+  }, []);
 
   const handleCreateInstitution = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -229,7 +234,18 @@ export const SuperAdminPanel: React.FC = () => {
         </div>
         {message && <p className={styles.notice} role="status">{message}</p>}
         {loadError && <p className={styles.errorNotice} role="alert">{loadError}</p>}
-        {loading ? <div className={styles.loadingState}>Cargando instituciones…</div> : (
+        {loading ? <div className={styles.tableWrap} role="status" aria-label="Cargando instituciones">
+          <table className={styles.table} aria-hidden="true">
+            <thead><tr><th>Institución</th><th>Identificador</th><th>Módulos activos</th><th>Estado</th><th>Acciones</th></tr></thead>
+            <tbody>{[0, 1, 2].map(row => <tr key={row} className={styles.skeletonRow}>
+              <td><span className={`${styles.skeleton} ${styles.skeletonInstitution}`} /></td>
+              <td><span className={`${styles.skeleton} ${styles.skeletonSlug}`} /></td>
+              <td><span className={`${styles.skeleton} ${styles.skeletonModules}`} /></td>
+              <td><span className={`${styles.skeleton} ${styles.skeletonStatus}`} /></td>
+              <td><span className={`${styles.skeleton} ${styles.skeletonAction}`} /></td>
+            </tr>)}</tbody>
+          </table>
+        </div> : (
           <div className={styles.tableWrap}>
             <table className={styles.table}>
               <thead><tr><th>Institución</th><th>Identificador</th><th>Módulos activos</th><th>Estado</th><th>Acciones</th></tr></thead>

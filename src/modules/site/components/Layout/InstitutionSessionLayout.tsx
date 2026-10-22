@@ -15,10 +15,11 @@ export function InstitutionSessionLayout({ children }: { children: ReactNode }) 
   const { user } = useAuth();
   const institutionId = new URLSearchParams(search).get("institution");
   const homeUrl = (basePath || "/") + (institutionId ? `?institution=${encodeURIComponent(institutionId)}` : "");
+  const isPanelRoute = pathname === "/panel" || pathname.startsWith("/panel/");
   const isAdminOrDeceLogin = !user && /^\/[^/]+\/(?:admin|dece)(?:\/|$)/.test(pathname);
 
   return (
-    <SiteFrame config={config} menu={menu} homeUrl={homeUrl} header={<InstitutionalHeader />} hideFooter={isAdminOrDeceLogin}>
+    <SiteFrame config={config} menu={menu} homeUrl={homeUrl} header={<InstitutionalHeader />} hideFooter={isPanelRoute || isAdminOrDeceLogin}>
       {children}
     </SiteFrame>
   );
