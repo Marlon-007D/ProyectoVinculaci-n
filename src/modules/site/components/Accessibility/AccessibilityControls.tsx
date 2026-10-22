@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { DEFAULT_PREFS, applyPrefs, loadPrefs, savePrefs, type AccessibilityPrefs } from "../../utils/accessibilityPrefs";
 
 type Scale = AccessibilityPrefs["textScale"];
@@ -9,29 +10,7 @@ const SCALE_STEPS: { value: Scale; label: string }[] = [
   { value: 3, label: "150 %" },
 ];
 
-function IconAccessibility() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-      <circle cx="12" cy="4.5" r="1.8" />
-      <path d="M5.5 8.5h13M12 8.5v5.5l-2.8 5.5M12 14l2.8 5.5" />
-    </svg>
-  );
-}
-function IconMoon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-      <path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" />
-    </svg>
-  );
-}
-function IconContrast() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-      <circle cx="12" cy="12" r="8" />
-      <path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor" />
-    </svg>
-  );
-}
+function Symbol({ children }: { children: string }) { return <span className="site-a11y__symbol" aria-hidden="true">{children}</span>; }
 
 function Switch({ checked, onChange, labelId }: { checked: boolean; onChange: (v: boolean) => void; labelId: string }) {
   return (
@@ -57,6 +36,9 @@ export function AccessibilityControls() {
   const darkId = `${uid}-dark`;
   const contrastId = `${uid}-contrast`;
   const scaleId = `${uid}-scale`;
+  const colorId = `${uid}-color`;
+  const distinguishId = `${uid}-distinguish`;
+  const motionId = `${uid}-motion`;
 
   useEffect(() => {
     applyPrefs(prefs, document.querySelector<HTMLElement>(".site-root"));
@@ -65,27 +47,28 @@ export function AccessibilityControls() {
 
   useEffect(() => {
     if (!open) return;
+    document.getElementById(panelId)?.querySelector<HTMLButtonElement>("button")?.focus();
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         setOpen(false);
         triggerRef.current?.focus();
       }
     };
-    const onDown = (e: MouseEvent) => {
+    const onDown = (e: PointerEvent) => {
       if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false);
     };
     document.addEventListener("keydown", onKey);
-    document.addEventListener("mousedown", onDown);
+    document.addEventListener("pointerdown", onDown);
     return () => {
       document.removeEventListener("keydown", onKey);
-      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("pointerdown", onDown);
     };
-  }, [open]);
+  }, [open, panelId]);
 
   const update = (patch: Partial<AccessibilityPrefs>) => setPrefs((p) => ({ ...p, ...patch }));
-  const changed = prefs.darkMode || prefs.highContrast || prefs.textScale !== 0;
+  const changed = prefs.darkMode || prefs.highContrast || prefs.grayscale || prefs.reducedColor || prefs.distinguishColor || prefs.reduceMotion || prefs.textScale !== 0;
 
-  return (
+  return createPortal((
     <div className="site-a11y" ref={rootRef}>
       <button
         ref={triggerRef}
@@ -96,7 +79,7 @@ export function AccessibilityControls() {
         aria-controls={panelId}
         onClick={() => setOpen((o) => !o)}
       >
-        <IconAccessibility />
+        <Symbol>accessibility_new</Symbol>
       </button>
 
       {open && (
@@ -107,7 +90,7 @@ export function AccessibilityControls() {
 
           <div className="site-a11y__row">
             <span className="site-a11y__name" id={darkId}>
-              <span className="site-a11y__icon"><IconMoon /></span>
+              <span className="site-a11y__icon"><Symbol>dark_mode</Symbol></span>
               Modo oscuro
             </span>
             <Switch checked={prefs.darkMode} onChange={(v) => update({ darkMode: v })} labelId={darkId} />
@@ -115,10 +98,29 @@ export function AccessibilityControls() {
 
           <div className="site-a11y__row">
             <span className="site-a11y__name" id={contrastId}>
-              <span className="site-a11y__icon"><IconContrast /></span>
+              <span className="site-a11y__icon"><Symbol>contrast</Symbol></span>
               Alto contraste
             </span>
             <Switch checked={prefs.highContrast} onChange={(v) => update({ highContrast: v })} labelId={contrastId} />
+          </div>
+
+          <div className="site-a11y__block" role="group" aria-labelledby={colorId}>
+            <span className="site-a11y__name" id={colorId}>Color de pantalla</span>
+            <div className="site-a11y__seg site-a11y__seg--colors">
+              <button type="button" aria-pressed={!prefs.grayscale && !prefs.reducedColor} onClick={() => update({ grayscale: false, reducedColor: false })}>Normal</button>
+              <button type="button" aria-pressed={prefs.grayscale} onClick={() => update({ grayscale: true, reducedColor: false })}>Grises</button>
+              <button type="button" aria-pressed={prefs.reducedColor} onClick={() => update({ grayscale: false, reducedColor: true })}>Menos color</button>
+            </div>
+          </div>
+
+          <div className="site-a11y__row">
+            <span className="site-a11y__name" id={distinguishId}><span className="site-a11y__icon"><Symbol>palette</Symbol></span>Reforzar señales visuales</span>
+            <Switch checked={prefs.distinguishColor} onChange={(v) => update({ distinguishColor: v })} labelId={distinguishId} />
+          </div>
+
+          <div className="site-a11y__row">
+            <span className="site-a11y__name" id={motionId}><span className="site-a11y__icon"><Symbol>motion_photos_off</Symbol></span>Reducir movimiento</span>
+            <Switch checked={prefs.reduceMotion} onChange={(v) => update({ reduceMotion: v })} labelId={motionId} />
           </div>
 
           <div className="site-a11y__block" role="group" aria-labelledby={scaleId}>
@@ -151,5 +153,5 @@ export function AccessibilityControls() {
         </div>
       )}
     </div>
-  );
+  ), document.body);
 }

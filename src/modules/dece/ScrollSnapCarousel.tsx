@@ -85,7 +85,7 @@ export function ScrollSnapCarousel<T>({ items, label, itemKey, renderItem, itemC
         <button type="button" onClick={() => move(1)} aria-label="Siguiente" aria-controls={id}>Siguiente</button>
       </div>}
       {showIndicators && slides.length > 1 && <div className={styles.indicators} role="group" aria-label="Indicadores de posición">
-        {slides.map((slide, index) => <button key={itemKey(slide[0].item, slide[0].index)} type="button" aria-label={`Mostrar elemento ${index + 1} de ${slides.length}`} aria-current={index === activeIndex ? "true" : undefined} onClick={() => carousel.current?.to(index)} />)}
+        {slides.map((slide, index) => <button key={itemKey(slide[0].item, slide[0].index)} type="button" aria-label={`Mostrar grupo ${index + 1} de ${slides.length}`} aria-current={index === activeIndex ? "true" : undefined} onClick={() => carousel.current?.to(index)} />)}
       </div>}
     </div>
   );

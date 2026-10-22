@@ -140,3 +140,45 @@
 .site-gallery__item { animation: site-fade .5s ease backwards; }
 .site-news__open{display:block;width:100%;height:100%;padding:0;border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}.site-news__open:focus-visible{outline:3px solid var(--site-primary,#6b4f8a);outline-offset:4px;border-radius:8px}.site-news__open h3{margin-top:0}.site-news__open p:last-child{margin-bottom:0}
 .site-event__open{display:flex;width:100%;min-width:0;align-items:flex-start;gap:1rem;padding:0;border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}.site-event__open:focus-visible{outline:3px solid var(--site-primary,#6b4f8a);outline-offset:5px;border-radius:10px}.site-event__copy{display:grid;min-width:0;gap:.3rem}.site-event__copy h3{margin:0}.site-event__copy>span:last-child{color:var(--site-muted)}.site-event:hover{border-color:var(--site-accent)}
+
+/* Shared spacing rhythm for institution portal sections. */
+.site-root .site-container { width: 100%; max-width: var(--site-max); margin-inline: auto; padding-inline: var(--site-content-gutter); }
+.site-root .site-hero {
+  isolation: isolate;
+  overflow: hidden;
+  min-height: clamp(24rem, 58vh, 40rem);
+  padding-block: clamp(3.5rem, 7vw, 5.5rem);
+  background-image:
+    radial-gradient(ellipse at 82% 18%, rgb(255 255 255 / .13), transparent 34%),
+    linear-gradient(105deg, rgb(10 35 63 / .97) 0%, rgb(10 35 63 / .84) 55%, rgb(10 35 63 / .62) 100%),
+    var(--site-hero-image, linear-gradient(135deg, var(--site-navy), color-mix(in srgb, var(--site-accent) 70%, var(--site-navy))));
+}
+.site-root .site-hero--compact { min-height: 0; padding-block: clamp(2.5rem, 5vw, 3.5rem); }
+.site-root .site-block { padding-block: var(--site-section-space); }
+.site-root .site-block + .site-block { border-top: 1px solid color-mix(in srgb, var(--site-line) 72%, transparent); }
+.site-root .site-block h2 { max-width: 28ch; margin: 0 0 var(--site-section-gap); font-size: clamp(1.8rem, 3.4vw, 2.5rem); line-height: 1.12; text-wrap: balance; }
+.site-root .site-block h2::after { display: block; width: 2.5rem; height: .2rem; margin-top: .85rem; border-radius: 999px; background: var(--site-accent); content: ""; }
+.site-root .site-block--dark h2::after { background: var(--site-gold); }
+.site-root .site-cards, .site-root .site-gallery { margin-block: var(--site-section-gap) 0; gap: clamp(1rem, 2vw, 1.5rem); }
+.site-root .site-stats { margin-block: var(--site-section-gap) 0; }
+.site-root .site-cards .site-card { min-width: 0; height: 100%; padding: clamp(1.25rem, 2.3vw, 1.75rem); border-radius: 14px; background: color-mix(in srgb, var(--site-paper) 90%, var(--site-surface)); box-shadow: none; transition: border-color .2s ease, background-color .2s ease; }
+.site-root .site-cards .site-card::before { height: 2px; transform: scaleX(1); opacity: .55; }
+.site-root .site-cards .site-card:hover { transform: none; border-color: color-mix(in srgb, var(--site-accent) 48%, var(--site-line)); background: var(--site-paper); box-shadow: none; }
+.site-root .site-block--dark .site-cards .site-card { background: rgb(255 255 255 / .04); border-color: rgb(255 255 255 / .16); }
+.site-root .site-cards h3 { font-size: clamp(1.08rem, 1.5vw, 1.25rem); line-height: 1.3; }
+.site-root .site-linkcard h3 a { color: var(--site-ink); text-decoration: none; text-decoration-color: var(--site-accent); text-underline-offset: .2em; }
+.site-root .site-linkcard h3 a:hover { color: var(--site-accent); text-decoration: underline; }
+.site-root .site-cards .site-img { width: 100%; aspect-ratio: 16 / 9; margin: -0.25rem 0 .75rem; border-radius: 10px; }
+.site-root .site-cards .site-img img { width: 100%; height: 100%; object-fit: cover; }
+.site-root .site-stats li { padding: 1.5rem; background: var(--site-paper); }
+.site-root .site-stats li:first-child { border-left: 1px solid var(--site-line); }
+.site-root .site-hero .site-btn { transition: background-color .18s ease, color .18s ease; }
+.site-root .site-hero .site-btn--primary:hover, .site-root .site-hero .site-btn--ghost:hover { transform: none; box-shadow: none; }
+
+@media (max-width: 640px) {
+  .site-root .site-hero { min-height: 0; padding-block: 3.5rem; }
+  .site-root .site-hero--compact { padding-block: 2.5rem; }
+  .site-root .site-block { padding-block: 2.5rem; }
+  .site-root .site-block h2 { margin-bottom: 1.1rem; }
+  .site-root .site-cards, .site-root .site-gallery { margin-top: 1.25rem; }
+}
