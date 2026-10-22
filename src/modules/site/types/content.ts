@@ -40,6 +40,10 @@ export interface Honor {
   student_name: string;
   grade_level: string | null;
   schedule?: string | null;
+  honor_category?: 'official' | 'institutional' | null;
+  official_order?: number | null;
+  modality?: string | null;
+  campus?: string | null;
 }
 
 export interface EventItem {

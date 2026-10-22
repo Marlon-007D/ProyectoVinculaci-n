@@ -40,24 +40,26 @@ export function InvoiceSimulatorPage({ activeSection, onSectionChange, onInvoice
     const saved = await invoice.persist()
     setIsSaving(false)
     if (saved) {
+      invoice.resetDraft()
+      setEditToast(false)
       onSectionChange('history')
       setActiveStep(1)
     }
   }
   const steps = [
-    { id: 1, label: 'Productos', shortLabel: 'Productos' },
-    { id: 2, label: 'Datos de emisión', shortLabel: 'Emisión' },
-    { id: 3, label: 'Total factura', shortLabel: 'Total' },
+    { id: 1, label: 'Productos', shortLabel: 'Productos', icon: 'shopping_bag' },
+    { id: 2, label: 'Datos de emisión', shortLabel: 'Emisión', icon: 'person' },
+    { id: 3, label: 'Total factura', shortLabel: 'Total', icon: 'receipt_long' },
   ] as const
   return <section className="page-content invoice-page" ref={pageRef}>
     <div className="workspace workspace-single">
       {activeSection === 'emission' && <div className="invoice-emission-panel" id="invoice-panel-emission" role="tabpanel" aria-labelledby="invoice-tab-emission">
         <nav className="invoice-stepper" aria-label="Pasos de emisión de factura">
             <ol>{steps.map(step => <li key={step.id} className={activeStep === step.id ? 'is-current' : activeStep > step.id ? 'is-complete' : ''} aria-current={activeStep === step.id ? 'step' : undefined}>
-              <button type="button" onClick={() => step.id < activeStep && setActiveStep(step.id)} disabled={step.id > activeStep} aria-label={`Paso ${step.id}: ${step.label}`}><span className="invoice-step-number">{activeStep > step.id ? <Check size={14} aria-hidden="true" /> : step.id}</span><span className="invoice-step-name">{step.label}</span><span className="invoice-step-name-short" aria-hidden="true">{step.shortLabel}</span></button>
+              <button type="button" onClick={() => step.id < activeStep && setActiveStep(step.id)} disabled={step.id > activeStep} aria-label={`Paso ${step.id}: ${step.label}`}><span className="invoice-step-number">{activeStep > step.id ? <Check size={14} aria-hidden="true" /> : step.id}</span><span className="invoice-step-icon" aria-hidden="true">{step.icon}</span><span className="invoice-step-name">{step.label}</span><span className="invoice-step-name-short" aria-hidden="true">{step.shortLabel}</span></button>
             </li>)}</ol>
         </nav>
-        {activeStep < 3 && <div className="invoice-form-column">{invoice.catalogNotice && !invoice.isCatalogLoading && <p className="invoice-save-error" role="alert">{invoice.catalogNotice}</p>}<InvoiceForm activeStep={activeStep as 1 | 2} isLoading={invoice.isCatalogLoading} draft={invoice.draft} products={invoice.products} onField={invoice.updateField} onUpdate={invoice.updateLine} onAdd={invoice.addLine} onSetQuantity={invoice.setProductQuantity} onRemove={invoice.removeLine} onNext={() => setActiveStep(current => Math.min(3, current + 1) as 1 | 2 | 3)} onPrevious={() => setActiveStep(1)} />
+        {activeStep < 3 && <div className="invoice-form-column">{invoice.catalogNotice && !invoice.isCatalogLoading && <div className="invoice-catalog-error" role="alert"><p className="invoice-save-error">{invoice.catalogNotice}</p><button type="button" className="invoice-catalog-retry" onClick={invoice.reloadCatalog}>Reintentar</button></div>}<InvoiceForm activeStep={activeStep as 1 | 2} isLoading={invoice.isCatalogLoading} draft={invoice.draft} products={invoice.products} onField={invoice.updateField} onUpdate={invoice.updateLine} onAdd={invoice.addLine} onSetQuantity={invoice.setProductQuantity} onRemove={invoice.removeLine} onNext={() => setActiveStep(current => Math.min(3, current + 1) as 1 | 2 | 3)} onPrevious={() => setActiveStep(1)} />
           {editToast && <div className="edit-toast" role="status">Factura cargada para editar.</div>}
         </div>}
         {activeStep === 3 && <div className="invoice-total-step"><InvoiceResult totals={invoice.totals} lines={invoice.draft.lines} />

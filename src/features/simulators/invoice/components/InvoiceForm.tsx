@@ -88,7 +88,7 @@ export function InvoiceForm({ activeStep, isLoading = false, draft, products, on
       </div>}
       {productPageCount > 1 && <nav className="invoice-product-pagination" aria-label="Páginas de productos"><button type="button" aria-label="Productos anteriores" disabled={productPage === 0} onClick={() => setProductPage(page => Math.max(0, page - 1))}><ChevronLeft size={18} /></button><span>{productPage * productsPerPage + 1}–{Math.min((productPage + 1) * productsPerPage, products.length)} de {products.length}</span><button type="button" aria-label="Más productos" disabled={productPage + 1 >= productPageCount} onClick={() => setProductPage(page => Math.min(productPageCount - 1, page + 1))}><ChevronRight size={18} /></button></nav>}
     </div>
-    <div className="invoice-step-actions invoice-step-actions-bottom"><div className="invoice-step-navigation" aria-label="Navegación de pasos"><button type="button" disabled aria-label="Anterior">Anterior</button><button type="button" onClick={validateStep} disabled={isLoading}>Siguiente</button></div></div>
+    <div className="invoice-step-actions invoice-step-actions-bottom"><div className="invoice-step-navigation" aria-label="Navegación de pasos"><button type="button" disabled aria-label="Anterior">Anterior</button><button type="button" onClick={validateStep} disabled={isLoading || products.length === 0}>Siguiente</button></div></div>
     {fieldError('products')}
     </section>}
   </div>

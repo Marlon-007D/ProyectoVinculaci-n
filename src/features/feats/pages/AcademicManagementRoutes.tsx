@@ -13,6 +13,9 @@ export function AcademicManagementRoutes() {
     return <main role="alert">Tu cuenta no tiene acceso a la administración académica.</main>;
 
   if (pathname === '/panel/cursos') return <Navigate to="/panel/cursos/categorias" replace />;
+  if (pathname.startsWith('/panel/cursos/categorias/')) return <AdminCourseCategoriesPage />;
+  if (pathname.startsWith('/panel/cursos/modulos/')) return <AdminCoursesPage />;
+  if (pathname === '/panel/publicaciones') return <Navigate to="/panel/publicaciones/noticias" replace />;
 
   switch (pathname) {
     case '/panel/cursos/categorias':

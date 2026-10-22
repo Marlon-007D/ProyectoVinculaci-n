@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../../../core/supabaseClient';
 import { useAuth } from '../../../core/AuthContext';
 import { useTenant } from '../../../core/TenantContext';
@@ -48,6 +48,8 @@ export const UserManagement: React.FC = () => {
   const [feedbackType, setFeedbackType] = useState<'success' | 'error'>('success');
   const [loadError, setLoadError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [showLoadingSkeleton, setShowLoadingSkeleton] = useState(true);
+  const loadStartedAt = useRef(Date.now());
   const [saving, setSaving] = useState(false);
   const [removingKey, setRemovingKey] = useState('');
   const [pendingRemoval, setPendingRemoval] = useState<UserMember | null>(null);
@@ -56,6 +58,17 @@ export const UserManagement: React.FC = () => {
     ? tenantInstitutions
     : tenantInstitutions.filter((item) => item.role === 'institution_admin'),
   [isPlatformAdmin, tenantInstitutions]);
+
+  useEffect(() => {
+    if (loading) {
+      loadStartedAt.current = Date.now();
+      setShowLoadingSkeleton(true);
+      return;
+    }
+    const remaining = Math.max(0, 500 - (Date.now() - loadStartedAt.current));
+    const timer = window.setTimeout(() => setShowLoadingSkeleton(false), remaining);
+    return () => window.clearTimeout(timer);
+  }, [loading]);
 
   const loadData = useCallback(async () => {
     if (loadingTenant) return;
@@ -335,7 +348,7 @@ export const UserManagement: React.FC = () => {
           </div>
         </div>
         {loadError && <p role="alert" className={styles.errorFeedback}>{loadError}</p>}
-        {loading ? <div className={styles.tableWrap} role="status" aria-label="Cargando usuarios y roles">
+        {showLoadingSkeleton ? <div className={styles.tableWrap} role="status" aria-label="Cargando usuarios y roles" aria-busy="true">
           <table className={styles.table} aria-hidden="true">
             <thead><tr><th>Cuenta</th><th>Rol</th><th>Institución</th><th>Autenticación</th><th>Acciones</th></tr></thead>
             <tbody>{[0, 1, 2, 3].map(row => <tr className={styles.skeletonRow} key={row}>

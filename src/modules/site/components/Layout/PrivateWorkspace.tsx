@@ -43,6 +43,11 @@ export function PrivateWorkspace({ children }: { children: ReactNode }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(readSidebarPreference);
 
   useEffect(() => {
+    if (coursesActive) setOpenGroup('courses');
+    if (publicationsActive) setOpenGroup('publications');
+  }, [coursesActive, publicationsActive]);
+
+  useEffect(() => {
     try {
       window.localStorage.setItem(SIDEBAR_PREFERENCE_KEY, String(sidebarCollapsed));
     } catch {

@@ -38,6 +38,8 @@ export const SuperAdminPanel: React.FC = () => {
   const [selectedInstId, setSelectedInstId] = useState<string | null>(null);
   const [loadError, setLoadError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [showLoadingSkeleton, setShowLoadingSkeleton] = useState(true);
+  const loadStartedAt = useRef(Date.now());
   const [message, setMessage] = useState('');
   const [institutionToDelete, setInstitutionToDelete] = useState<Institution | null>(null);
   const [deletingInstitution, setDeletingInstitution] = useState(false);
@@ -45,6 +47,17 @@ export const SuperAdminPanel: React.FC = () => {
   const { reloadInstitutions } = useTenant();
   const selectedInstitution = institutions.find((institution) => institution.institution_id === selectedInstId);
   const activeCount = institutions.filter((institution) => institution.is_active).length;
+
+  useEffect(() => {
+    if (loading) {
+      loadStartedAt.current = Date.now();
+      setShowLoadingSkeleton(true);
+      return;
+    }
+    const remaining = Math.max(0, 500 - (Date.now() - loadStartedAt.current));
+    const timer = window.setTimeout(() => setShowLoadingSkeleton(false), remaining);
+    return () => window.clearTimeout(timer);
+  }, [loading]);
 
   const fetchInstitutions = async () => {
     const [institutionResult, settingsResult] = await Promise.all([
@@ -234,7 +247,7 @@ export const SuperAdminPanel: React.FC = () => {
         </div>
         {message && <p className={styles.notice} role="status">{message}</p>}
         {loadError && <p className={styles.errorNotice} role="alert">{loadError}</p>}
-        {loading ? <div className={styles.tableWrap} role="status" aria-label="Cargando instituciones">
+        {showLoadingSkeleton ? <div className={styles.tableWrap} role="status" aria-label="Cargando instituciones" aria-busy="true">
           <table className={styles.table} aria-hidden="true">
             <thead><tr><th>Institución</th><th>Identificador</th><th>Módulos activos</th><th>Estado</th><th>Acciones</th></tr></thead>
             <tbody>{[0, 1, 2].map(row => <tr key={row} className={styles.skeletonRow}>

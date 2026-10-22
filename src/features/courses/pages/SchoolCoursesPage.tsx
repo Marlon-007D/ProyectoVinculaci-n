@@ -5,6 +5,7 @@ import { useCourseCategories } from '../hooks/useCourseCategories'
 import { useSchoolCourses } from '../hooks/useSchoolCourses'
 import { QuestionBank } from '../components/QuestionBank'
 import { CourseTemario } from '../components/CourseTemario'
+import { useInstitution } from '../../../modules/site/context/InstitutionContext'
 import './SchoolCoursesPage.css'
 
 const subjectIcons = {
@@ -41,8 +42,9 @@ function CourseBreadcrumbs({ items }: { items: { label: string; onClick?: () => 
 }
 
 export function SchoolCoursesPage({ selectedModuleId = null, selectedCourseId = null, evaluationActive = false, onSelectModule = noop, onSelectCourse = noop, courseHrefFor, onBackToModules = noop, onBackToModule = noop, onTopicChange = noop, onEvaluationChange = noop }: Props) {
-  const { categories: schoolModules } = useCourseCategories()
-  const { courses: schoolCourses } = useSchoolCourses()
+  const { institutionId } = useInstitution()
+  const { categories: schoolModules, loading: categoriesLoading, error: categoriesError } = useCourseCategories(institutionId)
+  const { courses: schoolCourses, loading: coursesLoading, error: coursesError } = useSchoolCourses(institutionId)
   const [selectedTopic, setSelectedTopic] = useState(0)
   const [isSectionLoading, setIsSectionLoading] = useState(false)
   const sectionLoadingTimer = useRef<number | null>(null)
@@ -67,6 +69,8 @@ export function SchoolCoursesPage({ selectedModuleId = null, selectedCourseId = 
 
   const selectedCourse = schoolCourses.find(course => course.id === selectedCourseId)
   const selectedModule = schoolModules.find(module => module.id === selectedModuleId)
+  if (categoriesLoading || coursesLoading) return <section className="page-content school-courses-page" role="status" aria-label="Cargando cursos" aria-busy="true"><div className="school-course-loading-grid">{Array.from({ length: 6 }, (_, index) => <span className="school-course-loading-card" key={index}><i /><b /><small /></span>)}</div></section>
+  if (categoriesError || coursesError) return <section className="page-content school-courses-page" role="alert"><p>No se pudieron cargar los cursos. {categoriesError ?? coursesError}</p></section>
   if (selectedCourse) {
     const topic = selectedCourse.units[selectedTopic]
     const topicLesson = topic?.lesson

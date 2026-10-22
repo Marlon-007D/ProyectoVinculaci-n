@@ -3,9 +3,9 @@ import { useTenant } from '../../../core/TenantContext'
 import type { SchoolModule } from '../types/courseCatalog.types'
 import { getCourseCategories, subscribeToCourseCategories } from '../services/courseCategoriesStore'
 
-export function useCourseCategories() {
+export function useCourseCategories(publicInstitutionId?: string) {
   const { activeInstitution } = useTenant()
-  const institutionId = activeInstitution?.institution_id
+  const institutionId = publicInstitutionId ?? activeInstitution?.institution_id
   const [categories, setCategories] = useState<SchoolModule[]>([])
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
