@@ -225,3 +225,78 @@
   .appShell :global(.nav-item) { width: 100%; min-height: 48px; border-radius: 24px; }
   .appShell :global(.nav-item) :global(.svg-inline--fa) { width: 36px; height: 36px; padding: 9px; }
 }
+
+/* El panel usa el ancho real del menú y reserva todo el espacio restante al contenido. */
+.appShell :global(.sidebar) {
+  position: sticky;
+  inset: 0 auto auto 0;
+  width: fit-content;
+  min-width: 250px;
+  max-width: min(360px, 40vw);
+  height: 100vh;
+  flex: 0 0 fit-content;
+}
+.appShell :global(.main-area) {
+  width: auto;
+  min-width: 0;
+  margin-left: 0;
+  flex: 1 1 auto;
+}
+@media (min-width: 721px) and (max-width: 900px) {
+  .appShell :global(.sidebar) { width: fit-content; min-width: 220px; max-width: 38vw; flex-basis: fit-content; }
+  .appShell :global(.main-area) { width: auto; margin-left: 0; }
+}
+.appShell :global(.sidebar-logout) {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 44px;
+  margin-top: auto;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  color: var(--color-sidebar-text);
+  background: var(--color-surface);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+.appShell :global(.sidebar-logout):hover { color: var(--color-primary); background: var(--color-primary-soft); }
+.appShell :global(.sidebar-logout):focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+.appShell :global(.sidebar-logout) svg { width: 16px; flex: 0 0 16px; }
+@media (max-width: 720px) {
+  .appShell :global(.sidebar-logout) { width: auto; min-height: 42px; margin: 8px 0 0; }
+}
+.appShell :global(.sidebar-footer) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: auto;
+  padding: 12px 4px 0;
+  border-top: 1px solid var(--color-border);
+}
+.appShell :global(.sidebar-footer) :global(.profile) {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+}
+.appShell :global(.sidebar-logout) {
+  flex: 0 0 auto;
+  width: auto;
+  min-height: 40px;
+  margin: 0;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 20px;
+  color: var(--color-primary);
+  background: var(--color-primary-soft);
+  font-size: 13px;
+  font-weight: 600;
+}
+.appShell :global(.sidebar-logout):hover { color: var(--color-primary-hover); background: color-mix(in srgb, var(--color-primary) 18%, white); }
+@media (max-width: 720px) {
+  .appShell :global(.sidebar-footer) { margin-top: 8px; padding-top: 8px; }
+  .appShell :global(.sidebar-logout) { margin: 0 0 0 auto; }
+}
