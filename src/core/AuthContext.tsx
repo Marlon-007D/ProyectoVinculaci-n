@@ -155,6 +155,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     let active = true;
+    let initialSessionTask: Promise<void> | null = null;
 
     const applySession = async (nextSession: Session | null) => {
       setSession(nextSession);
@@ -179,13 +180,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (active) setLoading(false);
     };
 
+    const initializeSession = (nextSession: Session | null) => {
+      initialSessionTask ??= applySession(nextSession);
+      return initialSessionTask;
+    };
+
     void supabase.auth.getSession()
-      .then(({ data: { session: currentSession } }) => applySession(currentSession))
+      .then(({ data: { session: currentSession } }) => {
+        if (active) void initializeSession(currentSession);
+      })
       .catch(() => {
         if (active) setLoading(false);
       });
 
     const { data: authListener } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      if (!active) return;
+      if (event === 'INITIAL_SESSION') {
+        void initializeSession(nextSession);
+        return;
+      }
       if (event === 'PASSWORD_RECOVERY') setIsPasswordRecovery(true);
       setLoading(true);
       setSession(nextSession);

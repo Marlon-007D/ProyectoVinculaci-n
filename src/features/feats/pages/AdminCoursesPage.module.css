@@ -229,6 +229,15 @@
   overflow-x: auto;
 }
 
+.skeletonRow td { height: 82px; }
+.skeleton { display: block; border-radius: 7px; background: linear-gradient(100deg, #edf1f5 25%, #f8fafc 42%, #edf1f5 62%); background-size: 220% 100%; animation: course-skeleton-shimmer 1.4s ease-in-out infinite; }
+.skeletonText { width: min(190px, 90%); height: 13px; }
+.skeletonSubtext { width: min(250px, 95%); height: 10px; margin-top: 8px; }
+.skeletonSmall { width: 78px; height: 12px; }
+.skeletonCount { width: 26px; }
+.skeletonActions { width: 108px; height: 32px; margin-left: auto; }
+@keyframes course-skeleton-shimmer { to { background-position: -220% 0; } }
+
 .table {
   width: 100%;
   border-collapse: collapse;

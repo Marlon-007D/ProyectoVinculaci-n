@@ -30,8 +30,8 @@ function categoryCover(category: SchoolModule, courses: SchoolSubject[]) {
 }
 
 export function AdminCourseCategoriesPage() {
-  const { categories } = useCourseCategories()
-  const { courses } = useSchoolCourses()
+  const { categories, loading: categoriesLoading, error: categoriesError } = useCourseCategories()
+  const { courses, loading: coursesLoading, error: coursesError } = useSchoolCourses()
   const { activeInstitution } = useTenant()
   const [search, setSearch] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('all')
@@ -197,14 +197,17 @@ export function AdminCourseCategoriesPage() {
       <div className={styles.tableWrap}>
         <table className={styles.table}>
           <thead><tr><th scope="col">Categoría</th><th scope="col">Cursos</th><th scope="col">Portada</th><th scope="col"><span className={styles.srOnly}>Acciones</span></th></tr></thead>
-          <tbody>
+          <tbody aria-busy={categoriesLoading || coursesLoading}>
+            {categoriesLoading || coursesLoading ? Array.from({ length: 4 }, (_, index) => <tr className={styles.skeletonRow} key={`category-skeleton-${index}`}><td><span className={`${styles.skeleton} ${styles.skeletonText}`} /><span className={`${styles.skeleton} ${styles.skeletonSubtext}`} /></td><td><span className={`${styles.skeleton} ${styles.skeletonSmall}`} /></td><td><span className={`${styles.skeleton} ${styles.skeletonCover}`} /></td><td><span className={`${styles.skeleton} ${styles.skeletonActions}`} /></td></tr>) : <>
+            {(categoriesError || coursesError) && <tr><td className={styles.empty} colSpan={4} role="alert">{categoriesError ?? coursesError}</td></tr>}
             {visibleCategories.map(category => <tr key={category.id}>
               <td><span className={styles.categoryName}>{category.name}</span><span className={styles.categoryDescription}>{category.description}</span></td>
               <td>{category.courseIds.length} {category.courseIds.length === 1 ? 'curso' : 'cursos'}</td>
               <td>{categoryCover(category, courses) ? <img className={styles.coverThumb} src={categoryCover(category, courses)} alt={`Portada de ${category.name}`} /> : <span className={styles.noCover}>Sin portada</span>}</td>
               <td>{pendingDeleteId === category.id ? <div className={styles.deleteConfirm}><span>¿Eliminar?</span><button type="button" onClick={() => setPendingDeleteId(null)}>Cancelar</button><button type="button" onClick={() => deleteCategory(category)}>Sí</button></div> : <div className={styles.rowActions}><button className={styles.iconButton} type="button" onClick={() => startEditing(category)} aria-label={`Editar ${category.name}`} title="Editar"><Pencil size={17} /></button><button className={`${styles.iconButton} ${styles.deleteButton}`} type="button" onClick={() => { setPendingDeleteId(category.id); setDeleteError('') }} aria-label={`Eliminar ${category.name}`} title="Eliminar"><Trash2 size={17} /></button></div>}</td>
             </tr>)}
-            {visibleCategories.length === 0 && <tr><td className={styles.empty} colSpan={4}>No hay categorías que coincidan con la búsqueda.</td></tr>}
+            {visibleCategories.length === 0 && !categoriesError && !coursesError && <tr><td className={styles.empty} colSpan={4}>No hay categorías que coincidan con la búsqueda.</td></tr>}
+            </>}
           </tbody>
         </table>
       </div>

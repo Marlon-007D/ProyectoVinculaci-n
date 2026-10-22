@@ -335,7 +335,18 @@ export const UserManagement: React.FC = () => {
           </div>
         </div>
         {loadError && <p role="alert" className={styles.errorFeedback}>{loadError}</p>}
-        {loading ? <div className={styles.loadingState}>Cargando membresías…</div> : (
+        {loading ? <div className={styles.tableWrap} role="status" aria-label="Cargando usuarios y roles">
+          <table className={styles.table} aria-hidden="true">
+            <thead><tr><th>Cuenta</th><th>Rol</th><th>Institución</th><th>Autenticación</th><th>Acciones</th></tr></thead>
+            <tbody>{[0, 1, 2, 3].map(row => <tr className={styles.skeletonRow} key={row}>
+              <td><span className={`${styles.skeleton} ${styles.skeletonPerson}`} /></td>
+              <td><span className={`${styles.skeleton} ${styles.skeletonRole}`} /></td>
+              <td><span className={`${styles.skeleton} ${styles.skeletonInstitution}`} /></td>
+              <td><span className={`${styles.skeleton} ${styles.skeletonMfa}`} /></td>
+              <td><span className={`${styles.skeleton} ${styles.skeletonAction}`} /></td>
+            </tr>)}</tbody>
+          </table>
+        </div> : (
           <div className={styles.tableWrap}>
             <table className={styles.table}>
               <thead><tr><th>Cuenta</th><th>Rol</th><th>Institución</th><th>Autenticación</th><th>Acciones</th></tr></thead>

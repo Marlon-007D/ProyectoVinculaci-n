@@ -87,8 +87,8 @@ function assignedCategories(categories: SchoolModule[], courseId: string) {
 }
 
 export function AdminCoursesPage() {
-  const { courses } = useSchoolCourses()
-  const { categories } = useCourseCategories()
+  const { courses, loading: coursesLoading, error: coursesError } = useSchoolCourses()
+  const { categories, loading: categoriesLoading, error: categoriesError } = useCourseCategories()
   const { activeInstitution } = useTenant()
   const [search, setSearch] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('all')
@@ -352,13 +352,16 @@ export function AdminCoursesPage() {
         <label className={styles.filterSelect}>Categoría<select value={categoryFilter} onChange={event => { setCategoryFilter(event.target.value); setPage(1) }}><option value="all">Todas las categorías</option>{categories.map(category => <option value={category.id} key={category.id}>{category.name}</option>)}</select></label>
       </div>
       <div className={styles.tableWrap}><table className={styles.table}><thead><tr><th scope="col">Curso</th><th scope="col">Categoría</th><th scope="col">Temas</th><th scope="col"><span className={styles.srOnly}>Acciones</span></th></tr></thead>
-        <tbody>{visibleCourses.map(course => <tr key={course.id}>
+        <tbody aria-busy={coursesLoading || categoriesLoading}>{coursesLoading || categoriesLoading ? Array.from({ length: 4 }, (_, index) => <tr className={styles.skeletonRow} key={`course-skeleton-${index}`}><td><span className={`${styles.skeleton} ${styles.skeletonText}`} /><span className={`${styles.skeleton} ${styles.skeletonSubtext}`} /></td><td><span className={`${styles.skeleton} ${styles.skeletonSmall}`} /></td><td><span className={`${styles.skeleton} ${styles.skeletonSmall} ${styles.skeletonCount}`} /></td><td><span className={`${styles.skeleton} ${styles.skeletonActions}`} /></td></tr>) : <>
+        {(coursesError || categoriesError) && <tr><td className={styles.empty} colSpan={4} role="alert">{coursesError ?? categoriesError}</td></tr>}
+        {visibleCourses.map(course => <tr key={course.id}>
           <td><span className={styles.courseName}>{course.name}</span><span className={styles.courseDescription}>{course.description}</span></td>
           <td>{categories.filter(category => category.courseIds.includes(course.id)).map(category => category.name).join(', ') || 'Sin categoría'}</td>
           <td>{course.units.length}</td>
           <td><div className={styles.rowActions}><button className={styles.editButton} type="button" onClick={() => openEditor(course)}>Editar</button><button className={styles.deleteButton} type="button" onClick={() => deleteCourse(course)} aria-label={`Eliminar ${course.name}`} title="Eliminar"><Trash2 size={16} /></button></div></td>
         </tr>)}
-        {visibleCourses.length === 0 && <tr><td className={styles.empty} colSpan={4}>No hay cursos que coincidan con la búsqueda.</td></tr>}</tbody>
+        {visibleCourses.length === 0 && !coursesError && !categoriesError && <tr><td className={styles.empty} colSpan={4}>No hay cursos que coincidan con la búsqueda.</td></tr>}
+        </>}</tbody>
       </table></div>
       <footer className={styles.pagination}><span>{filteredCourses.length === 0 ? '0 resultados' : `${(currentPage - 1) * pageSize + 1}–${Math.min(currentPage * pageSize, filteredCourses.length)} de ${filteredCourses.length}`}</span><div className={styles.pageControls}><span>Página {currentPage} de {pageCount}</span><button className={styles.pageButton} type="button" onClick={() => setPage(value => Math.max(1, value - 1))} disabled={currentPage === 1} aria-label="Página anterior"><ChevronLeft size={18} /></button><button className={styles.pageButton} type="button" onClick={() => setPage(value => Math.min(pageCount, value + 1))} disabled={currentPage === pageCount} aria-label="Página siguiente"><ChevronRight size={18} /></button></div></footer>
     </section>
