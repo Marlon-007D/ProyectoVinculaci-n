@@ -60,7 +60,7 @@ export default function ProvisionalShell({ screen, onNavigate, children }: Props
           </button>
           <button type="button" className={`nav-item ${screen === 'submissions' ? 'active' : ''}`} aria-current={screen === 'submissions' ? 'page' : undefined} onClick={() => onNavigate('submissions')}>
             <FontAwesomeIcon icon={faInbox} aria-hidden="true" />
-            Envíos de fichas
+            Revisión de fichas
           </button>
           <button
             type="button"

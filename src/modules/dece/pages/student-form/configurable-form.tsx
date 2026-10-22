@@ -10,6 +10,7 @@ type Props = {
   section: number
   onSectionsChange: (sections: string[]) => void
   audience?: 'staff' | 'student'
+  allowQuestionManagement?: boolean
 }
 
 const choices: Array<{ value: QuestionType; label: string }> = [
@@ -107,7 +108,7 @@ function QuestionInput({
   </label>
 }
 
-export default function ConfigurableForm({ integration, student, code, section, onSectionsChange, audience = 'staff' }: Props) {
+export default function ConfigurableForm({ integration, student, code, section, onSectionsChange, audience = 'staff', allowQuestionManagement = true }: Props) {
   const service = useMemo(() => createDeceFormService(integration.client), [integration.client])
   const [runtime, setRuntime] = useState<FormRuntime | null>(null)
   const [answers, setAnswers] = useState<Record<string, FormAnswerValue>>({})
@@ -125,6 +126,9 @@ export default function ConfigurableForm({ integration, student, code, section, 
   const [questionMax, setQuestionMax] = useState('')
   const [questionInteger, setQuestionInteger] = useState(false)
   const [reloadToken, setReloadToken] = useState(0)
+  const [questionPage, setQuestionPage] = useState(1)
+  const QUESTIONS_PER_PAGE = 8
+  useEffect(() => { setQuestionPage(1) }, [section])
 
   const studentId = integration.getStudentId(student)
 
@@ -165,6 +169,8 @@ export default function ConfigurableForm({ integration, student, code, section, 
   const currentSection = sections[section] ?? sections[0]
   const locked = runtime.submission?.status === 'submitted' || runtime.submission?.status === 'reviewed'
   const questions = runtime.questions.filter(question => (question.display_config?.section || 'Información') === currentSection)
+  const questionPageCount = Math.max(1, Math.ceil(questions.length / QUESTIONS_PER_PAGE))
+  const visibleQuestions = questions.slice((questionPage - 1) * QUESTIONS_PER_PAGE, questionPage * QUESTIONS_PER_PAGE)
 
   async function save() {
     if (!studentId || !runtime) return
@@ -257,13 +263,14 @@ export default function ConfigurableForm({ integration, student, code, section, 
     {code === 'general' && <div className="notice">El representante legal debe mantener comunicación regular con la institución sobre novedades académicas e inasistencias.</div>}
     {questions.length === 0 && <p className="helper" role="status">No hay preguntas visibles en esta sección. Puede faltar permiso o la publicación de preguntas por DECE; actualiza la ficha o consulta al equipo.</p>}
     <div className="field-grid">
-      {questions.map(question => <div className="custom-question" key={question.form_question_id}>
+      {visibleQuestions.map(question => <div className="custom-question" key={question.form_question_id}>
         <QuestionInput question={question} student={student} readOnly={locked} value={answers[question.form_question_id] ?? null}
           onChange={value => setAnswers(current => ({ ...current, [question.form_question_id]: value }))} />
-        {audience === 'staff' && !question.is_system && <button type="button" className="text-button" onClick={() => void removeQuestion(question)}>Quitar pregunta</button>}
+        {audience === 'staff' && allowQuestionManagement && !question.is_system && <button type="button" className="text-button" onClick={() => void removeQuestion(question)}>Quitar pregunta</button>}
       </div>)}
     </div>
-    {audience === 'staff' && (adding ? <form className="question-builder" onSubmit={event => void addQuestion(event)}>
+    {questions.length > QUESTIONS_PER_PAGE && <nav aria-label="Paginación de preguntas" className="d-flex align-items-center justify-content-between gap-2 py-3"><button type="button" className="btn btn-outline-secondary btn-sm" disabled={questionPage <= 1} onClick={() => setQuestionPage(page => page - 1)}>Anterior</button><span>Página {questionPage} de {questionPageCount}</span><button type="button" className="btn btn-outline-secondary btn-sm" disabled={questionPage >= questionPageCount} onClick={() => setQuestionPage(page => page + 1)}>Siguiente</button></nav>}
+    {audience === 'staff' && allowQuestionManagement && (adding ? <form className="question-builder" onSubmit={event => void addQuestion(event)}>
       <label className="field"><span>Pregunta</span><input className="form-control" autoFocus required value={questionLabel} onChange={event => setQuestionLabel(event.target.value)} /></label>
       <label className="field"><span>Tipo de respuesta</span><select className="form-select" value={questionType} onChange={event => setQuestionType(event.target.value as QuestionType)}>{choices.map(choice => <option key={choice.value} value={choice.value}>{choice.label}</option>)}</select></label>
       {['single_select', 'multi_select'].includes(questionType) && <label className="field"><span>Opciones (una por línea)</span><textarea className="form-control" required value={questionOptions} onChange={event => setQuestionOptions(event.target.value)} /></label>}
