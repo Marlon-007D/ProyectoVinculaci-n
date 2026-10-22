@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Outfit:wght@500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Outfit:wght@500;600;700&family=Roboto:wght@400;500;700&display=swap');
 @font-face { font-family: 'Google Sans'; src: url('/fonts/GoogleSans-Variable.ttf') format('truetype'); font-style: normal; font-weight: 400 700; font-display: swap; }
 
 :root { font-family: 'DM Sans', sans-serif; color: #29272c; background: #f7f7f8; font-synthesis: none; --surface: #fff; --canvas: #f7f7f8; --line: #e6e5e8; --text: #29272c; --muted: #706d75; --accent: #594083; --accent-hover: #483468; --accent-soft: #f4effb; --accent-container: #e7ddf4; --accent-focus: #d3c2e9; }

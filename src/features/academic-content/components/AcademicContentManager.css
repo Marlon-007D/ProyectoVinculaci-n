@@ -21,10 +21,12 @@
 .academic-honor-group > .academic-entry { border-top: 0; }
 .honor-period-entry { min-height: 76px; align-items: center; }
 .honor-period-toggle { flex: 1; min-width: 0; padding: 10px 0; border: 0; color: inherit; background: transparent; text-align: center; cursor: pointer; }
+.honor-period-static { flex: 1; min-width: 0; padding: 10px 0; text-align: center; }
 .honor-period-toggle:focus-visible { border-radius: 8px; outline: 2px solid #526574; outline-offset: 3px; }
 .is-honor-list .honor-period-toggle .academic-entry-title { justify-content: center; }
-.is-honor-list .honor-period-toggle h3 { margin: 0; font-family: 'Google Sans','DM Sans',Arial,sans-serif; font-size: clamp(34px,3.2vw,38px); font-weight: 700; line-height: 1.2; }
-.honor-period-year { font-size: 13px!important; }
+.is-honor-list .honor-period-static .academic-entry-title { justify-content: center; }
+.is-honor-list :is(.honor-period-toggle,.honor-period-static) h3 { margin: 0!important; color: #202124!important; font-family: 'Roboto',Arial,sans-serif!important; font-size: clamp(38px,4vw,46px)!important; font-weight: 700!important; line-height: 1.15!important; letter-spacing: -.03em!important; }
+.honor-period-year { color: #202124!important; font-family: 'Roboto',Arial,sans-serif!important; font-size: 16px!important; font-weight: 500!important; line-height: 1.35!important; }
 .honor-people-count { display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1px solid #e1e6eb; border-radius: 999px; color: #455968; background: #f3f6f8; font-size: 12px; font-weight: 700; }
 .honor-people-list { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,280px),1fr)); gap: 16px; margin: 16px 0 0; padding: 0; border: 0; }
 .honor-person-entry { min-width: 0; padding: 20px; border: 0; border-radius: 16px; background: #fff; }
@@ -39,7 +41,7 @@
 .publication-post { display: grid; grid-template-columns: minmax(180px, 30%) minmax(0, 1fr); overflow: hidden; background: var(--surface); }.publication-post-image { width: 100%; height: 100%; min-height: 175px; max-height: 220px; border-radius: 12px; object-fit: cover; background: var(--accent-soft); }.publication-post-body { display: grid; align-content: center; gap: 5px; min-width: 0; padding: 18px 20px; }.publication-post-body p { margin: 2px 0; color: #66616b; font-size: 13px; line-height: 1.5; }.publication-post-body .academic-entry-actions { justify-content: flex-end; margin-top: 4px; }
 .publication-post + .publication-post { margin-top: 18px; padding-top: 18px; border-top: 1px solid #efedf0; }
 .academic-empty { margin: 16px 0 0; padding: 18px; border-radius: 10px; color: var(--muted); background: var(--canvas); font-size: 14px; }
-.honor-official-slots { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1.12fr) minmax(0,1fr); grid-template-areas: "first flag second" "city-first city city-second" "plantel-first plantel plantel-second"; column-gap: 16px; row-gap: 32px; margin: 16px 0 0; padding: 0; }
+.honor-official-slots { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1.12fr) minmax(0,1fr); grid-template-areas: "first flag second" "city-first city city-second" "plantel-first plantel plantel-second"; column-gap: 16px; row-gap: 32px; margin: 38px 0 0; padding: 0; }
 .honor-official-slot { position: relative; display: grid; grid-template-columns: minmax(0,1fr); align-content: start; align-self: stretch; justify-self: stretch; gap: 12px; width: 100%; max-width: 100%; min-width: 0; min-height: 0; padding: 16px; overflow: hidden; border: 0; border-radius: 16px; background: #fff; }
 .honor-official-slot.is-national-first-escort { grid-area: first; }
 .honor-official-slot.is-flag-bearer-slot { grid-area: flag; }
@@ -93,8 +95,8 @@
 .honor-card-action.is-danger:hover { color: #243746; background: #edf1f4; }
 .honor-slot-copy > .honor-slot-distinction { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; color: #5e6d78; font-size: 13px; line-height: 1.45; }
 .honor-slot-copy small { color: var(--muted); font-size: 12px; }
-.honor-period-year { display: flex!important; align-items: center; justify-content: center; gap: 6px; margin-top: 5px!important; font-family: 'DM Sans',Arial,sans-serif; }
-.honor-period-year svg { color: #536575; }
+.honor-period-year { display: flex!important; align-items: center; justify-content: center; gap: 7px; margin-top: 8px!important; font-family: 'Roboto',Arial,sans-serif!important; }
+.honor-period-year svg { color: #202124!important; }
 .honor-slot-meta { display: flex; align-items: flex-start; justify-content: center; gap: 8px; padding-top: 12px; border-top: 0; color: #34434f; }
 .honor-slot-meta span { display: inline-flex; align-items: center; gap: 8px; width: fit-content; max-width: 100%; min-height: 36px; padding: 7px 12px; border: 0; border-radius: 12px; color: #40586a; background: #edf3fa; font-size: 14px; font-weight: 500; line-height: 1.35; }
 .honor-slot-meta span:nth-child(2) { background: #e4f2f7; }

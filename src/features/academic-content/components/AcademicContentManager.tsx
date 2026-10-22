@@ -190,11 +190,13 @@ export function AcademicContentManager({ kind, title, singular, onPreview }: Pro
         const expanded = expandedHonorPeriod === groupKey
         return <article className="academic-honor-group" key={groupKey}>
           <div className="academic-entry honor-period-entry">
-            <button type="button" className="honor-period-toggle" onClick={() => setExpandedHonorPeriod(expanded ? null : groupKey)} aria-expanded={expanded}>
+            {group.category === 'official' ? <div className="honor-period-static">
               <div className="academic-entry-copy"><div className="academic-entry-title"><h3>{group.category === 'official' ? 'Distinciones oficiales' : 'Reconocimientos institucionales'}</h3></div><small className="honor-period-year"><CalendarDays size={15} aria-hidden="true" />{group.year}</small></div>
-            </button>
+            </div> : <button type="button" className="honor-period-toggle" onClick={() => setExpandedHonorPeriod(expanded ? null : groupKey)} aria-expanded={expanded}>
+              <div className="academic-entry-copy"><div className="academic-entry-title"><h3>Reconocimientos institucionales</h3></div><small className="honor-period-year"><CalendarDays size={15} aria-hidden="true" />{group.year}</small></div>
+            </button>}
           </div>
-          {expanded && (group.category === 'official' ? <div className="honor-official-slots" aria-label={`Puestos oficiales ${group.year}`}>{OFFICIAL_DISPLAY_DISTINCTIONS.map((distinction, index) => {
+          {(group.category === 'official' || expanded) && (group.category === 'official' ? <div className="honor-official-slots" aria-label={`Puestos oficiales ${group.year}`}>{OFFICIAL_DISPLAY_DISTINCTIONS.map((distinction, index) => {
             const person = group.people.find(entry => normalizeOfficialDistinction(entry.distinction) === distinction)
             const isFlagBearer = distinction === OFFICIAL_DISTINCTIONS[0]
             const isFirstEscort = distinction.startsWith('1er. escolta')

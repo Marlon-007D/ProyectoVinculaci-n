@@ -1,5 +1,5 @@
 import { lazy, Suspense, useMemo } from 'react';
-import { BrowserRouter, Navigate, Route, Routes, useLocation, useParams } from 'react-router-dom';
+import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation, useParams } from 'react-router-dom';
 import { AuthProvider, useAuth } from './core/AuthContext';
 import { TenantProvider, useTenant } from './core/TenantContext';
 import { SiteApp } from './modules/site';
@@ -46,7 +46,7 @@ function AdminRoutesWithInstitutionalChrome({ superadminOnly = false }: { supera
 
 function AcademicManagementWithInstitutionalChrome() {
   const { activeInstitution } = useTenant();
-  const workspace = <PrivateWorkspace><AcademicManagementRoutes /></PrivateWorkspace>;
+  const workspace = <PrivateWorkspace><Outlet /></PrivateWorkspace>;
   if (!activeInstitution) return <><InstitutionalHeader />{workspace}</>;
   return <InstitutionProvider institutionId={activeInstitution.institution_id}><InstitutionSessionLayout>{workspace}</InstitutionSessionLayout></InstitutionProvider>;
 }
@@ -100,9 +100,11 @@ function RoutesWithAuth() {
     <Route path="/panel" element={<InstitutionalPanelWithChrome />} />
     <Route path="/panel/admin" element={<AdminRoutesWithInstitutionalChrome />} />
     <Route path="/panel/superadmin" element={<AdminRoutesWithInstitutionalChrome superadminOnly />} />
-    <Route path="/panel/cursos" element={<AcademicManagementWithInstitutionalChrome />} />
-    <Route path="/panel/cursos/*" element={<AcademicManagementWithInstitutionalChrome />} />
-    <Route path="/panel/publicaciones/*" element={<AcademicManagementWithInstitutionalChrome />} />
+    <Route element={<AcademicManagementWithInstitutionalChrome />}>
+      <Route path="/panel/cursos" element={<AcademicManagementRoutes />} />
+      <Route path="/panel/cursos/*" element={<AcademicManagementRoutes />} />
+      <Route path="/panel/publicaciones/*" element={<AcademicManagementRoutes />} />
+    </Route>
     <Route path="/panel/dece" element={<DeceWorkspaceWithInstitutionalChrome />} />
     <Route path="/panel/dece/*" element={<DeceWorkspaceWithInstitutionalChrome />} />
     <Route path="/system-admin" element={<Navigate to="/panel/superadmin" replace />} />

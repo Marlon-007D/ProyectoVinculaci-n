@@ -3,6 +3,8 @@ import { AsyncView } from "../states/AsyncView";
 import { ImageAsset } from "../Media/ImageAsset";
 import { useEvents, useHonors, useNews, useStaff } from "../../hooks/useContent";
 import honorsStyles from "./HonorsSection.module.css";
+import { OfficialFlag } from "../../../../features/honors/components/OfficialFlag";
+import { getOfficialFlagKind, normalizeOfficialDistinction, OFFICIAL_DISTINCTIONS } from "../../../../features/honors/utils/honorRules";
 
 interface Props {
   title?: string;
@@ -128,8 +130,34 @@ export function HonorsSection({ title = "Cuadro de honor", limit = 6, className 
   return (
     <Block title={title} className={className}>
       <AsyncView state={state} onRetry={reload} emptyMessage="Aún no hay reconocimientos publicados.">
-        {(list) => (
-          <ul className={`site-cards ${className ? honorsStyles.cards : ""}`}>
+        {(list) => className ? (
+          <div className={honorsStyles.officialSlots} aria-label="Cuadro de honor oficial">
+            {OFFICIAL_DISTINCTIONS.map((distinction) => {
+              const honor = list.find((item) => normalizeOfficialDistinction(item.achievement) === distinction);
+              if (!honor) return null;
+              const position = distinction === OFFICIAL_DISTINCTIONS[0] ? honorsStyles.flagBearer
+                : distinction === OFFICIAL_DISTINCTIONS[1] ? honorsStyles.cityBearer
+                  : distinction === OFFICIAL_DISTINCTIONS[2] ? honorsStyles.schoolBearer
+                    : distinction === OFFICIAL_DISTINCTIONS[3] ? honorsStyles.nationalFirst
+                      : distinction === OFFICIAL_DISTINCTIONS[4] ? honorsStyles.nationalSecond
+                        : distinction === OFFICIAL_DISTINCTIONS[5] ? honorsStyles.cityFirst
+                          : distinction === OFFICIAL_DISTINCTIONS[6] ? honorsStyles.citySecond
+                            : distinction === OFFICIAL_DISTINCTIONS[7] ? honorsStyles.schoolFirst
+                              : honorsStyles.schoolSecond;
+              return <article key={honor.honor_id} className={`${honorsStyles.officialCard} ${position}`}>
+                <div className={honorsStyles.officialHeader}>
+                  {honor.photo_url ? <Photo className={`${honorsStyles.officialPhoto} ${distinction === OFFICIAL_DISTINCTIONS[0] ? honorsStyles.flagPhoto : ""}`} url={honor.photo_url} alt={`Fotografía de ${honor.student_name}`} /> : <span className={honorsStyles.officialAvatar} aria-hidden="true">{initials(honor.student_name)}</span>}
+                  <div className={honorsStyles.officialCopy}>
+                    <strong>{honor.student_name}</strong>
+                    <span><OfficialFlag kind={getOfficialFlagKind(distinction)} />{distinction}</span>
+                  </div>
+                </div>
+                {(honor.grade_level || honor.schedule) && <div className={honorsStyles.officialMeta}><span>{honor.grade_level && <><i className={honorsStyles.metadataIcon} aria-hidden="true">school</i>{formatGrade(honor.grade_level)}</>}{honor.grade_level && honor.schedule && <b aria-hidden="true" />}{honor.schedule && <><i className={honorsStyles.metadataIcon} aria-hidden="true">schedule</i>{honor.schedule}</>}</span></div>}
+              </article>;
+            })}
+          </div>
+        ) : (
+          <ul className="site-cards">
             {list.map((h) => (
               <li key={h.honor_id} className="site-card site-person">
                 <div className={className ? honorsStyles.profile : undefined}>
@@ -155,6 +183,11 @@ export function HonorsSection({ title = "Cuadro de honor", limit = 6, className 
       </AsyncView>
     </Block>
   );
+}
+
+function formatGrade(value: string) {
+  if (/^tercero de bachillerato$/i.test(value.trim())) return '3ro BGU';
+  return value;
 }
 
 export function EventsSection({ title = "Próximos eventos", limit = 4 }: Props) {
