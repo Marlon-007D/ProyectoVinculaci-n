@@ -162,7 +162,8 @@ Deno.serve(async (request) => {
     }
 
     const { data: notice, error: noticeError } = await caller.functions.invoke('notify-approved-member', { body: { profileId: invitedUser.id, institutionId } });
-    return respond({ message: 'Rol asignado correctamente.', notified: !noticeError && notice?.notified === true });
+    return respond({ message: notice?.testNotified ? notice.message : 'Rol asignado correctamente.',
+      notified: !noticeError && notice?.notified === true, testNotified: !noticeError && notice?.testNotified === true });
   } catch (error) {
     console.error('Error inesperado al invitar usuario:', error);
     return respond({ error: 'Ocurrió un error al invitar al usuario. Inténtalo nuevamente.' }, 500);

@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { deliverApprovalEmail } from './delivery.ts';
 const headers = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, apikey, content-type, x-client-info', 'Access-Control-Allow-Methods': 'POST, OPTIONS' };
 const respond = (data: unknown, status = 200) => new Response(JSON.stringify(data), { status, headers: { ...headers, 'Content-Type': 'application/json' } });
 Deno.serve(async request => {
@@ -32,11 +33,12 @@ Deno.serve(async request => {
       options: { redirectTo: new URL('/panel/admin', siteUrl).href },
     });
     if (linkError || !link.properties?.action_link) return respond({ error: linkError?.message ?? 'No se pudo generar el enlace de verificación.' }, 500);
-    const response = await fetch('https://api.resend.com/emails', { method: 'POST', headers: {
-      Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json', 'Idempotency-Key': `membership-approval/${notification.notification_id}`,
-    }, body: JSON.stringify({ from, to: [account.user.email], subject: 'Tu solicitud institucional fue aprobada',
-      text: `Tu Administrador Institucional aprobó tu solicitud y asignó el rol correspondiente. Verifica tu correo y accede a tu cuenta mediante este enlace: ${link.properties.action_link}` }) });
-    if (!response.ok) return respond({ error: 'La membresía está aprobada. No se pudo enviar el correo. Puedes reintentar la notificación.' }, 502);
+    const delivery = await deliverApprovalEmail({ apiKey, from, to: account.user.email, siteUrl,
+      testMode: Deno.env.get('APPROVAL_EMAIL_TEST_MODE') === 'true',
+      text: `Tu Administrador Institucional aprobó tu solicitud y asignó el rol correspondiente. Verifica tu correo y accede a tu cuenta mediante este enlace: ${link.properties.action_link}` });
+    if (delivery.status === 'failed') return respond({ error: 'La membresía está aprobada. No se pudo enviar el correo. Puedes reintentar la notificación.' }, 502);
+    if (delivery.status === 'testSent') return respond({ notified: false, testNotified: true,
+      message: 'Correo de prueba enviado a dmsosa2@espe.edu.ec. La notificación al usuario sigue pendiente.' });
     const { error: saveError } = await admin.from('membership_approval_notifications').update({ sent_at: new Date().toISOString() }).eq('notification_id', notification.notification_id);
     if (saveError) return respond({ error: 'El correo fue enviado. No se pudo actualizar su estado.' }, 500);
     return respond({ notified: true });

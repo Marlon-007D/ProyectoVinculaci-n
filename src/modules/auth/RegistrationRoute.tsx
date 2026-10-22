@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../core/AuthContext';
 import { publicSupabase } from '../../core/supabase/publicClient';
 import { RegisterPage } from './RegisterPage';
@@ -7,6 +7,7 @@ import type { RegistrationService } from './registration.types';
 
 export function RegistrationRoute() {
   const { register, user } = useAuth();
+  const [params] = useSearchParams();
   const service = useMemo<RegistrationService>(() => ({
     async listInstitutions() {
       const { data, error } = await publicSupabase.rpc('registration_institutions');
@@ -24,6 +25,6 @@ export function RegistrationRoute() {
       if (result.error) throw result.error;
     },
   }), [register]);
-  if (user) return <Navigate to="/panel/admin" replace />;
+  if (user) return <Navigate to={'/login' + (params.size ? '?' + params.toString() : '')} replace />;
   return <RegisterPage service={service} />;
 }

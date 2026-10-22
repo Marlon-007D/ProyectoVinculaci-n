@@ -128,15 +128,15 @@ export const UserManagement: React.FC = () => {
   async function notifyMember(profileId: string, tenantId: string) {
     try {
       const { data, error } = await supabase.functions.invoke('notify-approved-member', { body: { profileId, institutionId: tenantId } });
-      return !error && data?.notified === true;
-    } catch { return false; }
+      return { notified: !error && data?.notified === true, message: error ? (await registrationError(error)).message : data?.message as string | undefined };
+    } catch (error) { return { notified: false, message: (await registrationError(error)).message }; }
   }
   async function retryNotification(member: UserMember) {
     if (approvingKey) return;
     setApprovingKey(member.profile_id);
-    const notified = await notifyMember(member.profile_id, member.institution_id);
+    const { notified, message } = await notifyMember(member.profile_id, member.institution_id);
     setFeedbackType(notified ? 'success' : 'error');
-    setMsg(notified ? 'Notificación de aprobación enviada correctamente.' : 'La membresía está aprobada. El correo sigue pendiente de envío.');
+    setMsg(notified ? 'Notificación de aprobación enviada correctamente.' : message || 'La membresía está aprobada. El correo sigue pendiente de envío.');
     setApprovingKey('');
   }
   async function approveMember(member: UserMember, nextRoleId: string) {
@@ -147,9 +147,9 @@ export const UserManagement: React.FC = () => {
       const { error } = await supabase.rpc('approve_institution_member', { target_profile_id: member.profile_id, target_institution_id: currentInstitutionId, target_role_id: nextRoleId });
       if (error) throw error;
       await logAuditEvent({ action: 'APPROVE_MEMBER', entity: 'memberships', institutionId: currentInstitutionId ?? undefined, details: { profileId: member.profile_id, roleId: nextRoleId } });
-      const notified = await notifyMember(member.profile_id, member.institution_id);
+      const { notified, message } = await notifyMember(member.profile_id, member.institution_id);
       setFeedbackType(notified ? 'success' : 'error');
-      setMsg(notified ? 'Solicitud aprobada, rol asignado y notificación enviada correctamente.' : 'La membresía está aprobada y el rol fue asignado. El correo está pendiente de envío.');
+      setMsg(notified ? 'Solicitud aprobada, rol asignado y notificación enviada correctamente.' : message || 'La membresía está aprobada y el rol fue asignado. El correo está pendiente de envío.');
       await loadData();
     } catch (error) { setFeedbackType('error'); setMsg((await registrationError(error)).message); }
     finally { setApprovingKey(''); }
@@ -205,7 +205,7 @@ export const UserManagement: React.FC = () => {
           }
           await logAuditEvent({ action: 'INVITE_AND_ASSIGN_ROLE', entity: 'memberships', details: { email: normalizedEmail, roleId, institutionId: targetInstitutionId }, institutionId: targetInstitutionId });
           setFeedbackType(invitation?.notified ? 'success' : 'error');
-          setMsg(invitation?.notified ? 'Cuenta aprobada, rol asignado y notificación enviada correctamente.' : 'El rol fue asignado. La notificación por correo está pendiente de envío.');
+          setMsg(invitation?.notified ? 'Cuenta aprobada, rol asignado y notificación enviada correctamente.' : invitation?.testNotified ? invitation.message : 'El rol fue asignado. La notificación por correo está pendiente de envío.');
           clearForm();
           await loadData();
           return;
@@ -220,9 +220,9 @@ export const UserManagement: React.FC = () => {
       await logAuditEvent({ action: 'ASSIGN_ROLE', entity: 'memberships', details: { email: normalizedEmail, roleId, institutionId: targetInstitutionId }, institutionId: targetInstitutionId });
       const { data: managed } = await supabase.rpc('list_managed_memberships', { target_institution_id: targetInstitutionId });
       const assigned = managed?.find((member: UserMember) => member.email?.toLowerCase() === normalizedEmail);
-      const notified = assigned ? await notifyMember(assigned.profile_id, targetInstitutionId) : false;
+      const { notified, message } = assigned ? await notifyMember(assigned.profile_id, targetInstitutionId) : { notified: false, message: undefined };
       setFeedbackType(notified ? 'success' : 'error');
-      setMsg(notified ? 'Rol asignado y notificación enviada correctamente.' : 'El rol fue asignado. La notificación por correo está pendiente de envío.');
+      setMsg(notified ? 'Rol asignado y notificación enviada correctamente.' : message || 'El rol fue asignado. La notificación por correo está pendiente de envío.');
       clearForm();
       await loadData();
     } catch {
@@ -244,6 +244,12 @@ export const UserManagement: React.FC = () => {
   const confirmRemoveRole = async () => {
     if (!pendingRemoval || removingKey) return;
     const member = pendingRemoval;
+    if (!isPlatformAdmin && (!isInstitutionAdmin || member.institution_id !== currentInstitutionId)) {
+      setFeedbackType('error');
+      setMsg('Selecciona un usuario de la institución que administras.');
+      setPendingRemoval(null);
+      return;
+    }
     const key = `${member.profile_id}-${member.institution_id}`;
     setRemovingKey(key);
     setMsg('');
@@ -258,9 +264,9 @@ export const UserManagement: React.FC = () => {
       setFeedbackType('success');
       setMsg('Rol retirado correctamente.');
       await loadData();
-    } catch {
+    } catch (error) {
       setFeedbackType('error');
-      setMsg('No se pudo quitar el rol. Inténtalo de nuevo.');
+      setMsg((await registrationError(error)).message);
     } finally {
       setRemovingKey('');
     }

@@ -21,18 +21,26 @@ test('registration does not claim success if pending membership was not persiste
   const result = await performInstitutionalRegistration({ async invoke() { return { data: { registered: false }, error: null }; } }, input);
   assert.ok(result.error);
 });
-test('registration preserves the actual Supabase error message', async () => {
+test('registration translates the duplicate-account Supabase error', async () => {
   const result = await performInstitutionalRegistration({ async invoke() { return { data: null, error: new Error('User already registered') }; } }, input);
   assert.ok(result.error);
-  assert.equal(result.error.message, 'User already registered');
+  assert.equal(result.error.message, 'Este correo electrónico ya se encuentra registrado. Por favor, inicia sesión o usa otra cuenta.');
 });
 test('registration extracts the server error from FunctionsHttpError context', async () => {
   const response = new Response(JSON.stringify({ error: 'Email address is invalid' }), { status: 400 });
   const result = await registrationError({ message: 'Edge Function returned a non-2xx status code', context: response });
-  assert.equal(result.message, 'Email address is invalid');
+  assert.equal(result.message, 'Ingresa un correo electrónico válido.');
   assert.equal(response.bodyUsed, false);
 });
-test('registration preserves transport errors when the response is not JSON', async () => {
+test('registration translates transport errors when the response is not JSON', async () => {
   const result = await registrationError({ message: 'Failed to fetch', context: new Response('Bad gateway') });
-  assert.equal(result.message, 'Failed to fetch');
+  assert.equal(result.message, 'No fue posible conectar con el servicio. Revisa tu conexión e inténtalo de nuevo.');
+});
+
+test('registration translates duplicate emails from both endpoint response formats', async () => {
+  const message = 'Este correo electrónico ya se encuentra registrado. Por favor, inicia sesión o usa otra cuenta.';
+  const error = 'A user with this email address has already been registered';
+  assert.equal((await registrationError(new Error(error))).message, message);
+  const result = await performInstitutionalRegistration({ async invoke() { return { data: { error }, error: null }; } }, input);
+  assert.equal(result.error.message, message);
 });

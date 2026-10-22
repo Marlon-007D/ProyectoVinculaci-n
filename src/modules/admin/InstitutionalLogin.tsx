@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowRight, Eye, EyeOff, LockKeyhole, Mail, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Eye, EyeOff, LockKeyhole, Mail, ShieldCheck } from 'lucide-react';
 import styles from './InstitutionalLogin.module.css';
 import { InstitutionalAuthLayout } from '../auth/InstitutionalAuthLayout';
 
@@ -22,6 +22,7 @@ export function InstitutionalLogin({ email, password, error, busy, onEmailChange
   const [searchParams] = useSearchParams();
   const institution = slug || searchParams.get('institution');
   const registrationPath = institution ? '/register?' + new URLSearchParams({ institution }).toString() : '/register';
+  const portalPath = institution ? '/?' + new URLSearchParams({ institution }).toString() : '/';
   const [showPassword, setShowPassword] = useState(false);
   const [recovery, setRecovery] = useState<RecoveryState>({ status: 'idle' });
   async function recover(form: HTMLFormElement) {
@@ -47,6 +48,7 @@ export function InstitutionalLogin({ email, password, error, busy, onEmailChange
   }
   return <InstitutionalAuthLayout labelledBy="institutional-login-title">
       <div className={styles.card}>
+        <Link className={styles.back} to={portalPath}><ArrowLeft size={17} aria-hidden="true" />Volver a las instituciones educativas</Link>
         <span className={styles.secure}><ShieldCheck size={14} aria-hidden="true" />Conexión protegida</span>
         <h1 id="institutional-login-title">Ingreso a la Plataforma Institucional</h1>
         <p className={styles.help}>Inicia sesión con tu correo institucional. Te dirigiremos al espacio que corresponde a tu rol.</p>
