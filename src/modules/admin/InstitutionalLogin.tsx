@@ -1,7 +1,8 @@
 import { useState, type FormEvent } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowRight, Eye, EyeOff, LockKeyhole, Mail, ShieldCheck } from 'lucide-react';
 import styles from './InstitutionalLogin.module.css';
+import { InstitutionalAuthLayout } from '../auth/InstitutionalAuthLayout';
 
 interface Props {
   email: string;
@@ -17,6 +18,10 @@ interface Props {
 type RecoveryState = { status: 'idle' } | { status: 'sending' } | { status: 'sent' } | { status: 'error'; message: string };
 
 export function InstitutionalLogin({ email, password, error, busy, onEmailChange, onPasswordChange, onSubmit, requestPasswordReset }: Props) {
+  const { slug = '' } = useParams<{ slug: string }>();
+  const [searchParams] = useSearchParams();
+  const institution = slug || searchParams.get('institution');
+  const registrationPath = institution ? '/register?' + new URLSearchParams({ institution }).toString() : '/register';
   const [showPassword, setShowPassword] = useState(false);
   const [recovery, setRecovery] = useState<RecoveryState>({ status: 'idle' });
   async function recover(form: HTMLFormElement) {
@@ -40,13 +45,7 @@ export function InstitutionalLogin({ email, password, error, busy, onEmailChange
       default: { const exhaustive: never = recovery; return exhaustive; }
     }
   }
-  return <main className={styles.page}>
-    <aside className={styles.visual} aria-labelledby="institutional-message">
-      <div className={styles.identity}><span className={styles.logo}>UE</span><span>Plataforma Institucional<span className={styles.identityDetail}>Educación • Vinculación</span></span></div>
-      <div className={styles.message}><span className={styles.eyebrow}>UNA COMUNIDAD, MÁS POSIBILIDADES</span><h2 id="institutional-message">Conecta la gestión educativa con cada comunidad.</h2><p>Accede a las herramientas de tu institución con permisos claros, una experiencia unificada y protección para cada cuenta.</p></div>
-      <div className={styles.indicators}><span><ShieldCheck size={15} aria-hidden="true" />Acceso protegido por roles</span>{['Instituciones', 'Usuarios', 'Roles', 'Auditoría'].map(label => <span key={label}>{label}</span>)}</div>
-    </aside>
-    <section className={styles.formPanel} aria-labelledby="institutional-login-title">
+  return <InstitutionalAuthLayout labelledBy="institutional-login-title">
       <div className={styles.card}>
         <span className={styles.secure}><ShieldCheck size={14} aria-hidden="true" />Conexión protegida</span>
         <h1 id="institutional-login-title">Ingreso a la Plataforma Institucional</h1>
@@ -59,8 +58,7 @@ export function InstitutionalLogin({ email, password, error, busy, onEmailChange
           {error && <p className={styles.error} role="alert">{error}</p>}
           <button type="submit" className={styles.submit} disabled={busy || recovery.status === 'sending'}><span>{busy ? 'Ingresando…' : 'Iniciar sesión'}</span><ArrowRight size={19} aria-hidden="true" /></button>
         </form>
-        <p className={styles.register}>¿No tienes una cuenta? <Link to="/register">Regístrate</Link></p>
+        <p className={styles.register}>¿No tienes una cuenta? <Link to={registrationPath}>Regístrate</Link></p>
       </div>
-    </section>
-  </main>;
+  </InstitutionalAuthLayout>;
 }

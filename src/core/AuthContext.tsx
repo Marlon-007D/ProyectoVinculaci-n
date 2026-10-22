@@ -2,6 +2,7 @@
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from './supabaseClient';
 import { registerInstitutionalAccount } from './auth/registerInstitutionalAccount';
+import { institutionMatches } from './auth/loginAccess';
 
 interface AuthContextType {
   user: User | null;
@@ -137,7 +138,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const roleNameById = new Map((roles ?? []).map((item) => [item.role_id, item.name]));
     const requestedInstitutionId = new URLSearchParams(window.location.search).get('institution');
-    const scopedMembership = memberships.find((item) => item.institution_id === requestedInstitutionId);
+    const loginSlug = /^\/([^/]+)\/login\/?$/.exec(window.location.pathname)?.[1];
+    const references = [loginSlug, requestedInstitutionId].filter((value): value is string => Boolean(value));
+    let scopedMembership = memberships.find((item) => references.includes(item.institution_id));
+    if ((!scopedMembership || loginSlug) && references.length) {
+      const { data: assignedInstitutions } = await supabase.from('institutions')
+        .select('institution_id, slug').in('institution_id', memberships.map(item => item.institution_id));
+      const institution = references.flatMap(reference =>
+        (assignedInstitutions ?? []).filter(item => institutionMatches(item, reference)))[0];
+      scopedMembership = memberships.find(item => item.institution_id === institution?.institution_id) ?? scopedMembership;
+    }
     const membership = memberships.find((item) => roleNameById.get(item.role_id) === 'super_admin') ?? scopedMembership ?? memberships[0];
     const assignedRole = roleNameById.get(membership.role_id) ?? null;
     setRole(assignedRole);

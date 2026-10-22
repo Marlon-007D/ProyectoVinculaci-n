@@ -9,6 +9,7 @@ import { DecePublicSection } from './modules/dece/public';
 import { SessionProvider } from './core/auth/session';
 import AdminRoutes from './modules/admin/AdminRoutes';
 import { RegistrationRoute } from './modules/auth/RegistrationRoute';
+import { LoginRoute } from './modules/auth/LoginRoute';
 import SimulatorApp from './app/App';
 
 const ModuleRoutes = lazy(() => import('./modules/projects/integration/ModuleRoutes'));
@@ -30,12 +31,13 @@ function RoutesWithAuth() {
   const location = useLocation();
   const mfaScreen = location.pathname === '/panel/admin' || location.pathname === '/panel/superadmin';
   const institutionSessionPath = /^\/[^/]+\/(?:login|dece|mi-ficha|admin|sin-modulos)(?:\/|$)/.test(location.pathname);
-  const protectedRoute = location.pathname.startsWith('/panel/')
+  const protectedRoute = location.pathname === '/login' || location.pathname.startsWith('/panel/')
     || institutionSessionPath
     || (location.pathname.startsWith('/proyectos') && !new URLSearchParams(location.search).has('transparency'));
   if (user && (mfaRequired || mfaEnrollmentRequired) && protectedRoute && !mfaScreen)
     return <Navigate to={'/panel/admin' + location.search} replace />;
   return <Routes>
+    <Route path="/login" element={<LoginRoute />} />
     <Route path="/register" element={<RegistrationRoute />} />
     <Route path="/panel/admin" element={<AdminRoutes />} />
     <Route path="/panel/superadmin" element={<AdminRoutes superadminOnly />} />
@@ -43,7 +45,7 @@ function RoutesWithAuth() {
     <Route path="/panel/simuladores/*" element={<SimulatorApp />} />
     <Route path="/simuladores/*" element={<SimulatorApp />} />
     <Route path="/dece/:slug/*" element={<InstitutionProvider><PublicDeceRoute /></InstitutionProvider>} />
-    <Route path="/:slug/login" element={<SlugSessionRoute />} />
+    <Route path="/:slug/login" element={<LoginRoute />} />
     <Route path="/:slug/dece/*" element={<SlugSessionRoute />} />
     <Route path="/:slug/mi-ficha/*" element={<SlugSessionRoute />} />
     <Route path="/:slug/admin/*" element={<SlugSessionRoute />} />

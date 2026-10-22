@@ -1,4 +1,4 @@
-export interface RegistrationInstitution { institution_id: string; name: string }
+export interface RegistrationInstitution { institution_id: string; name: string; slug?: string }
 export interface RegistrationInput { firstName: string; lastName: string; email: string; password: string; institutionId: string }
 export interface RegistrationService {
   listInstitutions(): Promise<RegistrationInstitution[]>;
