@@ -17,8 +17,6 @@ export default function ModuleRoutes(){
     return <Navigate to={'/?'+shared.toString()} replace/>;
   }
   if(pathname==='/panel/portal'||pathname.startsWith('/panel/portal/'))return <ProjectsWorkspace mode="portal"/>;
-  if(params.has('transparency'))return params.get('institution')
-    ? <InstitutionProvider><Routes><Route element={<SiteLayout/>}><Route path="*" element={<InstitutionalTransparency/>}/></Route></Routes></InstitutionProvider>
-    : <PublicProjects/>;
+  if(params.has('transparency'))return <InstitutionProvider><Routes><Route element={<SiteLayout/>}><Route path="*" element={<InstitutionalTransparency/>}/></Route></Routes></InstitutionProvider>;
   return <ProjectsWorkspace/>;
 }

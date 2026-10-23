@@ -69,5 +69,48 @@
 .project-search>div { display:flex; align-items:center; gap:8px; }
 .project-results { display:flex; justify-content:space-between; gap:12px; }
 .project-list-card footer { display:flex; flex-wrap:wrap; justify-content:space-between; gap:10px; }
-@media(max-width:700px) { .project-stats,.project-metrics { grid-template-columns:repeat(2,minmax(0,1fr)); } .project-team-grid,.project-grid { grid-template-columns:1fr; } .project-public-totals { grid-template-columns:1fr; } }
+/* Public transparency: scoped so the management screens keep their layout. */
+.project-public { max-width:1280px; margin-inline:auto; padding:32px clamp(16px,3vw,40px) 48px; min-height:0; background:#f6f8fa; color:#20364d; }
+.public-hero { display:flex; align-items:center; justify-content:space-between; gap:32px; padding:clamp(24px,4vw,48px); border:1px solid #d6e2ec; border-radius:24px; background:#edf3f8; }
+.public-hero h1 { margin:12px 0 16px; font-size:clamp(30px,4vw,48px); line-height:1.12; color:#102e4d; }
+.public-hero p { max-width:600px; line-height:1.7; }
+.public-hero .project-eyebrow { display:flex; align-items:center; gap:8px; font-size:11px; letter-spacing:.1em; color:#365d80; }
+.public-trust { display:inline-flex; align-items:center; gap:8px; font-size:12px; color:#3c655b; }
+.public-hero-symbol { flex:0 0 190px; display:grid; justify-items:center; gap:20px; color:#52748d; }
+.public-hero-symbol span { max-width:170px; text-align:center; font-size:10px; letter-spacing:.12em; line-height:1.8; }
+.public-institution-bar { display:flex; justify-content:space-between; align-items:center; gap:16px; padding:20px 4px; border-bottom:1px solid #dbe4ec; }
+.public-institution-bar>div { display:flex; align-items:center; gap:12px; min-width:0; }
+.public-institution-bar strong { overflow-wrap:anywhere; font-size:15px; }
+.public-institution-bar button { flex-shrink:0; }
+.project-public .project-section-heading { display:flex; justify-content:space-between; align-items:center; gap:20px; flex-wrap:wrap; margin-top:32px; }
+.project-public h2 { margin:0 0 8px; font-size:25px; line-height:1.3; }
+.project-public .project-muted { margin:0; line-height:1.6; }
+.public-actions,.project-view-switch { display:flex; gap:8px; flex-wrap:wrap; }
+.project-public .project-metrics { gap:12px; margin-block:24px; }
+.project-public .project-metrics>div { border:1px solid #dbe4ec; border-radius:16px; padding:20px; }
+.project-public .project-metrics dd { font-size:clamp(20px,2vw,27px); }
+.public-overview { display:grid; grid-template-columns:1fr 1fr; align-items:center; gap:32px; padding:20px 24px; border:1px solid #dbe4ec; border-radius:16px; background:#fff; }
+.public-overview-note { display:flex; gap:12px; align-items:center; color:#456172; }
+.public-overview-note p { display:grid; gap:8px; margin:0; font-size:13px; line-height:1.5; }
+.public-overview-note span { color:#607286; font-size:12px; }
+.public-filters { display:grid; grid-template-columns:minmax(0,2fr) repeat(2,minmax(0,1fr)); padding:20px; background:#fff; border:1px solid #dbe4ec; border-radius:16px; }
+.project-public .project-results { align-items:center; color:#607286; font-size:13px; }
+.project-public .project-list-grid { align-items:stretch; gap:20px; }
+.project-public .project-public-card { display:flex; flex-direction:column; min-width:0; margin:0; padding:24px; border:1px solid #dbe4ec; border-radius:18px; background:#fff; }
+.project-public-card .project-card-top { justify-content:space-between; margin:0 0 20px; }
+.project-public-card h3 { margin:0 0 16px; font-size:23px; line-height:1.35; overflow-wrap:anywhere; }
+.project-public-card .project-objective { margin-bottom:20px; color:#506477; font-size:14px; line-height:1.7; overflow-wrap:anywhere; }
+.project-public-card .project-public-totals { margin-top:auto; padding-top:20px; border-top:1px solid #e4ebf0; }
+.project-public-card .project-public-totals dd { font-size:clamp(15px,1.7vw,20px); overflow-wrap:anywhere; }
+.project-public-card .project-financial-progress { margin-bottom:0; }
+.public-comparison { overflow-x:auto; border:1px solid #dbe4ec; border-radius:16px; background:#fff; }
+.public-comparison table { min-width:720px; }
+.public-comparison caption { padding:16px; }
+.public-print-context { font-size:12px; color:#607286; line-height:1.6; }
+.public-explainer { display:flex; gap:16px; padding:24px; margin-top:32px; border-radius:16px; background:#eaf1ef; color:#3c5b53; }
+.public-explainer>svg { flex-shrink:0; }
+.public-explainer h2 { font-size:18px; }
+.public-explainer p { font-size:13px; line-height:1.8; margin:8px 0 0; }
+@media(max-width:900px) { .project-public .project-metrics { grid-template-columns:repeat(2,minmax(0,1fr)); } .public-hero-symbol { display:none; } .public-overview { grid-template-columns:1fr; gap:12px; } }
+@media(max-width:700px) { .project-stats,.project-metrics { grid-template-columns:repeat(2,minmax(0,1fr)); } .project-team-grid,.project-grid { grid-template-columns:1fr; } .project-public-totals { grid-template-columns:1fr; } .public-filters { grid-template-columns:1fr; } .public-institution-bar { align-items:flex-start; flex-direction:column; } .project-public .project-public-totals { grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; } .project-public .project-public-card { padding:20px; } .project-public .project-metrics>div { padding:16px; } .public-explainer { padding:20px; } }
 @media print { :global(body):has(.project-report) * { visibility:hidden; } :global(body):has(.project-report) .project-report,:global(body):has(.project-report) .project-report * { visibility:visible; } .project-report { position:absolute; left:0; top:0; width:100%; padding:12px; } .project-report :is(button,input,select) { display:none; } }

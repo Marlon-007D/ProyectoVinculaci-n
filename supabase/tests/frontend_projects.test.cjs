@@ -83,11 +83,11 @@ test('transparencia renderiza solo el resumen público y no presenta totales dur
  const visuals=load('src/modules/projects/ProjectVisuals.tsx',{'./projectValidation':money,'./projectPresentation':presentation,'react/jsx-runtime':jsx});
  function render(pending){
   const rows=[{project_id:'p-a',title:'Huerto público',description:'Objetivo aprobado',is_active:true,total_budget:1000,spent:250,balance:750,participants:'PERSONA PRIVADA',receipt:'COMPROBANTE PRIVADO'}];
-  const values=['escuela',0,0,{revision:0,rows:[{name:'Escuela de prueba',slug:'escuela'}],error:''},pending?null:{key:'escuela:0',rows,error:'',checkedAt:'20 oct 2026'},'','all','name','cards',''];let i=0;
+  const values=[0,0,pending?null:{key:'escuela:0',rows,error:'',checkedAt:'20 oct 2026'},'','all','name','cards',''];let i=0;
   const {PublicProjects}=load('src/modules/projects/PublicProjects.tsx',{'react':{...react,useEffect:()=>{},useState:()=>[values[i++],()=>{}]},'../../core/supabase/publicClient':{publicSupabase:{}},'../site/services/portalUpdates':{watchPortalUpdates:()=>()=>{}},'./projectValidation':money,'./projectPresentation':presentation,'./ProjectVisuals':visuals,'./projects.css':{},'react/jsx-runtime':jsx});
-  return require('react-dom/server').renderToStaticMarkup(react.createElement(PublicProjects));
+  return require('react-dom/server').renderToStaticMarkup(react.createElement(PublicProjects,{institutionSlug:'escuela',institutionName:'Escuela de prueba'}));
  }
- const html=render(false);assert.ok(html.includes('Huerto público'));assert.ok(html.includes('Escuela de prueba'));assert.ok(!html.includes('PERSONA PRIVADA'));assert.ok(!html.includes('COMPROBANTE PRIVADO'));
+ const html=render(false);assert.ok(!html.includes('Selecciona una institución'));assert.ok(html.includes('Huerto público'));assert.ok(html.includes('Escuela de prueba'));assert.ok(!html.includes('PERSONA PRIVADA'));assert.ok(!html.includes('COMPROBANTE PRIVADO'));
  const pending=render(true);assert.ok(pending.includes('Consultando información pública'));assert.ok(!pending.includes('Saldo por ejecutar'));assert.ok(!pending.includes('Huerto público'));
 });
 const images=load('src/modules/portal-editor/assetValidation.ts');
