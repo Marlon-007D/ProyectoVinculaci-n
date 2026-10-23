@@ -1,8 +1,11 @@
+import { menuIdentity, validateMenuHierarchy } from './portalMenus';
+import { institutionalMenuEntries } from '../site/utils/institutionalNavigation';
 import { supabase } from '../../core/supabaseClient';
 import { getUserInstitutions } from '../projects/integration/accessService';
-import { newSnapshot, normalizeSnapshot, safeUrl, sectionTypes, type PortalSnapshot } from './contract';
+import { newSnapshot, normalizeSnapshot, safeUrl, sectionTypes, withCurrentIdentity, type PortalSnapshot } from './contract';
 import { parseSnapshot } from '../site/utils/snapshot';
 import type { Json } from '../site/types/common';
+import { notifyPortalPublished } from '../site/services/portalUpdates';
 
 export interface PortalDraft { page_id:string;revision:number;status:string;snapshot:PortalSnapshot;published_slug?:string }
 interface PageRow {page_id:string;institution_id:string;title:string;slug:string;status:string;is_homepage:boolean}
@@ -10,7 +13,7 @@ interface VersionRow {publication_version_id:string;page_id:string;version_numbe
 async function actor(institutionId:string,publish=false){
   const {data,error}=await supabase.auth.getUser();if(error)throw error;if(!data.user)throw new Error('Inicia sesión para editar.');
   const institutions=await getUserInstitutions(data.user.id);const institution=institutions.find(i=>i.institution_id===institutionId);
-  const roles=publish?['super_admin','institution_admin']:['super_admin','institution_admin','editor'];
+  const roles=publish?['super_admin','institution_admin']:['super_admin','institution_admin','editor','content_editor'];
   if(!institution||!roles.includes(institution.role)||!institution.enabled_modules?.includes('portal'))throw new Error('Tu cuenta no tiene permiso para esta operación del portal.');
   return data.user;
 }
@@ -27,14 +30,14 @@ export async function loadSectionCatalog():Promise<PortalSectionOption[]>{
 export async function loadPortalConfiguration(institutionId:string,institutionName:string):Promise<PortalSnapshot>{
   const base=newSnapshot(institutionName);
   const [settings,menus]=await Promise.all([
-    supabase.from('site_settings').select('site_title,logo_url,footer_text,theme_id').eq('institution_id',institutionId).maybeSingle(),
-    supabase.from('menus').select('label,url').eq('institution_id',institutionId).order('position'),
+    supabase.from('site_settings').select('site_title,logo_url,footer_text,contact_email,contact_phone,social_links,theme_id').eq('institution_id',institutionId).maybeSingle(),
+    supabase.from('menus').select('menu_id,parent_id,is_visible,label,url').eq('institution_id',institutionId).order('position'),
   ]);
   for(const result of [settings,menus])if(result.error)throw result.error;
-  if(settings.data){base.settings={site_title:settings.data.site_title,logo_url:settings.data.logo_url??'',footer_text:settings.data.footer_text??''};
+  if(settings.data){base.settings={site_title:settings.data.site_title,logo_url:settings.data.logo_url??'',footer_text:settings.data.footer_text??'',contact_email:settings.data.contact_email??'',contact_phone:settings.data.contact_phone??'',social_links:settings.data.social_links??{}};
     if(settings.data.theme_id){const theme=await supabase.from('themes').select('primary_color,secondary_color,font_family,appearance_config').eq('institution_id',institutionId).eq('theme_id',settings.data.theme_id).single();if(theme.error)throw theme.error;base.theme={primary_color:theme.data.primary_color,secondary_color:theme.data.secondary_color,font_family:theme.data.font_family};const template=theme.data.appearance_config?.template;if(['classic','cards','editorial'].includes(template))base.template=template;}
   }
-  base.menus=menus.data??[];return base;
+  base.menus=menuIdentity((menus.data??[]).map(menu=>({...menu,id:menu.menu_id})));return base;
 }
 async function existingSnapshot(page:PageRow):Promise<PortalSnapshot>{
   const institution=await supabase.from('institutions').select('name').eq('institution_id',page.institution_id).single();if(institution.error)throw institution.error;
@@ -51,11 +54,18 @@ export async function listPortalPages(institutionId:string):Promise<PortalDraft[
     const versions=await pageVersions(page.page_id);const latest=versions[0];
     const draft=await supabase.from('portal_editor_drafts').select('revision,snapshot').eq('page_id',page.page_id).maybeSingle();if(draft.error)throw draft.error;
     const published_slug=page.status==='published'?page.slug:undefined;
-    if(draft.data)return {page_id:page.page_id,status:page.status,revision:draft.data.revision,snapshot:draft.data.snapshot as PortalSnapshot,published_slug};
-    return {page_id:page.page_id,status:page.status,revision:latest?.version_number??0,snapshot:latest?.content_snapshot?.schema_version===1?latest.content_snapshot:await existingSnapshot(page),published_slug};
+    const config=await loadPortalConfiguration(institutionId,'');
+    const complete=(value:PortalSnapshot):PortalSnapshot=>{
+      const current=withCurrentIdentity(value,config);
+      return {...current,menus:menuIdentity(current.menus)};
+    };
+    if(draft.data)return {page_id:page.page_id,status:page.status,revision:draft.data.revision,snapshot:complete(draft.data.snapshot as PortalSnapshot),published_slug};
+    return {page_id:page.page_id,status:page.status,revision:latest?.version_number??0,snapshot:latest?.content_snapshot?.schema_version===1?complete(latest.content_snapshot):await existingSnapshot(page),published_slug};
   }));
 }
 function validate(snapshot:PortalSnapshot){
+  validateMenuHierarchy(snapshot.menus);
+  for(const url of Object.values(snapshot.settings.social_links??{}))if(!/^https:\/\//.test(url)||!safeUrl(url))throw new Error('Las redes sociales deben usar direcciones HTTPS.');
   if(!snapshot.title.trim()||snapshot.title.length>255||!snapshot.settings.site_title.trim()||snapshot.settings.site_title.length>255)throw new Error('Completa el título y el nombre institucional, con hasta 255 caracteres.');
   if(!snapshot.theme.font_family.trim()||snapshot.theme.font_family.length>100)throw new Error('Introduce una tipografía de hasta 100 caracteres.');
   if(!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(snapshot.slug)||snapshot.slug.length>100)throw new Error('Usa una ruta en minúsculas, con números o guiones.');
@@ -68,12 +78,21 @@ function validate(snapshot:PortalSnapshot){
 }
 /** The server saves a private draft or publishes the entire configuration atomically. */
 export async function savePortal(institutionId:string,pageId:string|null,expectedRevision:number,snapshot:PortalSnapshot,publish:boolean):Promise<PortalDraft>{
-  snapshot=normalizeSnapshot(snapshot);
+  snapshot=normalizeSnapshot({...snapshot,menus:menuIdentity(snapshot.menus)});
   validate(snapshot);await actor(institutionId,publish);
+  snapshot={...snapshot,menus:institutionalMenuEntries()};
+  const capability=await supabase.rpc('portal_editor_content_version');
+  if(capability.error||capability.data!==2)throw new Error('Falta aplicar ACTUALIZAR_EDITOR_PORTAL.sql para guardar contacto y submenús sin perder información.');
+  if(publish){
+    const retention=await supabase.rpc('portal_editor_retention_version');
+    if(retention.error||retention.data!==1)throw new Error('La conservación del historial todavía no está habilitada. No se ha publicado ningún cambio.');
+  }
   const {data,error}=await supabase.rpc('portal_editor_save',{
     target_institution:institutionId,target_page:pageId,expected_revision:expectedRevision,snapshot,publish,
   });
-  if(error)throw error;return data as PortalDraft;
+  if(error)throw error;
+  if(publish)notifyPortalPublished(institutionId);
+  return data as PortalDraft;
 }
 export async function loadPublishedPortal(institutionSlug:string,pageSlug:string|null){
   const institution=await supabase.from('institutions').select('institution_id,slug').eq('slug',institutionSlug).eq('is_active',true).maybeSingle();if(institution.error)throw institution.error;if(!institution.data)return null;

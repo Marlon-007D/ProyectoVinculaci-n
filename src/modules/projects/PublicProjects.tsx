@@ -1,8 +1,9 @@
 import {moduleClass} from './projectStyles';
 import { useEffect, useState } from 'react';
 import { Building2, Globe2, LayoutGrid, Link, Printer, RefreshCw, Search, ShieldCheck, Table2 } from 'lucide-react';
-import { supabase } from '../../core/supabaseClient';
+import { publicSupabase as supabase } from '../../core/supabase/publicClient';
 import { sumMoney } from './projectValidation';
+import { watchPortalUpdates } from '../site/services/portalUpdates';
 import { filterProjectList, formatMoney } from './projectPresentation';
 import { FinancialProgress, ProjectBadge, ProjectEmpty, ProjectLoading, ProjectMetrics } from './ProjectVisuals';
 interface Summary {
@@ -18,9 +19,11 @@ interface PublicInstitution {
     name: string;
     slug: string;
 }
-export function PublicProjects() {
-    const [slug, setSlug] = useState(() => new URLSearchParams(location.search).get('institution') ?? '');
+export function PublicProjects({ institutionSlug, institutionName }: { institutionSlug?: string; institutionName?: string } = {}) {
+    const [slug, setSlug] = useState(() => institutionSlug ?? new URLSearchParams(location.search).get('institution') ?? '');
     const [revision, setRevision] = useState(0);
+    const [refreshTick, setRefreshTick] = useState(0);
+    useEffect(() => watchPortalUpdates(slug, () => setRefreshTick(value => value + 1)), [slug]);
     const [institutions, setInstitutions] = useState<{
         revision: number;
         rows: PublicInstitution[];
@@ -40,6 +43,10 @@ export function PublicProjects() {
     const key = `${slug}:${revision}`;
     useEffect(() => {
         let active = true;
+        if (institutionSlug) {
+            setInstitutions({ revision, rows: [{ slug: institutionSlug, name: institutionName ?? institutionSlug }], error: '' });
+            return;
+        }
         void (async () => {
             try {
                 const result = await supabase.rpc('project_public_institutions');
@@ -54,7 +61,7 @@ export function PublicProjects() {
             }
         })();
         return () => { active = false; };
-    }, [revision]);
+    }, [revision, institutionSlug, institutionName]);
     useEffect(() => {
         if (!slug)
             return;
@@ -76,7 +83,7 @@ export function PublicProjects() {
             }
         })();
         return () => { active = false; };
-    }, [slug, key]);
+    }, [slug, key, refreshTick]);
     const list = institutions?.revision === revision ? institutions : null;
     const current = state?.key === key ? state : null;
     const rows = current?.rows ?? [];
@@ -106,7 +113,7 @@ export function PublicProjects() {
     }
     return <div className={moduleClass("project-panel project-public")}>
     <header className={moduleClass("project-hero public-hero")}><div className={moduleClass("project-hero-copy")}><p className={moduleClass("project-eyebrow")}><Globe2 size={14} aria-hidden="true"/>TRANSPARENCIA INSTITUCIONAL</p><h1>Información abierta.<br />Una comunidad informada.</h1><p>Conoce los proyectos aprobados para publicación y consulta cómo se utilizan sus presupuestos.</p><span className={moduleClass("public-trust")}><ShieldCheck size={16} aria-hidden="true"/>Resúmenes aprobados por la institución</span></div><div className={moduleClass("public-hero-symbol")} aria-hidden="true"><Building2 size={72} strokeWidth={1}/><span>PROYECTOS · RECURSOS · COMUNIDAD</span></div></header>
-    <div className={moduleClass("public-institution-bar")}><div className={moduleClass("public-institution-icon")}><Building2 size={22} aria-hidden="true"/></div><label>Institución<select disabled={!list} value={slug} onChange={event => selectInstitution(event.target.value)}><option value="">{!list ? 'Cargando instituciones…' : 'Selecciona una institución'}</option>{slug && !list?.rows.some(item => item.slug === slug) && <option value={slug}>{slug}</option>}{list?.rows.map(item => <option key={item.slug} value={item.slug}>{item.name}</option>)}</select></label><button disabled={!list || Boolean(slug && !current)} onClick={() => { setCopyMessage(''); setRevision(value => value + 1); }}><RefreshCw size={16} aria-hidden="true"/>Actualizar</button></div>
+    <div className={moduleClass("public-institution-bar")}><div className={moduleClass("public-institution-icon")}><Building2 size={22} aria-hidden="true"/></div><label>Institución<select disabled={Boolean(institutionSlug) || !list} value={slug} onChange={event => selectInstitution(event.target.value)}><option value="">{!list ? 'Cargando instituciones…' : 'Selecciona una institución'}</option>{slug && !list?.rows.some(item => item.slug === slug) && <option value={slug}>{slug}</option>}{list?.rows.map(item => <option key={item.slug} value={item.slug}>{item.name}</option>)}</select></label><button disabled={!list || Boolean(slug && !current)} onClick={() => { setCopyMessage(''); setRevision(value => value + 1); }}><RefreshCw size={16} aria-hidden="true"/>Actualizar</button></div>
     {error && <div className={moduleClass("project-error")} role="alert"><strong>No pudimos cargar la información</strong><p>{error}</p><button onClick={() => setRevision(value => value + 1)}>Reintentar consulta</button></div>}
     {!slug && !error && <ProjectEmpty title="Explora los proyectos de tu institución">Selecciona una institución para consultar presupuestos, gastos registrados y saldos de sus proyectos públicos.</ProjectEmpty>}
     {slug && (!current || !list) && !error && <ProjectLoading label="Consultando información pública…"/>}

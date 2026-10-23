@@ -1,4 +1,5 @@
 import type { CSSProperties, ReactNode } from "react";
+import type { SocialLink } from '../../types/site';
 import { Link, useLocation } from "react-router-dom";
 import { useSite } from "../../hooks/useSite";
 import { useInstitution } from "../../context/InstitutionContext";
@@ -9,6 +10,7 @@ import { EventsSection, HonorsSection, NewsSection, StaffSection } from "../Cont
 import { EXTERNAL_SECTION_TYPES, ExternalSection } from "../External/ExternalSection";
 import { GallerySection, galleryItems } from "../Gallery/GallerySection";
 import "../../styles/sections.css";
+import templateStyles from './PageSections.module.css';
 
 type Item = { title?: string; description?: string; url?: string };
 
@@ -121,15 +123,16 @@ function standardHomepageSections(sections: PageSection[], institutionName: stri
   return [...visible, ...additions].sort((a, b) => a.position - b.position);
 }
 
-function SocialSection({ title = "Síguenos" }: { title?: string }) {
+function SocialSection({ title = "Síguenos", social }: { title?: string; social?: SocialLink[] }) {
   const { config } = useSite();
-  if (config.social.length === 0) return null;
+  const links = social ?? config.social;
+  if (links.length === 0) return null;
   return (
     <section className="site-section site-block">
       <div className="site-container">
         <h2>{title}</h2>
         <ul className="site-chips">
-          {config.social.map((s) => (
+          {links.map((s) => (
             <li key={s.url}>
               <a className="site-btn" href={s.url} target="_blank" rel="noopener noreferrer">
                 {s.label}<span className="site-sr-only"> (se abre en una pestaña nueva)</span>
@@ -142,9 +145,9 @@ function SocialSection({ title = "Síguenos" }: { title?: string }) {
   );
 }
 
-function Section({ s, isHomepage, isPrimaryHomepageHero = false }: { s: PageSection; isHomepage: boolean; isPrimaryHomepageHero?: boolean }) {
+function Section({ s, social, isHomepage, isPrimaryHomepageHero = false }: { s: PageSection; social?: SocialLink[]; isHomepage: boolean; isPrimaryHomepageHero?: boolean }) {
   const p = s.properties;
-  const title = s.type === "events" ? "Eventos" : asString(p.title);
+  const title = asString(p.title);
   const limit = typeof p.limit === "number" && p.limit > 0 ? Math.min(p.limit, 24) : undefined;
 
   if (s.type === "banner" || s.type === "hero") {
@@ -175,12 +178,17 @@ function Section({ s, isHomepage, isPrimaryHomepageHero = false }: { s: PageSect
 
   if (s.type === "news") return <NewsSection title={title} limit={limit} />;
   if (s.type === "events") return <EventsSection title={title} limit={limit} />;
-  if (s.type === "staff") return <StaffSection title={title} />;
+  if (s.type === "staff" && p.source !== 'manual') return <StaffSection title={title} />;
   if (s.type === "honors") return <HonorsSection title={title} limit={limit} />;
-  if (s.type === "social_links") return <SocialSection title={title} />;
+  if (s.type === "social_links") return <SocialSection title={title} social={social} />;
 
-  if (s.type === "gallery")
+  if (s.type === "gallery") {
+    const pictures = Array.isArray(p.items) ? p.items.filter((item): item is Record<string, unknown> => !!item && typeof item === 'object' && typeof item.image_url === 'string' && SAFE_IMAGE.test(item.image_url)) : [];
+    if (pictures.length) return <section className="site-section site-block"><div className="site-container">{title && <h2>{title}</h2>}<ul className="site-gallery">{pictures.map((item,index)=><li className="site-gallery__item" key={index}><figure><img src={String(item.image_url)} alt={asString(item.alt) ?? ''} loading="lazy" />{asString(item.caption) && <figcaption>{asString(item.caption)}</figcaption>}</figure></li>)}</ul></div></section>;
+    const image = asString(p.image_url);
+    if (image && SAFE_IMAGE.test(image)) return <section className="site-section site-block"><div className="site-container">{title && <h2>{title}</h2>}<ul className="site-gallery"><li className="site-gallery__item"><figure><img src={image} alt={asString(p.alt) ?? ''} loading="lazy" />{asString(p.body) && <figcaption>{asString(p.body)}</figcaption>}</figure></li></ul></div></section>;
     return <GallerySection title={title} items={galleryItems(p.items)} limit={limit} />;
+  }
 
   if (EXTERNAL_SECTION_TYPES.includes(s.type)) return <ExternalSection type={s.type} title={title} properties={p} />;
 
@@ -206,13 +214,16 @@ function Section({ s, isHomepage, isPrimaryHomepageHero = false }: { s: PageSect
     );
 
   const eyebrow = asString(p.eyebrow);
+  const image = asString(p.image_url);
   const tone = p.tone === "dark" ? " site-block--dark" : p.tone === "tint" ? " site-block--tint" : "";
   return (
     <section className={`site-section site-block${tone}`}>
       <div className="site-container">
         {eyebrow && <p className="site-eyebrow">{eyebrow}</p>}
         {title && <h2>{title}</h2>}
+        {image && SAFE_IMAGE.test(image) && <figure><img src={image} alt={asString(p.alt) ?? ''} loading="lazy" /></figure>}
         <Paragraphs text={body} />
+        {asString(p.url) && <SafeLink url={String(p.url)} className="site-btn">{asString(p.link_label) || 'Consultar'}</SafeLink>}
         {list.length > 0 && p.layout === "stats" ? (
           <ul className="site-stats">
             {list.map((it, i) => (
@@ -238,16 +249,17 @@ function Section({ s, isHomepage, isPrimaryHomepageHero = false }: { s: PageSect
   );
 }
 
-export function PageSections({ sections, isHomepage = false }: { sections: PageSection[]; isHomepage?: boolean }) {
+export function PageSections({ sections, isHomepage = false, managed = false, template = 'classic', social }: { sections: PageSection[]; isHomepage?: boolean; managed?: boolean; template?: 'classic' | 'cards' | 'editorial'; social?: SocialLink[] }) {
   const location = useLocation();
   const { institution } = useInstitution();
   const query = new URLSearchParams(location.search);
   const onHomepage = isHomepage || !query.has("slug");
   const isElEsfuerzo = institution?.slug.toLocaleLowerCase("es") === "ue-el-esfuerzo" || normalizeText(institution?.name).includes("el esfuerzo");
-  const visible = onHomepage && isElEsfuerzo
+  const visible = !managed && onHomepage && isElEsfuerzo
     ? standardHomepageSections(sections, institution?.name || "nuestra institución")
     : sections.filter((s) => s.is_visible).sort((a, b) => a.position - b.position);
   if (visible.length === 0) return <p className="site-container site-section">Esta página aún no tiene contenido.</p>;
   const primaryHeroId = onHomepage ? visible.find((section) => section.type === "banner" || section.type === "hero")?.id : undefined;
-  return <>{visible.map((s) => <Section key={s.id} s={s} isHomepage={onHomepage} isPrimaryHomepageHero={s.id === primaryHeroId} />)}</>;
+  const content = visible.map((s) => <Section key={s.id} s={s} social={social} isHomepage={onHomepage} isPrimaryHomepageHero={s.id === primaryHeroId} />);
+  return template === 'classic' ? <>{content}</> : <div className={templateStyles[template]}>{content}</div>;
 }
