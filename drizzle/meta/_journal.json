@@ -50,6 +50,13 @@
       "when": 1792267900999,
       "tag": "0006_invoice_session_persistence",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1792713600000,
+      "tag": "0009_admin_membership_requests",
+      "breakpoints": true
     }
   ]
 }
