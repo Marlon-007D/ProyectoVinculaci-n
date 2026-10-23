@@ -63,6 +63,14 @@
 .btnActive, .btnInactive { padding: .42rem .65rem; border: 1px solid #cce9dc; border-radius: 999px; background: #effaf4; color: #14734c; font-size: .68rem; font-weight: 750; cursor: pointer; }
 .btnInactive { border-color: #f0cdca; background: #fff5f4; color: #a83232; }
 .loadingState { padding: 1.5rem; color: #718096; text-align: center; }
+.skeletonRow td { height: 5.2rem; }
+.skeleton { display: block; height: .85rem; border-radius: .5rem; background: linear-gradient(90deg, #edf1f4 20%, #f7f9fa 38%, #edf1f4 60%); background-size: 220% 100%; animation: skeleton-shimmer 1.35s ease-in-out infinite; }
+.skeletonInstitution { width: min(13rem, 90%); height: 1.1rem; }
+.skeletonSlug { width: 6.5rem; height: 2rem; }
+.skeletonModules { width: 8rem; }
+.skeletonStatus { width: 4.5rem; height: 1.8rem; border-radius: 999px; }
+.skeletonAction { width: 9.5rem; height: 2.3rem; }
+@keyframes skeleton-shimmer { to { background-position: -220% 0; } }
 
 .modalBackdrop { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: 1rem; background: rgba(8, 24, 41, .62); backdrop-filter: blur(4px); }
 .confirmModal { width: min(100%, 32rem); padding: 1.75rem; border: 1px solid #dce4eb; border-radius: 1.1rem; background: white; box-shadow: 0 24px 70px rgba(4, 20, 38, .28); }

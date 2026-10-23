@@ -13,8 +13,8 @@ import { HonorsPage } from '../../features/honors/pages/HonorsPage'
 import { AcademicPeriodsPage } from '../../features/academic-periods/pages/AcademicPeriodsPage'
 import { SchoolCoursesPage } from '../../features/courses/pages/SchoolCoursesPage'
 import { SchoolModuleSkeleton } from '../../features/courses/components/SchoolModuleSkeleton'
-import { schoolModulesMock } from '../../features/courses/mocks/schoolModulesMock'
-import { schoolCoursesMock } from '../../features/courses/mocks/schoolCoursesMock'
+import { useCourseCategories } from '../../features/courses/hooks/useCourseCategories'
+import { useSchoolCourses } from '../../features/courses/hooks/useSchoolCourses'
 import type { BreadcrumbItem } from '../../shared/components/AppHeader/AppHeader'
 import { InvoicePageSkeleton } from '../../features/simulators/invoice/pages/InvoicePageSkeleton'
 import { ConverterPageSkeleton } from '../../features/simulators/converter/pages/ConverterPageSkeleton'
@@ -60,6 +60,8 @@ const routeSkeletons: Record<AppRoute, () => ReactNode> = {
 }
 
 export function AppRouter({ collapsed, theme, onThemeChange, onToggleSidebar }: Props) {
+  const { courses: schoolCourses } = useSchoolCourses()
+  const { categories: schoolModules } = useCourseCategories()
   const [route, setRoute] = useState<AppRoute>('home')
   const [invoiceSection, setInvoiceSection] = useState<'emission' | 'history'>('emission')
   const [invoiceCount, setInvoiceCount] = useState(0)
@@ -93,7 +95,7 @@ export function AppRouter({ collapsed, theme, onThemeChange, onToggleSidebar }: 
   }
   const selectCourse = (courseId: string) => {
     setSelectedCourseId(courseId)
-    setCourseTopicName(schoolCoursesMock.find(course => course.id === courseId)?.units[0]?.title ?? null)
+    setCourseTopicName(schoolCourses.find(course => course.id === courseId)?.units[0]?.title ?? null)
     setEvaluationActive(false)
     navigateTo('school-courses')
   }
@@ -108,8 +110,8 @@ export function AppRouter({ collapsed, theme, onThemeChange, onToggleSidebar }: 
     if (navigationTimer.current !== null) window.clearTimeout(navigationTimer.current)
   }, [])
   const showPostPreview = (entry: AcademicContentEntry) => setPreviewEntry(entry)
-  const selectedCourse = schoolCoursesMock.find(course => course.id === selectedCourseId)
-  const selectedModule = schoolModulesMock.find(module => module.id === selectedModuleId)
+  const selectedCourse = schoolCourses.find(course => course.id === selectedCourseId)
+  const selectedModule = schoolModules.find(module => module.id === selectedModuleId)
   const openCourses = () => { setSelectedCourseId(null); setSelectedModuleId(null); setCourseTopicName(null); setEvaluationActive(false); navigateTo('school-courses') }
   const breadcrumbs: BreadcrumbItem[] = displayedRoute === 'school-courses' ? [
     { label: 'Cursos', onClick: selectedModule || selectedCourse ? openCourses : undefined },

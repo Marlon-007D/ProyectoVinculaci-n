@@ -38,6 +38,30 @@ export function buildMenuTree(items: Menu[]): MenuNode[] {
   return roots;
 }
 
+const normalizeLabel = (label: string) =>
+  label.trim().toLocaleLowerCase("es").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+export function standardizePublicMenu(tree: MenuNode[]): MenuNode[] {
+  const institution = tree.find((node) => normalizeLabel(node.label) === "institucion");
+  if (!institution) return tree;
+
+  const sectionLabels = new Set(["nosotros", "oferta educativa"]);
+  const topSections = tree.filter((node) => sectionLabels.has(normalizeLabel(node.label)));
+  if (topSections.length === 0) return tree;
+
+  const existingLabels = new Set(institution.children.map((node) => normalizeLabel(node.label)));
+  const movedSections = topSections
+    .filter((node) => !existingLabels.has(normalizeLabel(node.label)))
+    .map((node) => ({ ...node, parent_id: institution.menu_id, depth: institution.depth + 1 }));
+  const children = [...institution.children, ...movedSections]
+    .sort(byPosition)
+    .map((node) => ({ ...node, depth: institution.depth + 1 }));
+
+  return tree
+    .filter((node) => !topSections.includes(node))
+    .map((node) => node === institution ? { ...node, children } : node);
+}
+
 export function flattenLeaves(tree: MenuNode[]): MenuNode[] {
   return tree.flatMap((n) => (n.children.length ? flattenLeaves(n.children) : [n]));
 }

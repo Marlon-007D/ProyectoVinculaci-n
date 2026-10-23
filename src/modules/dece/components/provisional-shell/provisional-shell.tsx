@@ -1,12 +1,12 @@
 ﻿import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
-  faEllipsis,
   faHeartPulse,
   faHouse,
   faUsers,
   faFileLines,
   faInbox,
   faHeart,
+  faRightFromBracket,
 } from '@fortawesome/free-solid-svg-icons'
 import type { ReactNode } from 'react'
 import { useState } from 'react'
@@ -15,10 +15,11 @@ import type { DeceScreen } from '../../types/screen'
 type Props = {
   screen: DeceScreen
   onNavigate: (screen: DeceScreen) => void
+  onLogout: () => Promise<void>
   children: ReactNode
 }
 
-export default function ProvisionalShell({ screen, onNavigate, children }: Props) {
+export default function ProvisionalShell({ screen, onNavigate, onLogout, children }: Props) {
   const [menuOpen, setMenuOpen] = useState(false)
 
   return (
@@ -83,27 +84,21 @@ export default function ProvisionalShell({ screen, onNavigate, children }: Props
           <b>Un espacio para acompañar</b>
           <p>Información y seguimiento para el bienestar de cada estudiante.</p>
         </div>
-        <div className="profile">
-          <div className="avatar">DE</div>
-          <div>
-            <b>Equipo DECE</b>
-            <small>Unidad educativa</small>
+        <div className="sidebar-footer">
+          <div className="profile" aria-label="Perfil: Equipo DECE, Unidad educativa">
+            <div className="avatar">DE</div>
+            <div>
+              <b>Equipo DECE</b>
+              <small>Unidad educativa</small>
+            </div>
           </div>
-          <span className="profile-dots">
-            <FontAwesomeIcon icon={faEllipsis} aria-hidden="true" />
-          </span>
+          <button type="button" className="sidebar-logout" onClick={() => void onLogout()}>
+            <FontAwesomeIcon icon={faRightFromBracket} aria-hidden="true" />
+            Salir
+          </button>
         </div>
       </aside>
       <main className="main-area">
-        <header className="topbar">
-          <div className="crumb">
-            Unidad Educativa <span>/</span> <b>DECE</b>
-          </div>
-          <div className="top-actions">
-            <span className="today">Año lectivo 2025–2026</span>
-            <div className="avatar small">DE</div>
-          </div>
-        </header>
         {children}
       </main>
     </>

@@ -9,6 +9,7 @@
     "deploy": "npm run build && vercel --prod",
     "db:backup-public": "node scripts/backup-public-schema.mjs",
     "db:migrate": "node scripts/apply-drizzle-migrations.mjs",
+    "db:seed:course-catalog": "node --experimental-strip-types scripts/seed-course-catalog.ts",
     "db:generate": "drizzle-kit generate --name baseline_invoice_catalog",
     "db:seed:invoice-catalog": "node --experimental-strip-types scripts/seed-invoice-products.ts",
     "test:db-security": "node --test tests/integration/database-security.test.mjs",

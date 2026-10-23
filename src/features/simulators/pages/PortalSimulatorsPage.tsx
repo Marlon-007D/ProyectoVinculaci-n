@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { Home, FileText, FolderOpen } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
 import { ConverterPage } from '../converter/pages/ConverterPage'
 import { InterestSimulatorPage } from '../interest/pages/InterestSimulatorPage'
@@ -36,15 +35,15 @@ export function PortalSimulatorsPage() {
     <div className="portal-simulators">
       <div className="portal-simulators-toolbar">
         <button className="portal-simulators-back" type="button" onClick={returnToHub}>
-          <Home size={19} aria-hidden="true" /> Inicio
+          <span className="portal-material-icon" aria-hidden="true">home</span> Inicio
         </button>
         {selected === 'invoice' && (
           <nav className="portal-invoice-tabs" aria-label="Secciones de facturación" role="tablist">
             <button type="button" role="tab" aria-selected={invoiceSection === 'emission'} onClick={() => setInvoiceSection('emission')}>
-              <FileText size={17} aria-hidden="true" /> Emisión
+              <span className="portal-material-icon" aria-hidden="true">description</span> Emisión
             </button>
             <button type="button" role="tab" aria-selected={invoiceSection === 'history'} onClick={() => setInvoiceSection('history')}>
-              <FolderOpen size={17} aria-hidden="true" /> Facturas <span>{invoiceCount}</span>
+              <span className="portal-material-icon" aria-hidden="true">folder_open</span> Facturas <span>{invoiceCount}</span>
             </button>
           </nav>
         )}

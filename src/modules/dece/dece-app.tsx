@@ -11,6 +11,7 @@ import FormSubmissionsPage from './pages/form-submissions-page'
 import CasesPage from './pages/cases-page'
 import { useDeceData } from './services/dece-data-context'
 import { createDeceFormService } from './services/form-service'
+import { useAuth } from '../../core/AuthContext'
 import type { DeceScreen, Student } from './types'
 type FormTemplate = { code: string; name: string }
 
@@ -31,6 +32,7 @@ function screenForRoute(section: string): DeceScreen {
 export default function DeceApp() {
   const appShellRef = useRef<HTMLDivElement>(null)
   const integration = useDeceData()
+  const { logout } = useAuth()
   const [firstName, setFirstName] = useState('')
   const [formSetupError, setFormSetupError] = useState('')
   const [formSetupRetry, setFormSetupRetry] = useState(0)
@@ -156,7 +158,7 @@ export default function DeceApp() {
 
   return (
     <div ref={appShellRef} className={styles.appShell}>
-      <ProvisionalShell screen={screen} onNavigate={routeTo}>
+      <ProvisionalShell screen={screen} onNavigate={routeTo} onLogout={logout}>
         {formSetupLoading && <div className="notice" role="status">Preparando las fichas general y de autorización…</div>}
         {formSetupError && <div className="notice sensitive" role="alert">{formSetupError}<button className="button btn secondary ms-2" type="button" onClick={() => setFormSetupRetry(value => value + 1)}>Reintentar</button></div>}
         {screen === 'home' && (

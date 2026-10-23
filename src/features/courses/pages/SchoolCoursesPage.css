@@ -1,4 +1,14 @@
 .school-courses-page { padding-top: 12px; }
+.school-course-loading-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:18px; max-width:1200px; margin:18px auto; }
+.school-course-loading-card { display:grid; align-content:start; gap:12px; min-height:250px; padding:16px; border:1px solid var(--line,#e5e7eb); border-radius:18px; background:var(--surface,#fff); }
+.school-course-loading-card i,.school-course-loading-card b,.school-course-loading-card small { display:block; border-radius:10px; background:linear-gradient(100deg,#edf1f4 25%,#f8fafb 42%,#edf1f4 62%); background-size:220% 100%; animation:school-course-shimmer 1.25s ease-in-out infinite; }
+.school-course-loading-card i { height:145px; }
+.school-course-loading-card b { width:68%; height:17px; }
+.school-course-loading-card small { width:92%; height:12px; }
+@keyframes school-course-shimmer { to { background-position:-220% 0; } }
+@media(max-width:900px){.school-course-loading-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:620px){.school-course-loading-grid{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:reduce){.school-course-loading-card i,.school-course-loading-card b,.school-course-loading-card small{animation:none}}
 .school-courses-header { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-bottom: 26px; }
 .school-courses-kicker { display: inline-flex; align-items: center; gap: 7px; color: var(--accent); font-size: 13px; font-weight: 700; }
 .school-courses-header h1 { margin: 9px 0 6px; color: #342d39; font: 600 clamp(27px,3vw,34px) 'Outfit',sans-serif; }

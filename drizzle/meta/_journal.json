@@ -50,6 +50,55 @@
       "when": 1792267900999,
       "tag": "0006_invoice_session_persistence",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1792615622318,
+      "tag": "0007_add_course_catalog",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1792615722318,
+      "tag": "0008_course_catalog_data",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1792697585843,
+      "tag": "0009_official_distinctions",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1792697978778,
+      "tag": "0010_secure_public_honors",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1792698844435,
+      "tag": "0011_grant_honors_read_access",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1792699300297,
+      "tag": "0012_superadmin_honors_access",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1792704445838,
+      "tag": "0013_seed_invoice_product_catalog",
+      "breakpoints": true
     }
   ]
 }
