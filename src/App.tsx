@@ -1,3 +1,4 @@
+import { ProjectSessionHost, isPrivateProjectsPath } from './modules/projects/integration/ProjectSessionHost';
 import { lazy, Suspense, useMemo } from 'react';
 import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation, useParams } from 'react-router-dom';
 import { AuthProvider, useAuth } from './core/AuthContext';
@@ -96,7 +97,7 @@ function RoutesWithAuth() {
     || (location.pathname.startsWith('/proyectos') && !new URLSearchParams(location.search).has('transparency'));
   if (user && (mfaRequired || mfaEnrollmentRequired) && protectedRoute && !mfaScreen)
     return <Navigate to={'/panel/admin' + location.search} replace />;
-  return <Routes>
+  return <><ProjectSessionHost /><Routes>
     <Route path="/panel" element={<InstitutionalPanelWithChrome />} />
     <Route path="/panel/admin" element={<AdminRoutesWithInstitutionalChrome />} />
     <Route path="/panel/superadmin" element={<AdminRoutesWithInstitutionalChrome superadminOnly />} />
@@ -116,12 +117,12 @@ function RoutesWithAuth() {
     <Route path="/:slug/mi-ficha/*" element={<SlugSessionRoute />} />
     <Route path="/:slug/admin/*" element={<SlugSessionRoute />} />
     <Route path="/:slug/sin-modulos" element={<SlugSessionRoute />} />
-    <Route path="/proyectos/*" element={modulePage} />
-    <Route path="/panel/proyectos/*" element={modulePage} />
+    <Route path="/proyectos/*" element={isPrivateProjectsPath(location.pathname, location.search) ? null : modulePage} />
+    <Route path="/panel/proyectos/*" element={isPrivateProjectsPath(location.pathname, location.search) ? null : modulePage} />
     <Route path="/panel/portal/*" element={modulePage} />
     <Route path="/portal/*" element={modulePage} />
     <Route path="/*" element={<SiteApp />} />
-  </Routes>;
+  </Routes></>;
 }
 
 export default function App() {

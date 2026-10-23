@@ -19,5 +19,6 @@ export interface PageSection {
 
 export interface PageSnapshot {
   title?: string;
+  template?: 'classic' | 'cards' | 'editorial';
   sections: PageSection[];
 }

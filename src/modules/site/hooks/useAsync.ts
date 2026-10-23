@@ -7,9 +7,10 @@ export function useAsync<T>(
   load: () => Promise<T>,
   deps: readonly unknown[],
   isEmpty: (data: T) => boolean = defaultIsEmpty,
-): { state: AsyncState<NonNullable<T>>; reload: () => void } {
+): { state: AsyncState<NonNullable<T>>; reload: () => void; refresh: () => void } {
   const [state, setState] = useState<AsyncState<NonNullable<T>>>({ status: "loading" });
   const [tick, setTick] = useState(0);
+  const [refreshTick, setRefreshTick] = useState(0);
   const [stateKey, setStateKey] = useState<{ deps: readonly unknown[]; tick: number } | null>(null);
   const stateMatchesRequest = stateKey?.tick === tick
     && stateKey.deps.length === deps.length
@@ -17,8 +18,12 @@ export function useAsync<T>(
 
   useEffect(() => {
     let cancelled = false;
-    setState({ status: "loading" });
-    setStateKey({ deps: [...deps], tick });
+    // Background updates keep the current page mounted, including active simulators.
+    const background = stateMatchesRequest;
+    if (!background) {
+      setState({ status: "loading" });
+      setStateKey({ deps: [...deps], tick });
+    }
     load()
       .then((data) => {
         if (!cancelled)
@@ -26,13 +31,15 @@ export function useAsync<T>(
       })
       .catch((err: unknown) => {
         if (!cancelled)
-          setState({ status: "error", error: err instanceof Error ? err : new Error(String(err)) });
+          setState(previous => background && previous.status === "success" ? previous
+            : { status: "error", error: err instanceof Error ? err : new Error(String(err)) });
       });
     return () => {
       cancelled = true;
     };
-  }, [...deps, tick]);
+  }, [...deps, tick, refreshTick]);
 
   const reload = useCallback(() => setTick((t) => t + 1), []);
-  return { state: stateMatchesRequest ? state : { status: "loading" }, reload };
+  const refresh = useCallback(() => setRefreshTick((t) => t + 1), []);
+  return { state: stateMatchesRequest ? state : { status: "loading" }, reload, refresh };
 }

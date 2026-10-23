@@ -1,4 +1,4 @@
-# Proyectos y transparencia: integración en develop
+# Proyectos y transparencia: diseño del portal y acceso de develop
 
 Este módulo integra gestión de proyectos, rubros, gastos, comprobantes privados, participantes, informe financiero y transparencia pública. El editor institucional está en `../portal-editor`.
 
@@ -7,15 +7,17 @@ Este módulo integra gestión de proyectos, rubros, gastos, comprobantes privado
 - `/panel/proyectos` o `/proyectos`: gestión institucional.
 - `/proyectos?transparency=1&institution=<slug>`: resúmenes públicos aprobados.
 - `/panel/portal`: editor institucional.
-- `/portal?institution=<slug>&page=<slug>`: página publicada.
+- `/?institution=<slug>&slug=<pagina>`: página publicada en el portal del equipo. Los enlaces antiguos de `/portal` redirigen aquí.
 
-El resto de rutas sigue en `SiteApp`, incluida la portada y el acceso existente a cursos. Los módulos se cargan bajo demanda y sus estilos usan CSS Modules; no importan estilos globales, rutas, administración ni proveedores de la rama anterior.
+La estructura visual procede de `feature/portal-publico`; el acceso y contrato institucional proceden de `develop`. Administración, proyectos y editor reutilizan `PrivateWorkspace` y `InstitutionSessionLayout`. La transparencia se integra en el encabezado, pie y secciones del portal público de Axel.
 
 ## Acceso
 
-`integration/ModuleSession` recibe un puerto de acceso; `sessionPort` conecta ese puerto con el cliente Supabase que ya existe en develop. Admite cuentas existentes y verificación TOTP de factores ya configurados. No registra usuarios, crea roles ni implementa administración o enrolamiento MFA.
+Proyectos y el editor consumen directamente `core/AuthContext` y `core/TenantContext`. No hay formulario, proveedor de sesión ni verificación TOTP propios. Sin sesión, se vuelve a `/login`, el acceso institucional compartido, conservando el destino solicitado.
 
-La identidad se comprueba mediante `auth.getUser()`. Antes de cargar instituciones, la sesión debe superar los requisitos de MFA y `projects_session_verified()`. Roles, membresías y módulos proceden del servidor. Una configuración ausente o un error de consulta no concede permisos. Las operaciones privadas conservan sus verificaciones RLS/RPC. El flujo de autenticación de otros módulos no fue reemplazado.
+Roles, membresías activas y módulos proceden del proveedor compartido y del servidor. Se reconocen los nombres actuales `projects_manager` y `content_editor`, además de sus alias anteriores. Las operaciones privadas siguen sujetas a RLS/RPC.
+
+Para probar sin segundo factor: `VITE_LOCAL_PASSWORD_ONLY=true` en `.env.local`. Solo actúa con Vite en desarrollo y hostname localhost, 127.0.0.1 o [::1]. No elimina factores de cuentas ni modifica políticas remotas. Si el backend exige MFA para una operación, seguirá rechazándola; el responsable de pruebas debe configurar esa cuenta en un entorno de pruebas.
 
 ## Base de datos pendiente
 
@@ -29,15 +31,16 @@ Con las dependencias del lockfile de develop:
 npm ci --ignore-scripts
 npm run build
 npm run test:security
-node --test --test-isolation=none supabase/tests/frontend_projects.test.cjs
+npm run test:projects
+npm run test:integration
 ```
 
-La suite del módulo contiene 61 pruebas: contratos de servicios, fechas/importes, filtros, aislamiento de datos públicos, borradores, acceso con identidad verificada/MFA y conservación de rutas de portada/cursos. Se conservan las pruebas de seguridad existentes del equipo. Se retiraron de la suite portada únicamente dos pruebas de `ModuleGate`, que no existe en este develop y no se incorporó a la integración.
+Las pruebas cubren contratos de servicios, fechas/importes, filtros, datos públicos, borradores, sesión compartida, aliases de roles, navegación, galería y plantillas del renderizador público. Las pruebas del antiguo adaptador de sesión se sustituyeron por las del acceso compartido.
 
 `supabase/tests/run_projects_tests.py` prueba los SQL en PostgreSQL local desechable. Requiere `PG_BIN` si PostgreSQL no está en la ubicación predeterminada y dos fixtures explícitos: `PROJECT_TEST_SCHEMA` y `PROJECT_TEST_SECURITY`, con el esquema institucional compatible y sus políticas. No contiene credenciales, no usa `.env` y no se conecta a Supabase. Los fixtures de la rama de origen se utilizaron solo para la comprobación local y no se copiaron al esquema del equipo.
 
-Queda pendiente la validación visual y funcional en navegador y contra el backend de integración. Las pruebas locales no certifican un despliegue productivo.
+El usuario confirmó que el diseño coincide con el equipo. Sigue pendiente aplicar las propuestas SQL y comprobar las nuevas ediciones y retiradas contra la base compartida. Consultar `INTEGRACION_LOCAL.md` para el recorrido y los límites de la validación.
 
 ## Lectura de los indicadores
 
-Los totales de gestión incluyen todos los proyectos visibles. Transparencia incluye solo resúmenes aprobados; los filtros no cambian los totales de la institución. La ejecución financiera mide gastos registrados, no avance de actividades. El saldo no representa una cuenta bancaria. Participantes, gastos individuales y comprobantes no forman parte de la respuesta pública.
+Cada proyecto calcula sus saldos con rubros y gastos vigentes. Los retirados se conservan, pero no suman en los informes. Archivados tiene su filtro y permite restaurar proyectos sin publicarlos automáticamente. Transparencia incluye solo resúmenes aprobados. La ejecución financiera mide gastos registrados, no avance de actividades. Participantes, gastos individuales y comprobantes no forman parte de la respuesta pública.

@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { useAsync } from "./useAsync";
 import { useInstitution } from "../context/InstitutionContext";
 import { getTheme } from "../services/content";
@@ -17,5 +17,6 @@ export function useSite() {
     () => ({ ...buildSiteConfig(institution, row), themeVars: buildThemeVars(themeRow) }),
     [institution, row, themeRow],
   );
-  return { config };
+  const refresh = useCallback(() => { settings.refresh(); theme.refresh(); }, [settings.refresh, theme.refresh]);
+  return { config, refresh };
 }

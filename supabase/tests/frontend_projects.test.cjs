@@ -1,17 +1,17 @@
-﻿const {test}=require('node:test');
+const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
 const ts=require('typescript');
 function load(path,imports={}){
  const code=ts.transpileModule(fs.readFileSync(path,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText;
- const exports={};vm.runInNewContext(code,{exports,crypto:require('node:crypto').webcrypto,require:name=>{if(name in imports)return imports[name];if(['./projectStyles','./portalStyles'].includes(name))return {moduleClass:value=>value};if(['react','lucide-react'].includes(name))return require(name);throw new Error('Unexpected import '+name);}});return exports;
+ const exports={};vm.runInNewContext(code,{exports,URL,URLSearchParams,crypto:require('node:crypto').webcrypto,require:name=>{if(name in imports)return imports[name];if(name==='../site/utils/institutionalNavigation')return load('src/modules/site/utils/institutionalNavigation.ts');if(name==='../site/utils/menuTree')return load('src/modules/site/utils/menuTree.ts');if(name==='../site/utils/siteConfig')return load('src/modules/site/utils/siteConfig.ts');if(name==='./portalMenus')return load('src/modules/portal-editor/portalMenus.ts');if(['./projectStyles','./portalStyles'].includes(name))return {moduleClass:value=>value};if(['react','lucide-react'].includes(name))return require(name);throw new Error('Unexpected import '+name);}});return exports;
 }
 function client(responses){
  const calls=[];
  const fake={auth:{getUser:async()=>({data:{user:{id:'user-a'}},error:null})},from(table){const call={table,action:'read',filters:[]};let done=false;
  const execute=()=>{if(done)throw new Error('Query executed twice');done=true;calls.push(call);assert.ok(responses.length,'Unexpected query: '+JSON.stringify(call));return Promise.resolve(responses.shift());};
- const query={select(columns){call.columns=columns;return query;},insert(payload){call.action='insert';call.payload=payload;return query;},update(payload){call.action='update';call.payload=payload;return query;},delete(){call.action='delete';return query;},upsert(payload){call.action='upsert';call.payload=payload;return query;},eq(key,value){call.filters.push(['eq',key,value]);return query;},in(key,value){call.filters.push(['in',key,value]);return query;},or(value){call.filters.push(['or',value]);return query;},neq(key,value){call.filters.push(['neq',key,value]);return query;},order(){return query;},limit(){return query;},single:execute,maybeSingle:execute,then(resolve,reject){return execute().then(resolve,reject);}};return query;},rpc:async(name,args)=>{calls.push({action:'rpc',name,...args});assert.ok(responses.length,'Unexpected RPC '+name);return responses.shift();}};
+ const query={select(columns){call.columns=columns;return query;},insert(payload){call.action='insert';call.payload=payload;return query;},update(payload){call.action='update';call.payload=payload;return query;},delete(){call.action='delete';return query;},upsert(payload){call.action='upsert';call.payload=payload;return query;},eq(key,value){call.filters.push(['eq',key,value]);return query;},in(key,value){call.filters.push(['in',key,value]);return query;},or(value){call.filters.push(['or',value]);return query;},neq(key,value){call.filters.push(['neq',key,value]);return query;},range(from,to){call.range=[from,to];return query;},order(){return query;},limit(){return query;},single:execute,maybeSingle:execute,then(resolve,reject){return execute().then(resolve,reject);}};return query;},rpc:async(name,args)=>{if(name==='project_read')return {data:null,error:{code:'PGRST202'}};calls.push({action:'rpc',name,...args});assert.ok(responses.length,'Unexpected RPC '+name);return responses.shift();}};
  return {fake,calls};
 }
 const money=load('src/modules/projects/projectValidation.ts');
@@ -28,35 +28,28 @@ test('rutas de integración conservan portada, cursos y navegación existente',(
  for(const [path,expected] of [['/','EXISTING_HOME'],['/admin-cursos','EXISTING_COURSES'],['/unknown','EXISTING_NOT_FOUND'],['/panel/proyectos','NEW_MODULE'],['/panel/portal','NEW_MODULE'],['/proyectos?transparency=1','NEW_MODULE'],['/portal?institution=school','NEW_MODULE']]){
   const {default:App}=load('src/App.tsx',{'react':{...react,lazy:()=>marker('NEW_MODULE')},'react/jsx-runtime':jsx,
    'react-router-dom':{...router,BrowserRouter:({children})=>react.createElement(router.MemoryRouter,{initialEntries:[path]},children)},
+
+   './modules/projects/integration/ProjectSessionHost':{isPrivateProjectsPath:(p,q)=>/^\/(?:panel\/)?proyectos(?:\/|$)/.test(p)&&!new URLSearchParams(q).has('transparency'),ProjectSessionHost:()=>{const l=router.useLocation();return /^\/(?:panel\/)?proyectos(?:\/|$)/.test(l.pathname)&&!new URLSearchParams(l.search).has('transparency')?react.createElement('p',null,'NEW_MODULE'):null;}},
+   './core/AuthContext':{AuthProvider:({children})=>children,useAuth:()=>({user:null})},
+   './core/TenantContext':{TenantProvider:({children})=>children,useTenant:()=>({activeInstitution:null})},
+   './modules/site/components/Layout/InstitutionSessionLayout':{InstitutionSessionLayout:({children})=>children},
+   './modules/site/components/Layout/PrivateWorkspace':{PrivateWorkspace:({children})=>children},
+   './modules/site/components/Header/InstitutionalHeader':{InstitutionalHeader:marker('SHARED HEADER')},
+   './pages/InstitutionalPanel':{InstitutionalPanel:marker('PANEL')},
+   './modules/dece':{DeceApp:marker('DECE'),DeceDataProvider:({children})=>children},
+   './core/supabaseClient':{supabase:{}},
+   './features/feats/pages/AcademicManagementRoutes':{AcademicManagementRoutes:marker('ACADEMIC')},
+   './modules/site/context/InstitutionContext':{InstitutionProvider:({children})=>children,useInstitution:()=>({institutionId:'tenant-a'})},
+   './modules/dece/public':{DecePublicSection:marker('DECE')},
+   './core/auth/session':{SessionProvider:marker('SESSION')},
+   './modules/admin/AdminRoutes':{default:marker('ADMIN')},
+   './modules/auth/RegistrationRoute':{RegistrationRoute:marker('REGISTER')},
+   './modules/auth/LoginRoute':{LoginRoute:marker('LOGIN')},
+   './app/App':{default:marker('SIMULATORS')},
    './modules/site':{SiteApp},'./modules/projects/integration/ModuleBoundary':{ModuleBoundary:({children})=>children},
   });
   const html=require('react-dom/server').renderToStaticMarkup(react.createElement(App));assert.ok(html.includes(expected),path+' did not preserve its route');
  }
-});
-function sessionPort(overrides={}){
- const calls=[];const fake={auth:{
-  getSession:async()=>ok({session:{user:{id:'UNTRUSTED-CACHED-ID'}}}),
-  getUser:async()=>{calls.push('verify-user');return ok({user:{id:'verified-user'}});},
-  mfa:{getAuthenticatorAssuranceLevel:async()=>ok({currentLevel:'aal1',nextLevel:'aal1'}),listFactors:async()=>ok({totp:[{id:'factor-a',status:'verified'}]})},
- },rpc:async()=>{calls.push('verify-server');return ok(true);}};
- Object.assign(fake.auth,overrides.auth??{});if(overrides.rpc)fake.rpc=overrides.rpc;
- const {moduleAccess}=load('src/modules/projects/integration/sessionPort.ts',{'../../../core/supabaseClient':{supabase:fake},'./accessService':{getUserInstitutions:async id=>{calls.push(['institutions',id]);return [];}}});
- return {port:moduleAccess,calls};
-}
-test('adaptador privado: solo usa identidad verificada por el servidor',async()=>{
- const {port,calls}=sessionPort();const state=await port.check();assert.equal(state.kind,'ready');assert.equal(state.userId,'verified-user');assert.equal(calls[2][1],'verified-user');assert.ok(!JSON.stringify(calls).includes('UNTRUSTED'));
-});
-test('adaptador privado: sesión ausente o JWT inválido no consulta instituciones',async()=>{
- const absent=sessionPort({auth:{getSession:async()=>ok({session:null})}});assert.equal((await absent.port.check()).kind,'signed-out');assert.equal(absent.calls.length,0);
- const invalid=sessionPort({auth:{getUser:async()=>({data:{user:null},error:new Error('invalid token')})}});await assert.rejects(()=>invalid.port.check(),/invalid token/);assert.equal(invalid.calls.length,0);
-});
-test('adaptador privado: rechazo o ausencia de configuración del servidor no concede acceso',async()=>{
- const rejected=sessionPort({rpc:async()=>ok(false)});assert.equal((await rejected.port.check()).kind,'unavailable');assert.ok(!rejected.calls.some(Array.isArray));
- const missing=sessionPort({rpc:async()=>({data:null,error:new Error('missing security RPC')})});await assert.rejects(()=>missing.port.check(),/missing security RPC/);assert.ok(!missing.calls.some(Array.isArray));
-});
-test('adaptador privado: MFA pendiente bloquea las instituciones incluso con contraseña válida',async()=>{
- const {port,calls}=sessionPort({auth:{mfa:{getAuthenticatorAssuranceLevel:async()=>ok({currentLevel:'aal1',nextLevel:'aal2'}),listFactors:async()=>ok({totp:[{id:'factor-a',status:'verified'}]})}}});
- const state=await port.check();assert.equal(state.kind,'mfa');assert.equal(state.factorId,'factor-a');assert.ok(!calls.some(Array.isArray));assert.ok(!calls.includes('verify-server'));
 });
 const presentation=load('src/modules/projects/projectPresentation.ts',{'./projectValidation':money});
 test('búsqueda de proyectos combina acentos, estado y visibilidad sin alterar el origen',()=>{
@@ -90,11 +83,11 @@ test('transparencia renderiza solo el resumen público y no presenta totales dur
  const visuals=load('src/modules/projects/ProjectVisuals.tsx',{'./projectValidation':money,'./projectPresentation':presentation,'react/jsx-runtime':jsx});
  function render(pending){
   const rows=[{project_id:'p-a',title:'Huerto público',description:'Objetivo aprobado',is_active:true,total_budget:1000,spent:250,balance:750,participants:'PERSONA PRIVADA',receipt:'COMPROBANTE PRIVADO'}];
-  const values=['escuela',0,{revision:0,rows:[{name:'Escuela de prueba',slug:'escuela'}],error:''},pending?null:{key:'escuela:0',rows,error:'',checkedAt:'20 oct 2026'},'','all','name','cards',''];let i=0;
-  const {PublicProjects}=load('src/modules/projects/PublicProjects.tsx',{'react':{...react,useEffect:()=>{},useState:()=>[values[i++],()=>{}]},'../../core/supabaseClient':{supabase:{}},'./projectValidation':money,'./projectPresentation':presentation,'./ProjectVisuals':visuals,'./projects.css':{},'react/jsx-runtime':jsx});
-  return require('react-dom/server').renderToStaticMarkup(react.createElement(PublicProjects));
+  const values=[0,0,pending?null:{key:'escuela:0',rows,error:'',checkedAt:'20 oct 2026'},'','all','name','cards',''];let i=0;
+  const {PublicProjects}=load('src/modules/projects/PublicProjects.tsx',{'react':{...react,useEffect:()=>{},useState:()=>[values[i++],()=>{}]},'../../core/supabase/publicClient':{publicSupabase:{}},'../site/services/portalUpdates':{watchPortalUpdates:()=>()=>{}},'./projectValidation':money,'./projectPresentation':presentation,'./ProjectVisuals':visuals,'./projects.css':{},'react/jsx-runtime':jsx});
+  return require('react-dom/server').renderToStaticMarkup(react.createElement(PublicProjects,{institutionSlug:'escuela',institutionName:'Escuela de prueba'}));
  }
- const html=render(false);assert.ok(html.includes('Huerto público'));assert.ok(html.includes('Escuela de prueba'));assert.ok(!html.includes('PERSONA PRIVADA'));assert.ok(!html.includes('COMPROBANTE PRIVADO'));
+ const html=render(false);assert.ok(!html.includes('Selecciona una institución'));assert.ok(html.includes('Huerto público'));assert.ok(html.includes('Escuela de prueba'));assert.ok(!html.includes('PERSONA PRIVADA'));assert.ok(!html.includes('COMPROBANTE PRIVADO'));
  const pending=render(true);assert.ok(pending.includes('Consultando información pública'));assert.ok(!pending.includes('Saldo por ejecutar'));assert.ok(!pending.includes('Huerto público'));
 });
 const images=load('src/modules/portal-editor/assetValidation.ts');
@@ -108,22 +101,67 @@ test('imágenes públicas: valida firma, tamaño y tipo antes de subir',()=>{
   ['image/jpeg',100,new Uint8Array([137,80,78,71,13,10,26,10])],
  ])assert.throws(()=>images.validateImageHeader(type,size,bytes));
 });
+
+function sharedPortalRenderer(){
+ const react=require('react'),jsx=require('react/jsx-runtime');const h=react.createElement;
+ const noop=()=>null;
+ const {PageSections}=load('src/modules/site/components/Page/PageSections.tsx',{
+  'react/jsx-runtime':jsx,'react-router-dom':{useLocation:()=>({search:''}),Link:({to,children,...rest})=>h('a',{href:to,...rest},children)},
+  '../../context/InstitutionContext':{useInstitution:()=>({institution:{slug:'test',name:'Test'}})},
+  '../../hooks/useSite':{useSite:()=>({config:{social:[]}})},
+  '../../utils/snapshot':load('src/modules/site/utils/snapshot.ts'),
+  '../../utils/url':load('src/modules/site/utils/url.ts'),
+  '../Content/ContentSections':{EventsSection:noop,HonorsSection:noop,NewsSection:noop,StaffSection:noop},
+  '../External/ExternalSection':{EXTERNAL_SECTION_TYPES:['transparency','simulators'],ExternalSection:({title})=>h('p',null,title)},
+  '../Gallery/GallerySection':{GallerySection:noop,galleryItems:()=>[]},
+  '../../styles/sections.css':{},'./PageSections.module.css':{__esModule:true,default:{cards:'cards',editorial:'editorial'}},
+ });
+ const {SiteFrame}=load('src/modules/site/components/Layout/SiteFrame.tsx',{
+  'react/jsx-runtime':jsx,'react-router-dom':{useSearchParams:()=>[new URLSearchParams()]},'../../styles/layout.css':{},
+  '../Header/Header':{Header:({config,menu,homeUrl})=>h('header',null,h('a',{href:homeUrl},config.name),h('img',{src:config.logoUrl,alt:'Logotipo de '+config.name}),...menu.state.data.map(item=>h('a',{key:item.menu_id,href:item.url},item.label)))},
+  '../Footer/Footer':{Footer:({config})=>h('footer',null,config.footerText)},
+  '../Navigation/PublicSidebar':{PublicSidebar:noop},
+ });
+ return load('src/modules/portal-editor/PortalRenderer.tsx',{
+  'react/jsx-runtime':jsx,'./contract':contract,
+  '../site/context/InstitutionContext':{InstitutionProvider:({children})=>children},
+  '../site/components/Layout/SiteFrame':{SiteFrame},'../site/components/Page/PageSections':{PageSections},
+  '../site/utils/theme':load('src/modules/site/utils/theme.ts'),'../site/styles/site.css':{},
+ });
+}
+
 test('portal: logo accesible, navegación pública y vista previa sin enlaces activos',()=>{
  const snapshot=contract.newSnapshot('Colegio de prueba');snapshot.title='Inicio';snapshot.settings.logo_url='https://example.test/logo.png';snapshot.menus=[{label:'Contacto',url:'/contacto'}];
  snapshot.sections=[{id:'links',type:'links',is_visible:true,position:0,properties:{url:'/documento',link_label:'Documento'}}];
  const normalized=contract.normalizeSnapshot(snapshot);
- const {PortalRenderer}=load('src/modules/portal-editor/PortalRenderer.tsx',{'./contract':contract,'./portal.css':{},'react/jsx-runtime':require('react/jsx-runtime')});
+ const {PortalRenderer}=sharedPortalRenderer();
  const render=preview=>require('react-dom/server').renderToStaticMarkup(require('react').createElement(PortalRenderer,{snapshot:normalized,institutionSlug:'escuela',preview}));
  const html=render(false);assert.ok(html.includes('alt="Logotipo de Colegio de prueba"'));assert.ok(html.includes('href="/contacto"'));
  assert.equal((html.match(/href="\/documento"/g)||[]).length,1);
- const preview=render(true);assert.ok(preview.includes('aria-disabled="true"'));assert.ok(!preview.includes('href="/contacto"'));assert.ok(!preview.includes('href="/documento"'));
+ const preview=render(true);assert.ok(preview.includes('inert=""'));assert.ok(preview.includes('site-root'));assert.ok(html.includes('site-root'));
 });
 function snapshotFixture(name){return {...contract.newSnapshot(name),title:'Inicio',slug:'inicio',is_homepage:true,sections:[{id:'banner-fixture',type:'banner',position:0,is_visible:true,properties:{title:name}}]};}
-const row={project_id:'p-a',institution_id:'tenant-a',title:'Huerto',description:'Objetivo',total_budget:'1000.00',is_public:false,start_date:'2026-10-01',end_date:'2026-11-30',budget_items:[{budget_item_id:'b-a',project_id:'p-a',name:'Materiales',allocated_amount:'600',expenses:[{expense_id:'e-a',budget_item_id:'b-a',amount:'150.25',description:'Semillas',expense_date:'2026-10-16'}]}],project_members:[]};
-function service(responses){const c=client(responses);return {...c,service:load('src/modules/projects/projectService.ts',{'../../core/supabaseClient':{supabase:c.fake},'./projectValidation':money}).createProjectService('tenant-a',()=> '2026-10-15')};}
+test('editor y portal comparten plantillas, galería y contenido visible',()=>{
+ const snapshot=snapshotFixture('Escuela');snapshot.template='editorial';
+ snapshot.sections.push({id:'photo',type:'gallery',is_visible:true,position:1,properties:{image_url:'https://example.test/escuela.png',alt:'Patio escolar',body:'Actividad institucional'}});
+ const {PortalRenderer}=sharedPortalRenderer();
+ const html=require('react-dom/server').renderToStaticMarkup(require('react').createElement(PortalRenderer,{snapshot,institutionSlug:'escuela',preview:true}));
+ assert.match(html,/class="editorial"/);assert.match(html,/alt="Patio escolar"/);assert.match(html,/Actividad institucional/);assert.match(html,/site-gallery/);
+});
+test('el portal público filtra borradores incluso si hay sesión administrativa en el navegador',async()=>{
+ const calls=[];const query={select(){return query},eq(){return query},or(value){calls.push(value);return query},order(){return query},limit(){return query},maybeSingle:async()=>({data:null,error:null}),then(resolve){return Promise.resolve({data:[],error:null}).then(resolve)}};
+ const versions=load('src/modules/site/services/versions.ts',{
+  '../lib/demo':{isDemoMode:()=>false},'../lib/supabase':{getSupabase:()=>{throw new Error('Private client used by public page')}},
+  '../../../core/supabase/publicClient':{publicSupabase:{from:()=>query}},'../lib/errors':{toServiceError:()=>new Error('query failed')},
+ });
+ await versions.getLastVersion('page-a');await versions.getVersion('page-a',1);await versions.getVersions('page-a');
+ assert.equal(calls.length,3);assert.ok(calls.every(value=>value==='content_snapshot->>publication_state.is.null,content_snapshot->>publication_state.eq.published'));
+});
+const row={revision:1,project_id:'p-a',institution_id:'tenant-a',title:'Huerto',description:'Objetivo',total_budget:'1000.00',is_public:false,start_date:'2026-10-01',end_date:'2026-11-30',budget_items:[{budget_item_id:'b-a',project_id:'p-a',name:'Materiales',allocated_amount:'600',expenses:[{expense_id:'e-a',budget_item_id:'b-a',amount:'150.25',description:'Semillas',expense_date:'2026-10-16'}]}],project_members:[]};
+function service(responses,revision){const c=client(responses);return {...c,service:load('src/modules/projects/projectService.ts',{'../../core/supabaseClient':{supabase:c.fake},'./projectValidation':money}).createProjectService('tenant-a',()=> '2026-10-15',revision)};}
 const ok=data=>({data,error:null});
 const period={academic_period_id:'period-a',name:'Costa 2026-2027',start_date:'2026-05-04',end_date:'2027-03-11'};
-function portal(responses){const c=client(responses);const module=load('src/modules/portal-editor/portalService.ts',{'../../core/supabaseClient':{supabase:c.fake},'../projects/integration/accessService':{getUserInstitutions:async()=>[{institution_id:'tenant-a',role:'institution_admin',enabled_modules:['portal']}]},'./contract':contract,'../site/utils/snapshot':load('src/modules/site/utils/snapshot.ts')});return {...c,module};}
+function portal(responses){const c=client(responses);const notifications=[];const originalRpc=c.fake.rpc;c.fake.rpc=(name,args)=>name==='portal_editor_content_version'?Promise.resolve(ok(2)):name==='portal_editor_retention_version'?Promise.resolve(ok(1)):originalRpc(name,args);const module=load('src/modules/portal-editor/portalService.ts',{'../../core/supabaseClient':{supabase:c.fake},'../projects/integration/accessService':{getUserInstitutions:async()=>[{institution_id:'tenant-a',role:'institution_admin',enabled_modules:['portal']}]},'./contract':contract,'../site/utils/snapshot':load('src/modules/site/utils/snapshot.ts'),'../site/services/portalUpdates':{notifyPortalPublished:id=>notifications.push(id)}});return {...c,module,notifications};}
 
 test('crear proyecto envía institución, fechas e importe a la operación atómica',async()=>{
  const {service:s,calls}=service([ok([period]),ok(row)]);
@@ -134,13 +172,13 @@ test('crear proyecto envía institución, fechas e importe a la operación atóm
 });
 test('gasto conserva la validación local y delega el saldo final al servidor',async()=>{
  const {service:s,calls}=service([ok(row),ok({expense_id:'new',budget_item_id:'b-a',amount:'25.20',description:'Compra',expense_date:'2026-10-16'})]);
- const saved=await s.addExpense('b-a','p-a',25.2,'Compra','2026-10-16');
+ const saved=await s.addExpense('b-a','p-a',25.2,'Compra','2026-10-15');
  assert.equal(saved.amount,25.2);assert.equal(calls[1].operation,'add_expense');assert.equal(calls[1].payload.project_id,'p-a');assert.equal(calls[1].payload.budget_item_id,'b-a');
  assert.ok(!('created_by' in calls[1].payload));
 });
 test('rechazo concurrente del servidor no se presenta como gasto guardado',async()=>{
  const failure={code:'P0001',message:'El gasto supera el saldo del rubro. Actualiza los datos.'};
- const {service:s}=service([ok(row),{data:null,error:failure}]);await assert.rejects(()=>s.addExpense('b-a','p-a',25,'Compra','2026-10-16'),e=>e===failure);
+ const {service:s}=service([ok(row),{data:null,error:failure}]);await assert.rejects(()=>s.addExpense('b-a','p-a',25,'Compra','2026-10-15'),e=>e===failure);
 });
 test('editar rubro valida ejecución y envía importe al servidor en una sola operación',async()=>{
  const {service:s,calls}=service([ok(row),ok({})]);await s.updateBudgetItem('p-a','b-a','Material actualizado',700);
@@ -163,16 +201,29 @@ test('publicación y estado se confirman mediante el servidor',async()=>{
 test('guardar borrador no escribe en versiones o tablas públicas desde el navegador',async()=>{
  const snapshot=snapshotFixture('Institución');const p=portal([ok({page_id:'page-a',revision:3,status:'published',snapshot})]);
  const saved=await p.module.savePortal('tenant-a','page-a',2,snapshot,false);
+ assert.deepEqual(p.notifications,[]);
  assert.equal(saved.revision,3);assert.equal(p.calls.length,1);assert.equal(p.calls[0].name,'portal_editor_save');assert.equal(p.calls[0].publish,false);assert.equal(p.calls[0].expected_revision,2);
 });
 test('publicación atómica conserva el contrato consumido por el portal',async()=>{
  const snapshot=snapshotFixture('Institución');const p=portal([ok({page_id:'page-a',revision:1,status:'published',snapshot})]);
  await p.module.savePortal('tenant-a',null,0,snapshot,true);
+ assert.deepEqual(p.notifications,['tenant-a']);
  assert.equal(p.calls.length,1);assert.equal(p.calls[0].publish,true);assert.equal(p.calls[0].snapshot.schema_version,1);assert.equal(p.calls[0].target_institution,'tenant-a');
+});
+
+test('publishing an older page draft cannot replace the shared institutional header',async()=>{
+ const snapshot=snapshotFixture('Institución');snapshot.menus=[{label:'Menú antiguo',url:'/old'}];
+ const p=portal([ok({page_id:'page-a',revision:2,status:'published',snapshot})]);
+ await p.module.savePortal('tenant-a','page-a',1,snapshot,true);
+ const menus=p.calls[0].snapshot.menus;
+ assert.ok(!menus.some(menu=>menu.label==='Menú antiguo'));
+ const institution=menus.find(menu=>menu.label==='Institución');
+ assert.equal(menus.find(menu=>menu.label==='Nosotros').parent_id,institution.id);
+ assert.equal(menus.find(menu=>menu.label==='Oferta educativa').parent_id,institution.id);
 });
 test('conflicto de revisión y error de publicación se propagan sin éxito simulado',async()=>{
  for(const failure of [{code:'40001',message:'Versión más reciente'},{code:'42501',message:'Sin permiso'}]){
-  const p=portal([{data:null,error:failure}]);await assert.rejects(()=>p.module.savePortal('tenant-a','page-a',1,snapshotFixture('Colegio'),true),e=>e===failure);assert.equal(p.calls.length,1);
+  const p=portal([{data:null,error:failure}]);await assert.rejects(()=>p.module.savePortal('tenant-a','page-a',1,snapshotFixture('Colegio'),true),e=>e===failure);assert.equal(p.calls.length,1);assert.deepEqual(p.notifications,[]);
  }
 });
 test('menús demasiado largos y logotipo inseguro se rechazan antes de guardar',async()=>{
@@ -200,7 +251,7 @@ test('fechas invertidas e importes inválidos no llegan al servidor',async()=>{
  await assert.rejects(()=>s.addBudgetItem('p-a','Exceso',.001),/importe/);assert.equal(calls.length,0);
 });
 test('gasto vuelve a leer el saldo y rechaza sobregiro antes de escribir',async()=>{
- const {service:s,calls}=service([ok(row)]);await assert.rejects(()=>s.addExpense('b-a','p-a',450,'Compra','2026-10-16'),/saldo/);assert.ok(calls.every(c=>c.action==='read'));
+ const {service:s,calls}=service([ok(row)]);await assert.rejects(()=>s.addExpense('b-a','p-a',450,'Compra','2026-10-15'),/saldo/);assert.ok(calls.every(c=>c.action==='read'));
 });
 test('no permite editar un rubro por debajo de lo ejecutado',async()=>{
  const {service:s,calls}=service([ok(row)]);await assert.rejects(()=>s.updateBudgetItem('p-a','b-a','Materiales',100),/menor/);assert.equal(calls.length,1);
@@ -215,7 +266,7 @@ test('URLs inseguras no se guardan ni renderizan; secciones ocultas no aparecen'
  for(const value of ['javascript:alert(1)','//evil.test','/\\evil.test','data:text/html,x'])assert.equal(contract.safeUrl(value),undefined);
  const snapshot=snapshotFixture('Escuela');snapshot.menus=[{label:'Malicioso',url:'javascript:alert(1)'}];const p=portal([]);await assert.rejects(()=>p.module.savePortal('tenant-a',null,0,snapshot,false),/enlaces/);assert.equal(p.calls.length,0);
  snapshot.menus=[];snapshot.sections=[{id:'a',type:'text',is_visible:false,position:0,properties:{body:'NO PUBLICAR'}},{id:'b',type:'transparency',is_visible:true,position:1,properties:{title:'<script>alert(1)</script>'}}];
- const {PortalRenderer}=load('src/modules/portal-editor/PortalRenderer.tsx',{'./contract':contract,'./portal.css':{},'react/jsx-runtime':require('react/jsx-runtime')});const html=require('react-dom/server').renderToStaticMarkup(require('react').createElement(PortalRenderer,{snapshot,institutionSlug:'escuela-a'}));assert.ok(!html.includes('NO PUBLICAR'));assert.ok(!html.includes('<script>'));assert.ok(html.includes('institution=escuela-a'));
+ const {PortalRenderer}=sharedPortalRenderer();const html=require('react-dom/server').renderToStaticMarkup(require('react').createElement(PortalRenderer,{snapshot,institutionSlug:'escuela-a'}));assert.ok(!html.includes('NO PUBLICAR'));assert.ok(!html.includes('<script>'));assert.ok(html.includes('institution=escuela-a'));
 });
 test('fechas imposibles e importes fuera de precision segura se rechazan sin escribir',async()=>{
  for(const date of ['2026-02-29','2026-04-31','0000-01-01','2026-13-01'])assert.equal(money.isCalendarDate(date),false);
@@ -360,4 +411,84 @@ test('fallo al consultar permisos de módulos no concede acceso por defecto',asy
  const c=client([ok([{institution_id:'tenant-a',role_id:'role-a'}]),ok([{role_id:'role-a',name:'institution_admin'}]),ok([{institution_id:'tenant-a',name:'Colegio',slug:'colegio',is_active:true}])]);
  c.fake.rpc=async()=>({data:null,error:{code:'42501'}});
  const service=load('src/modules/projects/integration/accessService.ts',{'../../../core/supabaseClient':{supabase:c.fake}});await assert.rejects(()=>service.getUserInstitutions('user-a'),/módulos.*42501/);
+});
+
+test('edición de proyecto conserva fechas históricas y envía la revisión abierta',async()=>{
+ const {service:s,calls}=service([ok(row),ok({})],7);
+ await s.updateProject('p-a',{name:' Huerto corregido ',description:' Objetivo nuevo ',budget_total:1100,start_date:'2026-10-01',end_date:'2026-11-30'});
+ assert.equal(calls[1].operation,'update_project');assert.equal(calls[1].payload.expected_revision,7);
+ assert.equal(calls[1].payload.name,'Huerto corregido');assert.equal(calls[1].payload.description,'Objetivo nuevo');
+});
+test('editar proyecto no permite reducir presupuesto bajo los rubros ni excluir gastos',async()=>{
+ for(const change of [{budget_total:599},{end_date:'2026-10-10'}]){
+  const {service:s,calls}=service([ok(row)],3);
+  await assert.rejects(()=>s.updateProject('p-a',{name:'Huerto',description:'Objetivo',budget_total:1000,start_date:'2026-10-01',end_date:'2026-11-30',...change}));
+  assert.equal(calls.length,1);
+ }
+});
+test('edición de gasto usa el saldo más el importe original, sin contar dos veces',async()=>{
+ const {service:s,calls}=service([ok(row),ok({})],8);
+ await s.updateExpense('b-a','p-a','e-a',600,' Semillas corregidas ','2026-10-15');
+ assert.equal(calls[1].operation,'update_expense');assert.equal(calls[1].payload.expected_revision,8);assert.equal(calls[1].payload.amount,600);
+ const failure=service([ok(row)],8);
+ await assert.rejects(()=>failure.service.updateExpense('b-a','p-a','e-a',600.01,'Semillas','2026-10-15'),/saldo/);
+ assert.equal(failure.calls.length,1);
+});
+test('gastos futuros o fuera del proyecto se rechazan tanto al crear como al editar',async()=>{
+ for(const date of ['2026-09-30','2026-10-16','2026-12-01']){
+  for(const edit of [false,true]){
+   const {service:s,calls}=service([ok(row)],2);
+   await assert.rejects(()=>edit?s.updateExpense('b-a','p-a','e-a',20,'Compra',date):s.addExpense('b-a','p-a',20,'Compra',date),/fecha/);
+   assert.equal(calls.length,1);
+  }
+ }
+});
+test('los registros retirados no inflan gastos, asignaciones ni participantes',()=>{
+ const module=load('src/modules/projects/projectService.ts',{'../../core/supabaseClient':{supabase:{}},'./projectValidation':money});
+ const archived={...row,revision:12,deleted_at:'2026-10-22',budget_items:[{...row.budget_items[0],expenses:[...row.budget_items[0].expenses,{amount:999,deleted_at:'2026-10-22'}]},{allocated_amount:1000,deleted_at:'2026-10-22',expenses:[]}],project_members:[{project_member_id:'retired',deleted_at:'2026-10-22'}]};
+ const result=module.mapProject(archived);
+ assert.equal(result.revision,12);assert.equal(result.deleted_at,'2026-10-22');assert.equal(result.budget_items.length,1);assert.equal(result.budget_items[0].expenses.length,1);assert.equal(result.budget_items[0].spent_amount,150.25);assert.equal(result.members.length,0);
+});
+test('archivo, restauración y responsabilidad solo usan operaciones atómicas',async()=>{
+ const {service:s,calls}=service([ok({}),ok({}),ok({})]);
+ await s.archiveProject('p-a');await s.restoreProject('p-a',11);await s.updateProjectMember('p-a','member-a',' Responsable financiero ');
+ assert.deepEqual(calls.map(c=>c.operation),['archive_project','restore_project','update_member']);
+ assert.equal(calls[1].payload.expected_revision,11);assert.equal(calls[2].payload.role,'Responsable financiero');
+ assert.ok(calls.every(c=>c.action==='rpc'&&c.target_institution==='tenant-a'));
+});
+test('un conflicto de edición se propaga y no simula un guardado',async()=>{
+ const conflict={code:'40001',message:'Actualiza antes de guardar'};
+ const {service:s}=service([ok(row),{data:null,error:conflict}],4);
+ await assert.rejects(()=>s.updateExpense('b-a','p-a','e-a',20,'Compra','2026-10-15'),error=>error===conflict);
+});
+test('la lista recorre lotes del servidor sin cortar en la primera página',async()=>{
+ const {service:s,calls}=service([ok(Array.from({length:200},(_,i)=>({...row,project_id:'project-'+i}))),ok([{...row,project_id:'last'}])]);
+ assert.equal((await s.getProjects()).data.length,201);
+ assert.deepEqual(calls.map(c=>c.range),[[0,199],[200,399]]);
+});
+
+test('una base anterior no puede ejecutar los endpoints de borrado físico',async()=>{
+ const legacy={...row};delete legacy.revision;
+ for(const remove of [s=>s.deleteExpense('b-a','p-a','e-a'),s=>s.deleteBudgetItem('p-a','b-a'),s=>s.removeProjectMember('p-a','member-a')]){
+  const {service:s,calls}=service([ok(legacy)]);
+  await assert.rejects(()=>remove(s),/eliminación lógica/);assert.equal(calls.length,1);assert.equal(calls[0].action,'read');
+ }
+});
+test('publicar se bloquea si el servidor todavía reemplaza contenido con borrado físico',async()=>{
+ const p=portal([]);const calls=[];p.fake.rpc=async name=>{if(name==='portal_editor_content_version')return ok(2);calls.push(name);return {data:null,error:{code:'PGRST202'}};};
+ await assert.rejects(()=>p.module.savePortal('tenant-a','page-a',1,snapshotFixture('Colegio'),true),/historial/);
+ assert.deepEqual(calls,['portal_editor_retention_version']);
+});
+
+test('la lectura atómica conserva revisión y todos los movimientos sin consultas parciales',async()=>{
+ const c=client([]);const requests=[];
+ c.fake.rpc=async(name,args)=>{requests.push({name,...args});return ok([{...row,revision:9}]);};
+ const s=load('src/modules/projects/projectService.ts',{'../../core/supabaseClient':{supabase:c.fake},'./projectValidation':money}).createProjectService('tenant-a');
+ const project=await s.getProject('p-a');assert.equal(project.revision,9);assert.equal(project.budget_items[0].spent_amount,150.25);
+ assert.equal(requests[0].target_project,'p-a');assert.equal(requests[0].target_institution,'tenant-a');assert.equal(c.calls.length,0);
+});
+test('una denegación en lectura atómica no intenta acceder por una ruta alternativa',async()=>{
+ const c=client([]);const denied={code:'42501',message:'Acceso no autorizado'};c.fake.rpc=async()=>({data:null,error:denied});
+ const s=load('src/modules/projects/projectService.ts',{'../../core/supabaseClient':{supabase:c.fake},'./projectValidation':money}).createProjectService('tenant-a');
+ await assert.rejects(()=>s.getProjects(),error=>error===denied);assert.equal(c.calls.length,0);
 });

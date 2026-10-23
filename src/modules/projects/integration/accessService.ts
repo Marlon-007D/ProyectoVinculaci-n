@@ -7,7 +7,7 @@ function accessError(subject:string,error:{code?:string}) {
 
 /** Reads the existing memberships/roles contract; never grants a default role. */
 export async function getUserInstitutions(userId: string): Promise<Institution[]> {
-  const membership = await supabase.from('memberships').select('institution_id,role_id').eq('profile_id',userId);
+  const membership = await supabase.from('memberships').select('institution_id,role_id').eq('profile_id',userId).eq('is_active',true);
   if (membership.error) throw accessError('tus membresías',membership.error);
   if (!membership.data?.length) return [];
   const roles = await supabase.from('roles').select('role_id,name').in('role_id',membership.data.map(m=>m.role_id));

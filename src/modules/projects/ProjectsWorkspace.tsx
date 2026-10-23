@@ -1,42 +1,44 @@
-import {useEffect,useState,type FormEvent} from 'react';
-import {Link} from 'react-router-dom';
-import {ProjectsDashboard} from './ProjectsDashboard';
-import {PortalEditor} from '../portal-editor/PortalEditor';
-import {ModuleSessionProvider,useTenant} from './integration/ModuleSession';
-import {moduleAccess} from './integration/sessionPort';
-import {moduleClass as css} from './projectStyles';
+import { useEffect } from 'react';
+import { Navigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../../core/AuthContext';
+import { useTenant } from '../../core/TenantContext';
+import { canonicalRole } from '../../core/auth/institutionalRoles';
+import { PrivateWorkspace } from '../site/components/Layout/PrivateWorkspace';
+import { InstitutionSessionLayout } from '../site/components/Layout/InstitutionSessionLayout';
+import { InstitutionProvider } from '../site/context/InstitutionContext';
 
-function AccessForm(){
-  const access=useTenant();const mfa=access.state.kind==='mfa';
-  function submit(event:FormEvent<HTMLFormElement>){event.preventDefault();const data=new FormData(event.currentTarget);if(mfa)void access.verify(String(data.get('code')));else void access.login(String(data.get('email')).trim(),String(data.get('password')));}
-  return <section className={css('project-card access-card')}><p className={css('project-eyebrow')}>ACCESO INSTITUCIONAL</p><h1>{mfa?'Verifica tu identidad':'Gestión institucional'}</h1><p>{mfa?'Introduce el código de tu aplicación de autenticación.':'Accede con una cuenta institucional existente.'}</p><form onSubmit={submit}><fieldset disabled={access.busy} className={css('project-form-grid')}>
-    {mfa?<label className={css('project-wide')}>Código de verificación<input name="code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" required/></label>:<><label className={css('project-wide')}>Correo<input name="email" type="email" autoComplete="username" required/></label><label className={css('project-wide')}>Contraseña<input name="password" type="password" autoComplete="current-password" required/></label></>}
-    <button type="submit" className={css('project-wide')}>{access.busy?'Comprobando…':mfa?'Verificar':'Entrar'}</button></fieldset></form>
-    {mfa&&<button disabled={access.busy} onClick={()=>void access.logout()}>Usar otra cuenta</button>}
-  </section>;
-}
-function Content({mode}:{mode:'projects'|'portal'}){
-  const access=useTenant();const institution=access.activeInstitution;
-  switch(access.state.kind){
-    case 'checking':return <p role="status">Comprobando acceso institucional…</p>;
-    case 'signed-out':case 'mfa':return <AccessForm/>;
-    case 'unavailable':return <section className={css('project-card')}><h1>Acceso pendiente de verificar</h1><p role="alert">{access.state.message}</p><button onClick={access.reload}>Reintentar</button></section>;
-    case 'ready':{
-      if(!institution)return <section className={css('project-card')}><h1>Sin institución asignada</h1><p>Solicita que el responsable de accesos revise tu membresía.</p></section>;
-      if(institution.module_permissions[mode]!==true)return <p>Este módulo no está habilitado para tu institución.</p>;
-      if(mode==='portal')return <PortalEditor/>;
-      if(!['super_admin','institution_admin','project_manager'].includes(institution.role))return <p>Tu rol no permite gestionar proyectos.</p>;
-      return <><label className={css('project-card')}>Institución<select value={institution.institution_id} onChange={event=>access.setActiveInstitution(access.institutions.find(item=>item.institution_id===event.target.value)??null)}>{access.institutions.map(item=><option key={item.institution_id} value={item.institution_id}>{item.name}</option>)}</select></label><ProjectsDashboard key={`${access.state.userId}:${institution.institution_id}`} institution={institution}/></>;
-    }
+import adminStyles from '../admin/AdminRoutes.module.css';
+import { ProjectsDashboard } from './ProjectsDashboard';
+import { PortalEditor } from '../portal-editor/PortalEditor';
+import { moduleClass as css } from './projectStyles';
+
+export function ProjectsWorkspace({ mode = 'projects' }: { mode?: 'projects' | 'portal' }) {
+  const auth = useAuth();
+  const tenant = useTenant();
+  const location = useLocation();
+  const institution = tenant.activeInstitution;
+  useEffect(() => {
+    const reload = () => tenant.reloadInstitutions();
+    window.addEventListener('projects-institutions-changed', reload);
+    return () => window.removeEventListener('projects-institutions-changed', reload);
+  }, [tenant.reloadInstitutions]);
+
+  if (auth.loading) return <main className={adminStyles.page} role="status">Comprobando acceso institucional…</main>;
+  if (!auth.user) return <Navigate to={'/panel/admin' + location.search} state={{ returnTo: location.pathname + location.search }} replace />;
+  if (auth.mfaRequired || auth.mfaEnrollmentRequired) return <Navigate to={'/panel/admin' + location.search} replace />;
+
+  function content() {
+    if (auth.roleError) return <p role="alert">{auth.roleError}</p>;
+    if (tenant.loadingTenant) return <p role="status">Cargando institución…</p>;
+    const error = tenant.tenantError || tenant.modulePermissionError;
+    if (error) return <section className={css('project-card')}><p role="alert">{error}</p><button onClick={tenant.reloadInstitutions}>Reintentar</button></section>;
+    if (!institution) return <p>No tienes una institución activa asignada.</p>;
+    if (!tenant.hasModuleAccess(mode)) return <p>Este módulo no está habilitado para tu institución.</p>;
+    const allowed = mode === 'projects' ? ['super_admin', 'institution_admin', 'projects_manager'] : ['super_admin', 'institution_admin', 'content_editor'];
+    if (!allowed.includes(canonicalRole(institution.role))) return <p>Tu rol no permite gestionar este módulo.</p>;
+    if (mode === 'portal') return <PortalEditor key={auth.user!.id} />;
+    return <><ProjectsDashboard key={`${auth.user!.id}:${institution.institution_id}`} institution={institution} /></>;
   }
-}
-function Workspace({mode}:{mode:'projects'|'portal'}){
-  const access=useTenant();
-  function allowLeave(){const event=new Event('portal-editor-before-leave',{cancelable:true});return window.dispatchEvent(event)||window.confirm('Hay cambios sin guardar. ¿Salir del editor?');}
-  return <main className={css('institutional-workspace')}><header className={css('workspace-header')}><h1>Gestión institucional</h1><nav className={css('workspace-nav')} aria-label="Gestión institucional">{[['/','Portal público'],['/panel/proyectos','Proyectos'],['/proyectos?transparency=1','Transparencia'],['/panel/portal','Editor del portal']].map(([to,label])=><Link key={to} to={to} onClick={event=>{if(!allowLeave())event.preventDefault();}}>{label}</Link>)}{access.state.kind!=='signed-out'&&access.state.kind!=='checking'&&<button disabled={access.busy} onClick={()=>{if(allowLeave())void access.logout();}}>Cerrar sesión</button>}</nav></header><div className={css('workspace-content project-panel')}>{access.message&&<p role="alert" className={css('project-error')}>{access.message}</p>}<Content mode={mode}/></div></main>;
-}
-export function ProjectsWorkspace({mode='projects'}:{mode?:'projects'|'portal'}){
-  // Clear local editing state when the route changes; session identity stays server-verified.
-  const [key,setKey]=useState(0);useEffect(()=>{const update=()=>setKey(value=>value+1);window.addEventListener('projects-institutions-changed',update);return()=>window.removeEventListener('projects-institutions-changed',update);},[]);
-  return <ModuleSessionProvider key={key} port={moduleAccess}><Workspace key={mode} mode={mode}/></ModuleSessionProvider>;
+  const workspace = <PrivateWorkspace><div>{content()}</div></PrivateWorkspace>;
+  return institution ? <InstitutionProvider institutionId={institution.institution_id}><InstitutionSessionLayout>{workspace}</InstitutionSessionLayout></InstitutionProvider> : workspace;
 }

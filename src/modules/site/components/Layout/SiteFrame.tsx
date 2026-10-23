@@ -15,10 +15,11 @@ interface Props {
   header?: ReactNode;
   hideFooter?: boolean;
   showPublicSidebar?: boolean;
+  preview?: boolean;
   children: ReactNode;
 }
 
-export function SiteFrame({ config, menu, homeUrl, header, hideFooter = false, showPublicSidebar = false, children }: Props) {
+export function SiteFrame({ config, menu, homeUrl, header, hideFooter = false, showPublicSidebar = false, preview = false, children }: Props) {
   const [params] = useSearchParams();
   const isStandaloneSimulator = Boolean(params.get("simulator"));
   const isStandaloneCourse = params.get("courses") === "1" && Boolean(params.get("course"));
@@ -26,7 +27,7 @@ export function SiteFrame({ config, menu, homeUrl, header, hideFooter = false, s
   return (
     <div className={`site-root${isStandaloneSimulator ? " site-root--simulator" : ""}${isStandaloneCourse ? " site-root--course" : ""}`} style={config.themeVars}>
       {!hideSiteChrome && <a className="site-skip" href="#contenido">Saltar al contenido</a>}
-      {!hideSiteChrome && (header ?? <Header config={config} menu={menu} homeUrl={homeUrl} />)}
+      {!hideSiteChrome && (header ?? <Header config={config} menu={menu} homeUrl={homeUrl} preview={preview} />)}
       {showPublicSidebar && !hideSiteChrome ? (
         <div className="site-page-layout">
           {menu.state.status === "success" && <PublicSidebar config={config} tree={menu.state.data} />}
