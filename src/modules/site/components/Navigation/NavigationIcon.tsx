@@ -15,6 +15,7 @@ const ICONS: Record<string, string> = {
   simuladores: "calculate",
   transparencia: "policy",
   dece: "health_and_safety",
+  "iniciar sesion": "login",
   "cuadro de honor": "workspace_premium",
 };
 
