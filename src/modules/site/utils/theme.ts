@@ -2,7 +2,6 @@ import type { CSSProperties } from "react";
 import type { ThemeRow } from "../types/content";
 
 const HEX = /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i;
-const FONT = /^[\w\s,'"-]{1,120}$/;
 
 function luminance(hex: string): number {
   let h = hex.slice(1);
@@ -25,8 +24,5 @@ export function buildThemeVars(theme: ThemeRow | null): CSSProperties | undefine
     v["--site-accent-ink"] = luminance(theme.primary_color) > 0.179 ? "#111827" : "#ffffff";
   }
   if (HEX.test(theme.secondary_color)) v["--site-secondary"] = theme.secondary_color;
-  if (FONT.test(theme.font_family)) v["--site-font"] = theme.font_family;
-  const size = Number(theme.base_font_size);
-  if (Number.isFinite(size) && size >= 12 && size <= 22) v.fontSize = `${size}px`;
   return v as CSSProperties;
 }

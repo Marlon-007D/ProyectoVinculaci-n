@@ -3,6 +3,7 @@ import { Outlet, useLocation } from "react-router-dom";
 import { useInstitution } from "../../context/InstitutionContext";
 import { useMenus } from "../../hooks/useMenus";
 import { useSite } from "../../hooks/useSite";
+import { standardizePublicMenu } from "../../utils/menuTree";
 import { SiteFrame } from "./SiteFrame";
 
 export function SiteLayout() {
@@ -14,6 +15,9 @@ export function SiteLayout() {
   const institutionSlug = searchParams.get("institution");
   const pageKey = ["slug", "noticia", "evento", "honores"].map((key) => searchParams.get(key) ?? "").join(":");
   const homeUrl = (basePath || "/") + (institutionSlug ? "?institution=" + encodeURIComponent(institutionSlug) : "");
+  const publicMenu = menu.state.status === "success"
+    ? { ...menu, state: { ...menu.state, data: standardizePublicMenu(menu.state.data) } }
+    : menu;
 
   useLayoutEffect(() => {
     const previousRestoration = window.history.scrollRestoration;
@@ -26,7 +30,7 @@ export function SiteLayout() {
   }, [pathname, pageKey]);
 
   return (
-    <SiteFrame config={config} menu={menu} homeUrl={homeUrl}>
+    <SiteFrame config={config} menu={publicMenu} homeUrl={homeUrl}>
       <Outlet />
     </SiteFrame>
   );

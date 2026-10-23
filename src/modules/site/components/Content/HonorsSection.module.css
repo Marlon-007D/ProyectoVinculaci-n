@@ -28,7 +28,7 @@
   margin: 0 0 var(--site-section-gap, 1.5rem);
   color: var(--honors-on-surface);
   text-align: center;
-  font-family: Roboto, var(--site-font), sans-serif;
+  font-family: var(--site-font);
   font-size: clamp(1.75rem, 3vw, 2.25rem);
   font-weight: 500;
   letter-spacing: -.02em;
@@ -54,7 +54,7 @@
   background: var(--honors-card-surface);
   box-shadow: none;
   transform: none;
-  transition: none;
+  transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease, background-color .2s ease;
   text-align: left;
 }
 
@@ -63,17 +63,17 @@
 }
 
 .page .cards :global(.site-card:hover) {
-  transform: none;
+  transform: translateY(-4px);
   border-color: var(--honors-outline-variant);
   background: var(--honors-card-surface);
-  box-shadow: none;
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--honors-on-surface) 16%, transparent);
 }
 
 .page .cards :global(.site-card:focus-within) {
-  transform: none;
+  transform: translateY(-2px);
   border-color: var(--honors-outline-variant);
   background: var(--honors-card-surface);
-  box-shadow: none;
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--honors-on-surface) 14%, transparent);
 }
 
 .page .cards :global(.site-card:active) {
@@ -85,7 +85,7 @@
 .page .cards :global(.site-card h3) {
   margin: 0 0 .25rem;
   color: var(--honors-on-surface);
-  font-family: Roboto, var(--site-font), sans-serif;
+  font-family: var(--site-font);
   font-size: .95rem;
   font-weight: 600;
   line-height: 1.35;
@@ -94,7 +94,7 @@
 
 .page .cards :global(.site-card .site-person__role) {
   color: var(--honors-on-primary-container);
-  font-family: Roboto, var(--site-font), sans-serif;
+  font-family: var(--site-font);
   font-size: .875rem;
   font-weight: 500;
   line-height: 1.35;
@@ -180,7 +180,7 @@
   border-radius: .5rem;
   background: var(--honors-surface-container);
   color: var(--honors-on-surface-variant);
-  font-family: Roboto, var(--site-font), sans-serif;
+  font-family: var(--site-font);
   font-size: .75rem;
   line-height: 1.35;
 }
@@ -210,7 +210,9 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .page .cards :global(.site-card) { transition: none; }
+  .page .cards :global(.site-card) { transition: box-shadow .2s ease, border-color .2s ease, background-color .2s ease; }
+  .page .cards :global(.site-card:hover),
+  .page .cards :global(.site-card:focus-within) { transform: none; }
 }
 
 /* Public honors use the same fixed composition as the management board. */
@@ -236,6 +238,24 @@
   background: #fff !important;
   color: #243746 !important;
   box-shadow: none !important;
+  transition: transform .2s ease, box-shadow .2s ease !important;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .officialCard:hover {
+    transform: translateY(-4px) !important;
+    box-shadow: 0 10px 24px rgb(36 33 42 / .16) !important;
+  }
+  .flagBearer:hover,
+  .cityBearer:hover,
+  .schoolBearer:hover {
+    transform: translateY(-26px) !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .officialCard { transition: box-shadow .2s ease !important; }
+  .officialCard:hover { transform: none !important; }
 }
 
 .nationalFirst { grid-area: first !important; }
@@ -279,7 +299,7 @@
 .officialCopy > span { display: flex !important; align-items: center !important; flex-wrap: wrap !important; gap: .5rem !important; color: inherit !important; font-size: .8125rem !important; line-height: 1.45 !important; }
 .officialCopy > span svg { width: 1.5rem !important; height: 1rem !important; flex: none !important; }
 .officialMeta { display: flex !important; justify-content: center !important; padding-top: .75rem !important; }
-.officialMeta > span { display: inline-flex !important; align-items: center !important; gap: .5rem !important; min-height: 2.25rem !important; padding: .44rem .75rem !important; border: 0 !important; border-radius: .75rem !important; background: #edf3fa !important; color: #40586a !important; font-size: .875rem !important; font-weight: 500 !important; }
+.officialMeta > span { display: inline-flex !important; align-items: center !important; flex-wrap: wrap !important; gap: .5rem !important; max-width: 100% !important; min-height: 2.25rem !important; padding: .44rem .75rem !important; border: 0 !important; border-radius: .75rem !important; background: #edf3fa !important; color: #40586a !important; font-size: .875rem !important; font-weight: 500 !important; }
 .officialMeta b { width: 1px !important; height: .875rem !important; background: #c8d7d9 !important; }
 .metadataIcon { font-family: "Material Symbols Rounded" !important; font-size: 1rem !important; font-style: normal !important; font-weight: normal !important; font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 20 !important; }
 .flagBearer .officialMeta > span { background: #ffedaa !important; color: #684f0c !important; }

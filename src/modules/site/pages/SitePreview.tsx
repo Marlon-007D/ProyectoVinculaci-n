@@ -46,7 +46,7 @@ export function SitePreview() {
         emptyTitle="No hay página publicada"
         emptyMessage="Esta dirección no tiene una página publicada."
       >
-        {(v) => <PageSections sections={parseSnapshot(v.content_snapshot).sections} />}
+        {(v) => <PageSections sections={parseSnapshot(v.content_snapshot).sections} isHomepage={page.state.status === "success" && page.state.data.is_homepage} />}
       </AsyncView>
     </>
   );

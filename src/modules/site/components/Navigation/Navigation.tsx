@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import type { MenuNode } from "../../types/menu";
 import { useLocation } from "react-router-dom";
 import { MenuLink } from "./MenuLink";
@@ -92,7 +93,7 @@ function NavItem({ node }: { node: MenuNode }) {
   );
 }
 
-export function Navigation({ tree }: { tree: MenuNode[] }) {
+export function Navigation({ tree, loginUrl }: { tree: MenuNode[]; loginUrl?: string }) {
   return (
     <nav className="site-nav" aria-label="Principal">
       <ul className="site-nav__list">
@@ -100,6 +101,12 @@ export function Navigation({ tree }: { tree: MenuNode[] }) {
           const node = withHonorChoice(withSimulatorChoices(item));
           return <NavItem key={node.menu_id} node={node} />;
         })}
+        {loginUrl && <li className="site-nav__item">
+          <Link to={loginUrl} className="site-nav__link">
+            <NavigationIcon label="Iniciar sesión" />
+            <span>Iniciar sesión</span>
+          </Link>
+        </li>}
       </ul>
     </nav>
   );
