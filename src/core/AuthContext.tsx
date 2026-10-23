@@ -168,7 +168,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     let active = true;
     let initialSessionTask: Promise<void> | null = null;
 
+    let currentSessionUserId: string | null = null;
     const applySession = async (nextSession: Session | null) => {
+      currentSessionUserId = nextSession?.user.id ?? null;
       setSession(nextSession);
       setUser(nextSession?.user ?? null);
       if (nextSession?.user) {
@@ -211,7 +213,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       }
       if (event === 'PASSWORD_RECOVERY') setIsPasswordRecovery(true);
-      setLoading(true);
+      // Same-account refreshes recheck access without destroying open forms.
+      const backgroundRefresh = Boolean(currentSessionUserId && currentSessionUserId === nextSession?.user.id
+        && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED'));
+      currentSessionUserId = nextSession?.user.id ?? null;
+      if (!backgroundRefresh) setLoading(true);
       setSession(nextSession);
       setUser(nextSession?.user ?? null);
       if (nextSession?.user) {

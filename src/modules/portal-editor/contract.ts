@@ -2,12 +2,17 @@ import type { PageSection } from '../site/types/page';
 export const sectionTypes = { banner: 'Portada', text: 'Texto institucional', news: 'Noticias publicadas', events: 'Eventos aprobados', staff: 'Personal público', honors: 'Cuadro de honor aprobado', gallery: 'Imagen / galería', links: 'Enlace', simulators: 'Simuladores', transparency: 'Transparencia', social_links: 'Red social' };
 export interface PortalSnapshot {
   schema_version: 1;
+  publication_state?: 'draft' | 'published';
   title: string; slug: string; is_homepage: boolean;
   template: 'classic' | 'cards' | 'editorial';
-  settings: { site_title: string; logo_url: string; footer_text: string };
+  settings: { site_title: string; logo_url: string; footer_text: string; contact_email?: string; contact_phone?: string; social_links?: Record<string, string> };
   theme: { primary_color: string; secondary_color: string; font_family: string };
-  menus: Array<{ label: string; url: string }>;
+  menus: Array<{ id?: string; parent_id?: string | null; is_visible?: boolean; label: string; url: string }>;
   sections: PageSection[];
+}
+export function withCurrentIdentity(snapshot: PortalSnapshot, configuration: PortalSnapshot): PortalSnapshot {
+  if (snapshot.publication_state === 'draft') return { ...snapshot, settings: { ...configuration.settings, ...snapshot.settings } };
+  return { ...snapshot, settings: { ...configuration.settings }, theme: { ...configuration.theme }, menus: configuration.menus.map(menu => ({ ...menu })) };
 }
 export function newSnapshot(name: string): PortalSnapshot {
   return { schema_version: 1, title: '', slug: '', is_homepage: false, template: 'classic',
@@ -29,7 +34,7 @@ export function normalizeSnapshot(snapshot: PortalSnapshot): PortalSnapshot {
       if(typeof p.url==='string')p.button_url=p.url;
       if(typeof p.link_label==='string')p.button_label=p.link_label;
     }
-    if(section.type==='links'&&typeof p.url==='string'&&p.url)
+    if(section.type==='links'&&!Array.isArray(p.items)&&typeof p.url==='string'&&p.url)
       p.items=[{title:textValue(p.link_label)||textValue(p.title)||'Consultar',url:p.url,description:textValue(p.body)}];
     return {...section,position,properties:p};
   })};

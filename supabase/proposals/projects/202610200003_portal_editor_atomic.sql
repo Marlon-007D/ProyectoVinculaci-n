@@ -38,7 +38,9 @@ WHERE v.content_snapshot->>'publication_state'='draft' AND NOT EXISTS(
  AND coalesce(newer.content_snapshot->>'publication_state','published')='published')
 ORDER BY v.page_id,v.version_number DESC
 ON CONFLICT(page_id) DO NOTHING;
-DELETE FROM public.publication_versions WHERE content_snapshot->>'publication_state'='draft';
+-- Los borradores históricos se conservan; la política restrictiva de lectura impide publicarlos.
+DROP POLICY IF EXISTS publication_versions_published_only ON public.publication_versions;
+CREATE POLICY publication_versions_published_only ON public.publication_versions AS RESTRICTIVE FOR SELECT TO anon,authenticated USING(coalesce(content_snapshot->>'publication_state','published')='published');
 
 CREATE OR REPLACE FUNCTION public.portal_editor_save(target_institution uuid,target_page uuid,expected_revision integer,snapshot jsonb,publish boolean)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,pg_temp AS $$

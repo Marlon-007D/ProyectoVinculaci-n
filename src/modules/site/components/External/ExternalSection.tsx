@@ -6,6 +6,8 @@ import { PortalSimulatorsPage } from "../../../../features/simulators/pages/Port
 
 export interface ExternalSectionProps {
   institutionId: string;
+  institutionSlug?: string;
+  institutionName?: string;
   title?: string;
   properties?: Record<string, unknown>;
 }
@@ -26,7 +28,7 @@ function Placeholder(): Renderer {
 }
 
 export const EXTERNAL_SECTIONS: Record<string, { module: ExternalModule; render: Renderer }> = {
-  transparency: { module: "projects", render: Placeholder() },
+  transparency: { module: "projects", render: ({ institutionSlug, institutionName }) => <Suspense fallback={<p role="status">Cargando transparencia…</p>}><PublicProjects key={institutionSlug} institutionSlug={institutionSlug} institutionName={institutionName} /></Suspense> },
   simulators: { module: "simuladores", render: Placeholder() },
   dece_info: {
     module: "dece",
@@ -41,6 +43,7 @@ export const EXTERNAL_SECTIONS: Record<string, { module: ExternalModule; render:
 const DecePublicSection = lazy(() =>
   import("../../../dece/public").then(({ DecePublicSection: Component }) => ({ default: Component })),
 );
+const PublicProjects = lazy(() => import('../../../projects/PublicProjects').then(({ PublicProjects }) => ({ default: PublicProjects })));
 
 export const EXTERNAL_SECTION_TYPES = Object.keys(EXTERNAL_SECTIONS);
 
@@ -55,19 +58,19 @@ function EnabledExternalSection({ type, title, properties }: { type: string; tit
   const enabled = useAsync(
     () => {
       if (!entry) return Promise.resolve(false);
-      if (type === "dece_info") {
-        return institution?.slug ? isPublicModuleEnabled(institution.slug, "dece") : Promise.resolve(false);
+      if (type === "dece_info" || type === "transparency") {
+        return institution?.slug ? isPublicModuleEnabled(institution.slug, entry.module) : Promise.resolve(false);
       }
       return isModuleEnabled(institutionId, entry.module);
     },
     [institutionId, institution?.slug, type],
   );
   if (!entry) return null;
-  if (type === "dece_info" && enabled.state.status === "error") {
+  if ((type === "dece_info" || type === "transparency") && enabled.state.status === "error") {
     return (
       <section className="site-section site-block">
         <div className="site-container">
-          <p role="alert">No se pudo comprobar si el modulo DECE esta habilitado.</p>
+          <p role="alert">No se pudo comprobar si el módulo está habilitado.</p>
           {import.meta.env.DEV && <p className="site-muted">{enabled.state.error.message}</p>}
           <button type="button" className="site-btn" onClick={enabled.reload}>Reintentar</button>
         </div>
@@ -75,5 +78,5 @@ function EnabledExternalSection({ type, title, properties }: { type: string; tit
     );
   }
   if (enabled.state.status !== "success" || enabled.state.data !== true) return null;
-  return <>{entry.render({ institutionId, title, properties })}</>;
+  return <>{entry.render({ institutionId, institutionSlug: institution?.slug, institutionName: institution?.name, title, properties })}</>;
 }

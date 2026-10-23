@@ -99,6 +99,13 @@
       "when": 1792704445838,
       "tag": "0013_seed_invoice_product_catalog",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1792713600000,
+      "tag": "0009_admin_membership_requests",
+      "breakpoints": true
     }
   ]
 }

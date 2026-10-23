@@ -19,7 +19,8 @@ export function parseSnapshot(snapshot: Json | null | undefined): PageSnapshot {
       properties: isObj(s.properties) ? s.properties : {},
     });
   });
-  return { title: typeof snapshot.title === "string" ? snapshot.title : undefined, sections };
+  const template = snapshot.template === 'cards' || snapshot.template === 'editorial' ? snapshot.template : 'classic';
+  return { title: typeof snapshot.title === "string" ? snapshot.title : undefined, template, sections };
 }
 
 export const asString = (v: unknown): string | undefined =>

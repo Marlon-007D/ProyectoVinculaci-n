@@ -1,0 +1,4 @@
+.fields { display: grid; gap: 1rem; margin-top: 1rem; min-width: 0; }
+.list { border: 1px solid #d7e1e7; border-radius: 12px; padding: 1rem; min-width: 0; }
+.item { display: grid; gap: .75rem; padding-block: 1rem; border-bottom: 1px solid #d7e1e7; margin-bottom: 1rem; }
+.fields label { display: grid; gap: .4rem; }

@@ -1,0 +1,9 @@
+.panel { margin: 24px 0; padding: 20px; border: 1px solid #d9cfe4; border-radius: 8px; background: #f7f4fa; color: #332d3b; }
+.panel h2 { margin: 0 0 16px; font-size: 20px; }
+.panel p { font-size: 14px; line-height: 1.6; }
+.form, .form label { display: grid; gap: 8px; }
+.form { gap: 16px; }
+.form label { font-size: 14px; }
+.form input { min-width: 0; width: 100%; min-height: 44px; border: 1px solid #81758e; border-radius: 8px; padding: 8px 12px; background: white; color: #332d3b; font: inherit; }
+.panel button { min-height: 44px; border: 1px solid #70578e; border-radius: 8px; padding: 8px 12px; background: #70578e; color: white; font: inherit; cursor: pointer; }
+.panel :is(button, input):focus-visible { outline: 2px solid #70578e; outline-offset: 3px; }

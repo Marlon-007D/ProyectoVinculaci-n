@@ -3,12 +3,12 @@
 .site-topbar__inner span { font-weight: 500; }
 
 .site-header { position: sticky; top: 0; z-index: 50; background: var(--site-paper); border-bottom: 1px solid var(--site-line); }
-.site-header__inner { display: flex; align-items: center; justify-content: space-between; gap: .75rem 1rem; min-height: 5rem; padding-block: .5rem; }
+.site-header__inner { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; justify-content: space-between; gap: .75rem 1rem; min-height: 5rem; padding-block: .5rem; }
 .site-header .site-container { max-width: 90rem; padding-inline: clamp(1rem, 2vw, 1.75rem); }
 .site-brand { display: flex; align-items: center; gap: .75rem; text-decoration: none; color: var(--site-navy) !important; min-width: 0; }
-.site-brand__logo { width: 2.65rem; height: 2.65rem; object-fit: contain; flex: none; }
+.site-header .site-brand__logo { width: 2.65rem; height: 2.65rem; object-fit: contain; flex: none; }
 .site-brand__mark { width: 2.6rem; height: 2.9rem; flex: none; }
-.site-brand__name { min-width: 0; font-family: var(--site-font); font-size: clamp(1rem, 1.2vw, 1.2rem); font-weight: 700; line-height: 1.15; color: var(--site-navy); overflow-wrap: anywhere; }
+.site-brand__name { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--site-serif); font-size: 1.3rem; line-height: 1.15; color: var(--site-navy); overflow-wrap: anywhere; }
 .site-header__desktop { display: none; }
 .site-header__mobile { display: block; }
 .site-header__mobile { flex: none; }
@@ -18,7 +18,7 @@
   .site-header__desktop { display: flex; width: 100%; min-width: 0; }
   .site-header__mobile { display: none; }
   .site-header .site-nav { min-width: 0; max-width: 100%; }
-  .site-header .site-nav__list { width: 100%; flex-wrap: nowrap; justify-content: space-between; gap: 0; }
+  .site-header .site-nav__list { width: 100%; flex-wrap: wrap; justify-content: space-between; gap: 0; }
 }
 .site-header .site-nav__list { gap: .1rem; }
 .site-header .site-nav__link { min-height: 2.5rem; gap: .25rem; padding-inline: .35rem; white-space: nowrap; }

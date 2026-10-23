@@ -63,7 +63,11 @@ export function PrivateWorkspace({ children }: { children: ReactNode }) {
             : path.includes('admin') ? 'admin' : 'home';
   const roleLabel = role?.replaceAll('_', ' ').replace(/\b\w/g, letter => letter.toUpperCase()) || 'Usuario';
 
+  function allowLeave() {
+    return window.dispatchEvent(new Event('portal-editor-before-leave', {cancelable:true})) || window.confirm('Hay cambios sin guardar. ¿Salir del editor?');
+  }
   async function signOut() {
+    if (!allowLeave()) return;
     await logout();
     navigate('/panel/admin', { replace: true });
   }
@@ -88,7 +92,7 @@ export function PrivateWorkspace({ children }: { children: ReactNode }) {
         </select></span>
       </label>}
       </div>
-      <nav className={styles.nav}>
+      <nav className={styles.nav} onClickCapture={event => { if ((event.target as HTMLElement).closest("a") && !allowLeave()) { event.preventDefault(); event.stopPropagation(); } }}>
         {role === 'super_admin' ? <>
           <Link data-tone="institutions" to="/panel/superadmin" title="Instituciones educativas: gestiona las instituciones del sistema" aria-current={pathname === '/panel/superadmin' ? 'page' : undefined}><Building2 size={20} aria-hidden="true" /><span>Instituciones educativas</span></Link>
           <Link data-tone="admin" to="/panel/admin" title="Seguridad y usuarios: administra cuentas y permisos" aria-current={pathname === '/panel/admin' ? 'page' : undefined}><ShieldCheck size={20} aria-hidden="true" /><span>Seguridad y usuarios</span></Link>

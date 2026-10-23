@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
+import { usePortalUpdates } from "../hooks/usePortalUpdates";
 import { useLocation, useSearchParams } from "react-router-dom";
 import { AsyncView } from "../components/states/AsyncView";
 import { PageSections } from "../components/Page/PageSections";
@@ -25,6 +26,8 @@ export function SitePreview() {
   const eventArticle = useEventArticle(eventId);
   const pageId = page.state.status === "success" ? page.state.data.page_id : null;
   const current = usePageVersion(pageId, undefined);
+  const refresh = useCallback(() => { page.refresh(); current.refresh(); }, [page.refresh, current.refresh]);
+  usePortalUpdates(refresh);
   if (params.get("simulator")) return <PortalSimulatorsPage />;
   if (params.get("honores") === "1") return <main className={`site-honors-page ${honorsStyles.page}`}>
     <HonorsSection title="Distinciones oficiales" limit={100} className={honorsStyles.section} />
@@ -46,7 +49,10 @@ export function SitePreview() {
         emptyTitle="No hay página publicada"
         emptyMessage="Esta dirección no tiene una página publicada."
       >
-        {(v) => <PageSections sections={parseSnapshot(v.content_snapshot).sections} isHomepage={page.state.status === "success" && page.state.data.is_homepage} />}
+        {(v) => {
+          const snapshot = parseSnapshot(v.content_snapshot);
+          return <PageSections sections={snapshot.sections} template={snapshot.template} isHomepage={page.state.status === "success" && page.state.data.is_homepage} managed={Boolean((v.content_snapshot as Record<string, unknown>)?.publication_state)} />;
+        }}
       </AsyncView>
     </>
   );

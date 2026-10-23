@@ -11,6 +11,7 @@ export interface BudgetItem { budget_item_id: string; project_id: string; name: 
 export interface Project {
   id: string; institution_id: string; name: string; description: string; budget_total: number;
   is_active: boolean; is_public: boolean; start_date: string; end_date: string; created_at?: string; updated_at?: string;
+  deleted_at?: string | null; revision?: number;
   budget_items: BudgetItem[]; members: ProjectMember[];
 }
 export interface MemberOption { profile_id: string; full_name: string; email: string }

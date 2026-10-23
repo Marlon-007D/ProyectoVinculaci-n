@@ -1,0 +1,428 @@
+{
+    "tables": [
+        {
+            "rls": true,
+            "name": "academic_periods",
+            "columns": {
+                "name": "varchar",
+                "end_date": "date",
+                "is_active": "bool",
+                "created_at": "timestamptz",
+                "start_date": "date",
+                "updated_at": "timestamptz",
+                "institution_id": "uuid",
+                "academic_period_id": "uuid"
+            },
+            "present": true
+        },
+        {
+            "rls": true,
+            "name": "audit_events",
+            "columns": {
+                "action": "varchar",
+                "payload": "jsonb",
+                "entity_id": "varchar",
+                "created_at": "timestamptz",
+                "ip_address": "inet",
+                "profile_id": "uuid",
+                "entity_type": "varchar",
+                "audit_event_id": "uuid",
+                "institution_id": "uuid"
+            },
+            "present": true
+        },
+        {
+            "rls": true,
+            "name": "budget_items",
+            "columns": {
+                "name": "varchar",
+                "created_at": "timestamptz",
+                "project_id": "uuid",
+                "updated_at": "timestamptz",
+                "budget_item_id": "uuid",
+                "allocated_amount": "numeric"
+            },
+            "present": true
+        },
+        {
+            "rls": true,
+            "name": "expense_files",
+            "columns": {
+                "file_name": "varchar",
+                "file_path": "text",
+                "created_at": "timestamptz",
+                "expense_id": "uuid",
+                "updated_at": "timestamptz",
+                "expense_file_id": "uuid"
+            },
+            "present": true
+        },
+        {
+            "rls": true,
+            "name": "expenses",
+            "columns": {
+                "amount": "numeric",
+                "created_at": "timestamptz",
+                "created_by": "uuid",
+                "expense_id": "uuid",
+                "updated_at": "timestamptz",
+                "description": "text",
+                "expense_date": "date",
+                "budget_item_id": "uuid",
+                "invoice_number": "text"
+            },
+            "present": true
+        },
+        {
+            "rls": true,
+            "name": "institutions",
+            "columns": {
+                "name": "varchar",
+                "slug": "varchar",
+                "domain": "varchar",
+                "is_active": "bool",
+                "created_at": "timestamptz",
+                "updated_at": "timestamptz",
+                "institution_id": "uuid"
+            },
+            "present": true
+        },
+        {
+            "rls": true,
+            "name": "memberships",
+            "columns": {
+                "status": "text",
+                "role_id": "uuid",
+                "is_active": "bool",
+                "created_at": "timestamptz",
+                "profile_id": "uuid",
+                "updated_at": "timestamptz",
+                "membership_id": "uuid",
+                "institution_id": "uuid"
+            },
+            "present": true
+        },
+        {
+            "rls": true,
+            "name": "menus",
+            "columns": {
+                "url": "varchar",
+                "label": "varchar",
+                "menu_id": "uuid",
+                "position": "int4",
+                "parent_id": "uuid",
+                "created_at": "timestamptz",
+                "is_visible": "bool",
+                "updated_at": "timestamptz",
+                "is_external": "bool",
+                "institution_id": "uuid"
+            },
+            "present": true
+        },
+        {
+            "rls": true,
+            "name": "module_settings",
+            "columns": {
+                "settings": "jsonb",
+                "created_at": "timestamptz",
+                "is_enabled": "bool",
+                "updated_at": "timestamptz",
+                "module_name": "varchar",
+                "institution_id": "uuid",
+                "module_setting_id": "uuid"
+            },
+            "present": true
+        },
+        {
+            "rls": true,
+            "name": "page_sections",
+            "columns": {
+                "type": "section_type",
+                "page_id": "uuid",
+                "position": "int4",
+                "created_at": "timestamptz",
+                "is_visible": "bool",
+                "properties": "jsonb",
+                "updated_at": "timestamptz",
+                "page_section_id": "uuid"
+            },
+            "present": true
+        },
+        {
+            "rls": true,
+            "name": "pages",
+            "columns": {
+                "slug": "varchar",
+                "title": "varchar",
+                "status": "page_status_type",
+                "page_id": "uuid",
+                "created_at": "timestamptz",
+                "updated_at": "timestamptz",
+                "is_homepage": "bool",
+                "institution_id": "uuid"
+            },
+            "present": true
+        },
+        {
+            "rls": null,
+            "name": "portal_editor_drafts",
+            "columns": null,
+            "present": false
+        },
+        {
+            "rls": true,
+            "name": "profiles",
+            "columns": {
+                "email": "varchar",
+                "phone": "varchar",
+                "last_name": "varchar",
+                "created_at": "timestamptz",
+                "first_name": "varchar",
+                "profile_id": "uuid",
+                "updated_at": "timestamptz",
+                "mfa_enabled": "bool",
+                "mfa_required": "bool"
+            },
+            "present": true
+        },
+        {
+            "rls": true,
+            "name": "project_members",
+            "columns": {
+                "role": "varchar",
+                "email": "text",
+                "full_name": "text",
+                "created_at": "timestamptz",
+                "profile_id": "uuid",
+                "project_id": "uuid",
+                "updated_at": "timestamptz",
+                "hours_assigned": "int4",
+                "project_member_id": "uuid"
+            },
+            "present": true
+        },
+        {
+            "rls": true,
+            "name": "projects",
+            "columns": {
+                "title": "varchar",
+                "end_date": "date",
+                "is_active": "bool",
+                "is_public": "bool",
+                "created_at": "timestamptz",
+                "project_id": "uuid",
+                "start_date": "date",
+                "updated_at": "timestamptz",
+                "description": "text",
+                "total_budget": "numeric",
+                "institution_id": "uuid"
+            },
+            "present": true
+        },
+        {
+            "rls": true,
+            "name": "publication_versions",
+            "columns": {
+                "page_id": "uuid",
+                "created_at": "timestamptz",
+                "published_by": "uuid",
+                "version_number": "int4",
+                "content_snapshot": "jsonb",
+                "publication_version_id": "uuid"
+            },
+            "present": true
+        },
+        {
+            "rls": true,
+            "name": "roles",
+            "columns": {
+                "name": "user_role_type",
+                "role_id": "uuid",
+                "created_at": "timestamptz",
+                "updated_at": "timestamptz",
+                "description": "text"
+            },
+            "present": true
+        },
+        {
+            "rls": true,
+            "name": "section_type_schemas",
+            "columns": {
+                "type": "section_type",
+                "is_active": "bool",
+                "created_at": "timestamptz",
+                "updated_at": "timestamptz",
+                "properties_schema": "jsonb",
+                "default_properties": "jsonb"
+            },
+            "present": true
+        },
+        {
+            "rls": true,
+            "name": "site_settings",
+            "columns": {
+                "logo_url": "text",
+                "theme_id": "uuid",
+                "created_at": "timestamptz",
+                "site_title": "varchar",
+                "updated_at": "timestamptz",
+                "footer_text": "text",
+                "social_links": "jsonb",
+                "contact_email": "varchar",
+                "contact_phone": "varchar",
+                "institution_id": "uuid",
+                "site_setting_id": "uuid"
+            },
+            "present": true
+        },
+        {
+            "rls": true,
+            "name": "themes",
+            "columns": {
+                "name": "varchar",
+                "theme_id": "uuid",
+                "created_at": "timestamptz",
+                "updated_at": "timestamptz",
+                "font_family": "varchar",
+                "visual_scale": "numeric",
+                "primary_color": "varchar",
+                "base_font_size": "numeric",
+                "heading_1_size": "numeric",
+                "heading_2_size": "numeric",
+                "heading_3_size": "numeric",
+                "institution_id": "uuid",
+                "tertiary_color": "varchar",
+                "secondary_color": "varchar",
+                "appearance_config": "jsonb"
+            },
+            "present": true
+        }
+    ],
+    "functions": {
+        "auth.jwt()": true,
+        "auth.uid()": true,
+        "public.is_super_admin()": true,
+        "public.project_can_manage(uuid)": true,
+        "public.project_can_publish(uuid)": true,
+        "public.projects_session_verified()": false,
+        "public.project_member_options(uuid)": false,
+        "public.project_module_enabled(uuid)": true,
+        "public.project_receipt_access(text)": false,
+        "public.get_accessible_module_settings()": true,
+        "public.project_operation(uuid,text,jsonb)": true,
+        "public.portal_editor_allowed(uuid,boolean)": false,
+        "public.portal_editor_save(uuid,uuid,integer,jsonb,boolean)": false
+    },
+    "storage_tables": {
+        "buckets": true,
+        "objects": true
+    },
+    "project_policies": [
+        {
+            "mode": "RESTRICTIVE",
+            "check": null,
+            "roles": [
+                "authenticated"
+            ],
+            "table": "budget_items",
+            "using": "(EXISTS ( SELECT 1\\n   FROM projects p\\n  WHERE ((p.project_id = budget_items.project_id) AND project_can_manage(p.institution_id))))",
+            "policy": "budget_items_read_guard",
+            "command": "SELECT"
+        },
+        {
+            "mode": "PERMISSIVE",
+            "check": null,
+            "roles": [
+                "authenticated"
+            ],
+            "table": "budget_items",
+            "using": "(EXISTS ( SELECT 1\\n   FROM projects p\\n  WHERE ((p.project_id = budget_items.project_id) AND project_can_manage(p.institution_id))))",
+            "policy": "budget_items_tenant_policy",
+            "command": "SELECT"
+        },
+        {
+            "mode": "RESTRICTIVE",
+            "check": null,
+            "roles": [
+                "authenticated"
+            ],
+            "table": "expenses",
+            "using": "(EXISTS ( SELECT 1\\n   FROM (budget_items b\\n     JOIN projects p USING (project_id))\\n  WHERE ((b.budget_item_id = expenses.budget_item_id) AND project_can_manage(p.institution_id))))",
+            "policy": "expenses_read_guard",
+            "command": "SELECT"
+        },
+        {
+            "mode": "PERMISSIVE",
+            "check": null,
+            "roles": [
+                "authenticated"
+            ],
+            "table": "expenses",
+            "using": "(EXISTS ( SELECT 1\\n   FROM (budget_items b\\n     JOIN projects p USING (project_id))\\n  WHERE ((b.budget_item_id = expenses.budget_item_id) AND project_can_manage(p.institution_id))))",
+            "policy": "expenses_tenant_policy",
+            "command": "SELECT"
+        },
+        {
+            "mode": "RESTRICTIVE",
+            "check": null,
+            "roles": [
+                "authenticated"
+            ],
+            "table": "project_members",
+            "using": "(EXISTS ( SELECT 1\\n   FROM projects p\\n  WHERE ((p.project_id = project_members.project_id) AND project_can_manage(p.institution_id))))",
+            "policy": "project_members_read_guard",
+            "command": "SELECT"
+        },
+        {
+            "mode": "PERMISSIVE",
+            "check": null,
+            "roles": [
+                "authenticated"
+            ],
+            "table": "project_members",
+            "using": "(EXISTS ( SELECT 1\\n   FROM projects p\\n  WHERE ((p.project_id = project_members.project_id) AND project_can_manage(p.institution_id))))",
+            "policy": "project_members_tenant_policy",
+            "command": "SELECT"
+        },
+        {
+            "mode": "RESTRICTIVE",
+            "check": null,
+            "roles": [
+                "authenticated"
+            ],
+            "table": "projects",
+            "using": "project_can_manage(institution_id)",
+            "policy": "projects_read_guard",
+            "command": "SELECT"
+        },
+        {
+            "mode": "PERMISSIVE",
+            "check": null,
+            "roles": [
+                "authenticated"
+            ],
+            "table": "projects",
+            "using": "project_can_manage(institution_id)",
+            "policy": "projects_tenant_policy",
+            "command": "SELECT"
+        }
+    ],
+    "access_definitions": [
+        {
+            "signature": "is_super_admin()",
+            "definition": "CREATE OR REPLACE FUNCTION public.is_super_admin()\\n RETURNS boolean\\n LANGUAGE sql\\n STABLE SECURITY DEFINER\\n SET search_path TO ''\\nAS $function$\\r\\n  SELECT auth.uid() IS NOT NULL AND EXISTS (\\r\\n    SELECT 1 FROM public.memberships m\\r\\n    JOIN public.roles r ON r.role_id = m.role_id\\r\\n    JOIN public.institutions i ON i.institution_id = m.institution_id\\r\\n    WHERE m.profile_id = auth.uid() AND m.is_active AND i.is_active\\r\\n      AND r.name::text = 'super_admin'\\r\\n  );\\r\\n$function$\\n"
+        },
+        {
+            "signature": "project_can_manage(uuid)",
+            "definition": "CREATE OR REPLACE FUNCTION public.project_can_manage(target uuid)\\n RETURNS boolean\\n LANGUAGE sql\\n STABLE SECURITY DEFINER\\n SET search_path TO 'public', 'pg_temp'\\nAS $function$\\r\\n  SELECT auth.uid() IS NOT NULL AND public.project_module_enabled(target) AND (\\r\\n    public.is_super_admin() OR EXISTS (\\r\\n      SELECT 1 FROM public.memberships m JOIN public.roles r USING (role_id)\\r\\n      WHERE m.profile_id = auth.uid() AND m.institution_id = target\\r\\n        AND r.name IN ('institution_admin', 'project_manager')));\\r\\n$function$\\n"
+        },
+        {
+            "signature": "project_can_publish(uuid)",
+            "definition": "CREATE OR REPLACE FUNCTION public.project_can_publish(target uuid)\\n RETURNS boolean\\n LANGUAGE sql\\n STABLE SECURITY DEFINER\\n SET search_path TO 'public', 'pg_temp'\\nAS $function$\\r\\n  SELECT public.project_can_manage(target) AND (public.is_super_admin() OR EXISTS (\\r\\n    SELECT 1 FROM public.memberships m JOIN public.roles r USING (role_id)\\r\\n    WHERE m.profile_id = auth.uid() AND m.institution_id = target AND r.name = 'institution_admin'));\\r\\n$function$\\n"
+        },
+        {
+            "signature": "project_module_enabled(uuid)",
+            "definition": "CREATE OR REPLACE FUNCTION public.project_module_enabled(target uuid)\\n RETURNS boolean\\n LANGUAGE sql\\n STABLE SECURITY DEFINER\\n SET search_path TO 'public', 'pg_temp'\\nAS $function$\\r\\n  SELECT EXISTS (SELECT 1 FROM public.institutions WHERE institution_id = target AND is_active)\\r\\n    AND NOT EXISTS (SELECT 1 FROM public.module_settings\\r\\n      WHERE institution_id = target AND module_name = 'projects' AND NOT is_enabled);\\r\\n$function$\\n"
+        }
+    ]
+}

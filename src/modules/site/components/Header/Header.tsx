@@ -1,11 +1,12 @@
-﻿import { useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import type { AsyncState } from "../../types/common";
 import type { MenuNode } from "../../types/menu";
 import type { SiteConfig } from "../../types/site";
 import { useInstitution } from "../../context/InstitutionContext";
 import { AccessibilityControls } from "../Accessibility/AccessibilityControls";
-import { AsyncView } from "../states/AsyncView";
+import { institutionalNavigation } from "../../utils/institutionalNavigation";
+import styles from "./Header.module.css";
 import { MobileNavigation } from "../Navigation/MobileNavigation";
 import { Navigation } from "../Navigation/Navigation";
 
@@ -13,6 +14,7 @@ interface Props {
   config: SiteConfig;
   menu: { state: AsyncState<MenuNode[]>; reload: () => void };
   homeUrl?: string;
+  preview?: boolean;
 }
 
 function ShieldMark({ letter }: { letter: string }) {
@@ -26,16 +28,18 @@ function ShieldMark({ letter }: { letter: string }) {
   );
 }
 
-export function Header({ config, menu, homeUrl = "/" }: Props) {
+export function Header({ config, homeUrl = "/", preview = false }: Props) {
   const [logoFailed, setLogoFailed] = useState(false);
+  useEffect(() => setLogoFailed(false), [config.logoUrl]);
   const letter = config.name.trim().charAt(0).toUpperCase() || "I";
   const { institution } = useInstitution();
+  const tree = institutionalNavigation(institution?.institution_id);
   const loginUrl = institution
     ? `/${institution.slug}/login?institution=${encodeURIComponent(institution.institution_id)}`
     : undefined;
 
   return (
-    <header className="site-header">
+    <header className={`site-header ${styles.fixedHeader}`}>
       <div className="site-container site-header__inner">
         <Link to={homeUrl} className="site-brand" aria-label={`Inicio: ${config.name}`}>
           {config.logoUrl && !logoFailed ? (
@@ -43,17 +47,11 @@ export function Header({ config, menu, homeUrl = "/" }: Props) {
           ) : (
             <ShieldMark letter={letter} />
           )}
-          <span className="site-brand__name">{config.name}</span>
+          <span className="site-brand__name" title={config.name}>{config.name}</span>
         </Link>
-        <AsyncView state={menu.state} onRetry={menu.reload} inline loadingLabel="Cargando menú…" errorTitle="Menú no disponible" emptyFallback={null}>
-          {(tree) => (
-            <>
               <div className="site-header__desktop"><Navigation tree={tree} loginUrl={loginUrl} /></div>
               <div className="site-header__mobile"><MobileNavigation tree={tree} loginUrl={loginUrl} /></div>
-            </>
-          )}
-        </AsyncView>
-        <AccessibilityControls />
+        {!preview && <AccessibilityControls />}
       </div>
     </header>
   );

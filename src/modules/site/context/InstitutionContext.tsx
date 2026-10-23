@@ -38,15 +38,15 @@ export function InstitutionProvider({ institutionId, children }: Props) {
     return Promise.resolve(null);
   }, [ref.id, ref.slug]);
 
-  if (!ref.id && !ref.slug && (pathname === "/" || pathname === "/panel")) {
-    return <Navigate to="/panel/admin" replace />;
-  }
-
   const value = useMemo<InstitutionValue | null>(() => {
     if (found.state.status === "success" && found.state.data)
       return { institutionId: found.state.data.institution_id, institution: found.state.data, basePath };
     return null;
   }, [found.state, basePath]);
+
+  if (!ref.id && !ref.slug && (pathname === "/" || pathname === "/panel")) {
+    return <Navigate to="/panel/admin" replace />;
+  }
 
   if (value) return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
   if (!ref.id && !ref.slug)
