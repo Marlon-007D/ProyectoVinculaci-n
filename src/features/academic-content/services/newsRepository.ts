@@ -1,9 +1,11 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { AcademicContentEntry } from '../types/academicContent.types'
+import { parseNewsContent, serializeNewsContent } from './newsContentCodec'
 
 interface NewsRow {
   news_id: string
   institution_id: string
+  academic_period_id: string | null
   title: string
   slug: string
   summary: string | null
@@ -16,7 +18,7 @@ interface NewsRow {
 export function createNewsRepository(client: SupabaseClient) {
   return {
     async list(institutionId: string) {
-      const { data, error } = await client.from('news').select('news_id,institution_id,title,slug,summary,content,cover_image_url,published_at,is_published').eq('institution_id', institutionId).order('published_at', { ascending: false, nullsFirst: false })
+      const { data, error } = await client.from('news').select('news_id,institution_id,academic_period_id,title,slug,summary,content,cover_image_url,published_at,is_published').eq('institution_id', institutionId).order('published_at', { ascending: false, nullsFirst: false })
       if (error) throw error
       return ((data ?? []) as NewsRow[]).map(toEntry)
     },
@@ -25,10 +27,11 @@ export function createNewsRepository(client: SupabaseClient) {
       const payload = {
         news_id: entry.id,
         institution_id: institutionId,
+        academic_period_id: entry.periodId || null,
         title: entry.title.trim(),
         slug: slugify(entry.title),
         summary: entry.description.trim(),
-        content: entry.description.trim(),
+        content: serializeNewsContent(entry.description.trim(), entry.sections, entry.periodId),
         cover_image_url: entry.imageUrl ?? null,
         published_at: publishedAt,
         is_published: entry.status === 'published',
@@ -47,10 +50,10 @@ export function createNewsRepository(client: SupabaseClient) {
 }
 
 function toEntry(row: NewsRow): AcademicContentEntry {
-  const body = row.content || row.summary || ''
+  const body = parseNewsContent(row.content || row.summary || '')
   return {
     id: row.news_id, institutionId: row.institution_id, kind: 'news', title: row.title,
-    description: body, periodId: '', status: row.is_published ? 'published' : 'draft',
+    description: body.description, sections: body.sections, periodId: row.academic_period_id ?? body.periodId ?? '', status: row.is_published ? 'published' : 'draft',
     date: row.published_at?.slice(0, 10) ?? '', location: '', studentName: '', grade: '',
     distinction: '', startDate: '', endDate: '', isCurrent: false,
     imageUrl: row.cover_image_url ?? undefined, updatedAt: row.published_at ?? '',

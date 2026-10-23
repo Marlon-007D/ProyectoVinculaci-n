@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import type { ReactNode } from 'react'
-import { ArrowLeft, ArrowRight, CalendarDays, Check, CirclePlus, Clock3, Eye, GraduationCap, ImagePlus, Pencil, Trash2 } from 'lucide-react'
+import { ArrowRight, CalendarDays, Check, CirclePlus, Clock3, Eye, GraduationCap, ImagePlus, Pencil, Trash2 } from 'lucide-react'
 import { Button } from '../../../shared/components/Button/Button'
 import { Modal } from '../../../shared/components/Modal/Modal'
 import { useAcademicContent } from '../hooks/useAcademicContent'
@@ -14,6 +14,9 @@ import { getHonorCategory, getOfficialFlagKind, normalizeOfficialDistinction, OF
 import { getStudentAvatar, getStudentInitials } from '../../honors/utils/studentAvatar'
 import { OfficialFlag } from '../../honors/components/OfficialFlag'
 import { AcademicPostPreviewPage } from '../pages/AcademicPostPreviewPage'
+import { createAcademicContentImageUploader } from '../services/academicContentImageService'
+import { createAcademicPeriodRepository, type AcademicPeriodOption } from '../services/academicPeriodRepository'
+import styles from './NewsPublicationList.module.css'
 import './AcademicContentManager.css'
 
 interface Props { kind: AcademicContentKind; title: string; singular: string; onPreview?: (entry: AcademicContentEntry) => void }
@@ -28,6 +31,8 @@ const pageSize = 5
 const OFFICIAL_DISPLAY_DISTINCTIONS = [OFFICIAL_DISTINCTIONS[3], OFFICIAL_DISTINCTIONS[0], OFFICIAL_DISTINCTIONS[4], OFFICIAL_DISTINCTIONS[1], OFFICIAL_DISTINCTIONS[2], ...OFFICIAL_DISTINCTIONS.slice(5)]
 const defaultCover = 'https://futuresocsci.mcmaster.ca/app/uploads/2024/07/Thubnail-photo-2-1400x600.jpg'
 const eventCover = 'https://socialsciences.careers.mcmaster.ca/app/uploads/2025/10/Untitled-design-27.png'
+const publicationImageUploader = createAcademicContentImageUploader(supabase)
+const academicPeriodRepository = createAcademicPeriodRepository(supabase)
 
 function dateLabel(value: string) {
   if (!value) return ''
@@ -53,6 +58,12 @@ function todayISO() {
   return `${part('year')}-${part('month')}-${part('day')}`
 }
 
+function errorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error) return error.message
+  if (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string') return error.message
+  return fallback
+}
+
 export function AcademicContentManager({ kind, title, singular, onPreview }: Props) {
   const { activeInstitution } = useTenant()
   const institutionId = activeInstitution?.institution_id ?? (kind === 'honor' ? null : tenantInstitution.id)
@@ -63,18 +74,29 @@ export function AcademicContentManager({ kind, title, singular, onPreview }: Pro
   const [formStep, setFormStep] = useState<1 | 2>(1)
   const [page, setPage] = useState(1)
   const [statusFilter, setStatusFilter] = useState<'all' | AcademicPublicationStatus>('all')
+  const [publicationSearch, setPublicationSearch] = useState('')
+  const [publicationSearchOpen, setPublicationSearchOpen] = useState(false)
+  const [publicationDate, setPublicationDate] = useState('')
   const [expandedHonorPeriod, setExpandedHonorPeriod] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [photoUploading, setPhotoUploading] = useState(false)
   const [photoError, setPhotoError] = useState('')
+  const [publicationPeriods, setPublicationPeriods] = useState<AcademicPeriodOption[]>([])
   const autoExpandedOfficialGroup = useRef(false)
   const periods = entries.filter(entry => entry.kind === 'period').sort((a, b) => b.startDate.localeCompare(a.startDate))
   const currentPeriod = periods.find(period => period.isCurrent)
+  const defaultPublicationPeriodId = publicationPeriods.find(period => period.isCurrent)?.id ?? publicationPeriods[0]?.id ?? ''
   const visibleEntries = useMemo(() => entries.filter(entry => entry.kind === kind)
     .sort((a, b) => (b.date || b.startDate || b.updatedAt).localeCompare(a.date || a.startDate || a.updatedAt)), [entries, kind])
-  const filteredEntries = useMemo(() => kind !== 'news' && kind !== 'event' || statusFilter === 'all'
-    ? visibleEntries
-    : visibleEntries.filter(entry => entry.status === statusFilter), [kind, statusFilter, visibleEntries])
+  const filteredEntries = useMemo(() => {
+    const query = publicationSearch.trim().toLocaleLowerCase('es-EC')
+    return visibleEntries.filter(entry => {
+      const matchesStatus = (kind !== 'news' && kind !== 'event') || statusFilter === 'all' || entry.status === statusFilter
+      const matchesSearch = !query || `${entry.title} ${entry.description}`.toLocaleLowerCase('es-EC').includes(query)
+      const matchesDate = !publicationDate || entry.date === publicationDate
+      return matchesStatus && matchesSearch && matchesDate
+    })
+  }, [kind, publicationDate, publicationSearch, statusFilter, visibleEntries])
   const honorGroups = useMemo(() => {
     if (kind !== 'honor') return []
     const groups = new Map<string, AcademicContentEntry[]>()
@@ -98,11 +120,12 @@ export function AcademicContentManager({ kind, title, singular, onPreview }: Pro
     return result.sort((a, b) => b.year.localeCompare(a.year) || (a.category === 'official' ? -1 : 1))
   }, [kind, visibleEntries, periods, currentPeriod])
   const listCount = kind === 'honor' ? visibleEntries.length : filteredEntries.length
+  const isPublication = kind === 'news' || kind === 'event'
   const paginationCount = kind === 'honor' ? honorGroups.length : listCount
   const pageCount = Math.max(1, Math.ceil(paginationCount / pageSize))
   const pageEntries = filteredEntries.slice((page - 1) * pageSize, page * pageSize)
   const pageHonorGroups = honorGroups.slice((page - 1) * pageSize, page * pageSize)
-  useEffect(() => { setPage(1) }, [kind, statusFilter])
+  useEffect(() => { setPage(1) }, [kind, publicationDate, publicationSearch, statusFilter])
   useEffect(() => { if (page > pageCount) setPage(pageCount) }, [page, pageCount])
   useEffect(() => {
     if (kind !== 'honor' || autoExpandedOfficialGroup.current) return
@@ -112,10 +135,27 @@ export function AcademicContentManager({ kind, title, singular, onPreview }: Pro
       autoExpandedOfficialGroup.current = true
     }
   }, [kind, honorGroups, currentPeriod])
+  useEffect(() => {
+    if ((kind !== 'news' && kind !== 'event') || !institutionId) {
+      setPublicationPeriods([])
+      return
+    }
+
+    let isCurrent = true
+    void academicPeriodRepository.list(institutionId)
+      .then(periodOptions => { if (isCurrent) setPublicationPeriods(periodOptions) })
+      .catch(() => { if (isCurrent) setPublicationPeriods([]) })
+
+    return () => { isCurrent = false }
+  }, [institutionId, kind])
+  useEffect(() => {
+    if (!editing || (kind !== 'news' && kind !== 'event') || editing.periodId || !defaultPublicationPeriodId) return
+    setEditing(current => current && !current.periodId ? { ...current, periodId: defaultPublicationPeriodId } : current)
+  }, [defaultPublicationPeriodId, editing, kind])
 
   if (loading) return <AcademicContentSkeleton kind={kind} title={title} />
   if (kind === 'honor' && error) return <section className="page-content academic-content-page is-honor-page"><p className="academic-notice" role="alert">{error}</p><Button variant="primary" onClick={reload}>Reintentar</Button></section>
-  if ((kind === 'news' || kind === 'event') && error) return <section className="page-content academic-content-page"><header className="academic-page-heading"><div><h1>{title}</h1></div></header><p className="academic-notice" role="alert">{error}</p><Button variant="primary" onClick={reload}>Reintentar</Button></section>
+  if ((kind === 'news' || kind === 'event') && error) return <section className="page-content academic-content-page">{!isPublication && <header className="academic-page-heading"><div><h1>{title}</h1></div></header>}<p className="academic-notice" role="alert">{error}</p><Button variant="primary" onClick={reload}>Reintentar</Button></section>
 
   const update = (field: keyof AcademicContentEntry, value: string | boolean) => {
     setEditing(current => current ? { ...current, [field]: value } : current)
@@ -126,7 +166,10 @@ export function AcademicContentManager({ kind, title, singular, onPreview }: Pro
   const beginCreate = (officialDistinction?: typeof OFFICIAL_DISTINCTIONS[number], periodId = currentPeriod?.id ?? '') => {
     setNotice(''); setFieldErrors({}); setFormStep(1)
     const entry = emptyEntry(kind, institutionId ?? tenantInstitution.id)
-    setEditing(officialDistinction ? { ...entry, honorCategory: 'official', grade: 'Tercero de Bachillerato', distinction: officialDistinction, periodId } : entry)
+    const publicationEntry = kind === 'news' || kind === 'event'
+      ? { ...entry, periodId: defaultPublicationPeriodId }
+      : entry
+    setEditing(officialDistinction ? { ...entry, honorCategory: 'official', grade: 'Tercero de Bachillerato', distinction: officialDistinction, periodId } : publicationEntry)
   }
   const beginEdit = (entry: AcademicContentEntry) => { setNotice(''); setFieldErrors({}); setFormStep(1); setEditing({ ...entry, author: 'Brigitte Rodríguez', distinction: kind === 'honor' && getHonorCategory(entry) === 'official' ? normalizeOfficialDistinction(entry.distinction) : entry.distinction }) }
   const validateFields = (requiredFields: (keyof AcademicContentEntry)[]) => {
@@ -153,28 +196,28 @@ export function AcademicContentManager({ kind, title, singular, onPreview }: Pro
       setSaving(true)
       await save(kind === 'honor' ? { ...editing, distinction: category === 'official' ? normalizeOfficialDistinction(editing.distinction) : editing.distinction, honorCategory: category, officialOrder: category === 'official' ? OFFICIAL_DISTINCTIONS.indexOf(normalizeOfficialDistinction(editing.distinction) as typeof OFFICIAL_DISTINCTIONS[number]) + 1 : undefined } : editing)
       setEditing(null)
-      setNotice(`${singular} guardado.`)
+      setNotice(isPublication ? '' : `${singular} guardado.`)
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : 'No se pudo guardar el registro.')
+      setNotice(errorMessage(error, 'No se pudo guardar el registro.'))
     } finally {
       setSaving(false)
     }
   }
   const deleteEntry = async (entry: AcademicContentEntry) => {
     if (!window.confirm(`¿Eliminar ${entry.title || entry.studentName}?`)) return
-    try { await remove(entry.id); setNotice(`${singular} eliminado.`) }
-    catch (error) { setNotice(error instanceof Error ? error.message : 'No se pudo eliminar el registro.') }
+    try { await remove(entry.id); setNotice(isPublication ? '' : `${singular} eliminado.`) }
+    catch (error) { setNotice(errorMessage(error, 'No se pudo eliminar el registro.')) }
   }
-  const renderPagination = (position: 'top' | 'bottom') => pageCount > 1 && <nav className={`academic-pagination is-${position}`} aria-label={`Paginación de ${title}`}><button type="button" onClick={() => setPage(current => Math.max(1, current - 1))} disabled={page === 1} aria-label="Página anterior"><ArrowLeft size={16} /></button><span>Página {page} de {pageCount}</span><button type="button" onClick={() => setPage(current => Math.min(pageCount, current + 1))} disabled={page === pageCount} aria-label="Página siguiente"><ArrowRight size={16} /></button></nav>
+  const renderPagination = (position: 'top' | 'bottom') => pageCount > 1 && <nav className={isPublication ? `${styles.publicationPagination} ${position === 'top' ? styles.paginationTop : styles.paginationBottom}` : `academic-pagination is-${position}`} aria-label={`Paginación de ${title}`}><button type="button" onClick={() => setPage(current => Math.max(1, current - 1))} disabled={page === 1} aria-label="Página anterior"><span className="material-symbols-rounded" aria-hidden="true">arrow_back</span></button><span className={isPublication ? styles.paginationCount : ''}>{isPublication ? `Pág. ${page}/${pageCount}` : `Página ${page} de ${pageCount}`}</span><button type="button" onClick={() => setPage(current => Math.min(pageCount, current + 1))} disabled={page === pageCount} aria-label="Página siguiente"><span className="material-symbols-rounded" aria-hidden="true">arrow_forward</span></button></nav>
 
   const saveEditedPublication = async (entry: AcademicContentEntry) => {
     try {
       setSaving(true)
       await save({ ...entry, date: editing?.date || todayISO(), author: 'Brigitte Rodríguez' })
       setEditing(null)
-      setNotice(`${singular} guardado.`)
+      setNotice('')
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : 'No se pudo guardar la publicación.')
+      setNotice(errorMessage(error, 'No se pudo guardar la publicación.'))
     } finally {
       setSaving(false)
     }
@@ -184,29 +227,31 @@ export function AcademicContentManager({ kind, title, singular, onPreview }: Pro
     entry={editing}
     mode="edit"
     isNew={!visibleEntries.some(entry => entry.id === editing.id)}
-    periods={periods.map(period => ({ id: period.id, title: period.title }))}
+    periods={publicationPeriods.map(period => ({ id: period.id, title: period.title }))}
+    isSaving={saving}
+    saveError={notice}
     onChange={setEditing}
+    onUploadImage={file => publicationImageUploader.upload({ institutionId: editing.institutionId, publicationId: editing.id, file })}
     onSave={saveEditedPublication}
     onCancel={() => setEditing(null)}
   />
 
-  return <section className={`page-content academic-content-page${kind === 'honor' ? ' is-honor-page' : ''}`}>
-    {kind !== 'honor' && <header className="academic-page-heading"><div><h1>{title}</h1></div>
+  return <section className={`page-content academic-content-page${kind === 'honor' ? ' is-honor-page' : ''}${isPublication ? ` ${styles.newsPage}` : ''}`}>
+    {kind !== 'honor' && !isPublication && <header className="academic-page-heading"><div><h1>{title}</h1></div>
     </header>}
-    {notice && <p className="academic-notice" role="status">{notice}</p>}
+    {notice && !isPublication && <p className="academic-notice" role="status">{notice}</p>}
     {kind === 'period' && <section className="current-period-card" aria-label="Período académico vigente">
       <div className="current-period-icon"><CalendarDays size={20} /></div><div><span>PERÍODO VIGENTE</span><strong>{currentPeriod?.title ?? 'No hay un período vigente'}</strong>{currentPeriod && <small>{dateLabel(currentPeriod.startDate)} – {dateLabel(currentPeriod.endDate)}</small>}</div>
     </section>}
-    <section className={kind === 'honor' ? 'is-honor-list' : `academic-list ${kind === 'news' || kind === 'event' ? 'is-publication-list' : ''}`} aria-label={title}>
+    <section className={kind === 'honor' ? 'is-honor-list' : `academic-list ${kind === 'news' || kind === 'event' ? 'is-publication-list' : ''}${isPublication ? ` ${styles.newsList}` : ''}`} aria-label={title}>
       {kind === 'period' && <div className="academic-list-heading"><div><h2>Histórico de períodos</h2><span aria-label={`${listCount} ${singular.toLowerCase()}`}>{listCount}</span></div><Button variant="primary" onClick={() => beginCreate()}><CirclePlus size={18} />{`Nuevo ${singular.toLowerCase()}`}</Button></div>}
-      {(kind === 'news' || kind === 'event') && <div className="publication-toolbar"><div className="publication-filters" role="group" aria-label="Filtrar publicaciones por estado">
+      {(kind === 'news' || kind === 'event') && <div className={`${isPublication ? styles.toolbar : 'publication-toolbar'}${isPublication && publicationSearchOpen ? ` ${styles.toolbarSearching}` : ''}`}><div className={isPublication ? styles.filters : 'publication-filters'} role="group" aria-label="Filtrar publicaciones por estado">
         {([
           { value: 'all', label: 'Todas', count: visibleEntries.length },
           { value: 'published', label: 'Publicadas', count: visibleEntries.filter(entry => entry.status === 'published').length },
           { value: 'draft', label: 'Borradores', count: visibleEntries.filter(entry => entry.status === 'draft').length },
-        ] as const).map(option => <button key={option.value} type="button" className={statusFilter === option.value ? 'is-active' : ''} aria-pressed={statusFilter === option.value} onClick={() => setStatusFilter(option.value)}>{option.label}<span>{option.count}</span></button>)}
-      </div><Button variant="primary" onClick={() => beginCreate()}><CirclePlus size={18} />{kind === 'news' ? 'Nueva noticia' : 'Nuevo evento'}</Button></div>}
-      {renderPagination('top')}
+        ] as const).map(option => <button key={option.value} type="button" className={isPublication ? `${styles.filterChip}${statusFilter === option.value ? ` ${styles.filterChipActive}` : ''}` : statusFilter === option.value ? 'is-active' : ''} aria-pressed={statusFilter === option.value} onClick={() => setStatusFilter(option.value)}>{option.label}<span>{option.count}</span></button>)}
+      </div>{isPublication && <div className={`${styles.searchTools}${publicationSearchOpen ? ` ${styles.searchToolsOpen}` : ''}`}><label className={`${styles.searchField}${publicationSearchOpen ? ` ${styles.searchFieldOpen}` : ''}`}><button type="button" className={styles.searchToggle} aria-label={publicationSearchOpen ? 'Cerrar búsqueda' : 'Buscar publicaciones'} aria-expanded={publicationSearchOpen} onClick={() => setPublicationSearchOpen(open => !open)}><span className="material-symbols-rounded" aria-hidden="true">search</span></button>{publicationSearchOpen && <input autoFocus type="search" value={publicationSearch} onChange={event => setPublicationSearch(event.target.value)} placeholder={`Buscar ${kind === 'news' ? 'noticias' : 'eventos'}`} aria-label={`Buscar ${kind === 'news' ? 'noticias' : 'eventos'} por texto`} />}</label><label className={`${styles.statusSelectField} ${statusFilter === 'all' ? styles.statusAll : statusFilter === 'published' ? styles.statusPublishedFilter : styles.statusDraftFilter}`}><span className="material-symbols-rounded" aria-hidden="true">{statusFilter === 'all' ? 'filter_list' : statusFilter === 'published' ? 'check_circle' : 'edit_note'}</span><select value={statusFilter} onChange={event => setStatusFilter(event.target.value as 'all' | AcademicPublicationStatus)} aria-label="Filtrar por estado"><option value="all">Todas</option><option value="published">Publicadas</option><option value="draft">Borradores</option></select></label><label className={styles.dateField}><span className="material-symbols-rounded" aria-hidden="true">calendar_month</span><input type="date" value={publicationDate} onChange={event => setPublicationDate(event.target.value)} aria-label="Filtrar publicaciones por fecha" title="Filtrar por fecha" /></label></div>}<div className={isPublication ? styles.toolbarActions : ''}>{renderPagination('top')}<Button variant="primary" className={isPublication ? styles.newButton : ''} onClick={() => beginCreate()}>{isPublication ? <span className="material-symbols-rounded" aria-hidden="true">add</span> : <CirclePlus size={18} />}{kind === 'news' ? 'Nueva noticia' : 'Nuevo evento'}</Button></div></div>}
       {listCount === 0 && kind !== 'honor' ? <p className="academic-empty">No hay registros para esta institución.</p> : kind === 'honor' ? <div className="academic-entry-list honor-period-list">{pageHonorGroups.map(group => {
         const groupKey = group.key
         const expanded = expandedHonorPeriod === groupKey
@@ -240,22 +285,22 @@ export function AcademicContentManager({ kind, title, singular, onPreview }: Pro
             </article>
           })}</div> : <div className="honor-people-list" aria-label={`Reconocimientos institucionales ${group.year}`}>{group.people.map(person => <article className="academic-entry honor-person-entry" key={person.id}>{getStudentAvatar(person.studentName) ? <img className="honor-student-avatar" src={getStudentAvatar(person.studentName)} alt={`Fotografía de ${person.studentName}`} loading="lazy" /> : <span className="honor-student-initials" aria-hidden="true">{getStudentInitials(person.studentName)}</span>}<div className="academic-entry-copy"><h3>{person.studentName}</h3><p>{person.distinction} · {gradeLabel(person.grade)}</p></div><div className="honor-person-controls"><div className="academic-entry-actions"><button type="button" className="academic-icon-button" onClick={() => beginEdit(person)} aria-label={`Editar ${person.studentName}`}><Pencil size={17} /></button><button type="button" className="academic-icon-button is-danger" onClick={() => deleteEntry(person)} aria-label={`Eliminar ${person.studentName}`}><Trash2 size={17} /></button></div><span className={`entry-status ${person.status === 'published' ? 'is-published' : ''}`}>{person.status === 'published' ? 'Publicado' : 'Borrador'}</span></div></article>)}</div>)}
         </article>
-      })}</div> : <div className="academic-entry-list">{pageEntries.map(entry => {
+      })}</div> : <div className={isPublication ? styles.postsGrid : 'academic-entry-list'}>{pageEntries.map(entry => {
         const linkedPeriod = periods.find(period => period.id === entry.periodId)
         const mainText = entry.title
         const subText = entry.description
-        return (kind === 'news' || kind === 'event') ? <article className="publication-post" key={entry.id}>
-          <img className="publication-post-image" src={entry.imageUrl || (kind === 'event' ? eventCover : defaultCover)} alt="" loading="lazy" />
-          <div className="publication-post-body"><div className="academic-entry-title"><h3>{mainText}</h3><span className={`entry-status ${entry.status === 'published' ? 'is-published' : ''}`}>{entry.status === 'published' ? 'Publicado' : 'Borrador'}</span></div><p>{subText}</p><small>{dateLabel(entry.date)}{kind === 'event' && entry.location ? ` · ${entry.location}` : ''}</small><div className="academic-entry-actions"><button type="button" className="academic-icon-button is-preview" onClick={() => onPreview?.(entry)} aria-label={`Ver vista previa de ${mainText}`} title="Vista previa"><Eye size={18} /></button><button type="button" className="academic-icon-button" onClick={() => beginEdit(entry)} aria-label={`Editar ${mainText}`} title="Editar"><Pencil size={17} /></button><button type="button" className="academic-icon-button is-danger" onClick={() => deleteEntry(entry)} aria-label={`Eliminar ${mainText}`} title="Eliminar"><Trash2 size={17} /></button></div></div>
+        return (kind === 'news' || kind === 'event') ? <article className={isPublication ? styles.postCard : 'publication-post'} key={entry.id}>
+          {isPublication ? <div className={`${styles.postMedia}${kind === 'event' ? ` ${styles.eventMedia}` : ''}`}><img className={styles.postImage} src={entry.imageUrl || (kind === 'event' ? eventCover : defaultCover)} alt="" loading="lazy" />{kind === 'event' && entry.location && <span className={styles.eventLocation}><span className="material-symbols-rounded" aria-hidden="true">location_on</span>{entry.location}</span>}</div> : <img className="publication-post-image" src={entry.imageUrl || (kind === 'event' ? eventCover : defaultCover)} alt="" loading="lazy" />}
+          <div className={isPublication ? styles.postBody : 'publication-post-body'}><div className={isPublication ? styles.postTitle : 'academic-entry-title'}><h3>{mainText}</h3><span className={isPublication ? `${styles.statusChip}${entry.status === 'published' ? ` ${styles.statusPublished}` : ''}` : `entry-status ${entry.status === 'published' ? 'is-published' : ''}`}>{entry.status === 'published' ? 'Publicado' : 'Borrador'}</span></div><p>{subText}</p><div className={isPublication ? styles.postFooter : ''}><small>{isPublication && <span className="material-symbols-rounded" aria-hidden="true">calendar_month</span>}{dateLabel(entry.date)}</small><div className={isPublication ? styles.postActions : 'academic-entry-actions'}><button type="button" className={`${isPublication ? `${styles.postAction} ${styles.previewAction}` : 'academic-icon-button is-preview'}`} onClick={() => onPreview?.(entry)} aria-label={`Ver vista previa de ${mainText}`} title="Vista previa">{isPublication ? <span className="material-symbols-rounded" aria-hidden="true">visibility</span> : <Eye size={18} />}</button><button type="button" className={isPublication ? styles.postAction : 'academic-icon-button'} onClick={() => beginEdit(entry)} aria-label={`Editar ${mainText}`} title="Editar">{isPublication ? <span className="material-symbols-rounded" aria-hidden="true">edit</span> : <Pencil size={17} />}</button><button type="button" className={isPublication ? `${styles.postAction} ${styles.dangerAction}` : 'academic-icon-button is-danger'} onClick={() => deleteEntry(entry)} aria-label={`Eliminar ${mainText}`} title="Eliminar">{isPublication ? <span className="material-symbols-rounded" aria-hidden="true">delete</span> : <Trash2 size={17} />}</button></div></div></div>
         </article> : <article className="academic-entry" key={entry.id}>
           <div className="academic-entry-copy"><div className="academic-entry-title"><h3>{mainText}</h3>{kind === 'period' ? <span className={entry.isCurrent ? 'entry-status is-current' : 'entry-status'}>{entry.isCurrent ? 'Vigente' : 'Histórico'}</span> : <span className={`entry-status ${entry.status === 'published' ? 'is-published' : ''}`}>{entry.status === 'published' ? 'Publicado' : 'Borrador'}</span>}</div>
             {subText && <p>{subText}</p>}
-            <small>{kind === 'period' ? `${dateLabel(entry.startDate)} – ${dateLabel(entry.endDate)}` : kind === 'event' ? `${dateLabel(entry.date)}${entry.location ? ` · ${entry.location}` : ''}` : `${entry.date ? dateLabel(entry.date) : 'Sin fecha'} · ${linkedPeriod?.title ?? 'Sin período académico'}`}</small>
+            <small>{kind === 'period' ? `${dateLabel(entry.startDate)} – ${dateLabel(entry.endDate)}` : kind === 'event' ? dateLabel(entry.date) : `${entry.date ? dateLabel(entry.date) : 'Sin fecha'} · ${linkedPeriod?.title ?? 'Sin período académico'}`}</small>
           </div>
           <div className="academic-entry-actions"><button type="button" className="academic-icon-button" onClick={() => beginEdit(entry)} aria-label={`Editar ${mainText}`}><Pencil size={17} /></button>{kind !== 'period' && <button type="button" className="academic-icon-button is-danger" onClick={() => deleteEntry(entry)} aria-label={`Eliminar ${mainText}`}><Trash2 size={17} /></button>}</div>
         </article>
       })}</div>}
-      {renderPagination('bottom')}
+      {!isPublication && renderPagination('bottom')}
     </section>
     <Modal open={editing !== null} title={`${editing && visibleEntries.some(entry => entry.id === editing.id) ? 'Editar' : 'Nuevo'} ${singular.toLowerCase()}`} onClose={() => setEditing(null)}>
       {editing && <form className="academic-form" noValidate onSubmit={saveForm}>

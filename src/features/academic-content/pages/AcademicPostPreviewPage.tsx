@@ -1,19 +1,26 @@
-import { useEffect, useMemo, useState } from 'react'
-import { ArrowLeft, ArrowUp, CalendarDays, ImagePlus, MapPin, Pencil, Plus, Save, Trash2, X } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { ArrowLeft, ArrowUp, CalendarDays, ImagePlus, LoaderCircle, MapPin, Pencil, Plus, Trash2, X } from 'lucide-react'
 import authorAvatar from '../../honors/mocks/avatars/portrait-01.jpg'
 import type { AcademicContentEntry, AcademicContentSection } from '../types/academicContent.types'
 import { getAcademicContentSections } from '../utils/contentSections'
 import './AcademicPostPreviewPage.css'
 
 const DEFAULT_AUTHOR = 'Brigitte Rodríguez'
+const publicationStatusCopy = {
+  draft: { label: 'Borrador', description: 'Solo visible en administración' },
+  published: { label: 'Publicado', description: 'Visible en la página institucional' },
+} satisfies Record<AcademicContentEntry['status'], { label: string; description: string }>
 interface PeriodOption { id: string; title: string }
 interface Props {
   entry: AcademicContentEntry
   mode?: 'preview' | 'edit'
   isNew?: boolean
   periods?: PeriodOption[]
+  isSaving?: boolean
+  saveError?: string
   onChange?: (entry: AcademicContentEntry) => void
-  onSave?: (entry: AcademicContentEntry) => void
+  onUploadImage?: (file: File) => Promise<string>
+  onSave?: (entry: AcademicContentEntry) => Promise<void>
   onCancel?: () => void
   onBack?: () => void
 }
@@ -23,28 +30,10 @@ function dateLabel(value: string) {
   return new Intl.DateTimeFormat('es-EC', { dateStyle: 'long', timeZone: 'UTC' }).format(new Date(`${value}T12:00:00Z`))
 }
 
-async function imageFileToDataUrl(file: File): Promise<string> {
-  const objectUrl = URL.createObjectURL(file)
-  try {
-    const image = new Image()
-    image.src = objectUrl
-    await image.decode()
-    const scale = Math.min(1, 1400 / Math.max(image.naturalWidth, image.naturalHeight))
-    const canvas = document.createElement('canvas')
-    canvas.width = Math.max(1, Math.round(image.naturalWidth * scale))
-    canvas.height = Math.max(1, Math.round(image.naturalHeight * scale))
-    const context = canvas.getContext('2d')
-    if (!context) throw new Error('No se pudo procesar la imagen.')
-    context.drawImage(image, 0, 0, canvas.width, canvas.height)
-    return canvas.toDataURL('image/jpeg', 0.78)
-  } finally {
-    URL.revokeObjectURL(objectUrl)
-  }
-}
-
-export function AcademicPostPreviewPage({ entry, mode = 'preview', isNew = false, periods = [], onChange, onSave, onCancel, onBack }: Props) {
+export function AcademicPostPreviewPage({ entry, mode = 'preview', isNew = false, periods = [], isSaving = false, saveError = '', onChange, onUploadImage, onSave, onCancel, onBack }: Props) {
   const isEditing = mode === 'edit'
   const isEvent = entry.kind === 'event'
+  const statusCopy = publicationStatusCopy[entry.status]
   const author = DEFAULT_AUTHOR
   const fallbackImage = isEvent
     ? 'https://socialsciences.careers.mcmaster.ca/app/uploads/2025/10/Untitled-design-27.png'
@@ -59,9 +48,12 @@ export function AcademicPostPreviewPage({ entry, mode = 'preview', isNew = false
   const [activeSection, setActiveSection] = useState(0)
   const [formError, setFormError] = useState('')
   const [imageError, setImageError] = useState('')
-  const [editingTitle, setEditingTitle] = useState(true)
-  const [editingSummary, setEditingSummary] = useState(true)
-  const [editingItems, setEditingItems] = useState<string[]>(sections.flatMap(section => [section.id, ...section.blocks.map(block => block.id)]))
+  const [editingTitle, setEditingTitle] = useState(false)
+  const [editingSummary, setEditingSummary] = useState(false)
+  const [editingItems, setEditingItems] = useState<string[]>(() => sections[0] ? [sections[0].id, ...sections[0].blocks.map(block => block.id)] : [])
+  const [isImageUploading, setIsImageUploading] = useState(false)
+  const errorRef = useRef<HTMLParagraphElement>(null)
+  const editorError = imageError || formError || saveError
 
   useEffect(() => {
     if (isEditing || !articleSections.length) return
@@ -76,6 +68,10 @@ export function AcademicPostPreviewPage({ entry, mode = 'preview', isNew = false
     })
     return () => observer.disconnect()
   }, [entry.id, isEditing, articleSections])
+  useEffect(() => {
+    if (!editorError) return
+    errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [editorError])
 
   const updateEntry = (patch: Partial<AcademicContentEntry>) => onChange?.({ ...entry, ...patch })
   const updateSection = (index: number, patch: Partial<AcademicContentSection>) => {
@@ -106,44 +102,58 @@ export function AcademicPostPreviewPage({ entry, mode = 'preview', isNew = false
     const section = sections[sectionIndex]
     updateSection(sectionIndex, { blocks: section.blocks.filter((_, index) => index !== blockIndex) })
   }
-  const uploadImage = async (file: File | undefined, onImage: (dataUrl: string) => void) => {
+  const uploadImage = async (file: File | undefined, onImage: (imageUrl: string) => void) => {
     if (!file) return
-    if (!file.type.startsWith('image/')) { setImageError('Selecciona un archivo de imagen.'); return }
-    try { onImage(await imageFileToDataUrl(file)); setImageError('') }
-    catch { setImageError('No se pudo cargar esta foto. Inténtalo con otra imagen.') }
+    if (!onUploadImage) { setImageError('No se configuró el guardado de fotos para esta publicación.'); return }
+    setIsImageUploading(true)
+    try { onImage(await onUploadImage(file)); setImageError('') }
+    catch (error) { setImageError(error instanceof Error ? error.message : 'No se pudo subir esta foto. Inténtalo con otra imagen.') }
+    finally { setIsImageUploading(false) }
   }
-  const saveEntry = () => {
+  const saveEntry = async () => {
+    if (isImageUploading) { setFormError('Espera a que termine de subir la foto antes de guardar.'); return }
     const hasContent = sections.some(section => section.blocks.some(block => block.type === 'image' ? block.src.trim() : block.text.trim()))
     if (!entry.title.trim()) { setFormError('Escribe el título de la publicación.'); return }
     if (!hasContent) { setFormError('Agrega al menos un párrafo o una foto.'); return }
     setFormError('')
-    onSave?.({ ...entry, author: DEFAULT_AUTHOR, sections })
+    await onSave?.({ ...entry, author: DEFAULT_AUTHOR, sections })
   }
 
   return <section className={`post-preview-page page-content${isEditing ? ' is-editing' : ''}`}>
-    {isEditing && <div className="post-editor-toolbar"><button type="button" className="post-editor-back" onClick={onCancel}><ArrowLeft size={17} />Cancelar</button><span>{isNew ? 'Nueva publicación' : 'Editar publicación'}</span><button type="button" className="post-editor-save" onClick={saveEntry}><Save size={17} />Guardar</button></div>}
+    {isEditing && <header className="post-editor-toolbar"><span>{isNew ? 'Nueva publicación' : 'Editar publicación'}</span><div className="post-editor-actions"><button type="button" className="post-editor-back" disabled={isSaving} onClick={onCancel}>Cancelar</button><button type="button" className="post-editor-save" disabled={isImageUploading || isSaving} onClick={() => void saveEntry()}>{isSaving ? <><LoaderCircle className="post-button-loader" size={17} />Guardando</> : 'Guardar'}</button></div></header>}
     {!isEditing && onBack && <div className="post-reader-toolbar"><button type="button" onClick={onBack}><ArrowLeft size={17} />Volver a noticias</button></div>}
     <article className={`post-article${isEditing ? ' is-editing' : ''}`}>
       <div className="post-cover-wrap">
         <img className="post-article-cover" src={entry.imageUrl || fallbackImage} alt={isEditing ? 'Portada de la publicación' : 'Foto de portada'} />
-        {isEditing && <label className="post-cover-edit-icon" title="Cambiar portada"><Pencil size={17} /><input aria-label="Cambiar portada" type="file" accept="image/*" onChange={event => void uploadImage(event.target.files?.[0], imageUrl => updateEntry({ imageUrl }))} /></label>}
+        {isEditing && isImageUploading && <div className="post-cover-uploading" role="status" aria-live="polite"><LoaderCircle className="post-button-loader" size={22} aria-hidden="true" /><span>Subiendo foto…</span></div>}
+        {isEditing && <label className="post-cover-edit-icon" title="Cambiar portada"><Pencil size={17} /><input aria-label="Cambiar portada" type="file" accept="image/png,image/jpeg,image/webp" disabled={isImageUploading} onChange={event => void uploadImage(event.target.files?.[0], imageUrl => updateEntry({ imageUrl }))} /></label>}
       </div>
       <div className="post-article-content">
         {isEditing ? <div className="post-edit-fields">
           <div className="post-inline-edit-row">{editingTitle ? <input aria-label="Título" className="post-title-input" maxLength={160} value={entry.title} onChange={event => updateEntry({ title: event.target.value })} onBlur={() => setEditingTitle(false)} placeholder="Título de la publicación" autoFocus /> : <h1>{entry.title || 'Título de la publicación'}</h1>}<button type="button" className="post-pencil-button" aria-label="Editar título" onClick={() => setEditingTitle(true)}><Pencil size={16} /></button></div>
           <div className="post-inline-edit-row">{editingSummary ? <textarea aria-label="Resumen" rows={2} value={entry.description} onChange={event => updateEntry({ description: event.target.value })} onBlur={() => setEditingSummary(false)} placeholder="Escribe un resumen breve" autoFocus /> : <p className="post-article-summary">{entry.description || 'Agrega un resumen breve para presentar la noticia.'}</p>}<button type="button" className="post-pencil-button" aria-label="Editar resumen" onClick={() => setEditingSummary(true)}><Pencil size={16} /></button></div>
-          <div className="post-publishing-fields"><label>{isEvent ? 'Fecha del evento' : 'Fecha de publicación'}<input type="date" value={entry.date} onChange={event => updateEntry({ date: event.target.value })} /></label>{isEvent && <label>Hora<input type="time" value={entry.time ?? ''} onChange={event => updateEntry({ time: event.target.value })} /></label>}</div>
-          <details className="post-more-options">
-            <summary>Opciones de publicación</summary>
-          <div className="post-metadata-edit-grid">
-            <label>Estado<select value={entry.status} onChange={event => updateEntry({ status: event.target.value as AcademicContentEntry['status'] })}><option value="draft">Borrador</option><option value="published">Publicado</option></select></label>
-            <label>Año lectivo<select value={entry.periodId} onChange={event => updateEntry({ periodId: event.target.value })}><option value="">Sin período</option>{periods.map(period => <option key={period.id} value={period.id}>{period.title}</option>)}</select></label>
-            {isEvent && <label>Lugar<input value={entry.location} onChange={event => updateEntry({ location: event.target.value })} placeholder="Lugar del evento" /></label>}
-            <label>Fuente<input value={entry.sourceName ?? ''} onChange={event => updateEntry({ sourceName: event.target.value })} placeholder="Nombre de la fuente" /></label>
-            <label>Enlace de la fuente<input type="url" value={entry.sourceUrl ?? ''} onChange={event => updateEntry({ sourceUrl: event.target.value })} placeholder="https://" /></label>
-          </div>
-          <div className="post-automatic-meta"><span>Autor: {author}</span><span>Fecha: {dateLabel(entry.date)}</span></div>
-          </details>
+          {isEvent && <div className="post-publishing-fields"><label>Fecha del evento<input type="date" value={entry.date} onChange={event => updateEntry({ date: event.target.value })} /></label><label>Hora<input type="time" value={entry.time ?? ''} onChange={event => updateEntry({ time: event.target.value })} /></label></div>}
+          <section className="post-more-options" aria-labelledby="publication-options-title">
+            <h2 id="publication-options-title">Opciones de publicación</h2>
+            <div className="post-publication-controls">
+              <div className="post-publication-status">
+                <span className="post-option-label">Estado</span>
+                <label className="post-status-toggle">
+                  <input type="checkbox" checked={entry.status === 'published'} onChange={event => updateEntry({ status: event.target.checked ? 'published' : 'draft' })} />
+                  <span className="post-status-switch" aria-hidden="true"><span /></span>
+                  <span className="post-status-copy"><strong>{statusCopy.label}</strong><small>{statusCopy.description}</small></span>
+                </label>
+              </div>
+              <fieldset className="post-period-options">
+                <legend>Año lectivo</legend>
+                <div role="radiogroup" aria-label="Año lectivo">
+                  {periods.map(period => <button key={period.id} type="button" role="radio" aria-checked={entry.periodId === period.id} className={`post-period-chip${entry.periodId === period.id ? ' is-selected' : ''}`} onClick={() => updateEntry({ periodId: period.id })}><span className="material-symbols-rounded" aria-hidden="true">calendar_month</span>{period.title}</button>)}
+                </div>
+              </fieldset>
+              {isEvent && <label className="post-publication-location">Lugar<input value={entry.location} onChange={event => updateEntry({ location: event.target.value })} placeholder="Lugar del evento" /></label>}
+              <div className="post-automatic-meta"><span><span className="material-symbols-rounded" aria-hidden="true">person</span>{author}</span><span><span className="material-symbols-rounded" aria-hidden="true">calendar_today</span>{dateLabel(entry.date)}</span></div>
+            </div>
+          </section>
         </div> : <>
           <p className="post-article-category">{isEvent ? 'EVENTO INSTITUCIONAL' : 'NOTICIAS'}</p>
           <h1>{entry.title}</h1>
@@ -166,7 +176,7 @@ export function AcademicPostPreviewPage({ entry, mode = 'preview', isNew = false
                 : isEditing
                   ? <div className="post-image-block-editor" key={block.id}>
                     {block.src ? <img src={block.src} alt={block.alt || 'Foto de la publicación'} /> : <div className="post-image-empty"><ImagePlus size={20} />Agrega una foto</div>}
-                    <div className="post-inline-photo-actions"><span className="post-photo-status">{block.src ? 'Foto lista' : 'Elige una foto'}</span><label className="post-file-picker"><ImagePlus size={16} />{block.src ? 'Cambiar foto' : 'Elegir foto'}<input aria-label="Elegir foto para la sección" type="file" accept="image/*" onChange={event => void uploadImage(event.target.files?.[0], imageUrl => updateBlock(sectionIndex, blockIndex, { src: imageUrl }))} /></label></div>
+                    <div className="post-inline-photo-actions"><span className="post-photo-status">{isImageUploading ? 'Subiendo foto…' : block.src ? 'Foto lista' : 'Elige una foto'}</span><label className="post-file-picker"><ImagePlus size={16} />{block.src ? 'Cambiar foto' : 'Elegir foto'}<input aria-label="Elegir foto para la sección" type="file" accept="image/png,image/jpeg,image/webp" disabled={isImageUploading} onChange={event => void uploadImage(event.target.files?.[0], imageUrl => updateBlock(sectionIndex, blockIndex, { src: imageUrl }))} /></label></div>
                     <details className="post-photo-details"><summary>Detalles de la foto</summary><label>Texto alternativo<input value={block.alt} onChange={event => updateBlock(sectionIndex, blockIndex, { alt: event.target.value })} placeholder="Describe la foto" /></label><label>Pie de foto<input value={block.caption} onChange={event => updateBlock(sectionIndex, blockIndex, { caption: event.target.value })} placeholder="Pie de foto (opcional)" /></label></details>
                     <button className="post-block-remove" type="button" onClick={() => removeBlock(sectionIndex, blockIndex)}><Trash2 size={15} />Quitar foto</button>
                   </div>
@@ -178,9 +188,7 @@ export function AcademicPostPreviewPage({ entry, mode = 'preview', isNew = false
           </div>
           {!isEditing && articleSections.length > 0 && <nav className="post-article-toc" aria-label="Secciones del artículo"><strong>En este artículo</strong>{articleSections.map((section, index) => <a key={section.id} href={`#post-section-${section.id}`} className={activeSection === index ? 'is-active' : ''} aria-current={activeSection === index ? 'location' : undefined}>{section.title || `Sección ${index + 1}`}</a>)}</nav>}
         </div>
-        {imageError && <p className="post-editor-error" role="alert">{imageError}</p>}
-        {formError && <p className="post-editor-error" role="alert">{formError}</p>}
-        {isEditing && <div className="post-editor-bottom-actions"><button type="button" className="post-editor-back" onClick={onCancel}>Cancelar</button><button type="button" className="post-editor-save" onClick={saveEntry}><Save size={17} />Guardar</button></div>}
+        {editorError && <p ref={errorRef} className="post-editor-error" role="alert">{editorError}</p>}
       </div>
     </article>
   </section>

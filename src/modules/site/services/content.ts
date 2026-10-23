@@ -3,6 +3,7 @@ import { getSupabase } from "../lib/supabase";
 import { toServiceError } from "../lib/errors";
 import type { EventItem, Honor, NewsItem, StaffMember, ThemeRow } from "../types/content";
 import type { AcademicContentEntry } from "../../../features/academic-content/types/academicContent.types";
+import { parseNewsContent } from "../../../features/academic-content/services/newsContentCodec";
 
 export async function getTheme(themeId: string | null): Promise<ThemeRow | null> {
   if (isDemoMode()) return demoTheme;
@@ -28,7 +29,8 @@ export async function getNews(institutionId: string, limit = 6): Promise<NewsIte
 export async function getNewsEntry(institutionId: string, newsId: string): Promise<AcademicContentEntry | null> {
   const news = (await getNews(institutionId, 100)).find((item) => item.news_id === newsId || item.slug === newsId);
   if (!news) return null;
-  const paragraphs = news.content.split(/\n{2,}/).map((text) => text.trim()).filter(Boolean);
+  const storedContent = parseNewsContent(news.content);
+  const paragraphs = storedContent.description.split(/\n{2,}/).map((text) => text.trim()).filter(Boolean);
   return {
     id: news.news_id,
     institutionId,
@@ -46,7 +48,7 @@ export async function getNewsEntry(institutionId: string, newsId: string): Promi
     endDate: "",
     isCurrent: false,
     imageUrl: news.cover_image_url ?? undefined,
-    sections: [{
+    sections: storedContent.sections.length ? storedContent.sections : [{
       id: `news-${news.news_id}`,
       title: "La noticia",
       blocks: paragraphs.map((text, index) => ({ id: `news-${news.news_id}-${index}`, type: "paragraph" as const, text })),
