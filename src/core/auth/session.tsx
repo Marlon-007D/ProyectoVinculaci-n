@@ -11,7 +11,7 @@ import './student-portal.css'
 type Membership = { institution_id: string; role: { name: string } | { name: string }[] | null; institution: { name: string; slug: string; is_active: boolean } | { name: string; slug: string; is_active: boolean }[] | null }
 type ActiveSession = { userId: string; email: string; institutionId: string; institutionName: string; slug: string; role: string }
 type OwnSubmission = Awaited<ReturnType<ReturnType<typeof createDeceFormService>['loadOwnSubmission']>>
-type HistoryItem = { id: string; versionId: string; status: 'draft' | 'submitted' | 'reviewed'; updatedAt: string; name: string; versionNumber: number }
+type HistoryItem = { id: string; versionId: string; status: 'draft' | 'submitted' | 'reviewed'; updatedAt: string; name: string; versionNumber: number; previous: boolean }
 type StudentCaseItem = { caseNumber: string; status: string; actionDescription: string | null; actionDate: string | null; nextVisit: string | null }
 type PortalForm = { code: string; name: string }
 type SessionContextValue = { session: ActiveSession | null; signOut: () => Promise<void> }
@@ -200,11 +200,18 @@ function StudentFicha({ session }: { session: ActiveSession }) {
         if (submissionRows.length === 0) { if (live) setHistory([]); return }
         const versionIds = [...new Set(submissionRows.map(row => row.form_version_id))]
         const { data: versions, error: versionsError } = await supabase.from('form_versions')
-          .select('form_version_id, form_definition_id, version_number').in('form_version_id', versionIds)
+          .select('form_version_id, form_definition_id, version_number, status').in('form_version_id', versionIds)
         if (versionsError) throw versionsError
         const versionRows = versions ?? []
         if (!versionRows.length) throw new Error('No tienes permiso para consultar las versiones de tus fichas.')
         const definitionIds = [...new Set(versionRows.map(row => row.form_definition_id))]
+        const { data: allVersions, error: allVersionsError } = await supabase.from('form_versions')
+          .select('form_version_id, form_definition_id, version_number, status').in('form_definition_id', definitionIds)
+        if (allVersionsError) throw allVersionsError
+        const latestPublished = new Map<string, number>()
+        for (const version of allVersions ?? []) if (version.status === 'published') {
+          latestPublished.set(version.form_definition_id, Math.max(latestPublished.get(version.form_definition_id) ?? 0, version.version_number))
+        }
         const { data: definitions, error: definitionsError } = await supabase.from('form_definitions')
           .select('form_definition_id, name').in('form_definition_id', definitionIds)
         if (definitionsError) throw definitionsError
@@ -221,6 +228,7 @@ function StudentFicha({ session }: { session: ActiveSession }) {
             updatedAt: row.updated_at,
             name: definition?.name ?? 'Ficha estudiantil',
             versionNumber: version?.version_number ?? 1,
+            previous: Boolean(version && (latestPublished.get(version.form_definition_id) ?? version.version_number) !== version.version_number),
           }
         })
         if (live) setHistory(items)
@@ -289,7 +297,7 @@ function StudentFicha({ session }: { session: ActiveSession }) {
       </> : activeTab === 'history' ? <section aria-labelledby="history-heading"><h2 id="history-heading">Historial de mis fichas</h2>
         {historyLoading && <p role="status">Cargando historial…</p>}{historyError && <p role="alert">{historyError}</p>}
         {!historyLoading && !historyError && history.length === 0 && <p>No hay fichas visibles todavía. Puede deberse a permisos o a que aún no guardaste un borrador.</p>}
-        <ul className="studentPortal__historyList">{history.map(item => <li key={item.id}><span><strong>{item.name}</strong><small>Versión {item.versionNumber} · {new Date(item.updatedAt).toLocaleString('es-EC')}</small></span><span className="studentPortal__historyActions"><span className={`studentPortal__badge ${item.status}`}>{item.status === 'draft' ? 'Borrador' : item.status === 'submitted' ? 'Enviada' : 'Revisada'}</span><button type="button" className="btn btn-outline-primary btn-sm" onClick={() => void openHistory(item)}>Ver respuestas</button></span></li>)}</ul>
+        <ul className="studentPortal__historyList">{history.map(item => <li key={item.id}><span><strong>{item.name}</strong><small>{item.previous ? `Versión anterior (v${item.versionNumber}) · ` : ''}{new Date(item.updatedAt).toLocaleString('es-EC')}</small></span><span className={`studentPortal__badge ${item.status}`}>{item.status === 'draft' ? 'Borrador' : item.status === 'submitted' ? 'Enviada' : 'Revisada'} · Solo lectura</span><button type="button" className="btn btn-outline-primary btn-sm" onClick={() => void openHistory(item)}>Ver respuestas</button></li>)}</ul>
         {historyDetailLoading && <p role="status">Cargando respuestas…</p>}{selectedHistory && <article className="studentPortal__historyDetail"><div className="studentPortal__historyTitle"><h3>{selectedHistory.name} · versión {selectedHistory.versionNumber}</h3><button className="btn btn-sm btn-outline-secondary" onClick={() => setSelectedHistory(null)}>Cerrar</button></div>{selectedHistory.questions.map(question => {
           const value = question.is_system ? question.source_field === 'students.first_name' ? student.name : question.source_field === 'students.grade_level' ? student.grade : question.source_field === 'students.national_id' ? student.id : '' : selectedHistory.answers[question.form_question_id]
           const display = Array.isArray(value) ? value.join(', ') : typeof value === 'boolean' ? value ? 'Sí' : 'No' : value === null || value === undefined || value === '' ? 'Sin respuesta' : String(value)

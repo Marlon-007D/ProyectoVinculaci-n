@@ -43,6 +43,7 @@ export default function DeceApp() {
   const [section, setSection] = useState(0)
   const [selectedFormCode, setSelectedFormCode] = useState('')
   const [selectedSubmissionId, setSelectedSubmissionId] = useState('')
+  const [selectedSubmissionReadOnly, setSelectedSubmissionReadOnly] = useState(false)
   const submissionReturnUrl = useRef('')
   const [formTemplates, setFormTemplates] = useState<FormTemplate[]>([])
   const [customSections, setCustomSections] = useState<string[]>([])
@@ -143,12 +144,13 @@ export default function DeceApp() {
     routeTo('custom-form')
   }
 
-  const openSubmissionForm = (student: Student, code: string, submissionId?: string) => {
+  const openSubmissionForm = (student: Student, code: string, submissionId?: string, readOnly = false) => {
     if (submissionId) {
       submissionReturnUrl.current = `${location.pathname}${location.search}`
       setSelectedSubmissionId(submissionId)
-    } else setSelectedSubmissionId('')
-    if (code === 'general' || code === 'authorization') openForm(student, code)
+      setSelectedSubmissionReadOnly(readOnly)
+    } else { setSelectedSubmissionId(''); setSelectedSubmissionReadOnly(false) }
+    if (!submissionId && (code === 'general' || code === 'authorization')) openForm(student, code)
     else openCustomForm(student, code)
   }
 
@@ -190,7 +192,7 @@ export default function DeceApp() {
           {selectedSubmissionId && <nav aria-label="Migas de pan" className="mb-3"><ol className="breadcrumb"><li className="breadcrumb-item"><button type="button" className="btn btn-link p-0" onClick={() => formProps?.onBack()}>Revisión de fichas</button></li><li className="breadcrumb-item active" aria-current="page">{formTemplates.find(form => form.code === selectedFormCode)?.name ?? 'Ficha personalizada'}</li></ol></nav>}
           <div className="welcome-row"><div><h1>{formTemplates.find(form => form.code === selectedFormCode)?.name ?? 'Ficha personalizada'}</h1><p>{selectedStudent.name} · {selectedStudent.grade}</p></div><div className="d-flex flex-wrap gap-2">{selectedSubmissionId && <PdfActionButton label="Descargar ficha llena" generate={async () => createDecePdfService(integration.client).filledForm(integration.institutionId, selectedSubmissionId, integration.profileId)} />}<button className="button btn secondary" onClick={() => formProps?.onBack()}>{selectedSubmissionId ? 'Volver a revisión de fichas' : 'Volver al directorio'}</button></div></div>
           <nav className="studentPortal__sections mb-3" aria-label="Secciones de la ficha">{customSections.map((name, index) => <button type="button" key={name} className={section === index ? 'active' : ''} onClick={() => setSection(index)}>{String(index + 1).padStart(2, '0')} · {name}</button>)}</nav>
-          <ConfigurableForm key={`${selectedStudent.recordId}-${selectedFormCode}`} integration={integration} student={selectedStudent} code={selectedFormCode} section={section} onSectionsChange={syncCustomSections} audience="staff" allowQuestionManagement={!selectedSubmissionId} />
+          <ConfigurableForm key={`${selectedStudent.recordId}-${selectedFormCode}-${selectedSubmissionId}`} integration={integration} student={selectedStudent} code={selectedFormCode} section={section} onSectionsChange={syncCustomSections} audience="staff" allowQuestionManagement={!selectedSubmissionId} submissionId={selectedSubmissionId || undefined} readOnly={selectedSubmissionReadOnly} />
         </div>}
         {screen === 'general' && formProps && <GeneralFormPage {...formProps} />}
         {screen === 'authorization' && formProps && <AuthorizationFormPage {...formProps} />}

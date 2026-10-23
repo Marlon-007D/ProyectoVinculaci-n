@@ -11,6 +11,8 @@ type Props = {
   onSectionsChange: (sections: string[]) => void
   audience?: 'staff' | 'student'
   allowQuestionManagement?: boolean
+  submissionId?: string
+  readOnly?: boolean
 }
 
 const choices: Array<{ value: QuestionType; label: string }> = [
@@ -108,7 +110,7 @@ function QuestionInput({
   </label>
 }
 
-export default function ConfigurableForm({ integration, student, code, section, onSectionsChange, audience = 'staff', allowQuestionManagement = true }: Props) {
+export default function ConfigurableForm({ integration, student, code, section, onSectionsChange, audience = 'staff', allowQuestionManagement = true, submissionId, readOnly = false }: Props) {
   const service = useMemo(() => createDeceFormService(integration.client), [integration.client])
   const [runtime, setRuntime] = useState<FormRuntime | null>(null)
   const [answers, setAnswers] = useState<Record<string, FormAnswerValue>>({})
@@ -142,7 +144,9 @@ export default function ConfigurableForm({ integration, student, code, section, 
       setError('No se encontró el UUID de este estudiante. El módulo de estudiantes debe proporcionar su ID de base de datos.')
       return () => { active = false }
     }
-    const loadingForm = audience === 'staff'
+    const loadingForm = submissionId
+      ? service.loadSubmission(submissionId, studentId)
+      : audience === 'staff'
       ? service.ensureStandardForms(integration.institutionId).then(() => service.loadForm(integration.institutionId, code, studentId, true))
       : service.loadForm(integration.institutionId, code, studentId, false)
     void loadingForm
@@ -154,7 +158,7 @@ export default function ConfigurableForm({ integration, student, code, section, 
       })
       .catch(cause => { if (active) setError(cause instanceof Error ? cause.message : 'No se pudo cargar la ficha.') })
     return () => { active = false }
-  }, [audience, code, integration.institutionId, reloadToken, service, studentId])
+  }, [audience, code, integration.institutionId, reloadToken, service, studentId, submissionId])
 
   const sections = useMemo(() => {
     const names = Array.from(new Set((runtime?.questions ?? []).map(question => question.display_config?.section || 'Información')))
@@ -167,14 +171,14 @@ export default function ConfigurableForm({ integration, student, code, section, 
   if (!runtime) return <p className="helper" role="status">Cargando ficha…</p>
 
   const currentSection = sections[section] ?? sections[0]
-  const locked = runtime.submission?.status === 'submitted' || runtime.submission?.status === 'reviewed'
-  const questions = runtime.questions.filter(question => (question.display_config?.section || 'Información') === currentSection)
+  const locked = readOnly || runtime.submission?.status === 'submitted' || runtime.submission?.status === 'reviewed'
+  const questions = runtime.questions.filter(question => (audience === 'staff' && submissionId ? true : question.is_active !== false) && (question.display_config?.section || 'Información') === currentSection)
   const questionPageCount = Math.max(1, Math.ceil(questions.length / QUESTIONS_PER_PAGE))
   const visibleQuestions = questions.slice((questionPage - 1) * QUESTIONS_PER_PAGE, questionPage * QUESTIONS_PER_PAGE)
 
   async function save() {
-    if (!studentId || !runtime) return
-    const validationError = validateFormAnswers(runtime.questions, answers)
+    if (!studentId || !runtime || readOnly) return
+    const validationError = validateFormAnswers(runtime.questions.filter(question => question.is_active !== false), answers)
     if (validationError) {
       setMessage(validationError)
       return
@@ -182,10 +186,12 @@ export default function ConfigurableForm({ integration, student, code, section, 
     setSaving(true)
     setMessage('')
     try {
-      const submissionId = await service.saveDraft(
+      const savedSubmissionId = await service.saveDraft(
         studentId, runtime.versionId, runtime.submission?.form_submission_id ?? null, answers, runtime.questions,
       )
-      setRuntime({ ...runtime, submission: { form_submission_id: submissionId, form_version_id: runtime.versionId, status: 'draft' } })
+      const refreshed = await service.loadSubmission(savedSubmissionId, studentId)
+      setRuntime(refreshed)
+      setAnswers(refreshed.answers)
       setMessage('Borrador guardado en la base de datos.')
     } catch (cause) {
       setMessage(errorMessage(cause, 'No se pudo guardar el borrador.'))
@@ -285,11 +291,13 @@ export default function ConfigurableForm({ integration, student, code, section, 
       <span className="save-message" role="status">{message}</span>
       <button className="button btn primary" type="button" onClick={() => void save()} disabled={saving}>{saving ? 'Guardando…' : 'Guardar borrador'}</button>
       {audience === 'student' && <button className="button btn secondary" type="button" disabled={saving || runtime.submission?.status !== 'draft'} onClick={() => void (async () => {
-        if (!runtime.submission) { setMessage('Guarda el borrador antes de enviarlo.'); return }
+        if (!runtime.submission || !studentId) { setMessage('Guarda el borrador antes de enviarlo.'); return }
         setSaving(true)
         try {
           await service.submit(runtime.submission.form_submission_id)
-          setRuntime(current => current ? { ...current, submission: { ...current.submission!, status: 'submitted' } } : current)
+          const refreshed = await service.loadSubmission(runtime.submission.form_submission_id, studentId)
+          setRuntime(refreshed)
+          setAnswers(refreshed.answers)
           setMessage('Ficha enviada correctamente.')
         } catch (cause) { setMessage(cause instanceof Error ? cause.message : 'No se pudo enviar la ficha.') }
         finally { setSaving(false) }
@@ -297,11 +305,13 @@ export default function ConfigurableForm({ integration, student, code, section, 
     </div>}
     {audience === 'student' && locked && <p role="status" className="save-message">Para corregir esta ficha, comunícate con el DECE.</p>}
     {locked && <p role="status" className="save-message">Esta ficha ya fue enviada y no se puede editar.</p>}
-    {audience === 'staff' && runtime.submission?.status === 'submitted' && <button className="button btn primary" type="button" onClick={() => void (async () => {
+    {audience === 'staff' && !readOnly && runtime.submission?.status === 'submitted' && <button className="button btn primary" type="button" onClick={() => void (async () => {
       setSaving(true)
       try {
         await service.markReviewed(runtime.submission!.form_submission_id)
-        setRuntime(current => current ? { ...current, submission: { ...current.submission!, status: 'reviewed' } } : current)
+        const refreshed = await service.loadSubmission(runtime.submission!.form_submission_id, studentId!)
+        setRuntime(refreshed)
+        setAnswers(refreshed.answers)
         setMessage('Ficha marcada como revisada.')
       } catch (cause) { setMessage(cause instanceof Error ? cause.message : 'No se pudo marcar la ficha como revisada.') }
       finally { setSaving(false) }

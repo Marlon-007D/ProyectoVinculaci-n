@@ -18,6 +18,7 @@
 .tableWrap td { vertical-align: middle; }
 .group th, .groupHeading { background: var(--dece-surface-variant, #f3f0f6); color: var(--dece-primary, #4f378b); }
 .disabled { display: inline-block; margin: .25rem; padding: .2rem .45rem; border: 1px solid var(--dece-border, #ded9e5); border-radius: 999px; color: var(--dece-muted, #625b71); font-size: .75rem; }
+.previous, .queryStatus { display: block; color: var(--dece-muted, #625b71); font-size: .78rem; }
 .actions { display: flex; flex-wrap: wrap; align-items: start; gap: .4rem; min-width: 0; }
 .actions > span { display: grid; gap: .15rem; }
 .actions small { max-width: 9rem; color: var(--dece-muted, #625b71); font-size: .72rem; }
@@ -44,7 +45,7 @@
   .tableWrap th:last-child, .tableWrap td:last-child { width: 37%; }
   .actions { min-width: 0; display: grid; gap: .35rem; }
   .actions .btn { width: 100%; padding: .35rem .25rem; font-size: .72rem; white-space: normal; }
-  .actions small { display: none; }
+  .actions small { display: block; }
 }
 @container (max-width: 1050px) {
   .table th:nth-child(5), .table td:nth-child(5) { display: none; }
