@@ -116,3 +116,10 @@
 .memberRoleSelect:focus-visible { outline: 3px solid #bfdbfe; outline-offset: 2px; }
 @media (max-width: 680px) { .assignmentCard, .membersCard { padding: 16px; } }
 @media (prefers-reduced-motion: reduce) { .buttonSpinner, .progressNotice::before { animation: none; } .input, .select, .filterSelect, .searchInput, .btnSubmit, .btnRemove, .table tbody tr { transition: none; } }
+
+.tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 24px; border-bottom: 1px solid #e5ebf0; padding-bottom: 12px; }
+.tab { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 8px 16px; border: 1px solid transparent; border-radius: 8px; background: #f6f7f9; color: #42566b; font: inherit; font-size: 14px; cursor: pointer; }
+.tab[aria-selected='true'] { border-color: #cfc2df; background: #eee8f5; color: #523e6b; font-weight: 600; }
+.tab:hover { border-color: #cfc2df; }
+.tab:focus-visible { outline: 2px solid #70578e; outline-offset: 2px; }
+.tabCount { min-width: 24px; text-align: center; font-variant-numeric: tabular-nums; }
