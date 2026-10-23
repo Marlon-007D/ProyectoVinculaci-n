@@ -1,6 +1,6 @@
 # Solicitudes pendientes de membresía
 
-Esta entrega conserva el registro y las notificaciones existentes de `feature/arquitectura-admin`. Las nuevas solicitudes de la tabla `admin_membership_requests` y el seed se integran con las tres pestañas. La integración OAuth del directorio de trabajo no se incluye: requiere otro commit de autenticación. Los componentes de solicitud incluidos exponen un contrato para esa integración.
+Esta entrega conserva el registro y las notificaciones institucionales existentes. Las nuevas solicitudes de `admin_membership_requests` y el seed se integran con las tres pestañas. La ruta `/login` de `develop` incorpora Google OAuth y el formulario de solicitud mediante el contrato tipado de este módulo.
 
 Guía directa: [Google OAuth y aprobación en El Esfuerzo y las otras unidades](./GOOGLE_OAUTH_TEST.md).
 

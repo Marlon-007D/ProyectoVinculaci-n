@@ -1,6 +1,6 @@
 # Prueba de Google OAuth y solicitudes pendientes
 
-> Guía de la integración OAuth preparada en el directorio de trabajo. Este commit aislado de administración no cambia las rutas de autenticación de la rama destino. Para ejecutar la etapa A se requiere integrar por separado ese frontend; las etapas de seed, listado y aprobación sí forman parte de esta entrega.
+La ruta `/login` de `develop` incorpora la interfaz institucional y Google OAuth. El flujo completo requiere tener configurado el proveedor en Supabase y utilizar las cuentas de prueba descritas abajo.
 
 ## URL directa de El Esfuerzo
 

@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { supabase } from './supabaseClient';
 import { useAuth } from './AuthContext';
+import { institutionContextFromSearch, matchesInstitution } from '../features/auth/utils/googleOAuth';
 
 export const INSTITUTION_MODULE_NAMES = ['inicio', 'projects', 'dece', 'simuladores', 'portal'] as const;
 export type InstitutionModuleName = (typeof INSTITUTION_MODULE_NAMES)[number];
@@ -146,11 +147,15 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   const current = !loading && user && state?.owner === user.id ? state : null;
   const institutions = current?.institutions ?? [];
   const requestedInstitutionId = new URLSearchParams(window.location.search).get('institution');
+  const requestedSlug = new URLSearchParams(window.location.search).get('slug');
+  const requestedInstitution = institutions.find(item => matchesInstitution(institutionContextFromSearch(window.location.search), item));
   useEffect(() => {
-    if (requestedInstitutionId && institutions.some((item) => item.institution_id === requestedInstitutionId))
-      setSelectedId(requestedInstitutionId);
-  }, [requestedInstitutionId, institutions]);
-  const activeInstitution = institutions.find(item => item.institution_id === selectedId) ?? institutions.find(item => item.institution_id === requestedInstitutionId) ?? institutions[0] ?? null;
+    if ((requestedInstitutionId || requestedSlug) && requestedInstitution)
+      setSelectedId(requestedInstitution.institution_id);
+  }, [requestedInstitutionId, requestedSlug, requestedInstitution]);
+  const activeInstitution = requestedInstitutionId || requestedSlug
+    ? requestedInstitution ?? null
+    : institutions.find(item => item.institution_id === selectedId) ?? institutions[0] ?? null;
   const hasModuleAccess = (moduleName: InstitutionModuleName) => activeInstitution?.module_permissions[moduleName] === true;
   return <TenantContext.Provider value={{
     institutions, activeInstitution, loadingTenant: loading || mfaRequired || Boolean(user && !current),

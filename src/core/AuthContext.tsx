@@ -2,16 +2,18 @@
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from './supabaseClient';
 import { registerInstitutionalAccount } from './auth/registerInstitutionalAccount';
-import { institutionMatches } from './auth/loginAccess';
+import { googleOAuthRequest, institutionContextFromSearch, matchesInstitution } from '../features/auth/utils/googleOAuth';
 
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   role: string | null;
   roleError: string | null;
+  roleIssue: 'membership-required' | 'verification-failed' | null;
   institutionId: string | null;
   loading: boolean;
   login: (email: string, pass: string) => Promise<{ error: Error | null }>;
+  loginWithGoogle: (context?: { institution?: string; slug?: string }) => Promise<{ error: Error | null }>;
   requestLoginLink: (email: string) => Promise<{ error: Error | null }>;
   register: (email: string, password: string, firstName: string, lastName: string, institutionId: string) => Promise<{ error: Error | null }>;
   isPasswordRecovery: boolean;
@@ -32,6 +34,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [session, setSession] = useState<Session | null>(null);
   const [role, setRole] = useState<string | null>(null);
   const [roleError, setRoleError] = useState<string | null>(null);
+  const [roleIssue, setRoleIssue] = useState<AuthContextType['roleIssue']>(null);
   const [institutionId, setInstitutionId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
@@ -107,6 +110,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const fetchUserRoleAndTenant = async (userId: string) => {
     setRole(null);
     setRoleError(null);
+    setRoleIssue(null);
     setInstitutionId(null);
 
     const { data, error } = await supabase
@@ -116,12 +120,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       .eq('is_active', true);
 
     if (error) {
+      setRoleIssue('verification-failed');
       setRoleError('No se pudo consultar tu rol. Verifica que esté aplicada la migración de acceso de superadministrador.');
       return;
     }
 
     const memberships = data ?? [];
     if (memberships.length === 0) {
+      setRoleIssue('membership-required');
       setRoleError('Tu cuenta aún no tiene una membresía activa. Si acabas de registrarte, espera la aprobación de un administrador de tu institución.');
       return;
     }
@@ -132,24 +138,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       .in('role_id', memberships.map((item) => item.role_id));
 
     if (rolesError) {
+      setRoleIssue('verification-failed');
       setRoleError('No se pudieron consultar los nombres de rol. Verifica los permisos de lectura de la tabla roles.');
       return;
     }
 
     const roleNameById = new Map((roles ?? []).map((item) => [item.role_id, item.name]));
-    const requestedInstitutionId = new URLSearchParams(window.location.search).get('institution');
+    const context = institutionContextFromSearch(window.location.search);
     const loginSlug = /^\/([^/]+)\/login\/?$/.exec(window.location.pathname)?.[1];
-    const references = [loginSlug, requestedInstitutionId].filter((value): value is string => Boolean(value));
-    let scopedMembership = memberships.find((item) => references.includes(item.institution_id));
-    if ((!scopedMembership || loginSlug) && references.length) {
-      const { data: assignedInstitutions } = await supabase.from('institutions')
-        .select('institution_id, slug').in('institution_id', memberships.map(item => item.institution_id));
-      const institution = references.flatMap(reference =>
-        (assignedInstitutions ?? []).filter(item => institutionMatches(item, reference)))[0];
-      scopedMembership = memberships.find(item => item.institution_id === institution?.institution_id) ?? scopedMembership;
+    if (loginSlug) context.slug = loginSlug;
+    let scopedMembership = memberships[0];
+    if (context.institution || context.slug) {
+      const { data: assignedInstitutions, error: institutionError } = await supabase.from('institutions')
+        .select('institution_id, slug, is_active').in('institution_id', memberships.map(item => item.institution_id));
+      if (institutionError) {
+        setRoleIssue('verification-failed');
+        setRoleError('No se pudo verificar la institución seleccionada. Intenta nuevamente.');
+        return;
+      }
+      const institution = assignedInstitutions?.find(item => item.is_active && matchesInstitution(context, item));
+      const match = memberships.find(item => item.institution_id === institution?.institution_id);
+      if (!match && !memberships.some(item => roleNameById.get(item.role_id) === 'super_admin')) {
+        setRoleIssue('membership-required');
+        setRoleError('Tu cuenta requiere una membresía activa en la institución seleccionada.');
+        return;
+      }
+      scopedMembership = match ?? memberships[0];
     }
     const membership = memberships.find((item) => roleNameById.get(item.role_id) === 'super_admin') ?? scopedMembership ?? memberships[0];
     const assignedRole = roleNameById.get(membership.role_id) ?? null;
+    if (!assignedRole) {
+      setRoleIssue('membership-required');
+      setRoleError('Tu cuenta requiere la asignación de un rol institucional.');
+      return;
+    }
     setRole(assignedRole);
     setInstitutionId(membership?.institution_id ?? null);
 
@@ -167,10 +189,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     let active = true;
     let initialSessionTask: Promise<void> | null = null;
+    const reportSessionError = () => {
+      if (!active) return;
+      setRole(null); setInstitutionId(null); setRoleIssue('verification-failed');
+      setRoleError('No se pudo validar tu acceso. Intenta nuevamente.');
+    };
 
     let currentSessionUserId: string | null = null;
     const applySession = async (nextSession: Session | null) => {
       currentSessionUserId = nextSession?.user.id ?? null;
+      setRoleIssue(null);
       setSession(nextSession);
       setUser(nextSession?.user ?? null);
       if (nextSession?.user) {
@@ -187,6 +215,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } else {
         setRole(null);
         setRoleError(null);
+        setRoleIssue(null);
         setInstitutionId(null);
         setMfaEnrollmentRequired(false);
       }
@@ -194,22 +223,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     const initializeSession = (nextSession: Session | null) => {
-      initialSessionTask ??= applySession(nextSession);
+      initialSessionTask ??= applySession(nextSession).catch(reportSessionError).finally(() => { if (active) setLoading(false); });
       return initialSessionTask;
     };
 
     void supabase.auth.getSession()
       .then(({ data: { session: currentSession } }) => {
-        if (active) void initializeSession(currentSession);
+        if (active) return initializeSession(currentSession);
       })
       .catch(() => {
+        reportSessionError();
         if (active) setLoading(false);
       });
 
     const { data: authListener } = supabase.auth.onAuthStateChange((event, nextSession) => {
       if (!active) return;
       if (event === 'INITIAL_SESSION') {
-        void initializeSession(nextSession);
+        window.setTimeout(() => { if (active) void initializeSession(nextSession); }, 0);
         return;
       }
       if (event === 'PASSWORD_RECOVERY') setIsPasswordRecovery(true);
@@ -218,6 +248,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED'));
       currentSessionUserId = nextSession?.user.id ?? null;
       if (!backgroundRefresh) setLoading(true);
+      setRoleIssue(null);
       setSession(nextSession);
       setUser(nextSession?.user ?? null);
       if (nextSession?.user) {
@@ -232,11 +263,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           void (passwordOnly
             ? fetchUserRoleAndTenant(nextSession.user.id)
             : checkMfaSession(nextSession).then((mfaPending) => mfaPending ? undefined : fetchUserRoleAndTenant(nextSession.user.id)))
+            .catch(reportSessionError)
             .finally(() => { if (active) setLoading(false); });
         }, 0);
       } else {
         setRole(null);
         setRoleError(null);
+        setRoleIssue(null);
         setInstitutionId(null);
         setMfaEnrollmentRequired(false);
         setIsPasswordRecovery(false);
@@ -266,6 +299,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
     if (error) sessionStorage.removeItem('auth-login-method');
     return { error };
+  };
+
+  const loginWithGoogle = async (context: { institution?: string; slug?: string } = {}) => {
+    sessionStorage.removeItem('auth-login-method');
+    try {
+      const { error } = await supabase.auth.signInWithOAuth(googleOAuthRequest(window.location.origin, context));
+      return { error };
+    } catch { return { error: new Error('No se pudo conectar con Google. Intenta nuevamente.') }; }
   };
 
   const register = registerInstitutionalAccount;
@@ -315,7 +356,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, role, roleError, institutionId, loading, login, requestLoginLink, register, isPasswordRecovery, mfaRequired, mfaEnrollmentRequired, completeMfaEnrollment, mfaChallengeReady: Boolean(mfaChallengeId), verifyMfa, requestPasswordReset, updatePassword, logout }}>
+    <AuthContext.Provider value={{ user, session, role, roleError, roleIssue, institutionId, loading, login, loginWithGoogle, requestLoginLink, register, isPasswordRecovery, mfaRequired, mfaEnrollmentRequired, completeMfaEnrollment, mfaChallengeReady: Boolean(mfaChallengeId), verifyMfa, requestPasswordReset, updatePassword, logout }}>
       {children}
     </AuthContext.Provider>
   );
