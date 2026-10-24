@@ -5,17 +5,44 @@ import 'sweetalert2/dist/sweetalert2.min.css'
 import { useDeceData } from '../services/dece-data-context'
 import PdfActionButton from '../components/pdf-action-button'
 import CaseDocuments from '../components/case-documents'
+import { Breadcrumbs, EmptyState, PageHeader, Pagination, RiskBadge, StatusBadge, ViewToggle } from '../components/shared'
+import { RecordCard, RecordGrid } from '../components/shared/RecordGrid'
+import { CASE_SORT_OPTIONS, SortBar, SortButton, type CaseSortKey } from '../components/shared/SortControls'
+import listStyles from './cases-page.module.css'
 
 const categories = { physical: 'Física', psychological: 'Psicológica', social: 'Social', family: 'Familiar', academic: 'Académica', behavioral: 'Conductual', other: 'Otra' } as const
 const risks = { low: 'Bajo', medium: 'Medio', high: 'Alto', critical: 'Crítico' } as const
 const statuses = { registered: 'Registrado', in_progress: 'En atención', under_monitoring: 'En seguimiento', closed: 'Cerrado' } as const
 const confidentiality = { restricted: 'Restringido', highly_restricted: 'Altamente restringido' } as const
 type CaseRow = { dece_case_id: string; institution_id: string; student_id: string; case_number: string; reason: string; primary_category: keyof typeof categories; risk_level: keyof typeof risks; confidentiality_level: keyof typeof confidentiality; status: keyof typeof statuses; updated_at: string }
-type StudentRow = { student_id: string; first_name: string; last_name: string; national_id: string | null }
+type CaseMeta = Pick<CaseRow, 'dece_case_id' | 'institution_id' | 'student_id' | 'case_number' | 'primary_category' | 'risk_level' | 'status' | 'updated_at'>
+type StudentRow = { student_id: string; first_name: string; last_name: string; national_id: string | null; grade_level?: string | null }
 type Fields = Pick<CaseRow, 'reason' | 'primary_category' | 'risk_level' | 'confidentiality_level' | 'status'>
 const empty: Fields = { reason: '', primary_category: 'other', risk_level: 'low', confidentiality_level: 'restricted', status: 'registered' }
 const label = (value: string, map: Record<string, string>) => map[value] ?? value
 const safeSearch = (value: string) => value.normalize('NFKC').replace(/[^\p{L}\p{N}\s-]/gu, '').trim().replace(/\s+/g, ' ')
+const compareSpanish = new Intl.Collator('es', { sensitivity: 'base', numeric: true }).compare
+function orderCases(rows: CaseMeta[], order: CaseSortKey, direction: 'asc' | 'desc', people: Record<string, StudentRow>) {
+  const riskRank = { low: 0, medium: 1, high: 2, critical: 3 }
+  const statusRank = { registered: 0, in_progress: 1, under_monitoring: 2, closed: 3 }
+  const value = (row: CaseMeta): string | number => {
+    switch (order) {
+      case 'case_number': { const [, year = '', number = ''] = row.case_number.match(/^DECE-(\d{4})-(\d+)$/i) ?? []; return Number(year) * 100000 + Number(number) }
+      case 'student': { const person = people[row.student_id]; return person ? `${person.last_name} ${person.first_name}` : '' }
+      case 'category': return label(row.primary_category, categories)
+      case 'risk_level': return riskRank[row.risk_level]
+      case 'status': return statusRank[row.status]
+      case 'updated_at': return new Date(row.updated_at).getTime()
+    }
+  }
+  return [...rows].sort((left, right) => {
+    const a = value(left); const b = value(right)
+    const primary = typeof a === 'number' && typeof b === 'number' ? a - b : compareSpanish(String(a), String(b))
+    if (primary) return primary * (direction === 'asc' ? 1 : -1)
+    const updated = new Date(right.updated_at).getTime() - new Date(left.updated_at).getTime()
+    return updated || compareSpanish(left.case_number, right.case_number)
+  })
+}
 function dayAfterGuayaquilDate(isoDate: string) {
   const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Guayaquil', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date(isoDate))
   const date = Object.fromEntries(parts.map(part => [part.type, part.value]))
@@ -58,14 +85,49 @@ export default function CasesPage({ initialStudentId = '', onInitialStudentUsed 
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [busy, setBusy] = useState(false)
-  const [page, setPage] = useState(0)
+  const [page, setPage] = useState(() => { const value = Number(new URLSearchParams(location.search).get('pagina')); return Number.isInteger(value) && value > 0 ? value - 1 : 0 })
+  const [pageSize, setPageSize] = useState(() => { const value = Number(new URLSearchParams(location.search).get('tam') || localStorage.getItem('dece.case.size') || 10); return [10, 20, 30, 40].includes(value) ? value : 10 })
+  const [total, setTotal] = useState(0)
+  const [actionSummary, setActionSummary] = useState<Record<string, { pending: number; overdue: number }>>({})
+  const [listRevision, setListRevision] = useState(0)
+  const [view, setView] = useState<'table' | 'cards'>(() => localStorage.getItem('dece.case.view') === 'table' ? 'table' : 'cards')
+  const [sort, setSort] = useState<CaseSortKey>('updated_at')
+  const [direction, setDirection] = useState<'asc' | 'desc'>('desc')
   const requestId = useRef(0)
+  const listCache = useRef<{ key: string; total: number; ids: string[]; metadata: Map<string, CaseMeta>; records: Map<string, CaseRow>; people: Record<string, StudentRow> } | null>(null)
   const slug = integration?.slug ?? ''
   const base = `${slug ? `/${slug}/dece` : '/panel/dece'}/casos`
   const [caseId, setCaseId] = useState(getCaseRouteId)
 
   useEffect(() => {
-    const syncCaseRoute = () => setCaseId(getCaseRouteId())
+    const params = new URLSearchParams(location.search)
+    const size = Number(params.get('tam'))
+    if ([10, 20, 30, 40].includes(size)) setPageSize(size)
+    const nextStatus = params.get('estado') ?? ''
+    const nextRisk = params.get('riesgo') ?? ''
+    const nextSort = params.get('orden')
+    const nextDirection = params.get('dir')
+    if (nextStatus in statuses || nextStatus === '') setStatusFilter(nextStatus)
+    if (nextRisk in risks || nextRisk === '') setRiskFilter(nextRisk)
+    if (CASE_SORT_OPTIONS.some(option => option.key === nextSort)) setSort(nextSort as CaseSortKey)
+    if (nextDirection === 'asc' || nextDirection === 'desc') setDirection(nextDirection)
+    const nextView = params.get('vista')
+    if (nextView === 'table' || nextView === 'cards') setView(nextView)
+  }, [])
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    for (const key of ['estado', 'riesgo', 'orden', 'dir', 'vista', 'pagina', 'tam']) params.delete(key)
+    if (statusFilter) params.set('estado', statusFilter)
+    if (riskFilter) params.set('riesgo', riskFilter)
+    params.set('orden', sort); params.set('dir', direction); params.set('vista', view)
+    params.set('pagina', String(page + 1)); params.set('tam', String(pageSize))
+    history.replaceState(history.state, '', `${location.pathname}?${params.toString()}`)
+    localStorage.setItem('dece.case.size', String(pageSize)); localStorage.setItem('dece.case.view', view)
+  }, [statusFilter, riskFilter, sort, direction, view, page, pageSize])
+
+  useEffect(() => {
+    const syncCaseRoute = () => { listCache.current = null; setListRevision(value => value + 1); setCaseId(getCaseRouteId()) }
     window.addEventListener('popstate', syncCaseRoute)
     return () => window.removeEventListener('popstate', syncCaseRoute)
   }, [])
@@ -85,29 +147,100 @@ export default function CasesPage({ initialStudentId = '', onInitialStudentUsed 
   const load = useCallback(async () => {
     if (!integration) return
     const id = ++requestId.current
-    const start = page * 25
-    let q = integration.client.from('dece_cases').select('dece_case_id,institution_id,student_id,case_number,reason,primary_category,risk_level,confidentiality_level,status,updated_at').eq('institution_id', integration.institutionId).order('updated_at', { ascending: false }).range(start, start + 24)
-    if (statusFilter) q = q.eq('status', statusFilter)
-    if (riskFilter) q = q.eq('risk_level', riskFilter)
-    if (query) {
-      const term = safeSearch(query)
-      const { data: matchingStudents } = await integration.client.from('students').select('student_id').eq('institution_id', integration.institutionId).or(`first_name.ilike.%${term}%,last_name.ilike.%${term}%`)
-      const ids = (matchingStudents ?? []).map(row => row.student_id)
-      q = q.or(ids.length ? `case_number.ilike.%${term}%,student_id.in.(${ids.join(',')})` : `case_number.ilike.%${term}%`)
+    try {
+    const key = JSON.stringify([integration.institutionId, statusFilter, riskFilter, safeSearch(query), sort, direction])
+    let cache = listCache.current
+    if (!cache || cache.key !== key) {
+      cache = { key, total: 0, ids: [], metadata: new Map(), records: new Map(), people: {} }
+      listCache.current = cache
+      let q = integration.client.from('dece_cases').select('dece_case_id,institution_id,student_id,case_number,primary_category,risk_level,status,updated_at', { count: 'exact' }).eq('institution_id', integration.institutionId)
+      if (sort === 'case_number') q = q.order('case_number', { ascending: direction === 'asc' }).order('updated_at', { ascending: false })
+      if (sort === 'updated_at') q = q.order('updated_at', { ascending: direction === 'asc' }).order('case_number', { ascending: direction === 'asc' })
+      let matchingStudentIds: string[] = []
+      if (statusFilter) q = q.eq('status', statusFilter)
+      if (riskFilter) q = q.eq('risk_level', riskFilter)
+      if (query) {
+        const term = safeSearch(query)
+        const { data: matchingStudents, error: matchingError } = await integration.client.from('students').select('student_id,first_name,last_name,national_id,grade_level').eq('institution_id', integration.institutionId).or(`first_name.ilike.%${term}%,last_name.ilike.%${term}%`)
+        if (id !== requestId.current) return
+        if (matchingError) throw matchingError
+        const people = (matchingStudents ?? []) as StudentRow[]
+        const ids = people.map(person => person.student_id)
+        matchingStudentIds = ids
+        cache.people = Object.fromEntries(people.map(person => [person.student_id, person]))
+        q = q.or(ids.length ? `case_number.ilike.%${term}%,student_id.in.(${ids.join(',')})` : `case_number.ilike.%${term}%`)
+      }
+      const { data: metadata, error: queryError, count } = await q.range(0, 999)
+      if (id !== requestId.current) return
+      if (queryError) throw queryError
+      cache.total = count ?? 0
+      for (const row of (metadata ?? []) as CaseMeta[]) cache.metadata.set(row.dece_case_id, row)
+      for (let offset = 1000; offset < cache.total; offset += 1000) {
+        let next = integration.client.from('dece_cases').select('dece_case_id,institution_id,student_id,case_number,primary_category,risk_level,status,updated_at').eq('institution_id', integration.institutionId)
+        if (sort === 'case_number') next = next.order('case_number', { ascending: direction === 'asc' }).order('updated_at', { ascending: false })
+        if (sort === 'updated_at') next = next.order('updated_at', { ascending: direction === 'asc' }).order('case_number', { ascending: direction === 'asc' })
+        if (statusFilter) next = next.eq('status', statusFilter)
+        if (riskFilter) next = next.eq('risk_level', riskFilter)
+        if (query) { const term = safeSearch(query); next = next.or(matchingStudentIds.length ? `case_number.ilike.%${term}%,student_id.in.(${matchingStudentIds.join(',')})` : `case_number.ilike.%${term}%`) }
+        const { data: pageMetadata, error: pageError } = await next.range(offset, offset + 999)
+        if (id !== requestId.current) return
+        if (pageError) throw pageError
+        for (const row of (pageMetadata ?? []) as CaseMeta[]) cache.metadata.set(row.dece_case_id, row)
+        if (!pageMetadata?.length) break
+      }
+      const allStudentIds = [...new Set([...cache.metadata.values()].map(row => row.student_id))]
+      if (allStudentIds.length) {
+        const { data: people, error: peopleError } = await integration.client.from('students').select('student_id,first_name,last_name,national_id,grade_level').eq('institution_id', integration.institutionId).in('student_id', allStudentIds)
+        if (id !== requestId.current) return
+        if (peopleError) throw peopleError
+        cache.people = { ...cache.people, ...Object.fromEntries(((people ?? []) as StudentRow[]).map(person => [person.student_id, person])) }
+      }
+      setStudents(current => ({ ...current, ...cache!.people }))
+      cache.ids = orderCases([...cache.metadata.values()], sort, direction, cache.people).map(row => row.dece_case_id)
     }
-    const { data, error: queryError } = await q
+    setTotal(cache.total)
+    const lastPage = Math.max(0, Math.ceil(cache.total / pageSize) - 1)
+    if (page > lastPage) { setPage(lastPage); return }
+    const firstIndex = page * pageSize
+    const visibleIds = cache.ids.slice(firstIndex, firstIndex + pageSize)
+    const blockIndexes = [...new Set(visibleIds.map((_, index) => Math.floor((firstIndex + index) / 40)))]
+    const blocks = blockIndexes.map(blockIndex => cache!.ids.slice(blockIndex * 40, blockIndex * 40 + 40).filter(caseId => !cache!.records.has(caseId))).filter(block => block.length)
+    const fetched = await Promise.all(blocks.map(ids => integration.client.from('dece_cases').select('dece_case_id,institution_id,student_id,case_number,reason,primary_category,risk_level,confidentiality_level,status,updated_at').eq('institution_id', integration.institutionId).in('dece_case_id', ids)))
     if (id !== requestId.current) return
-    if (queryError) { setError(queryError.code === '42501' ? 'No tienes permiso para consultar casos de esta institución.' : 'No se pudo cargar el listado de casos.'); return }
-    const cases = (data ?? []) as CaseRow[]
+    const failed = fetched.find(result => result.error)
+    if (failed?.error) throw failed.error
+    fetched.forEach(result => ((result.data ?? []) as CaseRow[]).forEach(row => cache!.records.set(row.dece_case_id, row)))
+    const cases = visibleIds.map(caseId => cache!.records.get(caseId)).filter((row): row is CaseRow => Boolean(row))
     setRows(cases)
     if (!cases.length && page === 0 && !query && !statusFilter && !riskFilter) { setError('No hay casos visibles en esta institución. Verifica tu permiso DECE o registra el primer caso.'); return }
     setError('')
     const ids = [...new Set(cases.map(row => row.student_id))]
     if (ids.length) {
-      const { data: people } = await integration.client.from('students').select('student_id,first_name,last_name,national_id').eq('institution_id', integration.institutionId).in('student_id', ids)
-      if (id === requestId.current) setStudents(Object.fromEntries(((people ?? []) as StudentRow[]).map(student => [student.student_id, student])))
+      const { data: people, error: peopleError } = await integration.client.from('students').select('student_id,first_name,last_name,national_id,grade_level').eq('institution_id', integration.institutionId).in('student_id', ids)
+      if (id !== requestId.current) return
+      if (peopleError) throw peopleError
+      setStudents(current => ({ ...current, ...Object.fromEntries(((people ?? []) as StudentRow[]).map(person => [person.student_id, person])) }))
     }
-  }, [integration, page, query, riskFilter, statusFilter])
+    if (visibleIds.length) {
+      const { data: actions, error: actionsError } = await integration.client.from('dece_actions').select('dece_case_id,due_date,is_completed').in('dece_case_id', visibleIds)
+      if (id !== requestId.current) return
+      if (actionsError) throw actionsError
+      const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Guayaquil' })
+      const summary: Record<string, { pending: number; overdue: number }> = {}
+      for (const action of actions ?? []) {
+        const item = summary[action.dece_case_id] ?? { pending: 0, overdue: 0 }
+        if (!action.is_completed) { item.pending += 1; if (action.due_date && action.due_date < today) item.overdue += 1 }
+        summary[action.dece_case_id] = item
+      }
+      setActionSummary(summary)
+    }
+    if (id === requestId.current) setError('')
+    } catch (cause) {
+      if (id !== requestId.current) return
+      const issue = cause as { code?: string }
+      setError(issue.code === '42501' ? 'No tienes permiso para consultar casos de esta institución.' : 'No se pudo cargar el listado de casos.')
+    }
+  }, [integration, page, pageSize, query, riskFilter, statusFilter, sort, direction, listRevision])
 
   useEffect(() => { void load() }, [load])
   useEffect(() => {
@@ -160,8 +293,9 @@ export default function CasesPage({ initialStudentId = '', onInitialStudentUsed 
       window.dispatchEvent(new Event('dece:dashboard-refresh'))
       const created = data as CaseRow
       const audited = await audit('case.create', 'dece_case', created.dece_case_id, ['student_id', 'case_number', 'reason', 'primary_category', 'risk_level', 'confidentiality_level', 'status'])
-      setRows(current => [created, ...current].slice(0, 25)); setStudents(current => ({ ...current, [selectedStudent.student_id]: selectedStudent })); setCreating(false); setSelectedStudent(null); setStudentSearch(''); setForm(empty)
-      setNotice(audited ? 'Caso creado.' : 'Caso creado, pero no se pudo registrar la auditoría. Revisa docs/solicitudes-bd.md.')
+      listCache.current = null; setListRevision(value => value + 1); setRows(current => [created, ...current]); setTotal(current => current + 1); setStudents(current => ({ ...current, [selectedStudent.student_id]: selectedStudent })); setCreating(false); setSelectedStudent(null); setStudentSearch(''); setForm(empty)
+      history.pushState(null, '', `${base}/${created.dece_case_id}${location.search}`); setCaseId(created.dece_case_id); setSelected(created); setDetailStudent(selectedStudent)
+      setNotice(audited ? `Caso ${created.case_number} creado` : `Caso ${created.case_number} creado. La auditoría quedó pendiente.`)
       void toast.fire({ icon: audited ? 'success' : 'warning', title: audited ? 'Caso guardado' : 'Caso guardado; auditoría pendiente' })
     } catch (cause) { const issue = cause as { code?: string }; const message = issue.code === '42501' ? 'No tienes permiso para crear casos en esta institución.' : 'No se pudo crear el caso. Revisa los datos e inténtalo nuevamente.'; setError(message); void toast.fire({ icon: 'error', title: message }) }
     finally { setBusy(false) }
@@ -185,14 +319,14 @@ export default function CasesPage({ initialStudentId = '', onInitialStudentUsed 
       const saved = data as CaseRow
       const audited = changed.length ? await audit('case.update', 'dece_case', saved.dece_case_id, changed) : true
       const stateAudited = selected.status === saved.status || await audit('case.status_change', 'dece_case', saved.dece_case_id, ['status'], { old: selected.status, new: saved.status })
-      setSelected(saved); setRows(current => current.map(row => row.dece_case_id === saved.dece_case_id ? saved : row)); setNotice(audited && stateAudited ? 'Cambios guardados.' : 'Cambios guardados, pero no se pudo registrar la auditoría. Revisa docs/solicitudes-bd.md.')
+      listCache.current = null; setListRevision(value => value + 1); setSelected(saved); setRows(current => current.map(row => row.dece_case_id === saved.dece_case_id ? saved : row)); setNotice(audited && stateAudited ? 'Cambios guardados.' : 'Cambios guardados, pero no se pudo registrar la auditoría. Revisa docs/solicitudes-bd.md.')
       void toast.fire({ icon: audited && stateAudited ? 'success' : 'warning', title: audited && stateAudited ? 'Cambios guardados' : 'Cambios guardados; auditoría pendiente' })
     } catch (cause) { const message = (cause as { code?: string }).code === '42501' ? 'No tienes permiso para editar este caso.' : 'No se pudieron guardar los cambios.'; setError(message); void toast.fire({ icon: 'error', title: message }) }
     finally { setBusy(false) }
   }
 
   function openCase(row: CaseRow) {
-    history.pushState(null, '', `${base}/${row.dece_case_id}`)
+    history.pushState(null, '', `${base}/${row.dece_case_id}${location.search}`)
     setCaseId(row.dece_case_id)
     setSelected(row)
     setDetailStudent(students[row.student_id] ?? null)
@@ -203,8 +337,14 @@ export default function CasesPage({ initialStudentId = '', onInitialStudentUsed 
     setStatus(row.status)
     setError('')
   }
+  function changeSort(next: CaseSortKey) {
+    setDirection(current => sort === next ? current === 'asc' ? 'desc' : 'asc' : 'asc')
+    setSort(next)
+    setPage(0)
+  }
   function back() {
-    history.pushState(null, '', base)
+    history.pushState(null, '', `${base}${location.search}`)
+    listCache.current = null; setListRevision(value => value + 1)
     setCaseId('')
     setSelected(null)
     setError('')
@@ -221,18 +361,18 @@ export default function CasesPage({ initialStudentId = '', onInitialStudentUsed 
     window.dispatchEvent(new Event('dece:dashboard-refresh'))
     const saved = data as CaseRow
     const audited = await audit('case.status_change', 'dece_case', saved.dece_case_id, ['status'], { old: row.status, new: nextStatus })
-    setRows(current => current.map(item => item.dece_case_id === saved.dece_case_id ? saved : item))
+    listCache.current = null; setListRevision(value => value + 1); setRows(current => current.map(item => item.dece_case_id === saved.dece_case_id ? saved : item))
     setSelected(current => current?.dece_case_id === saved.dece_case_id ? saved : current)
     setError(''); setNotice(audited ? 'Estado actualizado.' : 'Estado actualizado; no se pudo registrar la auditoría. Revisa docs/solicitudes-bd.md.')
     void toast.fire({ icon: audited ? 'success' : 'warning', title: audited ? 'Estado actualizado' : 'Estado actualizado; auditoría pendiente' })
   }
   const filtered = useMemo(() => rows.filter(row => !query || row.case_number.toLocaleLowerCase().includes(safeSearch(query).toLocaleLowerCase()) || `${students[row.student_id]?.first_name ?? ''} ${students[row.student_id]?.last_name ?? ''}`.toLocaleLowerCase().includes(safeSearch(query).toLocaleLowerCase())), [query, rows, students])
 
-  return <div className="page-content container-fluid"><div className="eyebrow">GESTIÓN DECE</div><div className="welcome-row list-title"><div><h1>{selected ? `Caso ${selected.case_number}` : 'Casos de acompañamiento'}</h1><p className="subheading">Registro y seguimiento de casos de esta institución.</p></div>{selected ? <div className="d-flex gap-2"><PdfActionButton label={`Descargar PDF del caso ${selected.case_number}`} generate={async () => { const { createDecePdfService } = await import('../services/pdf-service'); await createDecePdfService(integration!.client).casePdf(integration!.institutionId, selected!.dece_case_id, integration!.profileId) }} /><button className="button btn secondary" type="button" onClick={back}>Volver a casos</button></div> : !creating && <button className="button btn primary" type="button" onClick={() => { setCreating(true); setError(''); setNotice('') }}>+ Nuevo caso</button>}</div>
+  return <div className={`page-content container-fluid ${listStyles.casePage}`}>{selected ? <Breadcrumbs items={[{ label: 'Panel principal', onClick: back }, { label: 'Casos de acompañamiento', onClick: back }, { label: selected.case_number }]} /> : <Breadcrumbs items={[{ label: 'Panel principal', onClick: back }, { label: 'Casos de acompañamiento' }]} />}<div className="eyebrow">GESTIÓN DECE</div><PageHeader title={selected ? `Caso ${selected.case_number}` : 'Casos de acompañamiento'} description="Registro y seguimiento de casos de esta institución." action={!selected ? { label: 'Nuevo caso', onClick: () => { setCreating(true); setError(''); setNotice('') } } : undefined} />{selected && <div className="d-flex flex-wrap gap-2 mb-3"><PdfActionButton className={listStyles.actionButton} label={`Descargar PDF del caso ${selected.case_number}`} generate={async () => { const { createDecePdfService } = await import('../services/pdf-service'); await createDecePdfService(integration!.client).casePdf(integration!.institutionId, selected!.dece_case_id, integration!.profileId) }} /><PdfActionButton className={listStyles.actionButton} label={`Descargar expediente de ${detailStudent?.first_name ?? 'estudiante'}`} generate={async () => { const { createDecePdfService } = await import('../services/pdf-service'); await createDecePdfService(integration!.client).studentFile(integration!.institutionId, selected!.student_id, true, integration!.profileId) }} /><button className={listStyles.actionButton} type="button" onClick={back}>Volver a casos</button></div>}
     {error && <div className="notice sensitive" role="alert">{error}</div>}<div aria-live="polite" className="visually-hidden">{notice}</div>{notice && <div className="notice" role="status">{notice}</div>}
     {creating && <section className="table-card p-3 mb-4"><h2>Nuevo caso</h2><form noValidate onSubmit={event => void create(event)} className="row g-3"><div className="col-12"><label className="form-label" htmlFor="case-student">Estudiante (obligatorio): buscar por nombre o cédula</label><input id="case-student" className="form-control" aria-required="true" aria-invalid={Boolean(studentSelectionError)} aria-describedby={studentSelectionError ? 'case-student-error' : undefined} value={studentSearch} onChange={event => { setStudentSearch(event.target.value); setSelectedStudent(null); setStudentSelectionError(''); setError('') }} autoComplete="off" />{studentResults.length > 0 && <ul className="list-group mt-2">{studentResults.map(student => <li className="list-group-item" key={student.student_id}><button type="button" className="table-link" onClick={() => { setSelectedStudent(student); setStudentSelectionError(''); setError(''); setStudentSearch(`${student.first_name} ${student.last_name}`); setStudentResults([]) }}>{student.first_name} {student.last_name} · {student.national_id ?? 'Sin cédula'}</button></li>)}</ul>}{selectedStudent && <p role="status">Seleccionado: {selectedStudent.first_name} {selectedStudent.last_name}</p>}{studentSelectionError && <p id="case-student-error" className="text-danger" role="alert">{studentSelectionError}</p>}</div><CaseFields value={form} onChange={setForm} prefix="new" /><div className="col-12"><label className="form-label" htmlFor="new-reason">Motivo (obligatorio)</label><textarea id="new-reason" className="form-control" aria-required="true" required value={form.reason} onChange={event => setForm({ ...form, reason: event.target.value })} /></div><div className="col-12 d-flex gap-2"><button className="btn btn-primary" disabled={busy}>Guardar caso</button><button className="btn btn-outline-secondary" type="button" onClick={() => setCreating(false)}>Cancelar</button></div></form></section>}
     {selected && <><section className="table-card p-3 mb-4"><h2>Datos del caso y del estudiante</h2><p>{detailStudent ? `${detailStudent.first_name} ${detailStudent.last_name}` : 'Estudiante'} · {selected.case_number}</p><form className="row g-3" onSubmit={event => void updateCase(event)}><CaseFields value={{ reason, primary_category: category, risk_level: risk, confidentiality_level: conf, status }} onChange={value => { setReason(value.reason); setCategory(value.primary_category); setRisk(value.risk_level); setConf(value.confidentiality_level); setStatus(value.status) }} prefix="edit" /><div className="col-12"><label className="form-label" htmlFor="edit-reason">Motivo</label><textarea id="edit-reason" className="form-control" required value={reason} onChange={event => setReason(event.target.value)} /></div><div className="col-12"><button className="btn btn-primary" disabled={busy}>Guardar cambios</button></div></form><p className="mt-3">Categoría: {label(selected.primary_category, categories)} · Riesgo: {label(selected.risk_level, risks)} · Estado: {label(selected.status, statuses)} · Confidencialidad: {label(selected.confidentiality_level, confidentiality)}</p></section><CaseTimeline caseRow={selected} /><CaseDocuments caseId={selected.dece_case_id} caseInstitutionId={selected.institution_id} /></>}
-    {!selected && !creating && <><div className="toolbar d-flex flex-wrap"><label className="search-box"><span className="visually-hidden">Buscar casos</span><input className="form-control" aria-label="Buscar por número de caso o estudiante" placeholder="Número de caso o estudiante" value={query} onChange={event => setQuery(event.target.value)} /></label><label>Estado <select className="form-select" value={statusFilter} onChange={event => { setPage(0); setStatusFilter(event.target.value) }}><option value="">Todos</option>{Object.entries(statuses).map(([value, text]) => <option key={value} value={value}>{text}</option>)}</select></label><label>Riesgo <select className="form-select" value={riskFilter} onChange={event => { setPage(0); setRiskFilter(event.target.value) }}><option value="">Todos</option>{Object.entries(risks).map(([value, text]) => <option key={value} value={value}>{text}</option>)}</select></label></div><div className="table-card table-responsive"><table className="table"><caption className="visually-hidden">Casos de acompañamiento de la institución</caption><thead><tr><th scope="col">Número</th><th scope="col">Estudiante</th><th scope="col">Categoría</th><th scope="col">Riesgo</th><th scope="col">Estado</th><th scope="col">Última actualización</th><th scope="col">Acceso</th></tr></thead><tbody>{filtered.map(row => <tr key={row.dece_case_id}><td>{row.case_number}</td><td>{students[row.student_id] ? `${students[row.student_id].first_name} ${students[row.student_id].last_name}` : 'Estudiante'}</td><td>{label(row.primary_category, categories)}</td><td>{label(row.risk_level, risks)}</td><td><label className="visually-hidden" htmlFor={`case-status-${row.dece_case_id}`}>Cambiar estado de {row.case_number}</label><select id={`case-status-${row.dece_case_id}`} className="form-select form-select-sm" aria-label={`Estado: ${label(row.status, statuses)}`} value={row.status} onChange={event => void quickStatusChange(row, event.target.value as keyof typeof statuses)}>{Object.entries(statuses).map(([key, text]) => <option key={key} value={key}>{text}</option>)}</select></td><td>{new Date(row.updated_at).toLocaleString('es-EC', { timeZone: 'America/Guayaquil' })}</td><td><button type="button" className="table-link" onClick={() => openCase(row)}>Abrir</button></td></tr>)}</tbody></table>{!filtered.length && !error && <div className="empty-state">No se encontraron casos.</div>}<div className="d-flex justify-content-between p-3"><span>Página {page + 1}</span><span className="d-flex gap-2"><button className="btn btn-outline-secondary" disabled={page === 0} onClick={() => setPage(value => Math.max(0, value - 1))}>Anterior</button><button className="btn btn-outline-secondary" disabled={rows.length < 25} onClick={() => setPage(value => value + 1)}>Siguiente</button></span></div></div></>}
+    {!selected && !creating && <><div className="toolbar d-flex flex-wrap"><label className="search-box"><span className="visually-hidden">Buscar casos</span><input className="form-control" aria-label="Buscar por número de caso o estudiante" placeholder="Número de caso o estudiante" value={query} onChange={event => { setPage(0); setQuery(event.target.value) }} /></label><label>Estado <select className="form-select" value={statusFilter} onChange={event => { setPage(0); setStatusFilter(event.target.value) }}><option value="">Todos</option>{Object.entries(statuses).map(([value, text]) => <option key={value} value={value}>{text}</option>)}</select></label><label>Riesgo <select className="form-select" value={riskFilter} onChange={event => { setPage(0); setRiskFilter(event.target.value) }}><option value="">Todos</option>{Object.entries(risks).map(([value, text]) => <option key={value} value={value}>{text}</option>)}</select></label><button type="button" className="btn btn-link" onClick={() => { setQuery(''); setStatusFilter(''); setRiskFilter(''); setSort('updated_at'); setDirection('desc'); setPage(0) }}>Limpiar filtros</button><ViewToggle value={view} onChange={next => { setView(next); localStorage.setItem('dece.case.view', next) }} /></div><p className={listStyles.sortLive} aria-live="polite">Ordenado por {CASE_SORT_OPTIONS.find(option => option.key === sort)?.label}, {direction === "asc" ? "ascendente" : "descendente"}</p><div className="table-card table-responsive">{view === "cards" && <><SortBar order={sort} direction={direction} onSort={changeSort} /><RecordGrid label="Casos de acompañamiento">{filtered.map(row => { const person = students[row.student_id]; const summary = actionSummary[row.dece_case_id] ?? { pending: 0, overdue: 0 }; return <li key={row.dece_case_id}><RecordCard><div className={listStyles.cardContent}><h2><a className={listStyles.tableLink} href={`${base}/${row.dece_case_id}${location.search}`} onClick={event => { event.preventDefault(); openCase(row) }}>{row.case_number}</a></h2><p className={listStyles.cardPerson}>{person ? `${person.last_name}, ${person.first_name}` : "Estudiante"} · {person?.grade_level ?? "Sin curso"}</p><dl><div><dt>Categoría</dt><dd>{label(row.primary_category, categories)}</dd></div><div><dt>Riesgo</dt><dd><RiskBadge>{label(row.risk_level, risks)}</RiskBadge></dd></div><div><dt>Estado</dt><dd><StatusBadge>{label(row.status, statuses)}</StatusBadge></dd></div><div><dt>Última actualización</dt><dd>{new Date(row.updated_at).toLocaleString("es-EC", { timeZone: "America/Guayaquil" })}</dd></div></dl><p>Acuerdos pendientes: {summary.pending} · Vencidos: {summary.overdue}</p><div className={listStyles.cardActions}><a className={`${listStyles.actionButton} ${listStyles.primaryAction}`} href={`${base}/${row.dece_case_id}${location.search}`} onClick={event => { event.preventDefault(); openCase(row) }}>Abrir caso</a></div></div></RecordCard></li> })}</RecordGrid></>}{view === "table" && <table className="table"><caption className="visually-hidden">Casos de acompañamiento de la institución</caption><thead><tr><th scope="col" aria-sort={sort === "case_number" ? direction === "asc" ? "ascending" : "descending" : "none"}><SortButton option={CASE_SORT_OPTIONS[0]} active={sort === "case_number"} direction={direction} onClick={() => changeSort("case_number")} /></th><th scope="col" aria-sort={sort === "student" ? direction === "asc" ? "ascending" : "descending" : "none"}><SortButton option={CASE_SORT_OPTIONS[1]} active={sort === "student"} direction={direction} onClick={() => changeSort("student")} /></th><th scope="col" aria-sort={sort === "category" ? direction === "asc" ? "ascending" : "descending" : "none"}><SortButton option={CASE_SORT_OPTIONS[2]} active={sort === "category"} direction={direction} onClick={() => changeSort("category")} /></th><th scope="col" aria-sort={sort === "risk_level" ? direction === "asc" ? "ascending" : "descending" : "none"}><SortButton option={CASE_SORT_OPTIONS[3]} active={sort === "risk_level"} direction={direction} onClick={() => changeSort("risk_level")} /></th><th scope="col" aria-sort={sort === "status" ? direction === "asc" ? "ascending" : "descending" : "none"}><SortButton option={CASE_SORT_OPTIONS[4]} active={sort === "status"} direction={direction} onClick={() => changeSort("status")} /></th><th scope="col" aria-sort={sort === "updated_at" ? direction === "asc" ? "ascending" : "descending" : "none"}><SortButton option={CASE_SORT_OPTIONS[5]} active={sort === "updated_at"} direction={direction} onClick={() => changeSort("updated_at")} /></th><th scope="col">Acciones</th></tr></thead><tbody>{filtered.map(row => <tr key={row.dece_case_id}><td><a className={listStyles.tableLink} href={`${base}/${row.dece_case_id}${location.search}`} onClick={event => { event.preventDefault(); openCase(row) }}>{row.case_number}</a></td><td>{students[row.student_id] ? `${students[row.student_id].first_name} ${students[row.student_id].last_name}` : 'Estudiante'}</td><td>{label(row.primary_category, categories)}</td><td><RiskBadge>{label(row.risk_level, risks)}</RiskBadge></td><td><StatusBadge>{label(row.status, statuses)}</StatusBadge><label className="visually-hidden" htmlFor={`case-status-${row.dece_case_id}`}>Cambiar estado de {row.case_number}</label><select id={`case-status-${row.dece_case_id}`} className="form-select form-select-sm" value={row.status} onChange={event => void quickStatusChange(row, event.target.value as keyof typeof statuses)}>{Object.entries(statuses).map(([key, text]) => <option key={key} value={key}>{text}</option>)}</select></td><td>{new Date(row.updated_at).toLocaleString('es-EC', { timeZone: 'America/Guayaquil' })}</td><td><a className={`${listStyles.actionButton} ${listStyles.primaryAction}`} href={`${base}/${row.dece_case_id}${location.search}`} onClick={event => { event.preventDefault(); openCase(row) }}>Abrir caso</a></td></tr>)}</tbody></table>}{!filtered.length && !error && <><EmptyState>No se encontraron casos.</EmptyState><button className={`${listStyles.actionButton} ${listStyles.primaryAction}`} type="button" onClick={() => setCreating(true)}>Nuevo caso</button></>}<Pagination page={page + 1} size={pageSize} total={total} onPage={next => setPage(next - 1)} onSize={size => { setPageSize(size); setPage(0) }} /></div></>}
   </div>
 }
 
@@ -243,12 +383,13 @@ function CaseFields({ value, onChange, prefix }: { value: Fields; onChange: (val
 function CaseTimeline({ caseRow }: { caseRow: CaseRow }) {
   const integration = useDeceData()
   const [visits, setVisits] = useState<Array<{ dece_visit_id: string; visit_date: string; summary: string; attention_notes: string | null; attended_by: string | null }>>([])
-  const [actions, setActions] = useState<Array<{ dece_action_id: string; description: string; due_date: string | null; is_completed: boolean; responsible_profile_id: string | null }>>([])
+  const [actions, setActions] = useState<Array<{ dece_action_id: string; dece_visit_id: string | null; description: string; due_date: string | null; is_completed: boolean; completed_at?: string | null; responsible_profile_id: string | null }>>([])
   const [profileNames, setProfileNames] = useState<Record<string, string>>({})
   const [summary, setSummary] = useState('')
   const [notes, setNotes] = useState('')
   const [visitDate, setVisitDate] = useState('')
   const [actionDescription, setActionDescription] = useState('')
+  const [activeVisitId, setActiveVisitId] = useState('')
   const [dueDate, setDueDate] = useState('')
   const [staff, setStaff] = useState<Array<{ id: string; name: string }>>([])
   const [responsible, setResponsible] = useState('')
@@ -260,7 +401,7 @@ function CaseTimeline({ caseRow }: { caseRow: CaseRow }) {
   const minimumActionDate = firstVisit ? dayAfterGuayaquilDate(firstVisit.visit_date) : ''
   const reload = useCallback(async () => {
     if (!integration) return
-    const [v, a] = await Promise.all([integration.client.from('dece_visits').select('dece_visit_id,visit_date,summary,attention_notes,attended_by').eq('dece_case_id', caseRow.dece_case_id).order('visit_date', { ascending: false }), integration.client.from('dece_actions').select('dece_action_id,description,due_date,is_completed,responsible_profile_id').eq('dece_case_id', caseRow.dece_case_id).order('due_date')])
+    const [v, a] = await Promise.all([integration.client.from('dece_visits').select('dece_visit_id,visit_date,summary,attention_notes,attended_by').eq('dece_case_id', caseRow.dece_case_id).order('visit_date', { ascending: false }), integration.client.from('dece_actions').select('dece_action_id,dece_visit_id,description,due_date,is_completed,completed_at,responsible_profile_id').eq('dece_case_id', caseRow.dece_case_id).order('due_date')])
     if (!v.error) setVisits(v.data ?? [])
     if (!a.error) setActions(a.data ?? [])
     const profileIds = [...new Set([...(v.data ?? []).map(item => item.attended_by), ...(a.data ?? []).map(item => item.responsible_profile_id)].filter((id): id is string => Boolean(id)))]
@@ -314,7 +455,9 @@ function CaseTimeline({ caseRow }: { caseRow: CaseRow }) {
       const warning = minimumActionDate ? `La fecha debe ser desde ${minimumActionDate}, al menos un día después de la primera visita.` : 'Registra primero la visita inicial para asignar una fecha a la acción.'
       setMessage(warning); void toast.fire({ icon: 'warning', title: warning }); return
     }
-    const { data, error } = await integration.client.from('dece_actions').insert({ dece_case_id: caseRow.dece_case_id, description: actionDescription.trim(), due_date: dueDate || null, responsible_profile_id: responsible || null, is_completed: false }).select('dece_action_id').single()
+    const visitId = activeVisitId
+    if (!visitId || !visits.some(visit => visit.dece_visit_id === visitId)) { setMessage('Selecciona una visita de este caso para registrar el acuerdo.'); return }
+    const { data, error } = await integration.client.from('dece_actions').insert({ dece_case_id: caseRow.dece_case_id, dece_visit_id: visitId, description: actionDescription.trim(), due_date: dueDate || null, responsible_profile_id: responsible || null, is_completed: false }).select('dece_action_id').single()
     if (error || !data) { const warning = error?.code === '42501' ? 'No tienes permiso para registrar acciones.' : 'No se pudo guardar la acción.'; setMessage(warning); void toast.fire({ icon: 'error', title: warning }); return }
     const audited = await bestEffortAudit(integration.client, integration.institutionId, integration.profileId, 'action.create', 'dece_action', data.dece_action_id, ['description', 'due_date', 'responsible_profile_id', 'is_completed'])
     setActionDescription(''); setDueDate(''); setResponsible(''); await reload(); window.dispatchEvent(new Event('dece:dashboard-refresh')); setMessage(!audited ? 'Acción guardada, pero falló la auditoría; revisa docs/solicitudes-bd.md.' : 'Acción guardada.'); void toast.fire({ icon: audited ? 'success' : 'warning', title: audited ? 'Acción guardada' : 'Acción guardada; auditoría pendiente' })
@@ -326,6 +469,12 @@ function CaseTimeline({ caseRow }: { caseRow: CaseRow }) {
     if (error) { setMessage(error.code === '42501' ? 'No tienes permiso para actualizar acciones.' : 'No se pudo actualizar la acción.'); return }
     const audited = await bestEffortAudit(integration.client, integration.institutionId, integration.profileId, 'action.update', 'dece_action', action.dece_action_id, ['is_completed', 'completed_at'])
     await reload(); window.dispatchEvent(new Event('dece:dashboard-refresh')); setMessage(!audited ? 'Acción actualizada, pero falló la auditoría; revisa docs/solicitudes-bd.md.' : 'Acción actualizada.')
+  }
+  async function associateAction(action: typeof actions[number], visitId: string) {
+    if (!integration || !visits.some(visit => visit.dece_visit_id === visitId)) { setMessage('La visita seleccionada no pertenece a este caso.'); return }
+    const { data, error } = await integration.client.from('dece_actions').update({ dece_visit_id: visitId }).eq('dece_case_id', caseRow.dece_case_id).eq('dece_action_id', action.dece_action_id).is('dece_visit_id', null).select('dece_action_id').maybeSingle()
+    if (error || !data) { setMessage(error?.code === '42501' ? 'No tienes permiso para asociar este acuerdo.' : 'No se pudo asociar el acuerdo; no se confirmaron filas actualizadas.'); return }
+    await reload(); setMessage('Acuerdo asociado a la visita.')
   }
   async function editAction(action: typeof actions[number]) {
     if (!integration) return
@@ -350,7 +499,8 @@ function CaseTimeline({ caseRow }: { caseRow: CaseRow }) {
     const audited = await bestEffortAudit(integration.client, integration.institutionId, integration.profileId, 'visit.update', 'dece_visit', visit.dece_visit_id, ['summary', 'attention_notes'])
     await reload(); window.dispatchEvent(new Event('dece:dashboard-refresh')); setMessage(!audited ? 'Visita actualizada, pero falló la auditoría; revisa docs/solicitudes-bd.md.' : 'Visita actualizada.'); void toast.fire({ icon: audited ? 'success' : 'warning', title: audited ? 'Visita actualizada' : 'Visita actualizada; auditoría pendiente' })
   }
-  return <section className="table-card p-3"><h2>Visitas</h2><form onSubmit={event => void saveVisit(event)} className="row g-2 mb-4"><div className="col-md-4"><label htmlFor="visit-date" className="form-label">Fecha y hora (Ecuador)</label><input id="visit-date" className="form-control" type="datetime-local" required value={visitDate} onChange={event => setVisitDate(event.target.value)} /></div><div className="col-md-4"><label htmlFor="visit-summary" className="form-label">Resumen</label><input id="visit-summary" className="form-control" required value={summary} onChange={event => setSummary(event.target.value)} /></div><div className="col-md-4"><label htmlFor="visit-notes" className="form-label">Notas de atención</label><input id="visit-notes" className="form-control" value={notes} onChange={event => setNotes(event.target.value)} /></div><div className="col-12"><button className="btn btn-primary">Registrar visita</button></div></form><form className="row g-2 mb-3" onSubmit={event => { event.preventDefault(); if (!observationDraft.description.trim()) return; setPendingObservations(current => [...current, { ...observationDraft, description: observationDraft.description.trim(), localId: crypto.randomUUID() }]); setObservationDraft({ category: 'other', description: '', severity: 'low', requires_follow_up: false }) }}><div className="col-md-3"><label htmlFor="draft-category" className="form-label">Categoría de observación</label><select id="draft-category" className="form-select" value={observationDraft.category} onChange={event => setObservationDraft(current => ({ ...current, category: event.target.value as keyof typeof categories }))}>{Object.entries(categories).map(([key, text]) => <option key={key} value={key}>{text}</option>)}</select></div><div className="col-md-4"><label htmlFor="draft-description" className="form-label">Descripción de observación</label><input id="draft-description" className="form-control" required value={observationDraft.description} onChange={event => setObservationDraft(current => ({ ...current, description: event.target.value }))} /></div><div className="col-md-2"><label htmlFor="draft-severity" className="form-label">Severidad</label><select id="draft-severity" className="form-select" value={observationDraft.severity} onChange={event => setObservationDraft(current => ({ ...current, severity: event.target.value as keyof typeof risks }))}>{Object.entries(risks).map(([key, text]) => <option key={key} value={key}>{text}</option>)}</select></div><div className="col-md-2 align-self-center"><label><input type="checkbox" checked={observationDraft.requires_follow_up} onChange={event => setObservationDraft(current => ({ ...current, requires_follow_up: event.target.checked }))} /> Requiere seguimiento</label></div><div className="col-md-1 d-flex align-items-end"><button className="btn btn-outline-primary">Añadir</button></div></form>{pendingObservations.map((observation, index) => <p key={observation.localId}>Observación {index + 1}: {label(observation.category, categories)} · {label(observation.severity, risks)} {observation.requires_follow_up && '· Requiere seguimiento'} · {observation.description}{failedVisitId && <strong className="text-danger"> · Pendiente de reintento</strong>}</p>)}{failedVisitId && <button type="button" className="btn btn-outline-primary btn-sm mb-3" onClick={() => void retryFailedObservations()}>Reintentar solo las observaciones fallidas</button>}<div aria-live="polite" role="status">{message}</div>{visits.map(visit => <article className="border rounded p-3 mb-3" key={visit.dece_visit_id}><h3>{new Date(visit.visit_date).toLocaleString('es-EC', { timeZone: 'America/Guayaquil' })}</h3><p>{visit.summary}</p><p>{visit.attention_notes ?? 'Sin notas'}</p><p>Atendió: {visit.attended_by ? profileNames[visit.attended_by] || 'Personal DECE' : 'Sin responsable registrado'}</p><button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => void editVisit(visit)}>Editar visita</button><ObservationPanel visitId={visit.dece_visit_id} /></article>)}<h2 className="mt-4">Acuerdos y próximas acciones</h2><form onSubmit={event => void saveAction(event)} className="row g-2 mb-3"><div className="col-md-5"><label htmlFor="action-description" className="form-label">Descripción</label><input id="action-description" required className="form-control" value={actionDescription} onChange={event => setActionDescription(event.target.value)} /></div><div className="col-md-3"><label htmlFor="action-due" className="form-label">Fecha límite (opcional)</label><input id="action-due" type="date" min={minimumActionDate || undefined} className="form-control" value={dueDate} onChange={event => setDueDate(event.target.value)} /></div><div className="col-md-3"><label htmlFor="action-responsible" className="form-label">Responsable (opcional)</label><select id="action-responsible" className="form-select" value={responsible} onChange={event => setResponsible(event.target.value)}><option value="">Sin responsable</option>{staff.map(person => <option key={person.id} value={person.id}>{person.name}</option>)}</select></div><div className="col-md-1 d-flex align-items-end"><button className="btn btn-primary">Añadir</button></div></form><ul>{actions.map(action => <li key={action.dece_action_id} className="mb-2"><label><input type="checkbox" checked={action.is_completed} onChange={() => void toggleAction(action)} /> {action.description}</label>{action.responsible_profile_id && <span> · Responsable: {profileNames[action.responsible_profile_id] || 'Personal DECE'}</span>}{action.due_date && <span> · Límite: {action.due_date}</span>}{!action.is_completed && action.due_date && action.due_date < new Date().toISOString().slice(0, 10) && <strong className="text-danger"> · Vencida</strong>}{action.is_completed && <span> · Completada</span>} <button type="button" className="btn btn-link btn-sm" onClick={() => void editAction(action)}>Editar</button></li>)}</ul></section>
+  return <section className="table-card p-3"><h2>Visitas</h2><form onSubmit={event => void saveVisit(event)} className="row g-2 mb-4"><div className="col-md-4"><label htmlFor="visit-date" className="form-label">Fecha y hora (Ecuador)</label><input id="visit-date" className="form-control" type="datetime-local" required value={visitDate} onChange={event => setVisitDate(event.target.value)} /></div><div className="col-md-4"><label htmlFor="visit-summary" className="form-label">Resumen</label><input id="visit-summary" className="form-control" required value={summary} onChange={event => setSummary(event.target.value)} /></div><div className="col-md-4"><label htmlFor="visit-notes" className="form-label">Notas de atención</label><input id="visit-notes" className="form-control" value={notes} onChange={event => setNotes(event.target.value)} /></div><div className="col-12"><button className="btn btn-primary">Registrar visita</button></div></form><form className="row g-2 mb-3" onSubmit={event => { event.preventDefault(); if (!observationDraft.description.trim()) return; setPendingObservations(current => [...current, { ...observationDraft, description: observationDraft.description.trim(), localId: crypto.randomUUID() }]); setObservationDraft({ category: 'other', description: '', severity: 'low', requires_follow_up: false }) }}><div className="col-md-3"><label htmlFor="draft-category" className="form-label">Categoría de observación</label><select id="draft-category" className="form-select" value={observationDraft.category} onChange={event => setObservationDraft(current => ({ ...current, category: event.target.value as keyof typeof categories }))}>{Object.entries(categories).map(([key, text]) => <option key={key} value={key}>{text}</option>)}</select></div><div className="col-md-4"><label htmlFor="draft-description" className="form-label">Descripción de observación</label><input id="draft-description" className="form-control" required value={observationDraft.description} onChange={event => setObservationDraft(current => ({ ...current, description: event.target.value }))} /></div><div className="col-md-2"><label htmlFor="draft-severity" className="form-label">Severidad</label><select id="draft-severity" className="form-select" value={observationDraft.severity} onChange={event => setObservationDraft(current => ({ ...current, severity: event.target.value as keyof typeof risks }))}>{Object.entries(risks).map(([key, text]) => <option key={key} value={key}>{text}</option>)}</select></div><div className="col-md-2 align-self-center"><label><input type="checkbox" checked={observationDraft.requires_follow_up} onChange={event => setObservationDraft(current => ({ ...current, requires_follow_up: event.target.checked }))} /> Requiere seguimiento</label></div><div className="col-md-1 d-flex align-items-end"><button className="btn btn-outline-primary">Añadir</button></div></form>{pendingObservations.map((observation, index) => <p key={observation.localId}>Observación {index + 1}: {label(observation.category, categories)} · {label(observation.severity, risks)} {observation.requires_follow_up && '· Requiere seguimiento'} · {observation.description}{failedVisitId && <strong className="text-danger"> · Pendiente de reintento</strong>}</p>)}{failedVisitId && <button type="button" className="btn btn-outline-primary btn-sm mb-3" onClick={() => void retryFailedObservations()}>Reintentar solo las observaciones fallidas</button>}<div aria-live="polite" role="status">{message}</div>{visits.map(visit => <article className="border rounded p-3 mb-3" key={visit.dece_visit_id}><h3>{new Date(visit.visit_date).toLocaleString('es-EC', { timeZone: 'America/Guayaquil' })}</h3><p>{visit.summary}</p><p>{visit.attention_notes ?? 'Sin notas'}</p><p>Atendió: {visit.attended_by ? profileNames[visit.attended_by] || 'Personal DECE' : 'Sin responsable registrado'}</p><button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => void editVisit(visit)}>Editar visita</button><ObservationPanel visitId={visit.dece_visit_id} /><section aria-labelledby={`agreements-${visit.dece_visit_id}`}><h4 id={`agreements-${visit.dece_visit_id}`}>Acuerdos de esta visita</h4>{actions.filter(action => action.dece_visit_id === visit.dece_visit_id).length ? <ul>{actions.filter(action => action.dece_visit_id === visit.dece_visit_id).map(action => <li key={action.dece_action_id}><label><input type="checkbox" checked={action.is_completed} onChange={() => void toggleAction(action)} /> {action.description}</label>{action.responsible_profile_id && <span> · Responsable: {profileNames[action.responsible_profile_id] || "Personal DECE"}</span>}{action.due_date && <span> · Límite: {action.due_date}</span>}<span> · {action.is_completed ? `Completado${action.completed_at ? ` el ${new Date(action.completed_at).toLocaleDateString("es-EC", { timeZone: "America/Guayaquil" })}` : ""}` : action.due_date === new Date().toLocaleDateString("en-CA", { timeZone: "America/Guayaquil" }) ? "Vence hoy" : action.due_date && action.due_date < new Date().toLocaleDateString("en-CA", { timeZone: "America/Guayaquil" }) ? `Vencido hace ${Math.max(1, Math.floor((Date.now() - new Date(`${action.due_date}T12:00:00-05:00`).getTime()) / 86400000))} días` : "Pendiente"}</span> <button type="button" className="btn btn-link btn-sm" onClick={() => void editAction(action)}>Editar</button></li>)}</ul> : <p>Sin acuerdos en esta visita</p>}<button type="button" className="btn btn-outline-primary btn-sm" onClick={() => { setActiveVisitId(visit.dece_visit_id); setActionDescription("") }}>Agregar acuerdo</button>{activeVisitId === visit.dece_visit_id && <form onSubmit={event => void saveAction(event)} className="row g-2 mt-2"><div className="col-md-5"><label htmlFor={`action-description-${visit.dece_visit_id}`} className="form-label">Descripción</label><input id={`action-description-${visit.dece_visit_id}`} required className="form-control" value={actionDescription} onChange={event => setActionDescription(event.target.value)} /></div><div className="col-md-3"><label htmlFor={`action-due-${visit.dece_visit_id}`} className="form-label">Fecha límite</label><input id={`action-due-${visit.dece_visit_id}`} type="date" min={minimumActionDate || undefined} className="form-control" value={dueDate} onChange={event => setDueDate(event.target.value)} /></div><div className="col-md-3"><label htmlFor={`action-responsible-${visit.dece_visit_id}`} className="form-label">Responsable</label><select id={`action-responsible-${visit.dece_visit_id}`} className="form-select" value={responsible} onChange={event => setResponsible(event.target.value)}><option value="">Sin responsable</option>{staff.map(person => <option key={person.id} value={person.id}>{person.name}</option>)}</select></div><div className="col-12"><button className="btn btn-primary">Guardar acuerdo</button><button type="button" className="btn btn-outline-secondary ms-2" onClick={() => setActiveVisitId("")}>Cancelar</button></div></form>}</section></article>)}{actions.some(action => !action.dece_visit_id) && <section aria-labelledby="legacy-agreements"><h3 id="legacy-agreements">Acuerdos anteriores sin visita</h3>{actions.filter(action => !action.dece_visit_id).map(action => <div key={action.dece_action_id} className="d-flex flex-wrap align-items-center gap-2 mb-2"><label><input type="checkbox" checked={action.is_completed} onChange={() => void toggleAction(action)} /> {action.description}</label>{action.responsible_profile_id && <span>Responsable: {profileNames[action.responsible_profile_id] || "Personal DECE"}</span>}<span>{action.due_date || "Sin fecha"} · {action.is_completed ? "Completado" : "Pendiente"}</span><button type="button" className="btn btn-link btn-sm" onClick={() => void editAction(action)}>Editar</button><select aria-label="Asociar acuerdo a una visita" className="form-select form-select-sm w-auto" value="" onChange={event => event.target.value && void associateAction(action, event.target.value)}><option value="">Asociar a una visita</option>{visits.map(visit => <option key={visit.dece_visit_id} value={visit.dece_visit_id}>{visit.visit_date}</option>)}</select></div>)}</section>}
+  </section>
 }
 
 function ObservationPanel({ visitId }: { visitId: string }) {
@@ -365,5 +515,5 @@ function ObservationPanel({ visitId }: { visitId: string }) {
   useEffect(() => { void load() }, [load])
   async function add(event: FormEvent) { event.preventDefault(); if (!integration) return; const { error: insertError } = await integration.client.from('dece_observations').insert({ dece_visit_id: visitId, category, description: description.trim(), severity, requires_follow_up: followUp }); if (insertError) { setError(insertError.code === '42501' ? 'No tienes permiso para registrar observaciones.' : 'No se pudo guardar la observación.'); return } setDescription(''); setFollowUp(false); await load() }
   async function update(item: typeof items[number], change: Partial<typeof item>) { if (!integration) return; const { error: updateError } = await integration.client.from('dece_observations').update(change).eq('dece_visit_id', visitId).eq('dece_observation_id', item.dece_observation_id); if (updateError) { setError(updateError.code === '42501' ? 'No tienes permiso para editar observaciones.' : 'No se pudo editar la observación.'); return } await load() }
-  return <div className="mt-3"><h4>Observaciones</h4><form onSubmit={event => void add(event)} className="d-flex flex-wrap gap-2"><label>Categoría<select aria-label="Categoría de observación" className="form-select" value={category} onChange={event => setCategory(event.target.value as keyof typeof categories)}>{Object.entries(categories).map(([key, text]) => <option key={key} value={key}>{text}</option>)}</select></label><label>Severidad<select aria-label="Severidad" className="form-select" value={severity} onChange={event => setSeverity(event.target.value as keyof typeof risks)}>{Object.entries(risks).map(([key, text]) => <option key={key} value={key}>{text}</option>)}</select></label><label className="flex-grow-1">Descripción<input className="form-control" required value={description} onChange={event => setDescription(event.target.value)} /></label><label className="align-self-center"><input type="checkbox" checked={followUp} onChange={event => setFollowUp(event.target.checked)} /> Requiere seguimiento</label><button className="btn btn-outline-primary align-self-end">Agregar</button></form>{error && <p role="alert">{error}</p>}<ul>{items.map(item => <li key={item.dece_observation_id} className="mb-3"><label className="me-2">Categoría<select aria-label="Editar categoría de observación" className="form-select form-select-sm" value={item.category} onChange={event => void update(item, { category: event.target.value as typeof item.category })}>{Object.entries(categories).map(([key, text]) => <option key={key} value={key}>{text}</option>)}</select></label><label className="me-2">Descripción<input aria-label="Editar descripción de observación" className="form-control form-control-sm" defaultValue={item.description} key={`${item.dece_observation_id}-${item.description}`} onBlur={event => { if (event.target.value.trim() !== item.description) void update(item, { description: event.target.value.trim() }) }} /></label><label className="me-2">Severidad<select aria-label="Editar severidad de observación" className="form-select form-select-sm" value={item.severity} onChange={event => void update(item, { severity: event.target.value as typeof item.severity })}>{Object.entries(risks).map(([key, text]) => <option key={key} value={key}>{text}</option>)}</select></label><label><input type="checkbox" checked={item.requires_follow_up} onChange={event => void update(item, { requires_follow_up: event.target.checked })} /> Requiere seguimiento</label>{item.requires_follow_up && <strong className="text-warning-emphasis d-block">REQUIERE SEGUIMIENTO</strong>}</li>)}</ul></div>
+  return <div className="mt-3"><h4>Observaciones de esta visita</h4><form onSubmit={event => void add(event)} className="d-flex flex-wrap gap-2"><label>Categoría<select aria-label="Categoría de observación" className="form-select" value={category} onChange={event => setCategory(event.target.value as keyof typeof categories)}>{Object.entries(categories).map(([key, text]) => <option key={key} value={key}>{text}</option>)}</select></label><label>Severidad<select aria-label="Severidad" className="form-select" value={severity} onChange={event => setSeverity(event.target.value as keyof typeof risks)}>{Object.entries(risks).map(([key, text]) => <option key={key} value={key}>{text}</option>)}</select></label><label className="flex-grow-1">Descripción<input className="form-control" required value={description} onChange={event => setDescription(event.target.value)} /></label><label className="align-self-center"><input type="checkbox" checked={followUp} onChange={event => setFollowUp(event.target.checked)} /> Requiere seguimiento</label><button className="btn btn-outline-primary align-self-end">Agregar</button></form>{error && <p role="alert">{error}</p>}<ul>{items.map(item => <li key={item.dece_observation_id} className="mb-3"><label className="me-2">Categoría<select aria-label="Editar categoría de observación" className="form-select form-select-sm" value={item.category} onChange={event => void update(item, { category: event.target.value as typeof item.category })}>{Object.entries(categories).map(([key, text]) => <option key={key} value={key}>{text}</option>)}</select></label><label className="me-2">Descripción<input aria-label="Editar descripción de observación" className="form-control form-control-sm" defaultValue={item.description} key={`${item.dece_observation_id}-${item.description}`} onBlur={event => { if (event.target.value.trim() !== item.description) void update(item, { description: event.target.value.trim() }) }} /></label><label className="me-2">Severidad<select aria-label="Editar severidad de observación" className="form-select form-select-sm" value={item.severity} onChange={event => void update(item, { severity: event.target.value as typeof item.severity })}>{Object.entries(risks).map(([key, text]) => <option key={key} value={key}>{text}</option>)}</select></label><label><input type="checkbox" checked={item.requires_follow_up} onChange={event => void update(item, { requires_follow_up: event.target.checked })} /> Requiere seguimiento</label>{item.requires_follow_up && <strong className="text-warning-emphasis d-block">REQUIERE SEGUIMIENTO</strong>}</li>)}</ul></div>
 }
