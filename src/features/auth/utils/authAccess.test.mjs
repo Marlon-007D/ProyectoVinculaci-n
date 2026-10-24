@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { resolveAdminAccess } from './adminAccess.ts';
+import { resolveAdminAccess, resolveLoginIssue } from './adminAccess.ts';
 import { authFormReducer } from './authFormState.ts';
 
 const assigned = { loading: false, hasUser: true, role: 'institution_admin', roleIssue: null,
@@ -25,4 +25,32 @@ test('OAuth pending state prevents repeat submissions and supports error recover
   const failed=authFormReducer(pending,{ type: 'failed', message: 'Connection failed' });
   assert.deepEqual(failed,{ status: 'error', message: 'Connection failed' });
   assert.deepEqual(authFormReducer(failed,{ type: 'start', method: 'google' }),pending);
+});
+
+for (const role of ['super_admin', 'superadmin']) {
+  test(role + ' bypasses tenant loading, missing memberships and stale request issues', () => {
+    assert.equal(resolveAdminAccess({ ...assigned, role, loadingTenant: true, hasInstitution: false,
+      roleIssue: 'membership-required', tenantError: 'Unavailable' }).status, 'authorized');
+    assert.equal(resolveAdminAccess({ ...assigned, role, mfaPending: true }).status, 'mfa');
+    assert.equal(resolveAdminAccess({ ...assigned, role, hasUser: false }).status, 'login');
+    assert.equal(resolveAdminAccess({ ...assigned, role, loading: true }).status, 'loading');
+  });
+}
+
+test('ordinary administrators still require a verified tenant', () => {
+  assert.equal(resolveAdminAccess({ ...assigned, loadingTenant: true }).status, 'loading');
+  assert.deepEqual(resolveAdminAccess({ ...assigned, hasInstitution: false }), { status: 'login', issue: 'membership-required' });
+  assert.deepEqual(resolveAdminAccess({ ...assigned, hasInstitution: false, tenantError: 'Offline' }), { status: 'login', issue: 'verification-failed' });
+});
+
+test('login ignores stale route issues for verified sessions but reports actual tenant failures', () => {
+  const input = { hasUser: true, role: 'super_admin', roleIssue: 'membership-required', mfaPending: false,
+    loadingTenant: true, hasInstitution: false, tenantError: 'Offline' };
+  assert.equal(resolveLoginIssue(input), null);
+  assert.equal(resolveLoginIssue({ ...input, role: 'superadmin' }), null);
+  assert.equal(resolveLoginIssue({ ...input, hasUser: false }), null);
+  assert.equal(resolveLoginIssue({ ...input, role: null, mfaPending: true }), null);
+  assert.equal(resolveLoginIssue({ ...input, role: null }), 'membership-required');
+  assert.equal(resolveLoginIssue({ ...input, role: 'institution_admin', roleIssue: null, loadingTenant: false }), 'verification-failed');
+  assert.equal(resolveLoginIssue({ ...input, role: 'institution_admin', roleIssue: null, hasInstitution: true }), null);
 });

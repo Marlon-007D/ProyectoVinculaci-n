@@ -105,6 +105,7 @@ function RoutesWithAuth() {
     <Route path="/register" element={<RegistrationRoute />} />
     <Route path="/panel" element={<InstitutionalPanelWithChrome />} />
     <Route path="/panel/admin" element={<AdminRoutesWithInstitutionalChrome />} />
+    <Route path="/panel/instituciones" element={<AdminRoutesWithInstitutionalChrome superadminOnly />} />
     <Route path="/panel/superadmin" element={<AdminRoutesWithInstitutionalChrome superadminOnly />} />
     <Route element={<AcademicManagementWithInstitutionalChrome />}>
       <Route path="/panel/cursos" element={<AcademicManagementRoutes />} />

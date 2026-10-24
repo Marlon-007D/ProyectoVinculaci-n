@@ -27,3 +27,22 @@ test('ID-only, slug-only and empty URLs remain dynamic without assuming a defaul
   assert.deepEqual(institutionContextFromSearch(''), { institution: undefined, slug: undefined });
   assert.equal(new URL(googleOAuthRequest('http://localhost:5173').options.redirectTo).search, '');
 });
+
+test('session context restores a clean URL and explicit scope replaces the previous tenant', async () => {
+  const { institutionSearch } = await import('./googleOAuth.ts');
+  const values = new Map();
+  Object.defineProperty(globalThis, 'sessionStorage', { configurable: true, value: {
+    getItem: key => values.get(key) ?? null, setItem: (key, value) => values.set(key, value),
+  }});
+  try {
+    institutionContextFromSearch('?institution=first&slug=first-school');
+    assert.equal(institutionSearch(''), '?institution=first&slug=first-school');
+    assert.equal(institutionSearch('?tab=users'), '?tab=users&institution=first&slug=first-school');
+    assert.deepEqual(institutionContextFromSearch('?slug=second-school'), { institution: undefined, slug: 'second-school' });
+    assert.equal(institutionSearch(''), '?slug=second-school');
+    values.set('panel-institution-context', '{invalid');
+    assert.equal(institutionSearch(''), '');
+    values.set('panel-institution-context', '{"institution":42,"slug":false}');
+    assert.equal(institutionSearch(''), '');
+  } finally { delete globalThis.sessionStorage; }
+});

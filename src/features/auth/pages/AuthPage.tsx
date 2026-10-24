@@ -1,15 +1,22 @@
+import { adminDestination } from '../../../modules/admin/auth/institutionNavigation';
+import { loginDestination } from '../../../core/auth/loginAccess';
+import { resolveLoginIssue } from '../utils/adminAccess';
+import { useTenant } from '../../../core/TenantContext';
+import { useToastMessage } from '../../../shared/components/Toast/Toast';
+import { isSuperAdmin } from '../../../core/auth/superAdmin';
 import { useReducer, useRef, type FormEvent } from 'react';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../core/AuthContext';
 import { GoogleButton } from '../components/GoogleButton';
 import { authFormReducer } from '../utils/authFormState';
-import { institutionContextFromSearch } from '../utils/googleOAuth';
+import { institutionContextFromSearch, institutionSearch } from '../utils/googleOAuth';
 import { MembershipRequestPanel } from '../../../modules/admin/userManagement/MembershipRequestPanel';
 import type { AccessRequestService } from '../../../modules/admin/userManagement/membershipRequestService';
 import styles from './AuthPage.module.css';
 
 export function AuthPage({ mode = 'login', requestService }: { mode?: 'login' | 'register'; requestService: AccessRequestService }) {
   const { login, register, loginWithGoogle, user, role, roleIssue, loading, mfaRequired, mfaEnrollmentRequired, logout } = useAuth();
+  const { activeInstitution, loadingTenant, tenantError } = useTenant();
   const location = useLocation();
   const navigate = useNavigate();
   const [state, dispatch] = useReducer(authFormReducer, { status: 'idle' });
@@ -17,16 +24,26 @@ export function AuthPage({ mode = 'login', requestService }: { mode?: 'login' | 
   const params = new URLSearchParams(location.search);
   const context = institutionContextFromSearch(location.search);
   const portalParams = new URLSearchParams();
-  params.forEach((value, key) => {
-    if (key === 'institution' || key === 'slug') portalParams.append(key, value);
-  });
+  if (context.institution) portalParams.set('institution', context.institution);
+  if (context.slug) portalParams.set('slug', context.slug);
   const portalSearch = portalParams.size ? '?' + portalParams.toString() : '';
+  const effectiveRole = role && activeInstitution ? activeInstitution.role : role;
   const busy = state.status === 'pending';
   const registering = mode === 'register';
-  const destination = '/panel/admin' + location.search;
+  const destination = '/panel/admin' + institutionSearch(location.search);
   const oauthError = params.has('error') || new URLSearchParams(location.hash.slice(1)).has('error');
-  const accessIssue = roleIssue ?? location.state?.accessIssue;
+  const accessIssue = resolveLoginIssue({ hasUser: Boolean(user), role: effectiveRole, roleIssue,
+    mfaPending: mfaRequired || mfaEnrollmentRequired, loadingTenant,
+    hasInstitution: Boolean(activeInstitution), tenantError });
   const blockedAccess = accessIssue === 'membership-required' || accessIssue === 'verification-failed';
+
+  useToastMessage(state.status === 'error' ? state.message : null);
+  useToastMessage(oauthError && !user ? 'No se completó el acceso con Google. Intenta nuevamente.' : null);
+  useToastMessage(state.status === 'registered' ? state.message : null, 'success');
+  const accessMessage = accessIssue === 'membership-required'
+    ? 'Tu cuenta requiere una membresía activa en la institución seleccionada.'
+    : 'No se pudo verificar tu acceso. Intenta nuevamente.';
+  useToastMessage(!loading && !loadingTenant && blockedAccess ? accessMessage : null);
 
   async function authenticate(method: 'google' | 'credentials', form?: HTMLFormElement) {
     if (pendingRef.current || state.status === 'pending' || state.status === 'registered') return;
@@ -65,7 +82,13 @@ export function AuthPage({ mode = 'login', requestService }: { mode?: 'login' | 
   }
 
   if (loading) return <main className={styles.page} role="status">Cargando tu acceso…</main>;
-  if (user && (role || mfaRequired || mfaEnrollmentRequired) && !blockedAccess && !(registering && busy)) return <Navigate to={destination} replace />;
+  if (user && isSuperAdmin(role)) return <Navigate to={destination} replace />;
+  if (user && (mfaRequired || mfaEnrollmentRequired)) return <Navigate to={destination} replace />;
+  if (user && loadingTenant) return <main className={styles.page} role="status">Verificando la institución asignada…</main>;
+  if (user && activeInstitution && effectiveRole && !blockedAccess && !(registering && busy)) {
+    const target = loginDestination({ ...activeInstitution, role: effectiveRole });
+    return <Navigate to={adminDestination(target, location.search, { institution: activeInstitution.institution_id, slug: activeInstitution.slug })} replace />;
+  }
 
   return <main className={styles.page}>
     <div className={styles.layout}>
@@ -80,20 +103,15 @@ export function AuthPage({ mode = 'login', requestService }: { mode?: 'login' | 
         </Link>
         <h1 id="auth-title">{registering ? 'Crear cuenta' : 'Iniciar sesión'}</h1>
         <p className={styles.help}>{registering ? 'Registra tus datos para comenzar.' : 'Ingresa con tu cuenta para continuar.'}</p>
-        {blockedAccess && <div role="alert" className={styles.error}>
-          <p>{accessIssue === 'membership-required'
-            ? 'Esta cuenta requiere la asignación previa de una membresía y un rol en la institución seleccionada. Contacta a su administrador.'
-            : 'No se pudo verificar tu acceso a la institución. Intenta iniciar sesión nuevamente.'}</p>
+        {blockedAccess && <div>
           {user && <button type="button" className={styles.submit} disabled={busy} onClick={() => void logout()}>Cerrar sesión para usar otra cuenta</button>}
         </div>}
-        {user && accessIssue === 'membership-required' && (context.institution || context.slug) && <MembershipRequestPanel
+        {user && !effectiveRole && !loadingTenant && accessIssue === 'membership-required' && (context.institution || context.slug) && <MembershipRequestPanel
           key={`${user.id}:${context.institution}:${context.slug}`} institution={context.institution || context.slug!}
           slug={context.slug} service={requestService} onContinue={() => window.location.assign(destination)} />}
-        {oauthError && state.status === 'idle' && <p role="alert" className={styles.error}>No se completó el acceso con Google. Puedes intentarlo de nuevo.</p>}
-        {state.status === 'registered' ? <p role="status">{state.message}</p> : <>
+        {state.status !== 'registered' && <>
           <GoogleButton disabled={busy} pending={state.status === 'pending' && state.method === 'google'} onClick={() => void authenticate('google')} />
           <div className={styles.separator}>O entra con</div>
-          {state.status === 'error' && <p role="alert" className={styles.error}>{state.message}</p>}
           <form onSubmit={submit} className={styles.form} aria-busy={busy}>
             <fieldset disabled={busy} className={styles.fields}>
               {registering && <>

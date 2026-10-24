@@ -1,3 +1,6 @@
+import { resolveAssignedAccess } from '../modules/admin/auth/accessPolicy';
+import { useLocation } from 'react-router-dom';
+import { isSuperAdmin } from './auth/superAdmin';
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { supabase } from './supabaseClient';
 import { useAuth } from './AuthContext';
@@ -6,6 +9,12 @@ import { institutionContextFromSearch, matchesInstitution } from '../features/au
 export const INSTITUTION_MODULE_NAMES = ['inicio', 'projects', 'dece', 'simuladores', 'portal'] as const;
 export type InstitutionModuleName = (typeof INSTITUTION_MODULE_NAMES)[number];
 export type InstitutionModulePermissions = Record<InstitutionModuleName, boolean>;
+
+interface TenantMembership {
+  institution_id: string;
+  institutions: Pick<Institution, 'institution_id' | 'name' | 'slug' | 'is_active'> | null;
+  roles: { name: string } | null;
+}
 
 const noModulePermissions = (): InstitutionModulePermissions => ({
   inicio: false,
@@ -37,6 +46,7 @@ interface TenantContextType {
 }
 const TenantContext = createContext<TenantContextType | undefined>(undefined);
 export function TenantProvider({ children }: { children: ReactNode }) {
+  const location = useLocation();
   const { user, role, loading, mfaRequired } = useAuth();
   const activeUserId = useRef(user?.id ?? null);
   const activeRequestKey = useRef<string | null>(null);
@@ -44,6 +54,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   activeUserId.current = user?.id ?? null;
   const [state, setState] = useState<{
     owner: string;
+    requestKey: string;
     institutions: Institution[];
     error: string | null;
     modulePermissionError: string | null;
@@ -96,34 +107,37 @@ export function TenantProvider({ children }: { children: ReactNode }) {
       };
 
       try {
-        if (role === 'super_admin') {
+        if (isSuperAdmin(role)) {
           const { data, error } = await supabase
             .from('institutions')
             .select('institution_id, name, slug, is_active')
             .eq('is_active', true);
           if (!error && data) {
-            const institutions = data.map((item) => ({ ...item, role, projects_enabled: true })) as Institution[];
+            const institutions: Institution[] = data.map((item) => ({ ...item, role: 'super_admin', projects_enabled: false, enabled_modules: [], module_permissions: noModulePermissions() }));
             const result = await attachEnabledModules(institutions);
-            if (activeUserId.current === user.id && activeRequestKey.current === requestKey) setState({ owner: user.id, institutions: result.institutions, error: null, modulePermissionError: result.error });
+            if (activeUserId.current === user.id && activeRequestKey.current === requestKey) setState({ owner: user.id, requestKey, institutions: result.institutions, error: null, modulePermissionError: result.error });
             return;
           }
         } else {
           const { data, error } = await supabase
             .from('memberships')
-            .select('institution_id, institutions!fk_memberships_institution(institution_id, name, slug, is_active), roles!fk_memberships_role(name)')
+            .select('institution_id, institutions:institutions!fk_memberships_institution(institution_id, name, slug, is_active), roles:roles!fk_memberships_role(name)')
             .eq('profile_id', user.id)
-            .eq('is_active', true);
+            .eq('is_active', true)
+            .overrideTypes<TenantMembership[], { merge: false }>();
 
           if (!error && data) {
-            const institutions: Institution[] = data.flatMap((membership: any) => {
+            const institutions: Institution[] = data.flatMap((membership) => {
               const institution = membership.institutions;
               const assignedRole = membership.roles?.name;
               if (!institution?.is_active || !assignedRole) return [];
-              return [{ ...institution, role: assignedRole, projects_enabled: true } as Institution];
+              const access = resolveAssignedAccess([{ institutionId: institution.institution_id, slug: institution.slug, role: assignedRole, active: true }], {});
+              if (access.status !== 'authorized') return [];
+              return [{ ...institution, role: assignedRole, projects_enabled: false, enabled_modules: [], module_permissions: noModulePermissions() }];
             });
             if (institutions.length > 0) {
               const result = await attachEnabledModules(institutions);
-              if (activeUserId.current === user.id && activeRequestKey.current === requestKey) setState({ owner: user.id, institutions: result.institutions, error: null, modulePermissionError: result.error });
+              if (activeUserId.current === user.id && activeRequestKey.current === requestKey) setState({ owner: user.id, requestKey, institutions: result.institutions, error: null, modulePermissionError: result.error });
               return;
             }
           }
@@ -135,6 +149,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
       if (activeUserId.current === user.id && activeRequestKey.current === requestKey) {
         setState({
           owner: user.id,
+          requestKey,
           institutions: [],
           error: 'No se pudieron cargar las instituciones asignadas a esta cuenta. Verifica las membresias y sus permisos en Supabase.',
           modulePermissionError: null,
@@ -144,11 +159,13 @@ export function TenantProvider({ children }: { children: ReactNode }) {
 
     void loadInstitutions();
   }, [user, role, loading, mfaRequired, revision]);
-  const current = !loading && user && state?.owner === user.id ? state : null;
+  const expectedKey = user ? `${user.id}:${role ?? ''}:${revision}` : null;
+  const current = !loading && user && state?.owner === user.id && state.requestKey === expectedKey ? state : null;
   const institutions = current?.institutions ?? [];
-  const requestedInstitutionId = new URLSearchParams(window.location.search).get('institution');
-  const requestedSlug = new URLSearchParams(window.location.search).get('slug');
-  const requestedInstitution = institutions.find(item => matchesInstitution(institutionContextFromSearch(window.location.search), item));
+  const context = institutionContextFromSearch(location.search);
+  const requestedInstitutionId = context.institution;
+  const requestedSlug = context.slug;
+  const requestedInstitution = institutions.find(item => matchesInstitution(context, item));
   useEffect(() => {
     if ((requestedInstitutionId || requestedSlug) && requestedInstitution)
       setSelectedId(requestedInstitution.institution_id);

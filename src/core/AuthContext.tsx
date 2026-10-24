@@ -1,8 +1,12 @@
-﻿import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
+import { readSessionValue, writeSessionValue } from '../modules/admin/auth/sessionStorage';
+import { useLocation } from 'react-router-dom';
+import { accessScopeKey, resolveAssignedAccess } from '../modules/admin/auth/accessPolicy';
+import { hasSuperAdminAccess, isSuperAdmin, type GlobalAdminAuthority } from './auth/superAdmin';
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from './supabaseClient';
 import { registerInstitutionalAccount } from './auth/registerInstitutionalAccount';
-import { googleOAuthRequest, institutionContextFromSearch, matchesInstitution } from '../features/auth/utils/googleOAuth';
+import { googleOAuthRequest, institutionContextFromSearch } from '../features/auth/utils/googleOAuth';
 
 interface AuthContextType {
   user: User | null;
@@ -27,9 +31,27 @@ interface AuthContextType {
   logout: () => Promise<void>;
 }
 
+// Composition boundary: authority comes from authenticated backend responses.
+const globalAdminAuthority: GlobalAdminAuthority = {
+  getVerifiedRole: async (profileId) => {
+    const { data } = await supabase.auth.getUser();
+    return data.user?.id === profileId ? data.user.app_metadata.role : null;
+  },
+  hasGlobalRole: async () => {
+    const { data } = await supabase.rpc('is_super_admin');
+    return data === true;
+  },
+};
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const location = useLocation();
+  const scopeKey = accessScopeKey(institutionContextFromSearch(location.search));
+  const resolvedScope = useRef<string | null>(null);
+  const roleRevision = useRef(0);
+  const sessionUserId = useRef<string | null>(null);
+  const sessionRevision = useRef(0);
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [role, setRole] = useState<string | null>(null);
@@ -52,7 +74,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       mfaChallengeRef.current = null;
       return false;
     }
+    const revision = sessionRevision.current;
+    const current = () => revision === sessionRevision.current && sessionUserId.current === nextSession.user.id;
     const { data: mfaEnabledForAssignedUser, error: eligibilityError } = await supabase.rpc('own_mfa_enabled_for_assigned_user');
+    if (!current()) return true;
     if (eligibilityError || !mfaEnabledForAssignedUser) {
       setMfaRequired(false);
       setMfaFactorId(null);
@@ -61,6 +86,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return false;
     }
     const { data: assurance, error: assuranceError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (!current()) return true;
     if (assuranceError) {
       setMfaRequired(true);
       setMfaFactorId(null);
@@ -76,6 +102,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return false;
     }
     const { data: factors, error: factorsError } = await supabase.auth.mfa.listFactors();
+    if (!current()) return true;
     if (factorsError) {
       setMfaRequired(true);
       setMfaFactorId(null);
@@ -93,6 +120,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     if (mfaChallengeRef.current?.factorId === factor.id) return true;
     const { data: challenge, error: challengeError } = await supabase.auth.mfa.challenge({ factorId: factor.id });
+    if (!current()) return true;
     if (challengeError) {
       setMfaRequired(true);
       setMfaFactorId(factor.id);
@@ -107,88 +135,87 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return true;
   };
 
-  const fetchUserRoleAndTenant = async (userId: string) => {
-    setRole(null);
+  const fetchUserRoleAndTenant = useCallback(async (userId: string) => {
+    const revision = ++roleRevision.current;
+    const current = () => revision === roleRevision.current && sessionUserId.current === userId;
+    const context = institutionContextFromSearch(window.location.search);
+    resolvedScope.current = accessScopeKey(context);
     setRoleError(null);
     setRoleIssue(null);
-    setInstitutionId(null);
-
-    const { data, error } = await supabase
-      .from('memberships')
-      .select('institution_id, role_id')
-      .eq('profile_id', userId)
-      .eq('is_active', true);
-
-    if (error) {
-      setRoleIssue('verification-failed');
-      setRoleError('No se pudo consultar tu rol. Verifica que esté aplicada la migración de acceso de superadministrador.');
-      return;
-    }
-
-    const memberships = data ?? [];
-    if (memberships.length === 0) {
-      setRoleIssue('membership-required');
-      setRoleError('Tu cuenta aún no tiene una membresía activa. Si acabas de registrarte, espera la aprobación de un administrador de tu institución.');
-      return;
-    }
-
-    const { data: roles, error: rolesError } = await supabase
-      .from('roles')
-      .select('role_id, name')
-      .in('role_id', memberships.map((item) => item.role_id));
-
-    if (rolesError) {
-      setRoleIssue('verification-failed');
-      setRoleError('No se pudieron consultar los nombres de rol. Verifica los permisos de lectura de la tabla roles.');
-      return;
-    }
-
-    const roleNameById = new Map((roles ?? []).map((item) => [item.role_id, item.name]));
-    const context = institutionContextFromSearch(window.location.search);
-    const loginSlug = /^\/([^/]+)\/login\/?$/.exec(window.location.pathname)?.[1];
-    if (loginSlug) context.slug = loginSlug;
-    let scopedMembership = memberships[0];
-    if (context.institution || context.slug) {
-      const { data: assignedInstitutions, error: institutionError } = await supabase.from('institutions')
+    try {
+      const globalAdmin = await hasSuperAdminAccess(userId, globalAdminAuthority);
+      if (!current()) return;
+      if (globalAdmin) {
+        setRole('super_admin');
+        setInstitutionId(null);
+        setMfaEnrollmentRequired(false);
+        return;
+      }
+      const { data: memberships, error } = await supabase.from('memberships')
+        .select('institution_id, role_id').eq('profile_id', userId).eq('is_active', true);
+      if (!current()) return;
+      if (error) throw error;
+      if (!memberships?.length) {
+        setRole(null); setInstitutionId(null); setRoleIssue('membership-required');
+        return;
+      }
+      const { data: roles, error: rolesError } = await supabase.from('roles')
+        .select('role_id, name').in('role_id', memberships.map(item => item.role_id));
+      if (!current()) return;
+      if (rolesError) throw rolesError;
+      const roleNames = new Map((roles ?? []).map(item => [item.role_id, item.name]));
+      if (memberships.some(item => isSuperAdmin(roleNames.get(item.role_id)))) {
+        setRole('super_admin'); setInstitutionId(null); setMfaEnrollmentRequired(false);
+        return;
+      }
+      const { data: institutions, error: institutionError } = await supabase.from('institutions')
         .select('institution_id, slug, is_active').in('institution_id', memberships.map(item => item.institution_id));
-      if (institutionError) {
-        setRoleIssue('verification-failed');
-        setRoleError('No se pudo verificar la institución seleccionada. Intenta nuevamente.');
+      if (!current()) return;
+      if (institutionError) throw institutionError;
+      if (!institutions?.length) throw new Error('No se pudo verificar la institución asignada.');
+      const assigned = resolveAssignedAccess(memberships.map(item => {
+        const institution = institutions?.find(candidate => candidate.institution_id === item.institution_id);
+        return { institutionId: item.institution_id, slug: institution?.slug ?? '',
+          role: roleNames.get(item.role_id) ?? null, active: institution?.is_active === true };
+      }), context);
+      switch (assigned.status) {
+        case 'unassigned':
+          setRole(null); setInstitutionId(null); setRoleIssue('membership-required');
+          return;
+        case 'verification-failed':
+          throw new Error('No se pudo verificar el rol institucional asignado.');
+        case 'authorized':
+          setRole(assigned.role); setInstitutionId(assigned.institutionId);
+          break;
+        default: { const exhaustive: never = assigned; return exhaustive; }
+      }
+      if (readSessionValue('auth-login-method') === 'password') {
+        setMfaEnrollmentRequired(false);
         return;
       }
-      const institution = assignedInstitutions?.find(item => item.is_active && matchesInstitution(context, item));
-      const match = memberships.find(item => item.institution_id === institution?.institution_id);
-      if (!match && !memberships.some(item => roleNameById.get(item.role_id) === 'super_admin')) {
-        setRoleIssue('membership-required');
-        setRoleError('Tu cuenta requiere una membresía activa en la institución seleccionada.');
-        return;
-      }
-      scopedMembership = match ?? memberships[0];
+      const { data: enrollmentRequired, error: mfaError } = await supabase.rpc('own_mfa_enrollment_required');
+      if (current()) setMfaEnrollmentRequired(!mfaError && enrollmentRequired === true);
+    } catch {
+      if (!current()) return;
+      setRole(null); setInstitutionId(null); setRoleIssue('verification-failed');
+      setRoleError('No se pudo verificar tu acceso. Revisa tu conexión e intenta nuevamente.');
     }
-    const membership = memberships.find((item) => roleNameById.get(item.role_id) === 'super_admin') ?? scopedMembership ?? memberships[0];
-    const assignedRole = roleNameById.get(membership.role_id) ?? null;
-    if (!assignedRole) {
-      setRoleIssue('membership-required');
-      setRoleError('Tu cuenta requiere la asignación de un rol institucional.');
-      return;
-    }
-    setRole(assignedRole);
-    setInstitutionId(membership?.institution_id ?? null);
+  }, []);
 
-    // El modo de contraseña omite TOTP; el modo correo + TOTP conserva el enrolamiento.
-    if (sessionStorage.getItem('auth-login-method') === 'password') {
-      setMfaEnrollmentRequired(false);
-      return;
-    }
-
-    // Solo se pide configurar TOTP cuando el flujo de asignación dejó la marca pendiente.
-    const { data: enrollmentRequired, error: mfaStatusError } = await supabase.rpc('own_mfa_enrollment_required');
-    setMfaEnrollmentRequired(!mfaStatusError && enrollmentRequired === true);
-  };
+  useEffect(() => {
+    if (!user || loading || mfaRequired || mfaEnrollmentRequired || resolvedScope.current === scopeKey) return;
+    if (isSuperAdmin(role)) { resolvedScope.current = scopeKey; return; }
+    setLoading(true);
+    const revision = roleRevision.current + 1;
+    void fetchUserRoleAndTenant(user.id).finally(() => {
+      if (roleRevision.current === revision) setLoading(false);
+    });
+  }, [scopeKey, user, role, loading, mfaRequired, mfaEnrollmentRequired, fetchUserRoleAndTenant]);
 
   useEffect(() => {
     let active = true;
     let initialSessionTask: Promise<void> | null = null;
+    let sessionObserved = false;
     const reportSessionError = () => {
       if (!active) return;
       setRole(null); setInstitutionId(null); setRoleIssue('verification-failed');
@@ -197,12 +224,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     let currentSessionUserId: string | null = null;
     const applySession = async (nextSession: Session | null) => {
+      const revision = ++sessionRevision.current;
+      sessionUserId.current = nextSession?.user.id ?? null;
       currentSessionUserId = nextSession?.user.id ?? null;
       setRoleIssue(null);
       setSession(nextSession);
       setUser(nextSession?.user ?? null);
       if (nextSession?.user) {
-        if (sessionStorage.getItem('auth-login-method') === 'password') {
+        if (readSessionValue('auth-login-method') === 'password') {
           setMfaRequired(false);
           setMfaFactorId(null);
           setMfaChallengeId(null);
@@ -219,19 +248,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setInstitutionId(null);
         setMfaEnrollmentRequired(false);
       }
-      if (active) setLoading(false);
+      if (active && revision === sessionRevision.current) setLoading(false);
     };
 
     const initializeSession = (nextSession: Session | null) => {
-      initialSessionTask ??= applySession(nextSession).catch(reportSessionError).finally(() => { if (active) setLoading(false); });
+      if (sessionObserved) return initialSessionTask ?? Promise.resolve();
+      sessionObserved = true;
+      const revision = sessionRevision.current + 1;
+      initialSessionTask ??= applySession(nextSession).catch(() => {
+        if (revision !== sessionRevision.current) return;
+        reportSessionError();
+        if (active) setLoading(false);
+      });
       return initialSessionTask;
     };
 
     void supabase.auth.getSession()
-      .then(({ data: { session: currentSession } }) => {
+      .then(({ data: { session: currentSession }, error }) => {
+        if (error) throw error;
         if (active) return initializeSession(currentSession);
       })
       .catch(() => {
+        if (sessionObserved) return;
         reportSessionError();
         if (active) setLoading(false);
       });
@@ -242,18 +280,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         window.setTimeout(() => { if (active) void initializeSession(nextSession); }, 0);
         return;
       }
+      sessionObserved = true;
+      const revision = ++sessionRevision.current;
       if (event === 'PASSWORD_RECOVERY') setIsPasswordRecovery(true);
       // Same-account refreshes recheck access without destroying open forms.
       const backgroundRefresh = Boolean(currentSessionUserId && currentSessionUserId === nextSession?.user.id
         && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED'));
+      sessionUserId.current = nextSession?.user.id ?? null;
       currentSessionUserId = nextSession?.user.id ?? null;
-      if (!backgroundRefresh) setLoading(true);
+      if (!backgroundRefresh) {
+        roleRevision.current++;
+        setLoading(true);
+        setRole(null);
+      }
       setRoleIssue(null);
       setSession(nextSession);
       setUser(nextSession?.user ?? null);
       if (nextSession?.user) {
         window.setTimeout(() => {
-          const passwordOnly = sessionStorage.getItem('auth-login-method') === 'password';
+          if (!active || sessionUserId.current !== nextSession.user.id) return;
+          const passwordOnly = readSessionValue('auth-login-method') === 'password';
           if (passwordOnly) {
             setMfaRequired(false);
             setMfaFactorId(null);
@@ -263,8 +309,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           void (passwordOnly
             ? fetchUserRoleAndTenant(nextSession.user.id)
             : checkMfaSession(nextSession).then((mfaPending) => mfaPending ? undefined : fetchUserRoleAndTenant(nextSession.user.id)))
-            .catch(reportSessionError)
-            .finally(() => { if (active) setLoading(false); });
+            .catch(() => { if (revision === sessionRevision.current) reportSessionError(); })
+            .finally(() => { if (active && revision === sessionRevision.current) setLoading(false); });
         }, 0);
       } else {
         setRole(null);
@@ -280,29 +326,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     return () => {
       active = false;
+      roleRevision.current++;
       authListener.subscription.unsubscribe();
     };
   }, []);
 
   const login = async (email: string, pass: string) => {
-    sessionStorage.setItem('auth-login-method', 'password');
+    writeSessionValue('auth-login-method', 'password');
     const { error } = await supabase.auth.signInWithPassword({ email, password: pass });
-    if (error) sessionStorage.removeItem('auth-login-method');
+    if (error) writeSessionValue('auth-login-method', null);
     return { error };
   };
 
   const requestLoginLink = async (email: string) => {
-    sessionStorage.setItem('auth-login-method', 'email_totp');
+    writeSessionValue('auth-login-method', 'email_totp');
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: { shouldCreateUser: false, emailRedirectTo: window.location.origin },
     });
-    if (error) sessionStorage.removeItem('auth-login-method');
+    if (error) writeSessionValue('auth-login-method', null);
     return { error };
   };
 
   const loginWithGoogle = async (context: { institution?: string; slug?: string } = {}) => {
-    sessionStorage.removeItem('auth-login-method');
+    writeSessionValue('auth-login-method', null);
     try {
       const { error } = await supabase.auth.signInWithOAuth(googleOAuthRequest(window.location.origin, context));
       return { error };
@@ -347,7 +394,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     await supabase.auth.signOut();
-    sessionStorage.removeItem('auth-login-method');
+    writeSessionValue('auth-login-method', null);
     setMfaRequired(false);
     setMfaEnrollmentRequired(false);
     setMfaFactorId(null);
@@ -355,8 +402,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       mfaChallengeRef.current = null;
   };
 
+  const scopePending = Boolean(user && !isSuperAdmin(role) && !mfaRequired && !mfaEnrollmentRequired && resolvedScope.current !== scopeKey);
   return (
-    <AuthContext.Provider value={{ user, session, role, roleError, roleIssue, institutionId, loading, login, loginWithGoogle, requestLoginLink, register, isPasswordRecovery, mfaRequired, mfaEnrollmentRequired, completeMfaEnrollment, mfaChallengeReady: Boolean(mfaChallengeId), verifyMfa, requestPasswordReset, updatePassword, logout }}>
+    <AuthContext.Provider value={{ user, session, role, roleError, roleIssue, institutionId, loading: loading || scopePending, login, loginWithGoogle, requestLoginLink, register, isPasswordRecovery, mfaRequired, mfaEnrollmentRequired, completeMfaEnrollment, mfaChallengeReady: Boolean(mfaChallengeId), verifyMfa, requestPasswordReset, updatePassword, logout }}>
       {children}
     </AuthContext.Provider>
   );
