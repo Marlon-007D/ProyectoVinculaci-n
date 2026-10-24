@@ -10,6 +10,7 @@ import { SchoolCoursesPage } from "../../../features/courses/pages/SchoolCourses
 import { AcademicPostPreviewPage } from "../../../features/academic-content/pages/AcademicPostPreviewPage";
 import { useEventArticle, useNewsArticle } from "../hooks/useContent";
 import { HonorsSection } from "../components/Content/ContentSections";
+import honorsStyles from "../components/Content/HonorsSection.module.css";
 
 export function SitePreview() {
   const [params, setParams] = useSearchParams();
@@ -25,15 +26,14 @@ export function SitePreview() {
   const pageId = page.state.status === "success" ? page.state.data.page_id : null;
   const current = usePageVersion(pageId, undefined);
   if (params.get("simulator")) return <PortalSimulatorsPage />;
-  if (params.get("honores") === "1") return <main className="site-honors-page">
-    <section className="site-hero site-hero--compact"><div className="site-container"><p className="site-hero__eyebrow">Comunidad educativa</p><h2>Cuadro de honor</h2><p>Reconocemos el esfuerzo, la constancia y los logros de nuestros estudiantes.</p></div></section>
-    <HonorsSection title="Estudiantes reconocidos" limit={100} pdfDocument />
+  if (params.get("honores") === "1") return <main className={`site-honors-page ${honorsStyles.page}`}>
+    <HonorsSection title="Distinciones oficiales" limit={100} className={honorsStyles.section} />
   </main>;
   if (params.get("courses") === "1") return <SchoolCoursesPage selectedModuleId={selectedModuleId} selectedCourseId={selectedCourseId} evaluationActive={evaluationActive} onSelectModule={moduleId => setParams(current => { const next = new URLSearchParams(current); next.set("courses", "1"); next.set("module", moduleId); next.delete("course"); return next })} onSelectCourse={courseId => setParams(current => { const next = new URLSearchParams(current); next.set("course", courseId); return next })} courseHrefFor={courseId => { const next = new URLSearchParams(params); if (selectedModuleId) next.set("module", selectedModuleId); next.set("course", courseId); next.set("courses", "1"); return `${location.pathname}?${next.toString()}` }} onBackToModules={() => { setEvaluationActive(false); setParams(current => { const next = new URLSearchParams(current); next.delete("module"); next.delete("course"); return next }) }} onBackToModule={() => { setEvaluationActive(false); setParams(current => { const next = new URLSearchParams(current); next.delete("course"); return next }) }} onEvaluationChange={setEvaluationActive} />;
-  if (newsId) return <AsyncView state={article.state} onRetry={article.reload} emptyTitle="No encontramos esta noticia" emptyMessage="Puede que se haya retirado o que el enlace no sea válido.">
+  if (newsId) return <AsyncView state={article.state} onRetry={article.reload} loadingVariant="article" emptyTitle="No encontramos esta noticia" emptyMessage="Puede que se haya retirado o que el enlace no sea válido.">
     {(entry) => <AcademicPostPreviewPage entry={entry} onBack={() => setParams(current => { const next = new URLSearchParams(current); next.delete("noticia"); return next; })} />}
   </AsyncView>;
-  if (eventId) return <AsyncView state={eventArticle.state} onRetry={eventArticle.reload} emptyTitle="No encontramos este evento" emptyMessage="Puede que se haya retirado o que el enlace no sea válido.">
+  if (eventId) return <AsyncView state={eventArticle.state} onRetry={eventArticle.reload} loadingVariant="article" emptyTitle="No encontramos este evento" emptyMessage="Puede que se haya retirado o que el enlace no sea válido.">
     {(entry) => <AcademicPostPreviewPage entry={entry} onBack={() => setParams(current => { const next = new URLSearchParams(current); next.delete("evento"); return next; })} />}
   </AsyncView>;
 
@@ -42,10 +42,11 @@ export function SitePreview() {
       <AsyncView
         state={current.state}
         onRetry={current.reload}
+        loadingVariant="page"
         emptyTitle="No hay página publicada"
         emptyMessage="Esta dirección no tiene una página publicada."
       >
-        {(v) => <PageSections sections={parseSnapshot(v.content_snapshot).sections} />}
+        {(v) => <PageSections sections={parseSnapshot(v.content_snapshot).sections} isHomepage={page.state.status === "success" && page.state.data.is_homepage} />}
       </AsyncView>
     </>
   );

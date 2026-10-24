@@ -198,6 +198,16 @@
   grid-column: 1 / -1;
 }
 
+.coverRow { display: grid; grid-template-columns: minmax(220px, 1.2fr) minmax(220px, 1fr); align-items: center; gap: 20px; min-height: 146px; padding: 14px; border: 1px solid #dce5ef; border-radius: 16px; background: #f8fafc; }
+.coverPreview,.coverPlaceholder { display: grid; width: 100%; height: 132px; place-items: center; overflow: hidden; border-radius: 12px; background: #edf3f8; color: #65809c; object-fit: cover; }
+.coverPlaceholder { align-content: center; gap: 8px; border: 1px dashed #b9c9d9; font-size: 12px; font-weight: 500; }
+.coverActions { display: grid; justify-items: start; gap: 8px; }
+.uploadButton { display: inline-flex; min-height: 42px; align-items: center; gap: 9px; padding: 0 17px; border: 0; border-radius: 22px; background: #1a73e8; color: #fff; cursor: pointer; font-size: 13px; font-weight: 600; transition: background-color .15s ease; }
+.uploadButton:hover { background: #155fc0; }
+.uploadButton:focus-within { outline: 2px solid #9bc3f5; outline-offset: 2px; }
+.fileInput { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; clip-path: inset(50%); }
+.coverActions small { color: #627184; font-size: 11px; font-weight: 400; }
+
 .field input,
 .field select,
 .field textarea,
@@ -335,6 +345,15 @@
   width: 100%;
   overflow-x: auto;
 }
+
+.skeletonRow td { height: 82px; }
+.skeleton { display: block; border-radius: 7px; background: linear-gradient(100deg, #edf1f5 25%, #f8fafc 42%, #edf1f5 62%); background-size: 220% 100%; animation: category-skeleton-shimmer 1.4s ease-in-out infinite; }
+.skeletonText { width: min(190px, 90%); height: 13px; }
+.skeletonSubtext { width: min(260px, 95%); height: 10px; margin-top: 8px; }
+.skeletonSmall { width: 56px; height: 12px; }
+.skeletonCover { width: 58px; height: 44px; }
+.skeletonActions { width: 68px; height: 32px; margin-left: auto; }
+@keyframes category-skeleton-shimmer { to { background-position: -220% 0; } }
 
 .table {
   width: 100%;
@@ -509,6 +528,8 @@
   .wideField {
     grid-column: auto;
   }
+
+  .coverRow { grid-template-columns: 1fr; }
 
   .filterSelect {
     width: 100%;

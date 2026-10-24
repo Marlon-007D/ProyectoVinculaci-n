@@ -1,11 +1,14 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
-import { ArrowLeft, BookOpenText, ChevronLeft, ChevronRight, ClipboardList, Clock3, FileText, FolderKanban, Layers3, Plus, Save, Search, Trash2 } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
+import { ArrowLeft, BookOpenText, ChevronLeft, ChevronRight, ClipboardList, Clock3, FileText, FolderKanban, ImagePlus, Layers3, Plus, Save, Search, Trash2, Upload } from 'lucide-react'
 import type { AssessmentQuestionSet } from '../../courses/mocks/schoolQuestionMock'
 import { getSchoolQuestionSet } from '../../courses/mocks/schoolQuestionMock'
-import type { SchoolSubject } from '../../courses/mocks/schoolCoursesMock'
+import type { SchoolModule, SchoolSubject } from '../../courses/types/courseCatalog.types'
 import { useCourseCategories } from '../../courses/hooks/useCourseCategories'
 import { useSchoolCourses } from '../../courses/hooks/useSchoolCourses'
-import { createBlankLesson, deleteSchoolCourse, getSchoolCourseLesson, saveSchoolCourse, saveSchoolCourseLesson } from '../../courses/services/schoolCourseStore'
+import { useTenant } from '../../../core/TenantContext'
+import { supabase } from '../../../core/supabaseClient'
+import { createBlankLesson, deleteSchoolCourse, saveSchoolCourse } from '../../courses/services/schoolCourseStore'
 import { getAssessmentSettings, saveAssessmentOverride, saveAssessmentSettings, type AssessmentSettings } from '../../courses/services/schoolAssessmentStore'
 import { saveCourseCategories } from '../../courses/services/courseCategoriesStore'
 import type { TemarioLesson } from '../../courses/types/schoolTemario.types'
@@ -13,7 +16,6 @@ import styles from './AdminCoursesPage.module.css'
 
 const pageSize = 5
 const conceptCount = 6
-type CoursePage = 'list' | 'editor'
 type EditorTab = 'course' | 'curriculum' | 'assessment'
 
 function normalize(value: string) {
@@ -73,25 +75,27 @@ function generateGrid(words: string[], seed: string): string[] {
   return grid.map(row => row.join(' '))
 }
 
-function makeQuestionSet(courseId: string, title: string): AssessmentQuestionSet {
-  return structuredClone(getSchoolQuestionSet(courseId, title))
+function makeQuestionSet(course: SchoolSubject, title: string): AssessmentQuestionSet {
+  return structuredClone(getSchoolQuestionSet(course.id, title, course))
 }
 
-function filledLesson(courseId: string, topicIndex: number): TemarioLesson {
-  return fitLesson(getSchoolCourseLesson(courseId, topicIndex))
+function filledLesson(course: SchoolSubject, topicIndex: number): TemarioLesson {
+  return fitLesson(course.units[topicIndex]?.lesson ?? createBlankLesson())
 }
 
-function assignedCategories(categories: ReturnType<typeof useCourseCategories>, courseId: string) {
+function assignedCategories(categories: SchoolModule[], courseId: string) {
   return categories.filter(category => category.courseIds.includes(courseId)).map(category => category.id)
 }
 
 export function AdminCoursesPage() {
-  const courses = useSchoolCourses()
-  const categories = useCourseCategories()
+  const navigate = useNavigate()
+  const { pathname } = useLocation()
+  const { courses, loading: coursesLoading, error: coursesError } = useSchoolCourses()
+  const { categories, loading: categoriesLoading, error: categoriesError } = useCourseCategories()
+  const { activeInstitution } = useTenant()
   const [search, setSearch] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [page, setPage] = useState(1)
-  const [coursePage, setCoursePage] = useState<CoursePage>('list')
   const [activeTab, setActiveTab] = useState<EditorTab>('course')
   const [draft, setDraft] = useState<SchoolSubject | null>(null)
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([])
@@ -101,6 +105,12 @@ export function AdminCoursesPage() {
   const [settings, setSettings] = useState<AssessmentSettings>({ durationMinutes: 10, totalPoints: 20 })
   const [editorError, setEditorError] = useState('')
   const [pendingDelete, setPendingDelete] = useState<string | null>(null)
+  const [coverUploading, setCoverUploading] = useState(false)
+  const isNewCoursePage = pathname === '/panel/cursos/modulos/nuevo'
+  const isCourseEditorPage = isNewCoursePage || /^\/panel\/cursos\/modulos\/[^/]+\/editar$/.test(pathname)
+  const routeCourseId = isCourseEditorPage && !isNewCoursePage ? decodeURIComponent(pathname.split('/')[4] ?? '') : null
+  const editorRouteKey = isCourseEditorPage ? isNewCoursePage ? 'nuevo' : routeCourseId : null
+  const initializedEditorRoute = useRef<string | null>(null)
 
   const filteredCourses = useMemo(() => {
     const query = normalize(search)
@@ -115,17 +125,17 @@ export function AdminCoursesPage() {
   const pageCount = Math.max(1, Math.ceil(filteredCourses.length / pageSize))
   const currentPage = Math.min(page, pageCount)
   const visibleCourses = filteredCourses.slice((currentPage - 1) * pageSize, currentPage * pageSize)
-  const currentLesson = draft ? lessons[activeTopic] ?? filledLesson(draft.id, activeTopic) : null
-  const currentQuestions = draft && currentLesson ? questionSets[activeTopic] ?? makeQuestionSet(draft.id, draft.units[activeTopic]?.title ?? '') : null
+  const currentLesson = draft ? lessons[activeTopic] ?? filledLesson(draft, activeTopic) : null
+  const currentQuestions = draft && currentLesson ? questionSets[activeTopic] ?? makeQuestionSet(draft, draft.units[activeTopic]?.title ?? '') : null
 
   useEffect(() => {
     if (page > pageCount) setPage(pageCount)
   }, [page, pageCount])
 
-  const openEditor = (course: SchoolSubject, isNew = false) => {
+  const prepareEditor = (course: SchoolSubject, isNew = false) => {
     const nextCourse = structuredClone(course)
-    const nextLessons = Object.fromEntries(nextCourse.units.map((_, index) => [index, isNew ? createBlankLesson() : filledLesson(nextCourse.id, index)]))
-    const nextQuestions = Object.fromEntries(nextCourse.units.map((unit, index) => [index, makeQuestionSet(nextCourse.id, unit.title)]))
+    const nextLessons = Object.fromEntries(nextCourse.units.map((_, index) => [index, isNew ? createBlankLesson() : filledLesson(nextCourse, index)]))
+    const nextQuestions = Object.fromEntries(nextCourse.units.map((unit, index) => [index, makeQuestionSet(nextCourse, unit.title)]))
     setDraft(nextCourse)
     setLessons(nextLessons)
     setQuestionSets(nextQuestions)
@@ -134,8 +144,33 @@ export function AdminCoursesPage() {
     setActiveTopic(0)
     setActiveTab('course')
     setEditorError('')
-    setCoursePage('editor')
   }
+
+  const openEditor = (course: SchoolSubject, isNew = false) => {
+    prepareEditor(course, isNew)
+    navigate(isNew ? '/panel/cursos/modulos/nuevo' : `/panel/cursos/modulos/${encodeURIComponent(course.id)}/editar`)
+  }
+
+  useEffect(() => {
+    if (!editorRouteKey) {
+      initializedEditorRoute.current = null
+      return
+    }
+    if (initializedEditorRoute.current === editorRouteKey || coursesLoading || categoriesLoading) return
+    initializedEditorRoute.current = editorRouteKey
+    if (isNewCoursePage) {
+      prepareEditor(makeEmptyCourse(), true)
+      return
+    }
+    const course = courses.find(item => item.id === routeCourseId)
+    if (!course) {
+      navigate('/panel/cursos/modulos', { replace: true })
+      return
+    }
+    prepareEditor(course)
+    // Initialize only when the editor URL changes; later catalog updates must not discard edits.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editorRouteKey, isNewCoursePage, routeCourseId, coursesLoading, categoriesLoading, courses, categories, navigate])
 
   const updateLesson = <K extends keyof TemarioLesson>(key: K, value: TemarioLesson[K]) => {
     setLessons(current => ({ ...current, [activeTopic]: { ...(currentLesson ?? createBlankLesson()), [key]: value } }))
@@ -146,7 +181,7 @@ export function AdminCoursesPage() {
     setQuestionSets(current => ({ ...current, [activeTopic]: transform(currentQuestions) }))
   }
 
-  const handleSave = (event: FormEvent<HTMLFormElement>) => {
+  const handleSave = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (!draft) return
     const name = draft.name.trim()
@@ -174,8 +209,10 @@ export function AdminCoursesPage() {
     }
     const savedCourse = { ...draft, name, description, coverImage: draft.coverImage.trim(), units: draft.units.map(unit => ({ title: unit.title.trim(), description: unit.description.trim() })) }
     try {
-      saveSchoolCourse(savedCourse)
-      Object.entries(lessons).forEach(([index, lesson]) => saveSchoolCourseLesson(savedCourse.id, Number(index), fitLesson(lesson)))
+      if (!activeInstitution) throw new Error('No hay institución activa.')
+      const categorySlug = selectedCategoryIds[0] ?? categories.find(category => category.courseIds.includes(savedCourse.id))?.id ?? categories[0]?.id
+      if (!categorySlug) throw new Error('Crea una categoría antes de agregar cursos.')
+      await saveSchoolCourse(activeInstitution.institution_id, savedCourse, categorySlug, lessons)
       Object.entries(questionSets).forEach(([index, questions]) => {
         const topicTitle = savedCourse.units[Number(index)]?.title
         if (topicTitle) saveAssessmentOverride(savedCourse.id, topicTitle, cleanQuestionSet(questions, `${savedCourse.id}-${topicTitle}`))
@@ -187,23 +224,24 @@ export function AdminCoursesPage() {
           ? [...new Set([...category.courseIds, savedCourse.id])]
           : category.courseIds.filter(id => id !== savedCourse.id),
       }))
-      saveCourseCategories(updatedCategories)
+      await saveCourseCategories(activeInstitution.institution_id, updatedCategories)
       setDraft(savedCourse)
       setEditorError('')
-      setCoursePage('list')
       setPage(1)
+      navigate('/panel/cursos/modulos')
     } catch {
-      setEditorError('No se pudieron guardar los cambios en este navegador.')
+      setEditorError('No se pudieron guardar los cambios en la base de datos. Revisa la conexión, la categoría y tus permisos.')
     }
   }
 
-  const deleteCourse = (course: SchoolSubject) => {
+  const deleteCourse = async (course: SchoolSubject) => {
     if (pendingDelete !== course.id) {
       setPendingDelete(course.id)
       return
     }
     try {
-      deleteSchoolCourse(course.id)
+      if (!activeInstitution) throw new Error('No hay institución activa.')
+      await deleteSchoolCourse(activeInstitution.institution_id, course.id)
       setPendingDelete(null)
     } catch {
       setPendingDelete(null)
@@ -214,11 +252,15 @@ export function AdminCoursesPage() {
     setSelectedCategoryIds(current => current.includes(categoryId) ? current.filter(id => id !== categoryId) : [...current, categoryId])
   }
 
-  if (coursePage === 'editor' && draft && currentLesson && currentQuestions) {
+  if (isCourseEditorPage && (!draft || !currentLesson || !currentQuestions)) {
+    return <main className={styles.page}><section className={styles.editorCard} role="status">Cargando editor del curso…</section></main>
+  }
+
+  if (isCourseEditorPage && draft && currentLesson && currentQuestions) {
     return <main className={styles.page}>
       <header className={styles.editorHeader}>
-        <button className={styles.backButton} type="button" onClick={() => { setCoursePage('list'); setEditorError('') }}><ArrowLeft size={18} />Volver a cursos</button>
-        <div className={styles.editorTitle}><p className={styles.eyebrow}>Editor de curso</p><h1>{draft.name || 'Nuevo curso'}</h1></div>
+        <button className={styles.backButton} type="button" onClick={() => { setEditorError(''); navigate('/panel/cursos/modulos') }}><ArrowLeft size={18} />Volver a cursos</button>
+        <div className={styles.editorTitle}><h1>{draft.name || 'Nuevo curso'}</h1></div>
         <button className={styles.primaryButton} type="submit" form="course-editor-form"><Save size={17} />Guardar cambios</button>
       </header>
       <nav className={styles.editorTabs} aria-label="Secciones del editor">
@@ -232,7 +274,35 @@ export function AdminCoursesPage() {
           <div className={styles.sectionHeading}><span className={`${styles.sectionIcon} ${styles.courseSectionIcon}`}><BookOpenText size={20} /></span><div className={styles.sectionCopy}><h2>Datos del curso</h2><p>Estos datos aparecen en la tarjeta del portal.</p></div></div>
           <div className={styles.fieldsGrid}>
             <label className={styles.field}>Nombre del curso<input value={draft.name} onChange={event => setDraft(current => current ? { ...current, name: event.target.value } : current)} maxLength={90} required /></label>
-            <label className={styles.field}>Imagen de portada (URL)<input type="url" value={draft.coverImage} onChange={event => setDraft(current => current ? { ...current, coverImage: event.target.value } : current)} placeholder="https://…" /></label>
+            <div className={`${styles.field} ${styles.coverField}`}><span>Imagen de portada</span>
+              <div className={styles.coverRow}>
+                {draft.coverImage ? <img className={styles.coverPreview} src={draft.coverImage} alt="Vista previa de portada" /> : <span className={styles.coverPlaceholder}><ImagePlus size={24} /><span>Sin imagen</span></span>}
+                <div className={styles.coverActions}>
+                  <label className={styles.uploadButton}><Upload size={17} />{coverUploading ? 'Subiendo…' : draft.coverImage ? 'Cambiar imagen' : 'Subir imagen'}
+              <input className={styles.fileInput} type="file" accept="image/png,image/jpeg,image/webp" disabled={coverUploading} onChange={event => {
+                const file = event.target.files?.[0]
+                event.target.value = ''
+                if (!file) return
+                if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type) || file.size > 5 * 1024 * 1024) { setEditorError('La portada debe ser PNG, JPG o WebP y pesar máximo 5 MB.'); return }
+                if (!activeInstitution) { setEditorError('Selecciona una institución antes de subir la imagen.'); return }
+                setCoverUploading(true)
+                setEditorError('')
+                const extension = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg'
+                const path = `${activeInstitution.institution_id}/cursos/${draft.id}/${crypto.randomUUID()}.${extension}`
+                void supabase.storage.from('media').upload(path, file, { contentType: file.type, cacheControl: '3600', upsert: false })
+                  .then(({ error }) => {
+                    if (error) throw error
+                    const url = supabase.storage.from('media').getPublicUrl(path).data.publicUrl
+                    setDraft(current => current ? { ...current, coverImage: url } : current)
+                  })
+                  .catch(() => setEditorError('No se pudo subir la portada al bucket. Verifica el permiso de carga.'))
+                  .finally(() => setCoverUploading(false))
+              }} /></label>
+                  <small>{coverUploading ? 'Subiendo al bucket…' : 'PNG, JPG o WebP · máximo 5 MB'}</small>
+                  <small>La imagen se guarda directamente en Supabase Storage.</small>
+                </div>
+              </div>
+            </div>
             <label className={`${styles.field} ${styles.fullField}`}>Descripción<textarea value={draft.description} onChange={event => setDraft(current => current ? { ...current, description: event.target.value } : current)} maxLength={260} rows={3} required /></label>
           </div>
           <fieldset className={styles.categoryPicker}><legend><FolderKanban size={15} />Categorías relacionadas</legend><div className={styles.categoryOptions}>
@@ -247,7 +317,7 @@ export function AdminCoursesPage() {
             const title = `Tema ${topicIndex + 1}`
             setDraft(current => current ? { ...current, units: [...current.units, { title, description: '' }] } : current)
             setLessons(current => ({ ...current, [topicIndex]: createBlankLesson() }))
-            setQuestionSets(current => ({ ...current, [topicIndex]: makeQuestionSet(draft.id, title) }))
+            setQuestionSets(current => ({ ...current, [topicIndex]: makeQuestionSet(draft, title) }))
             setActiveTopic(topicIndex)
           }}><Plus size={16} />Añadir tema</button></div>
           <div className={styles.topicTabs} role="tablist" aria-label="Temas del curso">
@@ -340,22 +410,25 @@ export function AdminCoursesPage() {
 
   return <main className={styles.page}>
     {pendingDelete && <div className={styles.confirmBar} role="alert"><span>¿Eliminar este curso del catálogo?</span><button className={styles.secondaryButton} type="button" onClick={() => setPendingDelete(null)}>Cancelar</button><button className={styles.dangerConfirm} type="button" onClick={() => { const course = courses.find(item => item.id === pendingDelete); if (course) deleteCourse(course) }}>Eliminar curso</button></div>}
-    <section className={styles.listCard} aria-labelledby="courses-list-title">
+    {!isCourseEditorPage && <section className={styles.listCard} aria-labelledby="courses-list-title">
       <div className={styles.listHeading}><div><h2 id="courses-list-title">Cursos del catálogo</h2><p>{courses.length} {courses.length === 1 ? 'curso' : 'cursos'}</p></div><button className={styles.primaryButton} type="button" onClick={() => openEditor(makeEmptyCourse(), true)}><Plus size={18} />Nuevo curso</button></div>
       <div className={styles.filters}>
         <label className={styles.searchBox}><Search size={18} aria-hidden="true" /><input type="search" value={search} onChange={event => { setSearch(event.target.value); setPage(1) }} placeholder="Buscar curso" aria-label="Buscar curso" /></label>
         <label className={styles.filterSelect}>Categoría<select value={categoryFilter} onChange={event => { setCategoryFilter(event.target.value); setPage(1) }}><option value="all">Todas las categorías</option>{categories.map(category => <option value={category.id} key={category.id}>{category.name}</option>)}</select></label>
       </div>
       <div className={styles.tableWrap}><table className={styles.table}><thead><tr><th scope="col">Curso</th><th scope="col">Categoría</th><th scope="col">Temas</th><th scope="col"><span className={styles.srOnly}>Acciones</span></th></tr></thead>
-        <tbody>{visibleCourses.map(course => <tr key={course.id}>
+        <tbody aria-busy={coursesLoading || categoriesLoading}>{coursesLoading || categoriesLoading ? Array.from({ length: 4 }, (_, index) => <tr className={styles.skeletonRow} key={`course-skeleton-${index}`}><td><span className={`${styles.skeleton} ${styles.skeletonText}`} /><span className={`${styles.skeleton} ${styles.skeletonSubtext}`} /></td><td><span className={`${styles.skeleton} ${styles.skeletonSmall}`} /></td><td><span className={`${styles.skeleton} ${styles.skeletonSmall} ${styles.skeletonCount}`} /></td><td><span className={`${styles.skeleton} ${styles.skeletonActions}`} /></td></tr>) : <>
+        {(coursesError || categoriesError) && <tr><td className={styles.empty} colSpan={4} role="alert">{coursesError ?? categoriesError}</td></tr>}
+        {visibleCourses.map(course => <tr key={course.id}>
           <td><span className={styles.courseName}>{course.name}</span><span className={styles.courseDescription}>{course.description}</span></td>
           <td>{categories.filter(category => category.courseIds.includes(course.id)).map(category => category.name).join(', ') || 'Sin categoría'}</td>
           <td>{course.units.length}</td>
           <td><div className={styles.rowActions}><button className={styles.editButton} type="button" onClick={() => openEditor(course)}>Editar</button><button className={styles.deleteButton} type="button" onClick={() => deleteCourse(course)} aria-label={`Eliminar ${course.name}`} title="Eliminar"><Trash2 size={16} /></button></div></td>
         </tr>)}
-        {visibleCourses.length === 0 && <tr><td className={styles.empty} colSpan={4}>No hay cursos que coincidan con la búsqueda.</td></tr>}</tbody>
+        {visibleCourses.length === 0 && !coursesError && !categoriesError && <tr><td className={styles.empty} colSpan={4}>No hay cursos que coincidan con la búsqueda.</td></tr>}
+        </>}</tbody>
       </table></div>
       <footer className={styles.pagination}><span>{filteredCourses.length === 0 ? '0 resultados' : `${(currentPage - 1) * pageSize + 1}–${Math.min(currentPage * pageSize, filteredCourses.length)} de ${filteredCourses.length}`}</span><div className={styles.pageControls}><span>Página {currentPage} de {pageCount}</span><button className={styles.pageButton} type="button" onClick={() => setPage(value => Math.max(1, value - 1))} disabled={currentPage === 1} aria-label="Página anterior"><ChevronLeft size={18} /></button><button className={styles.pageButton} type="button" onClick={() => setPage(value => Math.min(pageCount, value + 1))} disabled={currentPage === pageCount} aria-label="Página siguiente"><ChevronRight size={18} /></button></div></footer>
-    </section>
+    </section>}
   </main>
 }

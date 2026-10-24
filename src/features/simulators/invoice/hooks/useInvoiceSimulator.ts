@@ -3,7 +3,7 @@ import type { InvoiceDraft, InvoiceLine, InvoiceProduct, SavedInvoice } from '..
 import { calculateInvoice } from '../utils/calculateInvoice'
 import { invoiceTaxRate } from '../utils/invoiceTaxRate'
 import { getInvoiceProductCatalog, type InvoiceCatalogRepository } from '../services/invoiceProductService'
-import { LocalInvoiceRepository, type InvoiceRepository } from '../services/invoiceRepository'
+import { invoiceRepository as supabaseInvoiceRepository, type InvoiceRepository } from '../services/invoiceRepository'
 
 const emptyDraft: InvoiceDraft = {
   customer: '',
@@ -12,8 +12,6 @@ const emptyDraft: InvoiceDraft = {
   paymentMethod: '',
   lines: [],
 }
-
-const localInvoiceRepository = new LocalInvoiceRepository()
 
 interface UseInvoiceSimulatorOptions {
   catalogRepository?: InvoiceCatalogRepository
@@ -33,7 +31,7 @@ function findCatalogProduct(line: InvoiceLine, products: InvoiceProduct[]) {
     ?? products.find(product => key.includes('lápices de colores') && product.id === 'colored-pencils')
 }
 
-export function useInvoiceSimulator({ catalogRepository, invoiceRepository = localInvoiceRepository }: UseInvoiceSimulatorOptions = {}) {
+export function useInvoiceSimulator({ catalogRepository, invoiceRepository = supabaseInvoiceRepository }: UseInvoiceSimulatorOptions = {}) {
   const [draft, setDraft] = useState<InvoiceDraft>(emptyDraft)
   const [savedInvoices, setSavedInvoices] = useState<SavedInvoice[]>([])
   const [editingInvoiceId, setEditingInvoiceId] = useState<string | null>(null)
@@ -42,6 +40,7 @@ export function useInvoiceSimulator({ catalogRepository, invoiceRepository = loc
   const [isHistoryLoading, setIsHistoryLoading] = useState(true)
   const [catalogNotice, setCatalogNotice] = useState('')
   const [isCatalogLoading, setIsCatalogLoading] = useState(true)
+  const [catalogRevision, setCatalogRevision] = useState(0)
   const totals = useMemo(() => calculateInvoice(draft.lines, invoiceTaxRate), [draft.lines])
 
   useEffect(() => {
@@ -58,12 +57,12 @@ export function useInvoiceSimulator({ catalogRepository, invoiceRepository = loc
     }).catch(error => {
       if (!mounted) return
       setProducts([])
-      setCatalogNotice(error instanceof Error ? error.message : 'No se pudo cargar el catálogo local.')
+      setCatalogNotice(error instanceof Error ? error.message : 'No se pudo cargar el catálogo desde Supabase.')
     }).finally(() => {
       if (mounted) setIsCatalogLoading(false)
     })
     return () => { mounted = false }
-  }, [catalogRepository])
+  }, [catalogRepository, catalogRevision])
 
   useEffect(() => {
     let mounted = true
@@ -73,7 +72,7 @@ export function useInvoiceSimulator({ catalogRepository, invoiceRepository = loc
       setSavedInvoices(invoices)
       setHistoryNotice('')
     }).catch(error => {
-      if (mounted) setHistoryNotice(error instanceof Error ? error.message : 'No se pudo cargar el historial local.')
+      if (mounted) setHistoryNotice(error instanceof Error ? error.message : 'No se pudo cargar el historial desde Supabase.')
     }).finally(() => {
       if (mounted) setIsHistoryLoading(false)
     })
@@ -115,6 +114,11 @@ export function useInvoiceSimulator({ catalogRepository, invoiceRepository = loc
     return { ...current, lines: [...current.lines, { id: crypto.randomUUID(), productId: product.id, description: product.description, quantity, unitPrice: product.unitPrice }] }
   })
   const removeLine = (id: string) => setDraft(current => ({ ...current, lines: current.lines.filter(line => line.id !== id) }))
+  const resetDraft = () => {
+    setDraft({ ...emptyDraft, date: new Date().toISOString().slice(0, 10) })
+    setEditingInvoiceId(null)
+    setHistoryNotice('')
+  }
   const persist = async () => {
     if (!draft.customer.trim()) return false
     try {
@@ -152,5 +156,7 @@ export function useInvoiceSimulator({ catalogRepository, invoiceRepository = loc
     }
   }
 
-  return { draft, totals, historyNotice, catalogNotice, isCatalogLoading, isHistoryLoading, savedInvoices, products, updateField, updateLine, addLine, setProductQuantity, removeLine, persist, load, removeSaved }
+  const reloadCatalog = () => setCatalogRevision(revision => revision + 1)
+
+  return { draft, totals, historyNotice, catalogNotice, isCatalogLoading, isHistoryLoading, savedInvoices, products, updateField, updateLine, addLine, setProductQuantity, removeLine, resetDraft, persist, load, removeSaved, reloadCatalog }
 }

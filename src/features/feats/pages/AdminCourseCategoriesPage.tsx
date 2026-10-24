@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
-import { ChevronLeft, ChevronRight, FolderKanban, Image, Pencil, Plus, Save, Search, Tag, Trash2, X } from 'lucide-react'
-import type { SchoolModule } from '../../courses/mocks/schoolModulesMock'
+import { useLocation, useNavigate } from 'react-router-dom'
+import { ChevronLeft, ChevronRight, FolderKanban, Image, ImagePlus, Pencil, Plus, Save, Search, Tag, Trash2, Upload, X } from 'lucide-react'
+import type { SchoolModule, SchoolSubject } from '../../courses/types/courseCatalog.types'
 import { useCourseCategories } from '../../courses/hooks/useCourseCategories'
 import { useSchoolCourses } from '../../courses/hooks/useSchoolCourses'
+import { useTenant } from '../../../core/TenantContext'
+import { supabase } from '../../../core/supabaseClient'
 import { saveCourseCategories } from '../../courses/services/courseCategoriesStore'
 import styles from './AdminCourseCategoriesPage.module.css'
 
@@ -24,21 +27,29 @@ function normalize(value: string) {
   return value.toLocaleLowerCase('es').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim()
 }
 
-function categoryCover(category: SchoolModule, courses: ReturnType<typeof useSchoolCourses>) {
+function categoryCover(category: SchoolModule, courses: SchoolSubject[]) {
   return category.coverImage || courses.find(course => course.id === category.courseIds[0])?.coverImage || ''
 }
 
 export function AdminCourseCategoriesPage() {
-  const categories = useCourseCategories()
-  const courses = useSchoolCourses()
+  const navigate = useNavigate()
+  const { pathname } = useLocation()
+  const { categories, loading: categoriesLoading, error: categoriesError } = useCourseCategories()
+  const { courses, loading: coursesLoading, error: coursesError } = useSchoolCourses()
+  const { activeInstitution } = useTenant()
   const [search, setSearch] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [page, setPage] = useState(1)
-  const [formOpen, setFormOpen] = useState(false)
   const [draft, setDraft] = useState<CategoryDraft>(emptyDraft)
   const [formError, setFormError] = useState('')
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
   const [deleteError, setDeleteError] = useState('')
+  const [coverUploading, setCoverUploading] = useState(false)
+  const isNewCategoryPage = pathname === '/panel/cursos/categorias/nueva'
+  const isCategoryEditorPage = isNewCategoryPage || /^\/panel\/cursos\/categorias\/[^/]+\/editar$/.test(pathname)
+  const routeCategoryId = isCategoryEditorPage && !isNewCategoryPage
+    ? decodeURIComponent(pathname.split('/')[4] ?? '')
+    : null
 
   const filteredCategories = useMemo(() => {
     const query = normalize(search)
@@ -58,19 +69,35 @@ export function AdminCourseCategoriesPage() {
     if (page > pageCount) setPage(pageCount)
   }, [page, pageCount])
 
+  useEffect(() => {
+    if (!isCategoryEditorPage || categoriesLoading) return
+    if (isNewCategoryPage) {
+      setDraft(emptyDraft())
+      setFormError('')
+      return
+    }
+    const category = categories.find(item => item.id === routeCategoryId)
+    if (!category) {
+      navigate('/panel/cursos/categorias', { replace: true })
+      return
+    }
+    setDraft({ ...category, courseIds: [...category.courseIds] })
+    setFormError('')
+  }, [isCategoryEditorPage, isNewCategoryPage, routeCategoryId, categories, categoriesLoading, navigate])
+
   const startNewCategory = () => {
     setDraft(emptyDraft())
     setFormError('')
-    setFormOpen(true)
+    navigate('/panel/cursos/categorias/nueva')
   }
 
   const startEditing = (category: SchoolModule) => {
     setDraft({ ...category, courseIds: [...category.courseIds] })
     setFormError('')
-    setFormOpen(true)
+    navigate(`/panel/cursos/categorias/${encodeURIComponent(category.id)}/editar`)
   }
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     const name = draft.name.trim()
     const description = draft.description.trim()
@@ -98,22 +125,24 @@ export function AdminCourseCategoriesPage() {
       const next = draft.id
         ? categories.map(item => item.id === draft.id ? category : item)
         : [...categories, category]
-      saveCourseCategories(next)
+      if (!activeInstitution) throw new Error('No hay institución activa.')
+      await saveCourseCategories(activeInstitution.institution_id, next)
       setPage(1)
-      setFormOpen(false)
       setDraft(emptyDraft())
+      navigate('/panel/cursos/categorias')
     } catch {
-      setFormError('No se pudo guardar en este navegador. Revisa el espacio disponible y vuelve a intentar.')
+      setFormError('No se pudo guardar en la base de datos. Revisa tu conexión y permisos.')
     }
   }
 
-  const deleteCategory = (category: SchoolModule) => {
+  const deleteCategory = async (category: SchoolModule) => {
     try {
-      saveCourseCategories(categories.filter(item => item.id !== category.id))
+      if (!activeInstitution) throw new Error('No hay institución activa.')
+      await saveCourseCategories(activeInstitution.institution_id, categories.filter(item => item.id !== category.id))
       setPendingDeleteId(null)
       setDeleteError('')
     } catch {
-      setDeleteError('No se pudo eliminar la categoría de este navegador.')
+      setDeleteError('No se pudo eliminar la categoría de la base de datos.')
     }
   }
 
@@ -127,13 +156,13 @@ export function AdminCourseCategoriesPage() {
   }
 
   return <main className={styles.page}>
-    {formOpen && <section className={styles.formCard} aria-labelledby="category-form-title">
+    {isCategoryEditorPage && <section className={styles.formCard} aria-labelledby="category-form-title">
       <div className={styles.formHeading}>
         <div>
           <p className={styles.eyebrow}>{draft.id ? 'Editar' : 'Crear'}</p>
           <h2 id="category-form-title"><span className={styles.formTitleIcon}><FolderKanban size={19} /></span>{draft.id ? 'Editar categoría' : 'Nueva categoría'}</h2>
         </div>
-        <button className={styles.iconButton} type="button" onClick={() => setFormOpen(false)} aria-label="Cerrar formulario"><X size={19} /></button>
+        <button className={styles.iconButton} type="button" onClick={() => navigate('/panel/cursos/categorias')} aria-label="Volver a categorías"><X size={19} /></button>
       </div>
       <form className={styles.form} onSubmit={handleSubmit} noValidate>
         <div className={styles.formFields}>
@@ -148,9 +177,36 @@ export function AdminCourseCategoriesPage() {
           <label className={`${styles.field} ${styles.wideField}`}>Descripción
             <textarea value={draft.description} onChange={event => setDraft(current => ({ ...current, description: event.target.value }))} maxLength={240} rows={2} placeholder="Describe brevemente esta categoría" required />
           </label>
-          <label className={`${styles.field} ${styles.wideField}`}><span className={styles.fieldLabel}><Image size={15} />Imagen de portada (URL)</span>
-            <input type="url" value={draft.coverImage} onChange={event => setDraft(current => ({ ...current, coverImage: event.target.value }))} placeholder="Vacío para usar la imagen del primer curso" />
-          </label>
+          <div className={`${styles.field} ${styles.wideField}`}><span className={styles.fieldLabel}><Image size={15} />Imagen de portada</span>
+            <div className={styles.coverRow}>
+              {draft.coverImage ? <img className={styles.coverPreview} src={draft.coverImage} alt="Vista previa de portada" /> : <span className={styles.coverPlaceholder}><ImagePlus size={23} /><span>Sin imagen</span></span>}
+              <div className={styles.coverActions}>
+                <label className={styles.uploadButton}><Upload size={17} />{coverUploading ? 'Subiendo…' : draft.coverImage ? 'Cambiar imagen' : 'Subir imagen'}
+            <input className={styles.fileInput} type="file" accept="image/png,image/jpeg,image/webp" disabled={coverUploading} onChange={event => {
+              const file = event.target.files?.[0]
+              event.target.value = ''
+              if (!file) return
+              if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type) || file.size > 5 * 1024 * 1024) { setFormError('La portada debe ser PNG, JPG o WebP y pesar máximo 5 MB.'); return }
+              if (!activeInstitution) { setFormError('Selecciona una institución antes de subir la imagen.'); return }
+              setCoverUploading(true)
+              setFormError('')
+              const extension = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg'
+              const categoryKey = draft.id ?? crypto.randomUUID()
+              const path = `${activeInstitution.institution_id}/cursos/categorias/${categoryKey}/${crypto.randomUUID()}.${extension}`
+              void supabase.storage.from('media').upload(path, file, { contentType: file.type, cacheControl: '3600', upsert: false })
+                .then(({ error }) => {
+                  if (error) throw error
+                  const url = supabase.storage.from('media').getPublicUrl(path).data.publicUrl
+                  setDraft(current => ({ ...current, coverImage: url }))
+                })
+                .catch(() => setFormError('No se pudo subir la portada al bucket. Verifica el permiso de carga.'))
+                .finally(() => setCoverUploading(false))
+            }} /></label>
+                <small>{coverUploading ? 'Subiendo al bucket…' : 'PNG, JPG o WebP · máximo 5 MB'}</small>
+                <small>Se subirá directamente a Supabase Storage.</small>
+              </div>
+            </div>
+          </div>
         </div>
         <fieldset className={styles.coursePicker}>
           <legend>Cursos dentro de esta categoría</legend>
@@ -163,13 +219,13 @@ export function AdminCourseCategoriesPage() {
         </fieldset>
         {formError && <p className={styles.error} role="alert">{formError}</p>}
         <div className={styles.formActions}>
-          <button className={styles.secondaryButton} type="button" onClick={() => setFormOpen(false)}>Cancelar</button>
+          <button className={styles.secondaryButton} type="button" onClick={() => navigate('/panel/cursos/categorias')}>Cancelar</button>
           <button className={styles.primaryButton} type="submit"><Save size={17} />Guardar categoría</button>
         </div>
       </form>
     </section>}
 
-    <section className={styles.listCard} aria-labelledby="category-list-title">
+    {!isCategoryEditorPage && <section className={styles.listCard} aria-labelledby="category-list-title">
       {deleteError && <p className={styles.error} role="alert">{deleteError}</p>}
       <div className={styles.listHeading}>
         <div>
@@ -193,14 +249,17 @@ export function AdminCourseCategoriesPage() {
       <div className={styles.tableWrap}>
         <table className={styles.table}>
           <thead><tr><th scope="col">Categoría</th><th scope="col">Cursos</th><th scope="col">Portada</th><th scope="col"><span className={styles.srOnly}>Acciones</span></th></tr></thead>
-          <tbody>
+          <tbody aria-busy={categoriesLoading || coursesLoading}>
+            {categoriesLoading || coursesLoading ? Array.from({ length: 4 }, (_, index) => <tr className={styles.skeletonRow} key={`category-skeleton-${index}`}><td><span className={`${styles.skeleton} ${styles.skeletonText}`} /><span className={`${styles.skeleton} ${styles.skeletonSubtext}`} /></td><td><span className={`${styles.skeleton} ${styles.skeletonSmall}`} /></td><td><span className={`${styles.skeleton} ${styles.skeletonCover}`} /></td><td><span className={`${styles.skeleton} ${styles.skeletonActions}`} /></td></tr>) : <>
+            {(categoriesError || coursesError) && <tr><td className={styles.empty} colSpan={4} role="alert">{categoriesError ?? coursesError}</td></tr>}
             {visibleCategories.map(category => <tr key={category.id}>
               <td><span className={styles.categoryName}>{category.name}</span><span className={styles.categoryDescription}>{category.description}</span></td>
               <td>{category.courseIds.length} {category.courseIds.length === 1 ? 'curso' : 'cursos'}</td>
               <td>{categoryCover(category, courses) ? <img className={styles.coverThumb} src={categoryCover(category, courses)} alt={`Portada de ${category.name}`} /> : <span className={styles.noCover}>Sin portada</span>}</td>
               <td>{pendingDeleteId === category.id ? <div className={styles.deleteConfirm}><span>¿Eliminar?</span><button type="button" onClick={() => setPendingDeleteId(null)}>Cancelar</button><button type="button" onClick={() => deleteCategory(category)}>Sí</button></div> : <div className={styles.rowActions}><button className={styles.iconButton} type="button" onClick={() => startEditing(category)} aria-label={`Editar ${category.name}`} title="Editar"><Pencil size={17} /></button><button className={`${styles.iconButton} ${styles.deleteButton}`} type="button" onClick={() => { setPendingDeleteId(category.id); setDeleteError('') }} aria-label={`Eliminar ${category.name}`} title="Eliminar"><Trash2 size={17} /></button></div>}</td>
             </tr>)}
-            {visibleCategories.length === 0 && <tr><td className={styles.empty} colSpan={4}>No hay categorías que coincidan con la búsqueda.</td></tr>}
+            {visibleCategories.length === 0 && !categoriesError && !coursesError && <tr><td className={styles.empty} colSpan={4}>No hay categorías que coincidan con la búsqueda.</td></tr>}
+            </>}
           </tbody>
         </table>
       </div>
@@ -212,6 +271,6 @@ export function AdminCourseCategoriesPage() {
           <button className={styles.pageButton} type="button" onClick={() => setPage(value => Math.min(pageCount, value + 1))} disabled={currentPage === pageCount} aria-label="Página siguiente"><ChevronRight size={18} /></button>
         </div>
       </footer>
-    </section>
+    </section>}
   </main>
 }

@@ -1,7 +1,8 @@
 import { useEffect, useId, useRef, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import type { MenuNode } from "../../types/menu";
-import { MenuLink } from "./MenuLink";
+import { MenuLink, MenuLinkContent } from "./MenuLink";
+import { NavigationIcon } from "./NavigationIcon";
 import { withSimulatorChoices } from "./Navigation";
 
 function MobileItem({ node, close }: { node: MenuNode; close: () => void }) {
@@ -13,13 +14,13 @@ function MobileItem({ node, close }: { node: MenuNode; close: () => void }) {
   if (node.children.length === 0)
     return (
       <li>
-        <MenuLink node={node} className="site-mnav__link" onClick={close} />
+        <MenuLink node={node} className="site-mnav__link" onClick={close} leadingIcon={<NavigationIcon label={node.label} />} />
       </li>
     );
   return (
     <li>
       <button type="button" className="site-mnav__link site-mnav__toggle" aria-expanded={open} aria-controls={subId} aria-current={learningActive ? "page" : undefined} onClick={() => setOpen((o) => !o)}>
-        {node.label}
+        <MenuLinkContent><NavigationIcon label={node.label} /><span>{node.label}</span></MenuLinkContent>
         <span aria-hidden="true">{open ? "−" : "+"}</span>
       </button>
       <ul id={subId} className="site-mnav__sub" hidden={!open}>
@@ -31,7 +32,7 @@ function MobileItem({ node, close }: { node: MenuNode; close: () => void }) {
   );
 }
 
-export function MobileNavigation({ tree }: { tree: MenuNode[] }) {
+export function MobileNavigation({ tree, loginUrl }: { tree: MenuNode[]; loginUrl?: string }) {
   const [open, setOpen] = useState(false);
   const panelId = useId();
   const btnRef = useRef<HTMLButtonElement>(null);
@@ -63,6 +64,11 @@ export function MobileNavigation({ tree }: { tree: MenuNode[] }) {
             const node = withSimulatorChoices(item);
             return <MobileItem key={node.menu_id} node={node} close={() => setOpen(false)} />;
           })}
+          {loginUrl && <li>
+            <Link to={loginUrl} className="site-mnav__link" onClick={() => setOpen(false)}>
+              <MenuLinkContent><NavigationIcon label="Iniciar sesión" /><span>Iniciar sesión</span></MenuLinkContent>
+            </Link>
+          </li>}
         </ul>
       </nav>
     </div>

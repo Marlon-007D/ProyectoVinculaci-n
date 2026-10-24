@@ -12,6 +12,14 @@
 .interest-result-card .result-breakdown div { display:grid; grid-template-columns:minmax(0,1fr); align-items:start; gap:6px; }
 .interest-result-card .result-breakdown dt { min-width:0; }
 .interest-result-card .result-breakdown dd { min-width:0; max-width:100%; margin-inline-start:0; font-size:16px; font-variant-numeric:tabular-nums; text-align:left; overflow-wrap:anywhere; }
+.interest-calculation,.interest-projection { margin-top:20px; }
+.interest-calculation h3,.interest-projection h3 { margin:0 0 10px; color:#51465e; font:600 13px Roboto,Arial,sans-serif; }
+.interest-calculation code { display:block; overflow-wrap:anywhere; padding:12px 14px; border:1px solid var(--line); border-radius:16px 8px 16px 8px; color:#51465e; background:#f7f6f9; font:500 12px/1.55 Roboto,Arial,sans-serif; }
+.interest-projection ol { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin:0; padding:0; list-style:none; }
+.interest-projection li { display:grid; align-content:start; gap:5px; min-width:0; padding:11px 10px; border:1px solid var(--line); border-radius:16px 8px 16px 8px; background:#fff; }
+.interest-projection li > span { color:#51465e; font-size:11px; font-weight:650; }
+.interest-projection li > small { color:#77717d; font-size:10px; }
+.interest-projection li > strong { color:var(--accent); font-size:12px; font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
 @keyframes interest-penguin-bounce { 0%,100% { transform: translateY(0) scale(1); } 45% { transform: translateY(-5px) scale(1.04,.97); } }
 @keyframes interest-penguin-wave { from { transform: rotate(-5deg); } to { transform: rotate(14deg) translateY(-3px); } }
 @keyframes interest-value-pop { 0% { opacity: .35; transform: translateY(10px) scale(.86); } 70% { transform: translateY(-2px) scale(1.04); } 100% { opacity: 1; transform: translateY(0) scale(1); } }

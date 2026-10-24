@@ -38,9 +38,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [mfaFactorId, setMfaFactorId] = useState<string | null>(null);
   const [mfaChallengeId, setMfaChallengeId] = useState<string | null>(null);
   const sessionRef = useRef<Session | null>(null);
+  const generationRef = useRef(0);
+  const revalidateMfaRef = useRef<() => Promise<void>>(async () => {});
+  const revalidateRoleRef = useRef<() => Promise<void>>(async () => {});
+  const assuranceLevelRef = useRef<string | null>(null);
   const mfaChallengeRef = useRef<{ factorId: string; challengeId: string } | null>(null);
+  const clearAuthState = () => {
+    sessionRef.current = null;
+    setSession(null);
+    setUser(null);
+    setRole(null);
+    setRoleError(null);
+    setInstitutionId(null);
+    setMfaRequired(false);
+    setMfaEnrollmentRequired(false);
+    setMfaFactorId(null);
+    setMfaChallengeId(null);
+    setIsPasswordRecovery(false);
+    assuranceLevelRef.current = null;
+    mfaChallengeRef.current = null;
+  };
+  const sessionAssuranceLevel = (nextSession: Session) => {
+    try {
+      const encodedPayload = nextSession.access_token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+      const payload = encodedPayload.padEnd(encodedPayload.length + (4 - encodedPayload.length % 4) % 4, '=');
+      return JSON.parse(atob(payload)).aal as string | undefined;
+    } catch {
+      return undefined;
+    }
+  };
 
-  const checkMfaSession = async (nextSession: Session | null): Promise<boolean> => {
+  const checkMfaSession = async (nextSession: Session | null, isCurrent: () => boolean = () => true): Promise<boolean | null> => {
     if (!nextSession) {
       setMfaRequired(false);
       setMfaFactorId(null);
@@ -49,6 +77,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return false;
     }
     const { data: mfaEnabledForAssignedUser, error: eligibilityError } = await supabase.rpc('own_mfa_enabled_for_assigned_user');
+    if (!isCurrent()) return null;
     if (eligibilityError || !mfaEnabledForAssignedUser) {
       setMfaRequired(false);
       setMfaFactorId(null);
@@ -57,6 +86,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return false;
     }
     const { data: assurance, error: assuranceError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (!isCurrent()) return null;
+    assuranceLevelRef.current = assuranceError ? null : assurance.currentLevel;
     if (assuranceError) {
       setMfaRequired(true);
       setMfaFactorId(null);
@@ -72,6 +103,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return false;
     }
     const { data: factors, error: factorsError } = await supabase.auth.mfa.listFactors();
+    if (!isCurrent()) return null;
     if (factorsError) {
       setMfaRequired(true);
       setMfaFactorId(null);
@@ -89,6 +121,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     if (mfaChallengeRef.current?.factorId === factor.id) return true;
     const { data: challenge, error: challengeError } = await supabase.auth.mfa.challenge({ factorId: factor.id });
+    if (!isCurrent()) return null;
     if (challengeError) {
       setMfaRequired(true);
       setMfaFactorId(factor.id);
@@ -103,24 +136,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return true;
   };
 
-  const fetchUserRoleAndTenant = async (userId: string) => {
-    setRole(null);
-    setRoleError(null);
-    setInstitutionId(null);
+  const fetchUserRoleAndTenant = async (userId: string, isCurrent: () => boolean = () => true, preserveCurrent = false) => {
+    if (!isCurrent()) return false;
+    if (!preserveCurrent) {
+      setRole(null);
+      setRoleError(null);
+      setInstitutionId(null);
+    }
 
     const { data, error } = await supabase
       .from('memberships')
       .select('institution_id, role_id')
       .eq('profile_id', userId)
       .eq('is_active', true);
+    if (!isCurrent()) return false;
 
     if (error) {
+      setRole(null);
+      setInstitutionId(null);
       setRoleError('No se pudo consultar tu rol. Verifica que esté aplicada la migración de acceso de superadministrador.');
       return;
     }
 
     const memberships = data ?? [];
     if (memberships.length === 0) {
+      setRole(null);
+      setInstitutionId(null);
       setRoleError('No se encontró una membresía visible para esta cuenta. Ejecuta database/superadmin.sql en Supabase y confirma que profile_id coincida con el ID de autenticación.');
       return;
     }
@@ -129,8 +170,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       .from('roles')
       .select('role_id, name')
       .in('role_id', memberships.map((item) => item.role_id));
+    if (!isCurrent()) return false;
 
     if (rolesError) {
+      setRole(null);
+      setInstitutionId(null);
       setRoleError('No se pudieron consultar los nombres de rol. Verifica los permisos de lectura de la tabla roles.');
       return;
     }
@@ -140,6 +184,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const scopedMembership = memberships.find((item) => item.institution_id === requestedInstitutionId);
     const membership = memberships.find((item) => roleNameById.get(item.role_id) === 'super_admin') ?? scopedMembership ?? memberships[0];
     const assignedRole = roleNameById.get(membership.role_id) ?? null;
+    setRoleError(null);
     setRole(assignedRole);
     setInstitutionId(membership?.institution_id ?? null);
 
@@ -151,82 +196,140 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Solo se pide configurar TOTP cuando el flujo de asignación dejó la marca pendiente.
     const { data: enrollmentRequired, error: mfaStatusError } = await supabase.rpc('own_mfa_enrollment_required');
+    if (!isCurrent()) return false;
     setMfaEnrollmentRequired(!mfaStatusError && enrollmentRequired === true);
+    return Boolean(assignedRole);
   };
 
   useEffect(() => {
     let active = true;
+    let initialSessionTask: Promise<void> | null = null;
+    let sessionTask: Promise<void> = Promise.resolve();
+    let pendingInitialSession: { session: Session | null; event: string; generation: number; identityChanged: boolean } | null = null;
 
-    const applySession = async (nextSession: Session | null) => {
+    const isCurrent = (generation: number) => active && generationRef.current === generation;
+    const clearSessionState = clearAuthState;
+    const processSession = (nextSession: Session | null, event: string, initial: boolean, eventGeneration: number, identityChanged: boolean) =>
+      applySession(nextSession, event, initial, eventGeneration, identityChanged).catch(() => {
+        if (isCurrent(eventGeneration)) setLoading(false);
+      });
+
+    const applySession = async (nextSession: Session | null, event: string, initial = false, eventGeneration = generationRef.current, identityChanged = false) => {
+      if (!isCurrent(eventGeneration)) return;
+      const currentUserId = sessionRef.current?.user.id ?? null;
+      const nextUserId = nextSession?.user.id ?? null;
+      if (event === 'SIGNED_OUT' || !nextSession) {
+        clearSessionState();
+        setLoading(false);
+        return;
+      }
+      const sameUser = !identityChanged && currentUserId !== null && currentUserId === nextUserId;
+      let generation = eventGeneration;
+      if (!sameUser && !identityChanged) {
+        generationRef.current += 1;
+        generation = generationRef.current;
+        clearSessionState();
+        setLoading(true);
+      }
+      if (!isCurrent(generation)) return;
       sessionRef.current = nextSession;
       setSession(nextSession);
       setUser(nextSession?.user ?? null);
+      if (event === 'PASSWORD_RECOVERY') setIsPasswordRecovery(true);
+
+      if (sameUser && !initial) {
+        const nextAssuranceLevel = sessionAssuranceLevel(nextSession);
+        if (event === 'MFA_CHALLENGE_VERIFIED' || event === 'MFA_STATE_CHANGED' || (nextAssuranceLevel && assuranceLevelRef.current && nextAssuranceLevel !== assuranceLevelRef.current)) {
+          await checkMfaSession(nextSession, () => isCurrent(generation));
+        }
+        if (event === 'ROLE_REVALIDATE') await fetchUserRoleAndTenant(nextSession.user.id, () => isCurrent(generation), true);
+        return;
+      }
+
       if (nextSession?.user) {
         if (sessionStorage.getItem('auth-login-method') === 'password') {
           setMfaRequired(false);
           setMfaFactorId(null);
           setMfaChallengeId(null);
           mfaChallengeRef.current = null;
-          await fetchUserRoleAndTenant(nextSession.user.id);
+          await fetchUserRoleAndTenant(nextSession.user.id, () => isCurrent(generation));
         } else {
-          const mfaPending = await checkMfaSession(nextSession);
-          if (!mfaPending) await fetchUserRoleAndTenant(nextSession.user.id);
+          const mfaPending = await checkMfaSession(nextSession, () => isCurrent(generation));
+          if (mfaPending === false) await fetchUserRoleAndTenant(nextSession.user.id, () => isCurrent(generation));
         }
-      } else {
-        setRole(null);
-        setRoleError(null);
-        setInstitutionId(null);
-        setMfaEnrollmentRequired(false);
       }
-      if (active) setLoading(false);
+      if (isCurrent(generation)) setLoading(false);
+    };
+
+    const initializeSession = (nextSession: Session | null) => {
+      if (!initialSessionTask) {
+        const initial = pendingInitialSession ?? { session: nextSession, event: 'INITIAL_SESSION', generation: generationRef.current, identityChanged: false };
+        pendingInitialSession = null;
+        initialSessionTask = processSession(initial.session, initial.event, true, initial.generation, initial.identityChanged);
+        sessionTask = initialSessionTask;
+      }
+      return initialSessionTask;
+    };
+
+    const enqueueSession = (nextSession: Session | null, event: string, eventGeneration = generationRef.current, identityChanged = false) => {
+      if (!initialSessionTask) {
+        pendingInitialSession = { session: nextSession, event, generation: eventGeneration, identityChanged };
+        return Promise.resolve();
+      }
+      sessionTask = sessionTask.then(() => processSession(nextSession, event, false, eventGeneration, identityChanged));
+      return sessionTask;
+    };
+
+    revalidateMfaRef.current = () => {
+      const currentSession = sessionRef.current;
+      if (currentSession) return enqueueSession(currentSession, 'MFA_STATE_CHANGED');
+      return Promise.resolve();
+    };
+    revalidateRoleRef.current = () => {
+      const currentSession = sessionRef.current;
+      if (currentSession) return enqueueSession(currentSession, 'ROLE_REVALIDATE');
+      return Promise.resolve();
     };
 
     void supabase.auth.getSession()
-      .then(({ data: { session: currentSession } }) => applySession(currentSession))
+      .then(({ data: { session: currentSession } }) => {
+        if (active) void initializeSession(pendingInitialSession?.session ?? currentSession);
+      })
       .catch(() => {
-        if (active) setLoading(false);
+        if (active) void initializeSession(pendingInitialSession?.session ?? null);
       });
 
     const { data: authListener } = supabase.auth.onAuthStateChange((event, nextSession) => {
-      if (event === 'PASSWORD_RECOVERY') setIsPasswordRecovery(true);
-      const currentUserId = sessionRef.current?.user.id ?? null;
-      const nextUserId = nextSession?.user.id ?? null;
-      if (currentUserId && currentUserId === nextUserId && (event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION' || event === 'SIGNED_IN')) {
-        sessionRef.current = nextSession;
-        setSession(nextSession);
+      if (!active) return;
+      if (event === 'INITIAL_SESSION') {
+        if (!initialSessionTask) {
+          pendingInitialSession = { session: nextSession, event, generation: generationRef.current, identityChanged: false };
+          void initializeSession(nextSession);
+        } else {
+          enqueueSession(nextSession, event);
+        }
         return;
       }
-      sessionRef.current = nextSession;
-      setLoading(true);
-      setSession(nextSession);
-      setUser(nextSession?.user ?? null);
-      if (nextSession?.user) {
-        window.setTimeout(() => {
-          const passwordOnly = sessionStorage.getItem('auth-login-method') === 'password';
-          if (passwordOnly) {
-            setMfaRequired(false);
-            setMfaFactorId(null);
-            setMfaChallengeId(null);
-            mfaChallengeRef.current = null;
-          }
-          void (passwordOnly
-            ? fetchUserRoleAndTenant(nextSession.user.id)
-            : checkMfaSession(nextSession).then((mfaPending) => mfaPending ? undefined : fetchUserRoleAndTenant(nextSession.user.id)))
-            .finally(() => { if (active) setLoading(false); });
-        }, 0);
-      } else {
-        setRole(null);
-        setRoleError(null);
-        setInstitutionId(null);
-        setMfaEnrollmentRequired(false);
-        setIsPasswordRecovery(false);
-        mfaChallengeRef.current = null;
-        setLoading(false);
+      const currentUserId = sessionRef.current?.user.id ?? null;
+      const nextUserId = nextSession?.user.id ?? null;
+      const identityChanged = event === 'SIGNED_OUT' || currentUserId !== nextUserId;
+      if (identityChanged) {
+        generationRef.current += 1;
+        clearSessionState();
+        if (nextSession) {
+          sessionRef.current = nextSession;
+          setLoading(true);
+        }
+        else setLoading(false);
       }
+      enqueueSession(nextSession, event, generationRef.current, identityChanged);
     });
 
     return () => {
       active = false;
+      generationRef.current += 1;
+      revalidateMfaRef.current = async () => {};
+      revalidateRoleRef.current = async () => {};
       authListener.subscription.unsubscribe();
     };
   }, []);
@@ -282,23 +385,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!mfaFactorId || !mfaChallengeId) {
       return { error: new Error('No se pudo iniciar la verificación. Vuelve a iniciar sesión.') };
     }
+    const generation = generationRef.current;
     const { error } = await supabase.auth.mfa.verify({ factorId: mfaFactorId, challengeId: mfaChallengeId, code });
-    if (!error) {
+    if (!error && generationRef.current === generation) {
       setMfaRequired(false);
       setMfaFactorId(null);
       setMfaChallengeId(null);
       mfaChallengeRef.current = null;
       const { data: currentSession } = await supabase.auth.getSession();
-      if (currentSession.session?.user) {
-        setLoading(true);
-        await fetchUserRoleAndTenant(currentSession.session.user.id);
-        setLoading(false);
+      if (generationRef.current === generation && currentSession.session?.user.id === sessionRef.current?.user.id) {
+        await revalidateRoleRef.current();
       }
     }
     return { error };
   };
 
-  const completeMfaEnrollment = () => setMfaEnrollmentRequired(false);
+  const completeMfaEnrollment = () => {
+    setMfaEnrollmentRequired(false);
+    void revalidateMfaRef.current();
+  };
 
   const requestPasswordReset = async (email: string) => {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
@@ -315,11 +420,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = async () => {
     await supabase.auth.signOut();
     sessionStorage.removeItem('auth-login-method');
-    setMfaRequired(false);
-    setMfaEnrollmentRequired(false);
-    setMfaFactorId(null);
-    setMfaChallengeId(null);
-      mfaChallengeRef.current = null;
+    generationRef.current += 1;
+    clearAuthState();
   };
 
   return (

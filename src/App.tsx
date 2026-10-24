@@ -1,21 +1,33 @@
 import { lazy, Suspense, useMemo } from 'react';
-import { BrowserRouter, Navigate, Route, Routes, useLocation, useParams } from 'react-router-dom';
+import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation, useParams } from 'react-router-dom';
 import { AuthProvider, useAuth } from './core/AuthContext';
 import { TenantProvider, useTenant } from './core/TenantContext';
 import { SiteApp } from './modules/site';
 import { ModuleBoundary } from './modules/projects/integration/ModuleBoundary';
 import { InstitutionProvider, useInstitution } from './modules/site/context/InstitutionContext';
 import { InstitutionSessionLayout } from './modules/site/components/Layout/InstitutionSessionLayout';
+import { PrivateWorkspace } from './modules/site/components/Layout/PrivateWorkspace';
 import { InstitutionalHeader } from './modules/site/components/Header/InstitutionalHeader';
 import { InstitutionalPanel } from './pages/InstitutionalPanel';
-import { DecePublicSection } from './modules/dece/public';
-import { DeceApp, DeceDataProvider } from './modules/dece';
 import { supabase } from './core/supabaseClient';
-import { SessionProvider } from './core/auth/session';
 import AdminRoutes from './modules/admin/AdminRoutes';
 import SimulatorApp from './app/App';
+import { AcademicManagementRoutes } from './features/feats/pages/AcademicManagementRoutes';
 
 const ModuleRoutes = lazy(() => import('./modules/projects/integration/ModuleRoutes'));
+const SessionProvider = lazy(() => import('./core/auth/session').then(({ SessionProvider: Component }) => ({ default: Component })));
+const DecePublicSection = lazy(() => import('./modules/dece/public').then(({ DecePublicSection: Component }) => ({ default: Component })));
+const DecePrivateWorkspace = lazy(async () => {
+  const [{ default: DeceApp }, { DeceDataProvider }] = await Promise.all([
+    import('./modules/dece/dece-app'),
+    import('./modules/dece/services/dece-data-context'),
+  ]);
+  return {
+    default: ({ integration }: { integration: import('./modules/dece/services/dece-data-context').DeceDataIntegration }) => (
+      <DeceDataProvider value={integration}><DeceApp /></DeceDataProvider>
+    ),
+  };
+});
 const modulePage = <ModuleBoundary><Suspense fallback={<p role="status">Cargando módulo…</p>}><ModuleRoutes /></Suspense></ModuleBoundary>;
 const RESERVED_SLUGS = new Set(['admin', 'panel', 'inicio', 'proyectos', 'dece', 'simuladores', 'portal', 'system-admin']);
 
@@ -25,19 +37,28 @@ function SlugSessionRoute() {
   if (RESERVED_SLUGS.has(slug.toLowerCase())) return <SiteApp />;
   if (location.pathname.endsWith('/login'))
     return <Navigate to={'/panel/admin' + location.search} replace />;
-  return <InstitutionProvider><InstitutionSessionLayout><SessionProvider /></InstitutionSessionLayout></InstitutionProvider>;
+  return <InstitutionProvider><InstitutionSessionLayout><Suspense fallback={<p role="status">Cargando sesión…</p>}><SessionProvider /></Suspense></InstitutionSessionLayout></InstitutionProvider>;
 }
 
 function PublicDeceRoute() {
   const { institutionId } = useInstitution();
-  return <DecePublicSection institutionId={institutionId} title="Departamento de Consejería Estudiantil" />;
+  return <Suspense fallback={<p role="status">Cargando contenido…</p>}><DecePublicSection institutionId={institutionId} title="Departamento de Consejería Estudiantil" /></Suspense>;
 }
 
 function AdminRoutesWithInstitutionalChrome({ superadminOnly = false }: { superadminOnly?: boolean }) {
   const { activeInstitution } = useTenant();
+  const { user } = useAuth();
   const adminRoutes = <AdminRoutes superadminOnly={superadminOnly} />;
-  if (!activeInstitution) return <><InstitutionalHeader />{adminRoutes}</>;
-  return <InstitutionProvider institutionId={activeInstitution.institution_id}><InstitutionSessionLayout>{adminRoutes}</InstitutionSessionLayout></InstitutionProvider>;
+  const content = user ? <PrivateWorkspace>{adminRoutes}</PrivateWorkspace> : adminRoutes;
+  if (!activeInstitution) return <><InstitutionalHeader />{content}</>;
+  return <InstitutionProvider institutionId={activeInstitution.institution_id}><InstitutionSessionLayout>{content}</InstitutionSessionLayout></InstitutionProvider>;
+}
+
+function AcademicManagementWithInstitutionalChrome() {
+  const { activeInstitution } = useTenant();
+  const workspace = <PrivateWorkspace><Outlet /></PrivateWorkspace>;
+  if (!activeInstitution) return <><InstitutionalHeader />{workspace}</>;
+  return <InstitutionProvider institutionId={activeInstitution.institution_id}><InstitutionSessionLayout>{workspace}</InstitutionSessionLayout></InstitutionProvider>;
 }
 
 function DeceWorkspaceRoute() {
@@ -58,7 +79,7 @@ function DeceWorkspaceRoute() {
   if (modulePermissionError) return <main role="alert">{modulePermissionError}</main>;
   if (!hasModuleAccess('dece')) return <main role="alert">El módulo DECE no está habilitado para {activeInstitution.name}.</main>;
 
-  return <DeceDataProvider value={integration}><DeceApp /></DeceDataProvider>;
+  return <Suspense fallback={<main role="status">Cargando el módulo DECE…</main>}><DecePrivateWorkspace integration={integration} /></Suspense>;
 }
 
 function DeceWorkspaceWithInstitutionalChrome() {
@@ -89,6 +110,11 @@ function RoutesWithAuth() {
     <Route path="/panel" element={<InstitutionalPanelWithChrome />} />
     <Route path="/panel/admin" element={<AdminRoutesWithInstitutionalChrome />} />
     <Route path="/panel/superadmin" element={<AdminRoutesWithInstitutionalChrome superadminOnly />} />
+    <Route element={<AcademicManagementWithInstitutionalChrome />}>
+      <Route path="/panel/cursos" element={<AcademicManagementRoutes />} />
+      <Route path="/panel/cursos/*" element={<AcademicManagementRoutes />} />
+      <Route path="/panel/publicaciones/*" element={<AcademicManagementRoutes />} />
+    </Route>
     <Route path="/panel/dece" element={<DeceWorkspaceWithInstitutionalChrome />} />
     <Route path="/panel/dece/*" element={<DeceWorkspaceWithInstitutionalChrome />} />
     <Route path="/system-admin" element={<Navigate to="/panel/superadmin" replace />} />

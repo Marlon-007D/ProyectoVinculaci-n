@@ -22,6 +22,7 @@ export interface AcademicContentEntry {
   date: string
   time?: string
   location: string
+  studentId?: string
   studentName: string
   grade: string
   distinction: string

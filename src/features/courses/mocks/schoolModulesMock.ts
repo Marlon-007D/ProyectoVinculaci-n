@@ -1,11 +1,6 @@
-export interface SchoolModule {
-  id: string
-  name: string
-  description: string
-  courseIds: string[]
-  icon: string
-  coverImage: string
-}
+import type { SchoolModule } from '../types/courseCatalog.types'
+
+export type { SchoolModule } from '../types/courseCatalog.types'
 
 export const schoolModulesMock: SchoolModule[] = [
   { id: 'matematica', name: 'Matemática', description: 'Razonamiento numérico y resolución de problemas.', courseIds: ['matematica'], icon: 'sigma', coverImage: '' },

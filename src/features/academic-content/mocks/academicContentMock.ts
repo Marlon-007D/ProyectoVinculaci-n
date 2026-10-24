@@ -20,8 +20,6 @@ const rows: Array<Omit<AcademicContentEntry, 'id' | 'updatedAt'> & { id?: string
   { id: 'news-pl-polling-place', kind: 'news', institutionId: tenantInstitution.id, title: 'La UE Puerto Limón fue recinto electoral en la consulta de 2025', description: 'El Diario reportó que la jornada de Consulta Popular y Referéndum se desarrolló en la Unidad Educativa Puerto Limón, habilitada como recinto de votación en la parroquia.', sourceName: 'El Diario', sourceUrl: 'https://www.eldiario.ec/santo-domingo-2/avanza-la-consulta-popular-y-referendum-2025-en-puerto-limon-con-participacion-limitada-en-la-primera-hora-16112025/', periodId: 'period-pl-2025-2026', status: 'published', date: '2025-11-16', location: '', studentName: '', grade: '', distinction: '', startDate: '', endDate: '', isCurrent: false },
   { id: 'news-pl-reading-draft', kind: 'news', institutionId: tenantInstitution.id, title: 'Estudiantes preparan una jornada de lectura', description: 'Los cursos de básica organizan lecturas en voz alta y compartirán sus textos favoritos con la comunidad educativa.', periodId: 'academic-demo-1', status: 'draft', date: '2026-10-20', location: '', studentName: '', grade: '', distinction: '', startDate: '', endDate: '', isCurrent: false, author: 'Equipo editorial' },
   { id: 'news-pl-garden-draft', kind: 'news', institutionId: tenantInstitution.id, title: 'El huerto escolar se prepara para una nueva siembra', description: 'Estudiantes y docentes planifican la siembra de hortalizas en el huerto de la institución como parte de las actividades de ciencias naturales.', periodId: 'academic-demo-1', status: 'draft', date: '2026-10-28', location: '', studentName: '', grade: '', distinction: '', startDate: '', endDate: '', isCurrent: false, author: 'Equipo docente' },
-  { kind: 'event', institutionId: tenantInstitution.id, title: 'Feria de ciencias', description: 'Exposición de proyectos de aula y experimentos.', periodId: 'academic-demo-1', status: 'published', date: '2026-06-18', location: 'Patio central', studentName: '', grade: '', distinction: '', startDate: '', endDate: '', isCurrent: false },
-  { id: 'event-pl-family-workshop-draft', kind: 'event', institutionId: tenantInstitution.id, title: 'Taller de lectura para familias', description: 'Encuentro para compartir estrategias sencillas de lectura en casa y actividades para acompañar a niñas y niños.', periodId: 'academic-demo-1', status: 'draft', date: '2026-11-12', location: 'Biblioteca de la institución', studentName: '', grade: '', distinction: '', startDate: '', endDate: '', isCurrent: false, author: 'Equipo docente' },
 ]
 
 const baseEntries: AcademicContentEntry[] = rows.map((row, index) => ({
@@ -43,7 +41,7 @@ const demoOfficialHonors: AcademicContentEntry[] = OFFICIAL_DISTINCTIONS.map((di
   title: 'Asignación de demostración',
   description: '',
   periodId: 'academic-demo-1',
-  status: 'draft',
+  status: 'published',
   date: '',
   location: '',
   studentName: demoStudentNames[index],

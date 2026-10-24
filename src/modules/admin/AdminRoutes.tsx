@@ -21,7 +21,6 @@ export default function AdminRoutes({ superadminOnly = false }: { superadminOnly
   useEffect(() => {
     if (!user || !role || loading || mfaRequired || mfaEnrollmentRequired || loadingTenant) return;
     if (role === 'super_admin') {
-      if (location.pathname !== '/panel/superadmin') navigate('/panel/superadmin', { replace: true });
       return;
     }
     if (role === 'institution_admin') {
@@ -66,7 +65,7 @@ export default function AdminRoutes({ superadminOnly = false }: { superadminOnly
   if (mfaRequired) return <main className={styles.page}><section className={styles.card}><p className={styles.eyebrow}>VERIFICACIÓN DE CUENTA</p><h1>Confirma tu identidad</h1><p className={styles.help}>Ingresa el código temporal de seis dígitos de tu aplicación autenticadora.</p>{mfaChallengeReady ? <form className={styles.form} onSubmit={async event => { event.preventDefault(); setBusy(true); const result = await verifyMfa(code); setBusy(false); if (result.error) setError('El código no es válido o venció.'); }}><label htmlFor="mfa-code">Código de verificación</label><input id="mfa-code" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={code} onChange={event => setCode(event.target.value.replace(/\D/g, '').slice(0, 6))} required />{error && <p role="alert" className={styles.error}>{error}</p>}<button disabled={busy || code.length !== 6}>{busy ? 'Verificando…' : 'Verificar y continuar'}</button></form> : <p role="alert">No se pudo iniciar la verificación. Cierra sesión e inténtalo de nuevo.</p>}<button onClick={() => void logout()}>Cerrar sesión</button></section></main>;
   if (!role) return <main className={styles.page}><section className={styles.card}><p role="alert">{roleError ?? 'No se pudo verificar el rol de esta cuenta.'}</p><button onClick={() => void logout()}>Cerrar sesión</button></section></main>;
   if (superadminOnly && role !== 'super_admin') return <Navigate to="/panel/admin" replace />;
-  if (role === 'super_admin') return <main className={styles.admin}><header><strong>Administración global</strong><button onClick={() => void logout()}>Cerrar sesión</button></header><SuperAdminPanel /><UserManagement /></main>;
-  if (role === 'institution_admin') return <main className={styles.admin}><header><strong>Administración institucional</strong><button onClick={() => void logout()}>Cerrar sesión</button></header><UserManagement /></main>;
+  if (role === 'super_admin') return <main className={styles.admin}>{superadminOnly ? <SuperAdminPanel /> : <UserManagement />}</main>;
+  if (role === 'institution_admin') return <main className={styles.admin}><UserManagement /></main>;
   return <main className={styles.page}><section className={styles.card}><h1>Acceso restringido</h1><p>Tu cuenta aún no tiene un rol administrativo asignado.</p><button onClick={() => void logout()}>Cerrar sesión</button></section></main>;
 }

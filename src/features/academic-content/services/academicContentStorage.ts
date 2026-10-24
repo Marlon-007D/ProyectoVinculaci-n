@@ -9,6 +9,7 @@ const newsSeedMigrationKey = `${storageKey}.news-sources-v3${tenantMigrationKey}
 const draftSeedMigrationKey = `${storageKey}.publication-drafts-v2${tenantMigrationKey}`
 const legacyHonorCleanupKey = `${storageKey}.legacy-honor-cleanup-v1${tenantMigrationKey}`
 const officialHonorDemoSeedKey = `${storageKey}.official-honor-demo-v1${tenantMigrationKey}`
+const officialHonorPublicationMigrationKey = `${storageKey}.official-honor-publication-v1${tenantMigrationKey}`
 const legacyHonorSeedIds = new Set([
   'honor-pl-sofia', 'honor-pl-mateo', 'honor-pl-valentina', 'honor-pl-joaquin',
   'honor-pl-camila', 'honor-pl-andres', 'honor-pl-isabella', 'honor-pl-david', 'honor-pl-luciana',
@@ -36,6 +37,13 @@ export function getAcademicContent(): AcademicContentEntry[] {
       entries = [...entries, ...demoHonors.filter(entry => !existingIds.has(entry.id))]
       persist(entries)
       localStorage.setItem(officialHonorDemoSeedKey, 'complete')
+    }
+    if (!localStorage.getItem(officialHonorPublicationMigrationKey)) {
+      entries = entries.map(entry => entry.kind === 'honor' && entry.isDemo
+        ? { ...entry, status: 'published' as const }
+        : entry)
+      persist(entries)
+      localStorage.setItem(officialHonorPublicationMigrationKey, 'complete')
     }
     if (!localStorage.getItem(newsSeedMigrationKey)) {
       const puertoLimonSeeds = sampleAcademicContent.filter(entry => entry.institutionId === tenantInstitution.id && (entry.kind === 'news' || entry.kind === 'period'))

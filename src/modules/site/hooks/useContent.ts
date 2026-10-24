@@ -33,7 +33,17 @@ export function useStaff(position?: string) {
 
 export function useHonors(limit?: number) {
   const { institutionId } = useInstitution();
-  return useAsync(() => getHonors(institutionId, limit), [institutionId, limit]);
+  const result = useAsync(() => getHonors(institutionId, limit), [institutionId, limit]);
+  useEffect(() => {
+    const reload = () => result.reload();
+    window.addEventListener("storage", reload);
+    window.addEventListener("academic-content-updated", reload);
+    return () => {
+      window.removeEventListener("storage", reload);
+      window.removeEventListener("academic-content-updated", reload);
+    };
+  }, [result.reload]);
+  return result;
 }
 
 export function useEvents(limit?: number) {

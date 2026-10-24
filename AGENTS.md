@@ -25,8 +25,8 @@ No agregar funciones ajenas a este alcance sin una solicitud explícita.
 - Implementar la interfaz con React.
 - Usar TypeScript para componentes, páginas, lógica y utilidades (`.ts` y `.tsx`).
 - Mantener Vite como servidor y herramienta de compilación; el punto de entrada es `src/main.tsx`.
-- Usar una biblioteca de iconos compatible con React (por ejemplo, `lucide-react`).
-- Todos los iconos de la interfaz deben provenir de esa biblioteca: no usar emojis como iconos, botones ni elementos decorativos funcionales.
+- Usar iconos Material Symbols de Material Design 3 en toda la interfaz, integrados de forma compatible con React.
+- Mantener consistentes el estilo, tamaño y grosor de los iconos Material Symbols; no usar emojis como iconos, botones ni elementos decorativos funcionales.
 
 ## Organización del código
 
@@ -83,6 +83,11 @@ src/
 
 - Aplicar los principios de Material Design 3: jerarquía clara, superficies diferenciadas, estados interactivos perceptibles, accesibilidad y espaciado consistente.
 - Usar [Material Design 3](https://m3.material.io/) como referencia visual: superficies neutrales y contenedores de bajo énfasis, bordes finos y suaves, radios moderados y acentos de color reservados para acciones o estados. No agregar sombras ni elevaciones.
+- Tomar como guía las recomendaciones oficiales de Android para [grids y unidades](https://developer.android.com/design/ui/mobile/guides/layout-and-content/grids-and-units), [anatomía de la aplicación](https://developer.android.com/design/ui/mobile/guides/layout-and-content/app-anatomy), [color](https://developer.android.com/design/ui/mobile/guides/styles/color) y [temas](https://developer.android.com/design/ui/mobile/guides/styles/themes). Adaptarlas a React y CSS web; no trasladar literalmente unidades nativas de Android.
+- Para grids y medidas, usar una escala de espaciado coherente basada principalmente en múltiplos de 4 y 8. Preferir grids modulares o de columnas según el contenido, con columnas y tarjetas que reordenen o cambien de tamaño según el viewport. Mantener proporciones consistentes para imágenes y superficies cuando aporte claridad.
+- Componer cada vista con regiones reconocibles de navegación y contenido; dar prioridad a la jerarquía y a las tareas de la persona usuaria al ordenar sus secciones y acciones.
+- Definir colores mediante tokens semánticos (por ejemplo, primario, superficie, texto, contorno y estados), mantener una paleta limitada y consistente, y comprobar contraste suficiente entre texto, controles y superficies. No depender solo del color para comunicar estados.
+- Mantener los temas visuales coherentes entre color, tipografía y formas. Cuando la aplicación ofrezca tema claro u oscuro, asegurar contraste y legibilidad en ambos; respetar las preferencias del sistema cuando corresponda y conservar un tema de marca como alternativa.
 - Antes de cambiar estilos, revisar las reglas existentes y el orden de la cascada. Mantener una regla canónica por componente y estilos locales; evitar `!important` y el aumento arbitrario de especificidad. Si una regla genérica interfiere, aplicar un selector contextual mínimo y comprobar el resultado visual.
 - La navegación principal debe usar un `aside` lateral, con accesos a los tres simuladores.
 - Buscar una estética moderna inspirada en las interfaces de Google Account: sobria, clara, ordenada y centrada en contenido.
@@ -106,5 +111,5 @@ src/
 ## Calidad y verificación
 
 - Antes de implementar, volver a leer estas instrucciones y el requerimiento actual para confirmar alcance, tecnología y diseño.
-- Antes de dar una tarea por terminada, contrastar de nuevo el resultado con estas instrucciones, verificando especialmente: alcance exclusivo de Brigitte Rodríguez, los tres simuladores permitidos, `aside`, React, iconos Lucide, ausencia de emojis, datos mock realistas, interacción, ausencia total de sombras y estilo Material Design 3 en morado pastel.
+- Antes de dar una tarea por terminada, contrastar de nuevo el resultado con estas instrucciones, verificando especialmente: alcance exclusivo de Brigitte Rodríguez, los tres simuladores permitidos, `aside`, React, iconos Material Symbols, ausencia de emojis, datos mock realistas, interacción, ausencia total de sombras y estilo Material Design 3 en morado pastel.
 - No afirmar que una funcionalidad está completa sin comprobarla en el entorno disponible.

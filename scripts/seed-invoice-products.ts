@@ -34,22 +34,9 @@ try {
       imageUrl: product.imageUrl,
       isActive: true,
       isPublic: true,
-    }).onConflictDoUpdate({
-      target: invoiceProducts.id,
-      set: {
-        description: product.description,
-        unitPrice: product.unitPrice,
-        stock: product.stock,
-        sourceName: product.sourceName,
-        sourceUrl: product.sourceUrl,
-        imageUrl: product.imageUrl,
-        isActive: true,
-        isPublic: true,
-        updatedAt: new Date(),
-      },
-    })
+    }).onConflictDoNothing({ target: invoiceProducts.id })
   }
-  console.log(`Seeded ${products.length} invoice catalog products.`)
+  console.log(`Ensured ${products.length} invoice catalog products without overwriting existing records.`)
 } finally {
   await sql.end({ timeout: 5 })
 }

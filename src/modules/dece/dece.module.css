@@ -185,3 +185,118 @@
   .appShell :global(.crumb) { min-width: 0; }
   .appShell :global(.top-actions) { min-width: 0; }
 }
+
+/* Navegación DECE alineada con el aside administrativo compartido. */
+.appShell :global(.sidebar) {
+  flex-basis: 286px;
+  width: 286px;
+  padding: 30px 18px;
+  border-right-color: #e3e6ec;
+}
+
+.appShell :global(.brand) { padding: 0 10px 26px; }
+.appShell :global(.brand-mark) { width: 44px; height: 44px; border-radius: 50%; background: #d2e3fc; color: #1967d2; }
+.appShell :global(.nav-caption) { padding: 0 11px 9px; color: #697386; }
+.appShell :global(.workspace-nav) { display: grid; gap: 8px; }
+.appShell :global(.nav-item) {
+  width: max-content;
+  max-width: 100%;
+  min-height: 64px;
+  margin: 0;
+  padding: 8px 18px 8px 10px;
+  border-radius: 34px;
+  color: #3c4043;
+  font-size: 14px;
+  font-weight: 650;
+}
+.appShell :global(.nav-item):hover { background: #f1f3f4; }
+.appShell :global(.nav-item) :global(.svg-inline--fa) { width: 44px; height: 44px; padding: 11px; border-radius: 50%; background: #d8f3df; color: #137333; }
+.appShell :global(.nav-item):nth-of-type(2) :global(.svg-inline--fa) { background: #fef7e0; color: #8d6e00; }
+.appShell :global(.nav-item):nth-of-type(3) :global(.svg-inline--fa) { background: #f3e8fd; color: #8430ce; }
+.appShell :global(.nav-item):nth-of-type(4) :global(.svg-inline--fa) { background: #fce8e6; color: #c5221f; }
+.appShell :global(.nav-item):nth-of-type(5) :global(.svg-inline--fa) { background: #e8f0fe; color: #1967d2; }
+.appShell :global(.nav-item).active { background: #e8f0fe; color: #1967d2; }
+.appShell :global(.nav-item).active :global(.svg-inline--fa) { background: #d2e3fc; color: #1967d2; }
+.appShell :global(.sidebar button:focus-visible) { outline: 2px solid #1a73e8; outline-offset: 2px; }
+.appShell :global(.sidebar-note) { margin: auto 4px 20px; border: 1px solid #e2e7ef; background: #f7f9fc; }
+
+@media (max-width: 900px) {
+  .appShell :global(.sidebar) { width: 100%; flex-basis: auto; padding: 12px 16px; }
+  .appShell :global(.nav-item) { width: 100%; min-height: 48px; border-radius: 24px; }
+  .appShell :global(.nav-item) :global(.svg-inline--fa) { width: 36px; height: 36px; padding: 9px; }
+}
+
+/* El panel usa el ancho real del menú y reserva todo el espacio restante al contenido. */
+.appShell :global(.sidebar) {
+  position: sticky;
+  inset: 0 auto auto 0;
+  width: fit-content;
+  min-width: 250px;
+  max-width: min(360px, 40vw);
+  height: 100vh;
+  flex: 0 0 fit-content;
+}
+.appShell :global(.main-area) {
+  width: auto;
+  min-width: 0;
+  margin-left: 0;
+  flex: 1 1 auto;
+}
+@media (min-width: 721px) and (max-width: 900px) {
+  .appShell :global(.sidebar) { width: fit-content; min-width: 220px; max-width: 38vw; flex-basis: fit-content; }
+  .appShell :global(.main-area) { width: auto; margin-left: 0; }
+}
+.appShell :global(.sidebar-logout) {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 44px;
+  margin-top: auto;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  color: var(--color-sidebar-text);
+  background: var(--color-surface);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+.appShell :global(.sidebar-logout):hover { color: var(--color-primary); background: var(--color-primary-soft); }
+.appShell :global(.sidebar-logout):focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+.appShell :global(.sidebar-logout) svg { width: 16px; flex: 0 0 16px; }
+@media (max-width: 720px) {
+  .appShell :global(.sidebar-logout) { width: auto; min-height: 42px; margin: 8px 0 0; }
+}
+.appShell :global(.sidebar-footer) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: auto;
+  padding: 12px 4px 0;
+  border-top: 1px solid var(--color-border);
+}
+.appShell :global(.sidebar-footer) :global(.profile) {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+}
+.appShell :global(.sidebar-logout) {
+  flex: 0 0 auto;
+  width: auto;
+  min-height: 40px;
+  margin: 0;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 20px;
+  color: var(--color-primary);
+  background: var(--color-primary-soft);
+  font-size: 13px;
+  font-weight: 600;
+}
+.appShell :global(.sidebar-logout):hover { color: var(--color-primary-hover); background: color-mix(in srgb, var(--color-primary) 18%, white); }
+@media (max-width: 720px) {
+  .appShell :global(.sidebar-footer) { margin-top: 8px; padding-top: 8px; }
+  .appShell :global(.sidebar-logout) { margin: 0 0 0 auto; }
+}

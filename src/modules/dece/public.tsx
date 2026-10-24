@@ -153,10 +153,9 @@ function StaffCard({ member }: { member: StaffMember }) {
   );
 }
 
-function GallerySlide({ image, peek }: { image: GalleryImage; peek?: GalleryImage }) {
+function GallerySlide({ image }: { image: GalleryImage }) {
   const [failed, setFailed] = useState(!image.src);
-  return <div className={`${styles.gallerySlideLayout} ${peek ? styles.galleryHasPeek : ""}`}>
-    <figure className={styles.galleryFigure}>
+  return <figure className={styles.galleryFigure}>
       {image.src && !failed
         ? <img className={styles.galleryImage} src={image.src} alt={image.alt} loading="lazy" onError={() => setFailed(true)} />
         : <div className={styles.galleryFallback} role={image.alt || image.caption ? "img" : undefined} aria-label={image.alt || image.caption}>
@@ -165,8 +164,6 @@ function GallerySlide({ image, peek }: { image: GalleryImage; peek?: GalleryImag
         </div>}
       {image.caption && <figcaption>{image.caption}</figcaption>}
     </figure>
-    {peek && <div className={styles.galleryPeek} aria-hidden="true">{peek.src && <img src={peek.src} alt="" loading="lazy" onError={(event) => { event.currentTarget.style.visibility = "hidden"; }} />}</div>}
-  </div>;
 }
 function SectionHeading({ id, children }: { id: string; children: string }) {
   return <h2 id={id}>{children}</h2>;
@@ -223,7 +220,7 @@ export function DecePublicSection({ institutionId, title, properties = {} }: Pro
               itemKey={(image, index) => `${image.src ?? "image"}-${index}`}
               variant="gallery"
               showIndicators
-              renderItem={(image, _index, peek) => <GallerySlide image={image} peek={peek} />}
+              renderItem={(image) => <GallerySlide image={image} />}
             />}
       </div></section>}
 

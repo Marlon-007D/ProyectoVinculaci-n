@@ -3,15 +3,36 @@
   --line: #d5dbe1;
   --text: #1f2933;
   --muted: #52606d;
-  --accent: #1d4e89;
-  --accent-hover: #173d6b;
-  --accent-soft: #eef4fa;
-  --accent-container: #dce9f5;
-  --accent-focus: #b8cde0;
-  --accent-ink: #173d6b;
+  --accent: #6043a5;
+  --accent-hover: #4c3289;
+  --accent-soft: #eee7fa;
+  --accent-container: #dfd2f3;
+  --accent-focus: #bfa9e7;
+  --accent-ink: #49317b;
   width: 100%;
+  min-height: 100vh;
   color: var(--text);
-  font-family: var(--site-font, system-ui, sans-serif);
+  font-family: Roboto, var(--site-font, Arial, sans-serif);
+  line-height: 1.5;
+  background: #f2eff8;
+}
+
+.portal-simulators button,
+.portal-simulators input,
+.portal-simulators select {
+  font-family: inherit;
+}
+
+.portal-material-icon {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  font-family: 'Material Symbols Rounded';
+  font-size: 22px;
+  font-weight: 400;
+  font-style: normal;
+  line-height: 1;
+  font-feature-settings: 'liga';
 }
 
 .site-main--simulator { min-height: 100vh; }
@@ -60,7 +81,7 @@
   width: 100%;
   max-width: none;
   margin: 0;
-  padding: .25rem 12px 0;
+  padding: .75rem 20px .5rem;
 }
 .portal-simulators-back,
 .portal-invoice-tabs button {
@@ -68,9 +89,9 @@
   align-items: center;
   justify-content: center;
   gap: .5rem;
-  min-height: 42px;
-  padding: .55rem .85rem;
-  border: 1px solid var(--site-line, #d5dbe1);
+  min-height: 44px;
+  padding: .5rem .9rem;
+  border: 0;
   border-radius: 999px;
   color: var(--accent-ink);
   background: var(--site-paper, #fff);
@@ -80,16 +101,22 @@
 .portal-simulators-back {
   justify-self: start;
   min-height: 44px;
-  padding: .55rem 1rem;
+  padding: .45rem 1rem .45rem .55rem;
+  border: 1px solid #e7e9ef;
   border-radius: 999px;
-  color: var(--site-muted, #52606d);
+  color: #41516a;
+  background: #fff;
 }
-.portal-simulators-back:hover { color: var(--accent); }
+.portal-simulators-back .portal-material-icon { width: 32px; height: 32px; border-radius: 50%; color: var(--accent); background: #eee7fa; font-size: 20px; }
+.portal-simulators-back:hover { color: var(--accent); border-color: #d8e2f0; background: #f9fbff; }
 .portal-simulators-back:hover,
 .portal-invoice-tabs button:hover { background: var(--accent-soft); }
-.portal-invoice-tabs { display: flex; gap: .5rem; }
-.portal-invoice-tabs button[aria-selected="true"] { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
-.portal-invoice-tabs button span { display: inline-grid; place-items: center; min-width: 1.35rem; height: 1.35rem; padding: 0 .25rem; border-radius: 999px; background: var(--accent-container); font-size: .75rem; }
+.portal-invoice-tabs { display: flex; gap: 4px; padding: 0; border: 0; border-radius: 999px; background: transparent; }
+.portal-invoice-tabs button { min-height: 44px; padding-inline: 1rem; border-radius: 999px; color: #656c78; transition: color .18s ease, background-color .18s ease, transform .18s ease; }
+.portal-invoice-tabs button[aria-selected="true"] { color: #183d68; background: #fff; }
+.portal-invoice-tabs button .portal-material-icon { width: 30px; height: 30px; border-radius: 50%; color: #667386; background: #e9eaf0; font-size: 19px; }
+.portal-invoice-tabs button[aria-selected="true"] .portal-material-icon { color: var(--accent); background: #e8def8; }
+.portal-invoice-tabs button span:not(.portal-material-icon) { display: inline-grid; place-items: center; min-width: 1.35rem; height: 1.35rem; padding: 0 .25rem; border-radius: 999px; color: #365574; background: #e5edf6; font-size: .75rem; }
 .portal-simulators .page-content { width: 100%; }
 .portal-simulators .invoice-stepper { width: 100%; margin: 0; }
 .portal-simulators .invoice-stepper ol { justify-content: center; width: 100%; min-width: 0; }

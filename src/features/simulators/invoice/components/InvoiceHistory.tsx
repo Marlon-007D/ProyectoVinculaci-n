@@ -1,4 +1,4 @@
-import { Check, ChevronLeft, ChevronRight, FolderOpen, Trash2 } from 'lucide-react'
+import { Check, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Button } from '../../../../shared/components/Button/Button'
 import { Modal } from '../../../../shared/components/Modal/Modal'
@@ -21,13 +21,18 @@ export function InvoiceHistory({ invoices, notice, isLoading, onLoad, onDelete }
   return <section className="invoice-history" aria-labelledby="invoice-history-title">
     <div className="invoice-history-heading"><div><h2 id="invoice-history-title">Facturas simuladas</h2></div>{isLoading ? <span className="invoice-history-count-skeleton" aria-hidden="true" /> : <span>{invoices.length}</span>}</div>
     {isLoading ? <ul className="invoice-history-skeleton-list" aria-label="Cargando facturas" aria-busy="true">{[0, 1].map(item => <li key={item} className="invoice-history-skeleton-row"><span className="invoice-history-skeleton-icon" /><span className="invoice-history-skeleton-copy"><span /><span /></span><span className="invoice-history-skeleton-total" /></li>)}</ul> : invoices.length === 0 ? <p className="invoice-history-empty">Al guardar una factura, aparecerá aquí para que puedas volver a cargarla.</p> :
-      <ul>{visibleInvoices.map(invoice => <li key={invoice.id}>
-        <div className="invoice-history-icon"><FolderOpen size={19} /></div>
-        <div className="invoice-history-info"><strong>{invoice.customer}</strong><small>{formatDate(invoice.createdAt)} · {invoice.lines.length} {invoice.lines.length === 1 ? 'ítem' : 'ítems'}</small></div>
-        <strong className="invoice-history-total">{formatCurrency(invoice.totals.total)}</strong>
-        <button className="history-action" onClick={() => onLoad(invoice)}>Editar</button>
-        <button className="icon-button history-delete" onClick={() => setInvoiceToDelete(invoice)} aria-label={`Eliminar factura de ${invoice.customer}`}><Trash2 size={17} /></button>
-      </li>)}</ul>}
+      <div className="invoice-history-table-wrap">
+        <table className="invoice-history-table">
+          <thead><tr><th scope="col">Factura</th><th scope="col">Fecha</th><th scope="col">Detalle</th><th scope="col">Total</th><th scope="col"><span className="sr-only">Acciones</span></th></tr></thead>
+          <tbody>{visibleInvoices.map(invoice => <tr key={invoice.id}>
+            <td><div className="invoice-history-info"><strong>{invoice.customer}</strong><small>Factura simulada</small></div></td>
+            <td><span className="invoice-history-chip"><span className="material-symbols-rounded" aria-hidden="true">calendar_month</span>{formatDate(invoice.createdAt)}</span></td>
+            <td><span className="invoice-history-chip"><span className="material-symbols-rounded" aria-hidden="true">inventory_2</span>{invoice.lines.length} {invoice.lines.length === 1 ? 'ítem' : 'ítems'}</span></td>
+            <td><span className="invoice-history-total-chip">{formatCurrency(invoice.totals.total)}</span></td>
+            <td><div className="invoice-history-actions"><button className="history-action" onClick={() => onLoad(invoice)}><span className="material-symbols-rounded" aria-hidden="true">edit</span>Editar</button><button className="history-delete" onClick={() => setInvoiceToDelete(invoice)} aria-label={`Eliminar factura de ${invoice.customer}`}><span className="material-symbols-rounded" aria-hidden="true">delete</span></button></div></td>
+          </tr>)}</tbody>
+        </table>
+      </div>}
     {invoices.length > pageSize && <nav className="invoice-history-pagination" aria-label="Paginación de facturas">
       <button className="history-page-button" onClick={() => setPage(current => Math.max(1, current - 1))} disabled={page === 1} aria-label="Página anterior"><ChevronLeft size={18} /></button>
       <span>Página {page} de {pageCount}</span>

@@ -1,6 +1,7 @@
 import type { CSSProperties, ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useSite } from "../../hooks/useSite";
+import { useInstitution } from "../../context/InstitutionContext";
 import type { PageSection } from "../../types/page";
 import { asString } from "../../utils/snapshot";
 import { isSafeExternalUrl, keepInstitution } from "../../utils/url";
@@ -43,6 +44,83 @@ function Paragraphs({ text }: { text?: string }) {
   return <>{text.split(/\n+/).map((t, i) => <p key={i}>{t}</p>)}</>;
 }
 
+function normalizeText(value: unknown): string {
+  return (asString(value) ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("es");
+}
+
+function standardHomepageSections(sections: PageSection[], institutionName: string): PageSection[] {
+  const visible = sections.filter((section) => section.is_visible);
+  const configuredTypes = new Set(sections.map((section) => section.type));
+  const configuredHeadings = new Set(sections.map((section) => normalizeText(section.properties.title)));
+  const additions: PageSection[] = [];
+  let nextPosition = Math.max(-1, ...sections.map((section) => section.position)) + 1;
+
+  if (!visible.some((section) => section.type === "banner" || section.type === "hero")) {
+    additions.push({
+      id: "standard-home-hero",
+      type: "banner",
+      position: -1,
+      is_visible: true,
+      properties: {
+        title: `Bienvenidos a ${institutionName}`,
+        subtitle: "Una comunidad educativa comprometida con el aprendizaje y el desarrollo integral.",
+        button_label: "Conoce nuestra oferta",
+        button_url: "/?slug=oferta-educativa",
+        secondary_label: "Contáctanos",
+        secondary_url: "/?slug=contacto",
+      },
+    });
+  }
+
+  if (!configuredHeadings.has("por que elegirnos?")) {
+    additions.push({
+      id: "standard-home-values",
+      type: "text",
+      position: nextPosition++,
+      is_visible: true,
+      properties: {
+        title: "¿Por qué elegirnos?",
+        body: "Acompañamos el aprendizaje y el desarrollo de cada estudiante en comunidad.",
+        items: [
+          { title: "Aprendizaje integral", description: "Conocimientos, habilidades y valores para cada etapa educativa." },
+          { title: "Formación en valores", description: "Respeto, responsabilidad y convivencia dentro de la comunidad." },
+          { title: "Acompañamiento cercano", description: "Familias, docentes y estudiantes construyen juntos el camino educativo." },
+        ],
+      },
+    });
+  }
+
+  const standardSections: { type: string; title: string; properties: Record<string, unknown> }[] = [
+    { type: "news", title: "Noticias", properties: { title: "Últimas noticias", limit: 3 } },
+    { type: "events", title: "Eventos", properties: { title: "Próximos eventos", limit: 4 } },
+    { type: "staff", title: "Equipo", properties: { title: "Nuestro equipo" } },
+    { type: "honors", title: "Reconocimientos", properties: { title: "Cuadro de honor", limit: 6 } },
+    { type: "social_links", title: "Redes", properties: { title: "Síguenos en redes" } },
+  ];
+  for (const section of standardSections) {
+    if (configuredTypes.has(section.type)) continue;
+    additions.push({ id: `standard-home-${section.type}`, type: section.type, position: nextPosition++, is_visible: true, properties: section.properties });
+  }
+
+  if (visible.filter((section) => section.type === "banner" || section.type === "hero").length + additions.filter((section) => section.type === "banner").length < 2) {
+    additions.push({
+      id: "standard-home-contact",
+      type: "banner",
+      position: nextPosition,
+      is_visible: true,
+      properties: {
+        size: "compact",
+        title: "Conoce nuestra comunidad educativa",
+        subtitle: "Escríbenos para recibir información sobre nuestra propuesta educativa.",
+        button_label: "Contáctanos",
+        button_url: "/?slug=contacto",
+      },
+    });
+  }
+
+  return [...visible, ...additions].sort((a, b) => a.position - b.position);
+}
+
 function SocialSection({ title = "Síguenos" }: { title?: string }) {
   const { config } = useSite();
   if (config.social.length === 0) return null;
@@ -64,19 +142,22 @@ function SocialSection({ title = "Síguenos" }: { title?: string }) {
   );
 }
 
-function Section({ s }: { s: PageSection }) {
+function Section({ s, isHomepage, isPrimaryHomepageHero = false }: { s: PageSection; isHomepage: boolean; isPrimaryHomepageHero?: boolean }) {
   const p = s.properties;
   const title = s.type === "events" ? "Eventos" : asString(p.title);
   const limit = typeof p.limit === "number" && p.limit > 0 ? Math.min(p.limit, 24) : undefined;
 
   if (s.type === "banner" || s.type === "hero") {
+    // El hero identifica y presenta el portal desde Inicio. En páginas internas,
+    // la sección real ya aporta su propio título y contenido.
+    if (!isHomepage) return null;
     const b1 = asString(p.button_label), u1 = asString(p.button_url);
     const b2 = asString(p.secondary_label), u2 = asString(p.secondary_url);
     const eyebrow = asString(p.eyebrow);
     const image = asString(p.image_url);
     const heroStyle = image && SAFE_IMAGE.test(image) ? ({ "--site-hero-image": `url("${image}")` } as CSSProperties) : undefined;
     return (
-      <section className={`site-hero${p.size === "compact" ? " site-hero--compact" : ""}`} style={heroStyle}>
+      <section className={`site-hero${p.size === "compact" && !isPrimaryHomepageHero ? " site-hero--compact" : ""}`} style={heroStyle}>
         <div className="site-container">
           {eyebrow && <p className="site-hero__eyebrow">{eyebrow}</p>}
           {title && <h2>{title}</h2>}
@@ -157,8 +238,16 @@ function Section({ s }: { s: PageSection }) {
   );
 }
 
-export function PageSections({ sections }: { sections: PageSection[] }) {
-  const visible = sections.filter((s) => s.is_visible).sort((a, b) => a.position - b.position);
+export function PageSections({ sections, isHomepage = false }: { sections: PageSection[]; isHomepage?: boolean }) {
+  const location = useLocation();
+  const { institution } = useInstitution();
+  const query = new URLSearchParams(location.search);
+  const onHomepage = isHomepage || !query.has("slug");
+  const isElEsfuerzo = institution?.slug.toLocaleLowerCase("es") === "ue-el-esfuerzo" || normalizeText(institution?.name).includes("el esfuerzo");
+  const visible = onHomepage && isElEsfuerzo
+    ? standardHomepageSections(sections, institution?.name || "nuestra institución")
+    : sections.filter((s) => s.is_visible).sort((a, b) => a.position - b.position);
   if (visible.length === 0) return <p className="site-container site-section">Esta página aún no tiene contenido.</p>;
-  return <>{visible.map((s) => <Section key={s.id} s={s} />)}</>;
+  const primaryHeroId = onHomepage ? visible.find((section) => section.type === "banner" || section.type === "hero")?.id : undefined;
+  return <>{visible.map((s) => <Section key={s.id} s={s} isHomepage={onHomepage} isPrimaryHomepageHero={s.id === primaryHeroId} />)}</>;
 }
