@@ -1,3 +1,4 @@
+import { useToastMessage } from '../auth/Toast/Toast';
 import React, { useEffect, useRef, useState } from 'react';
 import { supabase } from '../../../core/supabaseClient';
 import { logAuditEvent } from '../../../core/auditLogger';
@@ -41,6 +42,9 @@ export const SuperAdminPanel: React.FC = () => {
   const [showLoadingSkeleton, setShowLoadingSkeleton] = useState(true);
   const loadStartedAt = useRef(Date.now());
   const [message, setMessage] = useState('');
+  useToastMessage(message, message.startsWith('No ') ? 'error' : 'success');
+  useToastMessage(loadError);
+  useToastMessage(moduleLoadError);
   const [institutionToDelete, setInstitutionToDelete] = useState<Institution | null>(null);
   const [deletingInstitution, setDeletingInstitution] = useState(false);
   const initialLoadStarted = useRef(false);
@@ -60,17 +64,20 @@ export const SuperAdminPanel: React.FC = () => {
   }, [loading]);
 
   const fetchInstitutions = async () => {
-    const [institutionResult, settingsResult] = await Promise.all([
-      supabase.from('institutions').select('institution_id, name, slug, is_active').order('name'),
-      supabase.rpc('get_accessible_module_settings'),
-    ]);
-    if (institutionResult.error) setLoadError('No se pudieron cargar las instituciones. Revisa la conexión y los permisos de tu cuenta.');
-    else {
+    try {
+      const [institutionResult, settingsResult] = await Promise.all([
+        supabase.from('institutions').select('institution_id, name, slug, is_active').order('name'),
+        supabase.rpc('get_accessible_module_settings'),
+      ]);
+      if (institutionResult.error) throw institutionResult.error;
       setInstitutions(institutionResult.data ?? []);
       setInstitutionModuleSettings(settingsResult.error ? [] : (settingsResult.data ?? []) as ModuleSetting[]);
       setLoadError('');
+    } catch {
+      setLoadError('No se pudieron cargar las instituciones. Revisa la conexión y los permisos de tu cuenta.');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const fetchModuleSettings = async (instId: string) => {
@@ -104,26 +111,30 @@ export const SuperAdminPanel: React.FC = () => {
     if (!newInstName || !newInstSlug) return;
     setMessage('');
 
-    const { data, error } = await supabase
-      .from('institutions')
-      .insert([{ name: newInstName, slug: newInstSlug, is_active: true }])
-      .select()
-      .single();
+    try {
+      const { data, error } = await supabase
+        .from('institutions')
+        .insert([{ name: newInstName, slug: newInstSlug, is_active: true }])
+        .select()
+        .single();
 
-    if (error) { setMessage('No se pudo crear la institución. Comprueba que el nombre y el identificador no estén registrados.'); return; }
-    if (data) {
-      await logAuditEvent({
-        action: 'CREATE_INSTITUTION',
-        entity: 'institutions',
-        entityId: data.institution_id,
-        details: { name: newInstName, slug: newInstSlug },
-      });
+      if (error) { setMessage('No se pudo crear la institución. Comprueba que el nombre y el identificador no estén registrados.'); return; }
+      if (data) {
+        await logAuditEvent({
+          action: 'CREATE_INSTITUTION',
+          entity: 'institutions',
+          entityId: data.institution_id,
+          details: { name: newInstName, slug: newInstSlug },
+        });
 
-      setNewInstName('');
-      setNewInstSlug('');
-      setMessage('Institución creada correctamente.');
-      void fetchInstitutions();
-      reloadInstitutions();
+        setNewInstName('');
+        setNewInstSlug('');
+        setMessage('Institución creada correctamente.');
+        await fetchInstitutions();
+        reloadInstitutions();
+      }
+    } catch {
+      setMessage('No se pudo completar la creación de la institución. Revisa tu conexión e intenta nuevamente.');
     }
   };
 
@@ -170,29 +181,33 @@ export const SuperAdminPanel: React.FC = () => {
     setDeletingInstitution(true);
     setMessage('');
     const target = institutionToDelete;
-    const { error } = await supabase.rpc('delete_institution', {
-      target_institution_id: target.institution_id,
-    });
-    if (error) {
-      setMessage(`No se pudo eliminar la institución. ${error.message}`);
+    try {
+      const { error } = await supabase.rpc('delete_institution', {
+        target_institution_id: target.institution_id,
+      });
+      if (error) {
+        setMessage(`No se pudo eliminar la institución. ${error.message}`);
+        return;
+      }
+      await logAuditEvent({
+        action: 'DELETE_INSTITUTION',
+        entity: 'institutions',
+        entityId: target.institution_id,
+        details: { name: target.name, slug: target.slug },
+      });
+      if (selectedInstId === target.institution_id) {
+        setSelectedInstId(null);
+        setModuleSettings([]);
+      }
+      setInstitutionToDelete(null);
+      setMessage(`Se eliminó ${target.name} y sus datos asociados.`);
+      await fetchInstitutions();
+      reloadInstitutions();
+    } catch {
+      setMessage('No se pudo completar la eliminación de la institución. Revisa tu conexión e intenta nuevamente.');
+    } finally {
       setDeletingInstitution(false);
-      return;
     }
-    await logAuditEvent({
-      action: 'DELETE_INSTITUTION',
-      entity: 'institutions',
-      entityId: target.institution_id,
-      details: { name: target.name, slug: target.slug },
-    });
-    if (selectedInstId === target.institution_id) {
-      setSelectedInstId(null);
-      setModuleSettings([]);
-    }
-    setInstitutionToDelete(null);
-    setMessage(`Se eliminó ${target.name} y sus datos asociados.`);
-    setDeletingInstitution(false);
-    await fetchInstitutions();
-    reloadInstitutions();
   };
 
   return (
@@ -245,8 +260,6 @@ export const SuperAdminPanel: React.FC = () => {
             <p>Consulta el estado de cada institución y administra sus módulos.</p>
           </div>
         </div>
-        {message && <p className={styles.notice} role="status">{message}</p>}
-        {loadError && <p className={styles.errorNotice} role="alert">{loadError}</p>}
         {showLoadingSkeleton ? <div className={styles.tableWrap} role="status" aria-label="Cargando instituciones" aria-busy="true">
           <table className={styles.table} aria-hidden="true">
             <thead><tr><th>Institución</th><th>Identificador</th><th>Módulos activos</th><th>Estado</th><th>Acciones</th></tr></thead>
@@ -291,7 +304,6 @@ export const SuperAdminPanel: React.FC = () => {
               <p>Activa o desactiva las herramientas disponibles para esta unidad.</p>
             </div>
           </div>
-          {moduleLoadError && <p className={styles.errorNotice} role="alert">{moduleLoadError}</p>}
           <div className={styles.moduleGrid}>
             {loadingModules ? <p className={styles.loadingState}>Cargando configuración de módulos…</p> : !moduleLoadError && INSTITUTION_MODULES.map((module) => {
               const setting = moduleSettings.find((item) => item.module_name === module.name);
@@ -326,7 +338,6 @@ export const SuperAdminPanel: React.FC = () => {
             <p className={styles.modalEyebrow}>ELIMINACIÓN PERMANENTE</p>
             <h2 id="delete-institution-title">¿Eliminar esta unidad educativa?</h2>
             <p>Se eliminará <strong>{institutionToDelete.name}</strong>, incluidas sus membresías, módulos y demás datos asociados. Esta acción no se puede deshacer.</p>
-            {message && <p className={styles.modalError} role="alert">{message}</p>}
             <div className={styles.modalActions}>
               <button type="button" className={styles.btnCancel} disabled={deletingInstitution} onClick={() => setInstitutionToDelete(null)}>Cancelar</button>
               <button type="button" className={styles.btnDeleteConfirm} disabled={deletingInstitution} onClick={() => void handleDeleteInstitution()}>

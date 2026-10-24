@@ -1,8 +1,8 @@
 .card { width: min(100%, 460px); padding: clamp(24px, 3vw, 44px); border: 1px solid #e2e8f0; border-radius: 20px; background: white; }
 .back { display: flex; align-items: center; gap: 8px; margin-bottom: 24px; color: #475569; font-size: 13px; line-height: 1.6; text-decoration: none; }
 .back svg { flex: none; }
-.back:hover { color: #2563eb; text-decoration: underline; }
-.back:focus-visible { outline: 3px solid #93c5fd; outline-offset: 4px; border-radius: 4px; }
+.back:hover { color: #675078; text-decoration: underline; }
+.back:focus-visible { outline: 3px solid #cdb9dd; outline-offset: 4px; border-radius: 4px; }
 .secure { display: inline-flex; align-items: center; gap: 6px; padding: 6px 11px; border: 1px solid #d1fae5; border-radius: 999px; background: #ecfdf5; color: #047857; font-size: 12px; font-weight: 500; }
 .card h1 { margin: 26px 0 12px; font-size: 30px; line-height: 1.2; font-weight: 750; letter-spacing: -.035em; }
 .help { margin: 0; color: #64748b; font-size: 14px; line-height: 1.7; }
@@ -10,24 +10,24 @@
 .field { display: grid; gap: 9px; }
 .field label { font-size: 13px; font-weight: 600; }
 .inputWrap { display: flex; align-items: center; gap: 10px; padding: 0 13px; border: 1px solid #cbd5e1; border-radius: 9px; color: #64748b; transition: border-color .15s; }
-.inputWrap:focus-within { border-color: #2563eb; outline: 3px solid #3b82f633; }
+.inputWrap:focus-within { border-color: #675078; outline: 3px solid #3b82f633; }
 .inputWrap > svg { flex: none; }
 .inputWrap input { min-width: 0; width: 100%; height: 50px; padding: 0; border: 0; outline: none; background: transparent; color: #0f172a; font: inherit; font-size: 14px; }
 .inputWrap input::placeholder { color: #64748b; }
 .visibility { display: grid; place-items: center; flex: none; width: 32px; height: 36px; padding: 0; border: 0; border-radius: 6px; color: #64748b; background: transparent; cursor: pointer; }
 .visibility:hover { color: #334155; background: #f1f5f9; }
-.recover { justify-self: start; padding: 0; border: 0; background: transparent; color: #2563eb; text-align: left; font: inherit; font-size: 13px; line-height: 1.7; cursor: pointer; }
+.recover { justify-self: start; padding: 0; border: 0; background: transparent; color: #675078; text-align: left; font: inherit; font-size: 13px; line-height: 1.7; cursor: pointer; }
 .recover span { display: inline-block; }
 .recover:hover { text-decoration: underline; }
-.submit { display: flex; justify-content: space-between; align-items: center; gap: 16px; width: 100%; min-height: 50px; padding: 12px 18px; border: 1px solid transparent; border-radius: 9px; background: #0b3c5d; color: white; font: inherit; font-size: 14px; font-weight: 650; cursor: pointer; transition: background .15s; }
-.submit:hover { background: #072f4a; }
+.submit { display: flex; justify-content: space-between; align-items: center; gap: 16px; width: 100%; min-height: 50px; padding: 12px 18px; border: 1px solid transparent; border-radius: 9px; background: #675078; color: white; font: inherit; font-size: 14px; font-weight: 650; cursor: pointer; transition: background .15s; }
+.submit:hover { background: #534060; }
 .submit:disabled, .recover:disabled { opacity: .65; cursor: wait; }
-.visibility:focus-visible, .recover:focus-visible, .submit:focus-visible { outline: 3px solid #93c5fd; outline-offset: 4px; }
+.visibility:focus-visible, .recover:focus-visible, .submit:focus-visible { outline: 3px solid #cdb9dd; outline-offset: 4px; }
 .error, .notice { margin: 0; font-size: 13px; line-height: 1.6; }
 .error { color: #b42318; }
 .notice { color: #475569; }
 .register { margin: 24px 0 0; color: #64748b; text-align: center; font-size: 13px; line-height: 1.7; }
-.register a { color: #2563eb; font-weight: 600; text-decoration: none; }
+.register a { color: #675078; font-weight: 600; text-decoration: none; }
 .register a:hover { text-decoration: underline; }
 .register a:focus-visible { outline: 3px solid #bfdbfe; outline-offset: 3px; }
 @media (max-width: 380px) { .card { padding: 24px 20px; } .card h1 { font-size: 27px; } }

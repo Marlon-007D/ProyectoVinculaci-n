@@ -1,3 +1,7 @@
+import { adminDestination, currentAdminScope } from '../auth/institutionNavigation';
+import { isGlobalAdmin } from '../auth/accessPolicy';
+import { writeSessionValue } from '../auth/sessionStorage';
+import { useToastMessage } from '../auth/Toast/Toast';
 import { registrationError } from '../../../core/auth/registrationFlow';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -45,14 +49,14 @@ export const UserManagement: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { institutions: tenantInstitutions, loadingTenant, activeInstitution } = useTenant();
-  const params = new URLSearchParams(location.search);
-  const requestedInstitution = params.get('institution');
-  const requestedSlug = params.get('slug');
+  const context = currentAdminScope(location.search);
+  const requestedInstitution = context.institution;
+  const requestedSlug = context.slug;
   const scopedInstitution = requestedInstitution || requestedSlug
     ? tenantInstitutions.find(item => (!requestedInstitution || item.institution_id === requestedInstitution || item.slug === requestedInstitution)
       && (!requestedSlug || item.slug === requestedSlug)) : activeInstitution;
   const currentInstitutionId = scopedInstitution?.institution_id ?? null;
-  const isPlatformAdmin = currentRole === 'super_admin';
+  const isPlatformAdmin = isGlobalAdmin(currentRole);
   const isInstitutionAdmin = scopedInstitution?.role === 'institution_admin';
   const [email, setEmail] = useState('');
   const [firstName, setFirstName] = useState('');
@@ -68,7 +72,9 @@ export const UserManagement: React.FC = () => {
   const loadSequence = useRef(0);
   const [msg, setMsg] = useState('');
   const [feedbackType, setFeedbackType] = useState<'success' | 'error'>('success');
+  useToastMessage(msg, feedbackType);
   const [loadError, setLoadError] = useState('');
+  useToastMessage(loadError);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [removingKey, setRemovingKey] = useState('');
@@ -84,40 +90,46 @@ export const UserManagement: React.FC = () => {
     const sequence = ++loadSequence.current;
     setLoading(true);
     setLoadError('');
-    const targetInstitutionId = isPlatformAdmin ? null : currentInstitutionId;
-    if (!isPlatformAdmin && !targetInstitutionId) {
+    try {
+      const targetInstitutionId = isPlatformAdmin ? null : currentInstitutionId;
+      if (!isPlatformAdmin && !targetInstitutionId) {
+        setMembers([]);
+        setRoles([]);
+        setLoadError('Esta cuenta no tiene una institución asignada para administrar.');
+        return;
+      }
+
+      const [roleResult, membershipResult, pendingResult] = await Promise.all([
+        supabase.from('roles').select('role_id, name').order('name'),
+        supabase.rpc('list_managed_memberships', {
+          target_institution_id: targetInstitutionId,
+        }),
+        currentInstitutionId ? supabase.rpc('admin_pending_institution_access', { target_institution_id: currentInstitutionId }) : Promise.resolve({ data: [], error: null }),
+      ]);
+      if (sequence !== loadSequence.current) return;
+      const failure = roleResult.error ?? membershipResult.error;
+      if (failure) {
+        setMembers([]);
+        setRoles([]);
+        setLoadError('No se pudieron cargar los usuarios y roles. Inténtalo de nuevo.');
+        return;
+      }
+
+      setRoles((roleResult.data ?? []).filter((item) => canAssignRole(isPlatformAdmin ? 'super_admin' : 'institution_admin', item.name)));
+      const existing = ((membershipResult.data ?? []) as UserMember[]).filter(member => isPlatformAdmin ? member.role_name === 'institution_admin' : member.institution_id === currentInstitutionId && member.role_name !== 'super_admin');
+      const requests = (pendingResult.data ?? []) as { request_id: string; profile_id: string; institution_id: string; email: string; first_name: string; last_name: string }[];
+      const pending: UserMember[] = requests.map(request => ({ ...request, access_request_id: request.request_id, role_name: 'pending', is_active: false,
+        institution_name: tenantInstitutions.find(item => item.institution_id === request.institution_id)?.name ?? '', mfa_enabled: false, mfa_required: false }));
+      setMembers([...existing.filter(member => !pending.some(request => request.profile_id === member.profile_id && request.institution_id === member.institution_id)), ...pending]);
+      if (pendingResult.error) setLoadError('No se pudieron consultar las nuevas solicitudes. Verifica la migración 0009 y los permisos de la institución.');
+    } catch {
+      if (sequence !== loadSequence.current) return;
       setMembers([]);
       setRoles([]);
-      setLoadError('Esta cuenta no tiene una institución asignada para administrar.');
-      setLoading(false);
-      return;
+      setLoadError('No se pudieron cargar las membresías. Revisa tu conexión e intenta nuevamente.');
+    } finally {
+      if (sequence === loadSequence.current) setLoading(false);
     }
-
-    const [roleResult, membershipResult, pendingResult] = await Promise.all([
-      supabase.from('roles').select('role_id, name').order('name'),
-      supabase.rpc('list_managed_memberships', {
-        target_institution_id: targetInstitutionId,
-      }),
-      currentInstitutionId ? supabase.rpc('admin_pending_institution_access', { target_institution_id: currentInstitutionId }) : Promise.resolve({ data: [], error: null }),
-    ]);
-    if (sequence !== loadSequence.current) return;
-    const failure = roleResult.error ?? membershipResult.error;
-    if (failure) {
-      setMembers([]);
-      setRoles([]);
-      setLoadError('No se pudieron cargar los usuarios y roles. Inténtalo de nuevo.');
-      setLoading(false);
-      return;
-    }
-
-    setRoles((roleResult.data ?? []).filter((item) => canAssignRole(isPlatformAdmin ? 'super_admin' : 'institution_admin', item.name)));
-    const existing = ((membershipResult.data ?? []) as UserMember[]).filter(member => isPlatformAdmin ? member.role_name === 'institution_admin' : member.institution_id === currentInstitutionId && member.role_name !== 'super_admin');
-    const requests = (pendingResult.data ?? []) as { request_id: string; profile_id: string; institution_id: string; email: string; first_name: string; last_name: string }[];
-    const pending: UserMember[] = requests.map(request => ({ ...request, access_request_id: request.request_id, role_name: 'pending', is_active: false,
-      institution_name: tenantInstitutions.find(item => item.institution_id === request.institution_id)?.name ?? '', mfa_enabled: false, mfa_required: false }));
-    setMembers([...existing.filter(member => !pending.some(request => request.profile_id === member.profile_id && request.institution_id === member.institution_id)), ...pending]);
-    if (pendingResult.error) setLoadError('No se pudieron consultar las nuevas solicitudes. Verifica la migración 0009 y los permisos de la institución.');
-    setLoading(false);
   }, [currentInstitutionId, isPlatformAdmin, loadingTenant, tenantInstitutions]);
 
   useEffect(() => {
@@ -126,7 +138,7 @@ export const UserManagement: React.FC = () => {
       if (!isPlatformAdmin) return currentInstitutionId ?? '';
       return currentInstitutionId ?? (availableInstitutions.some((item) => item.institution_id === current) ? current : '');
     });
-    void loadData().catch(() => { setMembers([]); setLoadError('No se pudieron cargar las membresías. Intenta nuevamente.'); setLoading(false); });
+    void loadData();
   }, [availableInstitutions, currentInstitutionId, isPlatformAdmin, loadData, loadingTenant]);
 
   useEffect(() => { setRoleFilter(''); setPendingRemoval(null); }, [currentInstitutionId]);
@@ -162,10 +174,17 @@ export const UserManagement: React.FC = () => {
   async function retryNotification(member: UserMember) {
     if (approvingKey) return;
     setApprovingKey(member.profile_id);
-    const { notified, message } = await notifyMember(member.profile_id, member.institution_id);
-    setFeedbackType(notified ? 'success' : 'error');
-    setMsg(notified ? 'Notificación de aprobación enviada correctamente.' : message || 'La membresía está aprobada. El correo sigue pendiente de envío.');
-    setApprovingKey('');
+    setMsg('');
+    try {
+      const { notified, message } = await notifyMember(member.profile_id, member.institution_id);
+      setFeedbackType(notified ? 'success' : 'error');
+      setMsg(notified ? 'Notificación de aprobación enviada correctamente.' : message || 'La membresía está aprobada. El correo sigue pendiente de envío.');
+    } catch {
+      setFeedbackType('error');
+      setMsg('No se pudo reenviar la notificación. Intenta nuevamente.');
+    } finally {
+      setApprovingKey('');
+    }
   }
   async function approveMember(member: UserMember, nextRoleId: string) {
     if ((!isInstitutionAdmin && !isPlatformAdmin) || approvingKey || member.profile_id === user?.id || member.institution_id !== currentInstitutionId || !roles.some(role => role.role_id === nextRoleId)) return;
@@ -357,7 +376,6 @@ export const UserManagement: React.FC = () => {
           </button>
         </form>
         {saving && <p className={styles.progressNotice} role="status" aria-live="polite">Verificando la cuenta y preparando la asignación o invitación segura…</p>}
-        {msg && <p role={feedbackType === 'error' ? 'alert' : 'status'} className={feedbackType === 'error' ? styles.errorFeedback : styles.successFeedback}>{msg}</p>}
       </section>
 
       <section className={styles.membersCard} aria-labelledby="members-title">
@@ -383,10 +401,13 @@ export const UserManagement: React.FC = () => {
             {isPlatformAdmin && <label className={styles.srOnly} htmlFor="membership-institution-filter">Filtrar por institución</label>}
             {isPlatformAdmin && <select id="membership-institution-filter" value={requestedInstitution || requestedSlug ? currentInstitutionId ?? '' : institutionId} onChange={(event) => {
               if (requestedInstitution || requestedSlug) {
-                const next = new URLSearchParams(location.search);
-                next.delete('slug');
-                if (event.target.value) next.set('institution', event.target.value); else next.delete('institution');
-                navigate({ pathname: location.pathname, search: next.size ? '?' + next.toString() : '' });
+                const selected = availableInstitutions.find(item => item.institution_id === event.target.value);
+                if (selected) {
+                  navigate(adminDestination(location.pathname, location.search, { institution: selected.institution_id, slug: selected.slug }));
+                } else {
+                  writeSessionValue('panel-institution-context', null);
+                  navigate(adminDestination(location.pathname, location.search, {}));
+                }
               }
               setInstitutionId(event.target.value); setRoleFilter(''); setPendingRemoval(null);
             }} className={styles.filterSelect}>
@@ -402,7 +423,6 @@ export const UserManagement: React.FC = () => {
             <input id="membership-search" type="search" placeholder="Buscar correo, nombre o rol" value={search} onChange={(event) => setSearch(event.target.value)} className={styles.searchInput} />
           </div>
         </div>
-        {loadError && <p role="alert" className={styles.errorFeedback}>{loadError}</p>}
         {loading ? <div className={styles.loadingState}>Cargando membresías…</div> : (
           <div className={styles.tableWrap}>
             <table className={styles.table}>
@@ -436,7 +456,6 @@ export const UserManagement: React.FC = () => {
           <span className={styles.modalEyebrow}>CONFIRMAR CAMBIO DE ACCESO</span>
           <h3 id="remove-role-title">¿Quitar este rol?</h3>
           <p id="remove-role-description">Se quitará el rol <strong>{formatRole(pendingRemoval.role_name)}</strong> de <strong>{pendingRemoval.email}</strong> en {pendingRemoval.institution_name}. La cuenta de autenticación no se eliminará.</p>
-          {msg && feedbackType === 'error' && <p role="alert" className={styles.modalError}>{msg}</p>}
           <div className={styles.modalActions}>
             <button type="button" disabled={Boolean(removingKey)} onClick={() => { setPendingRemoval(null); setMsg(''); }} className={styles.btnCancel}>Cancelar</button>
             <button type="button" disabled={Boolean(removingKey)} onClick={() => void confirmRemoveRole()} className={styles.btnConfirmRemove}>{removingKey ? 'Quitando…' : 'Sí, quitar rol'}</button>

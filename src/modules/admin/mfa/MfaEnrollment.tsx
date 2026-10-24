@@ -1,3 +1,4 @@
+import { useToastMessage, useToast } from '../auth/Toast/Toast';
 import React, { useState } from 'react';
 import { Check, Copy, Eye, EyeOff, KeyRound, LockKeyhole, ShieldCheck, Smartphone } from 'lucide-react';
 import { supabase } from '../../../core/supabaseClient';
@@ -13,6 +14,8 @@ export const MfaEnrollment: React.FC<Props> = ({ onEnrolled }) => {
   const [verifiedButNotSaved, setVerifiedButNotSaved] = useState(false);
   const [code, setCode] = useState('');
   const [message, setMessage] = useState('');
+  const notify = useToast();
+  useToastMessage(message);
   const [busy, setBusy] = useState(false);
   const [showSecret, setShowSecret] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -64,7 +67,7 @@ export const MfaEnrollment: React.FC<Props> = ({ onEnrolled }) => {
       setMessage('El código se verificó. No se pudo guardar el estado de seguridad; revisa que la migración MFA esté aplicada y vuelve a intentar guardar.');
       return false;
     }
-    setMessage('Autenticación en dos pasos activada correctamente.');
+    notify('Autenticación en dos pasos activada correctamente.', 'success');
     onEnrolled();
     return true;
   };
@@ -74,8 +77,13 @@ export const MfaEnrollment: React.FC<Props> = ({ onEnrolled }) => {
     if (verifiedButNotSaved) {
       setBusy(true);
       setMessage('');
-      try { await persistEnrollment(); }
-      finally { setBusy(false); }
+      try {
+        await persistEnrollment();
+      } catch {
+        setMessage('No se pudo guardar la configuración de seguridad. Inténtalo de nuevo.');
+      } finally {
+        setBusy(false);
+      }
       return;
     }
     if (!factorId || !/^\d{6}$/.test(code)) return;
@@ -162,7 +170,6 @@ export const MfaEnrollment: React.FC<Props> = ({ onEnrolled }) => {
           </form>
         )}
 
-        {message && <p role="status" aria-live="polite" className={styles.status}>{message}</p>}
         <p className={styles.privacy}><LockKeyhole size={14} /> Tu clave de configuración se muestra solo en esta sesión y no se guarda en el navegador.</p>
       </section>
     </main>

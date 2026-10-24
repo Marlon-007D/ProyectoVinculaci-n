@@ -71,11 +71,11 @@ async function seed() {
   const { data: saved, error: savedError } = await client.from('admin_membership_requests')
     .select('request_id, status, institution_id').eq('institution_id', fixture.institutionId).eq('profile_id', profileId).single();
   if (savedError || saved.status !== 'pending') throw new Error('La verificación no encontró la solicitud en estado pendiente.');
-  console.log(JSON.stringify({ ...saved, email: fixture.email }, null, 2));
-  console.log('Abre http://localhost:5173/panel/admin?institution=' + fixture.institutionId + '&slug=' + fixture.slug + ' y selecciona Usuarios Registrados.');
+  process.stdout.write(JSON.stringify({ ...saved, email: fixture.email }, null, 2) + '\n');
+  process.stdout.write('Abre http://localhost:5173/panel/admin?institution=' + fixture.institutionId + '&slug=' + fixture.slug + ' y selecciona Usuarios Registrados.\n');
 }
 
-void seed().catch(error => {
-  console.error(error instanceof Error ? error.message : 'No se pudo completar el seed.');
+void seed().catch((error: unknown) => {
+  process.stderr.write((error instanceof Error ? error.message : 'No se pudo completar el seed.') + '\n');
   process.exitCode = 1;
 });
