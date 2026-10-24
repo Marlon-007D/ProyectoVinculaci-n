@@ -12,6 +12,9 @@ export type StudentFormPageProps = {
   setSection: (section: number) => void
   onBack: () => void
   onNavigate: (screen: import('./screen').DeceScreen) => void
+  allowQuestionManagement?: boolean
+  detailReview?: boolean
+  onDownloadPdf?: () => Promise<void>
 }
 
 export type FamilyMemberForm = {
