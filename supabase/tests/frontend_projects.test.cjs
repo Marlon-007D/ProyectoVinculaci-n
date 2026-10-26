@@ -83,8 +83,8 @@ test('transparencia renderiza solo el resumen público y no presenta totales dur
  const visuals=load('src/modules/projects/ProjectVisuals.tsx',{'./projectValidation':money,'./projectPresentation':presentation,'react/jsx-runtime':jsx});
  function render(pending){
   const rows=[{project_id:'p-a',title:'Huerto público',description:'Objetivo aprobado',is_active:true,total_budget:1000,spent:250,balance:750,participants:'PERSONA PRIVADA',receipt:'COMPROBANTE PRIVADO'}];
-  const values=[0,0,pending?null:{key:'escuela:0',rows,error:'',checkedAt:'20 oct 2026'},'','all','name','cards',''];let i=0;
-  const {PublicProjects}=load('src/modules/projects/PublicProjects.tsx',{'react':{...react,useEffect:()=>{},useState:()=>[values[i++],()=>{}]},'../../core/supabase/publicClient':{publicSupabase:{}},'../site/services/portalUpdates':{watchPortalUpdates:()=>()=>{}},'./projectValidation':money,'./projectPresentation':presentation,'./ProjectVisuals':visuals,'./projects.css':{},'react/jsx-runtime':jsx});
+  const values=[0,pending?null:{key:'escuela:0',rows,error:'',checkedAt:'20 oct 2026'},'','all','name','cards',''];let i=0;
+  const {PublicProjects}=load('src/modules/projects/PublicProjects.tsx',{'react':{...react,useEffect:()=>{},useState:()=>[values[i++],()=>{}]},'../../core/supabase/publicClient':{publicSupabase:{}},'./projectValidation':money,'./projectPresentation':presentation,'./ProjectVisuals':visuals,'./projects.css':{},'react/jsx-runtime':jsx});
   return require('react-dom/server').renderToStaticMarkup(react.createElement(PublicProjects,{institutionSlug:'escuela',institutionName:'Escuela de prueba'}));
  }
  const html=render(false);assert.ok(!html.includes('Selecciona una institución'));assert.ok(html.includes('Huerto público'));assert.ok(html.includes('Escuela de prueba'));assert.ok(!html.includes('PERSONA PRIVADA'));assert.ok(!html.includes('COMPROBANTE PRIVADO'));
@@ -161,7 +161,7 @@ const row={revision:1,project_id:'p-a',institution_id:'tenant-a',title:'Huerto',
 function service(responses,revision){const c=client(responses);return {...c,service:load('src/modules/projects/projectService.ts',{'../../core/supabaseClient':{supabase:c.fake},'./projectValidation':money}).createProjectService('tenant-a',()=> '2026-10-15',revision)};}
 const ok=data=>({data,error:null});
 const period={academic_period_id:'period-a',name:'Costa 2026-2027',start_date:'2026-05-04',end_date:'2027-03-11'};
-function portal(responses){const c=client(responses);const notifications=[];const originalRpc=c.fake.rpc;c.fake.rpc=(name,args)=>name==='portal_editor_content_version'?Promise.resolve(ok(2)):name==='portal_editor_retention_version'?Promise.resolve(ok(1)):originalRpc(name,args);const module=load('src/modules/portal-editor/portalService.ts',{'../../core/supabaseClient':{supabase:c.fake},'../projects/integration/accessService':{getUserInstitutions:async()=>[{institution_id:'tenant-a',role:'institution_admin',enabled_modules:['portal']}]},'./contract':contract,'../site/utils/snapshot':load('src/modules/site/utils/snapshot.ts'),'../site/services/portalUpdates':{notifyPortalPublished:id=>notifications.push(id)}});return {...c,module,notifications};}
+function portal(responses){const c=client(responses);const originalRpc=c.fake.rpc;c.fake.rpc=(name,args)=>name==='portal_editor_content_version'?Promise.resolve(ok(2)):name==='portal_editor_retention_version'?Promise.resolve(ok(1)):originalRpc(name,args);const module=load('src/modules/portal-editor/portalService.ts',{'../../core/supabaseClient':{supabase:c.fake},'../projects/integration/accessService':{getUserInstitutions:async()=>[{institution_id:'tenant-a',role:'institution_admin',enabled_modules:['portal']}]},'./contract':contract,'../site/utils/snapshot':load('src/modules/site/utils/snapshot.ts')});return {...c,module};}
 
 test('crear proyecto envía institución, fechas e importe a la operación atómica',async()=>{
  const {service:s,calls}=service([ok([period]),ok(row)]);
@@ -201,13 +201,11 @@ test('publicación y estado se confirman mediante el servidor',async()=>{
 test('guardar borrador no escribe en versiones o tablas públicas desde el navegador',async()=>{
  const snapshot=snapshotFixture('Institución');const p=portal([ok({page_id:'page-a',revision:3,status:'published',snapshot})]);
  const saved=await p.module.savePortal('tenant-a','page-a',2,snapshot,false);
- assert.deepEqual(p.notifications,[]);
  assert.equal(saved.revision,3);assert.equal(p.calls.length,1);assert.equal(p.calls[0].name,'portal_editor_save');assert.equal(p.calls[0].publish,false);assert.equal(p.calls[0].expected_revision,2);
 });
 test('publicación atómica conserva el contrato consumido por el portal',async()=>{
  const snapshot=snapshotFixture('Institución');const p=portal([ok({page_id:'page-a',revision:1,status:'published',snapshot})]);
  await p.module.savePortal('tenant-a',null,0,snapshot,true);
- assert.deepEqual(p.notifications,['tenant-a']);
  assert.equal(p.calls.length,1);assert.equal(p.calls[0].publish,true);assert.equal(p.calls[0].snapshot.schema_version,1);assert.equal(p.calls[0].target_institution,'tenant-a');
 });
 
@@ -223,7 +221,7 @@ test('publishing an older page draft cannot replace the shared institutional hea
 });
 test('conflicto de revisión y error de publicación se propagan sin éxito simulado',async()=>{
  for(const failure of [{code:'40001',message:'Versión más reciente'},{code:'42501',message:'Sin permiso'}]){
-  const p=portal([{data:null,error:failure}]);await assert.rejects(()=>p.module.savePortal('tenant-a','page-a',1,snapshotFixture('Colegio'),true),e=>e===failure);assert.equal(p.calls.length,1);assert.deepEqual(p.notifications,[]);
+  const p=portal([{data:null,error:failure}]);await assert.rejects(()=>p.module.savePortal('tenant-a','page-a',1,snapshotFixture('Colegio'),true),e=>e===failure);assert.equal(p.calls.length,1);
  }
 });
 test('menús demasiado largos y logotipo inseguro se rechazan antes de guardar',async()=>{

@@ -3,6 +3,58 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
 const ts=require('typescript');
+const {portalHookHarness}=require('./fixtures/portalHookHarness.cjs');
+
+test('public content stays stable on idle, focus, storage and publication; manual retry and navigation still load',async()=>{
+ const h=portalHookHarness();let tenant='school-a',revision=1,fail=false;const calls=[];
+ const services=Object.fromEntries(['getNews','getEvents','getHonors','getStaff'].map(name=>[name,async institution=>{
+  calls.push({name,institution});if(fail)throw new Error('offline');return [{institution,revision}];
+ }]));
+ const asyncHooks=h.load('src/modules/site/hooks/useAsync.ts');
+ const hooks=h.load('src/modules/site/hooks/useContent.ts',{
+  './useAsync':asyncHooks,'../context/InstitutionContext':{useInstitution:()=>({institutionId:tenant})},'../services/content':services,
+ });
+ h.render(()=>[hooks.useNews(),hooks.useEvents(),hooks.useHonors(),hooks.useStaff()]);
+ const initial=await h.flush();assert.equal(calls.length,4);
+ assert.ok(initial.every(item=>item.state.status==='success'&&item.state.data[0].revision===1));
+ revision=2;h.idle();const unchanged=await h.flush();
+ assert.equal(h.timers.size,0);assert.equal(h.channels.length,0);assert.equal(calls.length,4);
+ unchanged.forEach((item,i)=>assert.equal(item.state,initial[i].state));
+ unchanged[0].reload();assert.equal(h.render()[0].state.status,'loading');
+ let result=await h.flush();assert.equal(calls.length,5);assert.equal(result[0].state.data[0].revision,2);
+ fail=true;result[0].reload();h.render();result=await h.flush();assert.equal(result[0].state.status,'error');
+ const beforeIdle=calls.length;h.idle();await h.flush();assert.equal(calls.length,beforeIdle);
+ fail=false;result[0].reload();h.render();result=await h.flush();assert.equal(result[0].state.status,'success');
+ tenant='school-b';h.render();result=await h.flush();
+ assert.ok(result.every(item=>item.state.data[0].institution==='school-b'));h.stop();
+});
+
+test('transparency keeps filters and makes new requests only on explicit refresh or institution navigation',async()=>{
+ const h=portalHookHarness();let tenant='school-a';const calls=[];
+ const money=h.load('src/modules/projects/projectValidation.ts');
+ const presentation=h.load('src/modules/projects/projectPresentation.ts',{'./projectValidation':money});
+ const {PublicProjects}=h.load('src/modules/projects/PublicProjects.tsx',{
+  './projectStyles':{moduleClass:value=>value},
+  '../../core/supabase/publicClient':{publicSupabase:{rpc:async(name,args)=>{calls.push({name,args});return {data:[{project_id:'garden',title:'Huerto escolar',description:'Materiales para el huerto',is_active:true,total_budget:120,spent:30,balance:90}],error:null};}}},
+  './projectValidation':money,'./projectPresentation':presentation,
+  './ProjectVisuals':Object.fromEntries(['FinancialProgress','ProjectBadge','ProjectEmpty','ProjectLoading','ProjectMetrics'].map(name=>[name,()=>null])),
+ });
+ function find(node,predicate){
+  if(!node||typeof node!=='object')return undefined;
+  if(predicate(node))return node;
+  for(const child of [node.props?.children].flat(Infinity)){const match=find(child,predicate);if(match)return match;}
+ }
+ h.render(()=>PublicProjects({institutionSlug:tenant,institutionName:'Colegio'}));
+ let tree=await h.flush();assert.equal(calls.length,1);
+ const search=find(tree,node=>node.type==='input'&&node.props.onChange);
+ assert.ok(search);search.props.onChange({target:{value:'Huerto'}});tree=h.render();
+ h.idle();tree=await h.flush();assert.equal(calls.length,1);assert.equal(h.timers.size,0);assert.equal(h.channels.length,0);
+ assert.equal(find(tree,node=>node.type==='input'&&node.props.onChange).props.value,'Huerto');
+ const button=find(tree,node=>node.type==='button'&&[node.props.children].flat().includes('Actualizar datos'));
+ assert.ok(button);button.props.onClick();h.render();tree=await h.flush();assert.equal(calls.length,2);
+ assert.equal(find(tree,node=>node.type==='input'&&node.props.onChange).props.value,'Huerto');
+ tenant='school-b';h.render();await h.flush();assert.equal(calls.length,3);assert.equal(calls[2].args.institution_slug,'school-b');h.stop();
+});
 
 test('all four institutions share the same immutable header routes and hierarchy',()=>{
  const exports={};
@@ -88,42 +140,6 @@ test('duplicate errors distinguish a page address from an unexpected database co
  assert.match(selection.portalDuplicateMessage({code:'23505',message:'duplicate key value violates unique constraint "unique_institution_page_slug"'}),/Ya existe una página/);
  assert.match(selection.portalDuplicateMessage({code:'23505',message:'duplicate key value violates unique constraint "unique_page_version"'}),/unique_page_version/);
  assert.equal(selection.portalDuplicateMessage({code:'42501'}),undefined);
-});
-
-function environment(){
- const win=new EventTarget();const doc=new EventTarget();doc.visibilityState='visible';
- const timers=new Map();let next=0;const channels=[];const messages=[];
- win.setInterval=(fn,ms)=>{assert.equal(ms,30000);timers.set(++next,fn);return next;};
- win.clearInterval=id=>timers.delete(id);
- class Channel{constructor(name){this.name=name;channels.push(this);}postMessage(value){messages.push(value);}close(){this.closed=true;}}
- class Custom extends Event{constructor(name,options){super(name);this.detail=options.detail;}}
- const exports={};
- const code=ts.transpileModule(fs.readFileSync('src/modules/site/services/portalUpdates.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
- vm.runInNewContext(code,{exports,window:win,document:doc,BroadcastChannel:Channel,CustomEvent:Custom});
- return {api:exports,win,doc,timers,channels,messages};
-}
-
-test('portal refresh is scoped to the institution and ignores hidden tabs',()=>{
- const e=environment();let refreshes=0;
- const stop=e.api.watchPortalUpdates('school-a',()=>refreshes++);
- const channel=e.channels[0];
- channel.onmessage({data:{institutionId:'school-b'}});assert.equal(refreshes,0);
- channel.onmessage({data:{institutionId:'school-a'}});assert.equal(refreshes,1);
- e.doc.visibilityState='hidden';channel.onmessage({data:{institutionId:'school-a'}});
- for(const timer of e.timers.values())timer();assert.equal(refreshes,1);
- e.doc.visibilityState='visible';e.doc.dispatchEvent(new Event('visibilitychange'));assert.equal(refreshes,2);
- e.win.dispatchEvent(new Event('focus'));assert.equal(refreshes,3);
- for(const timer of e.timers.values())timer();assert.equal(refreshes,4);
- stop();assert.equal(e.timers.size,0);assert.equal(channel.closed,true);
- e.win.dispatchEvent(new Event('focus'));e.doc.dispatchEvent(new Event('visibilitychange'));assert.equal(refreshes,4);
-});
-
-test('publication invalidation sends no draft content and refreshes the current portal',()=>{
- const e=environment();let refreshes=0;
- const stop=e.api.watchPortalUpdates('school-a',()=>refreshes++);
- e.api.notifyPortalPublished('school-a');assert.equal(refreshes,1);
- assert.equal(JSON.stringify(e.messages),JSON.stringify([{institutionId:'school-a'}]));
- assert.equal(e.channels[1].closed,true);stop();
 });
 
 test('background refresh keeps published content and cancels stale institution responses',async()=>{

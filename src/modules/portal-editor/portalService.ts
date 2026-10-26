@@ -5,7 +5,6 @@ import { getUserInstitutions } from '../projects/integration/accessService';
 import { newSnapshot, normalizeSnapshot, safeUrl, sectionTypes, withCurrentIdentity, type PortalSnapshot } from './contract';
 import { parseSnapshot } from '../site/utils/snapshot';
 import type { Json } from '../site/types/common';
-import { notifyPortalPublished } from '../site/services/portalUpdates';
 
 export interface PortalDraft { page_id:string;revision:number;status:string;snapshot:PortalSnapshot;published_slug?:string }
 interface PageRow {page_id:string;institution_id:string;title:string;slug:string;status:string;is_homepage:boolean}
@@ -91,7 +90,6 @@ export async function savePortal(institutionId:string,pageId:string|null,expecte
     target_institution:institutionId,target_page:pageId,expected_revision:expectedRevision,snapshot,publish,
   });
   if(error)throw error;
-  if(publish)notifyPortalPublished(institutionId);
   return data as PortalDraft;
 }
 export async function loadPublishedPortal(institutionSlug:string,pageSlug:string|null){

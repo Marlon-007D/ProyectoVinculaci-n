@@ -1,5 +1,4 @@
-import { useCallback, useLayoutEffect } from "react";
-import { usePortalUpdates } from "../../hooks/usePortalUpdates";
+import { useLayoutEffect } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { useInstitution } from "../../context/InstitutionContext";
 import { useMenus } from "../../hooks/useMenus";
@@ -9,9 +8,7 @@ import { SiteFrame } from "./SiteFrame";
 
 export function SiteLayout() {
   const menu = useMenus();
-  const { config, refresh: refreshSite } = useSite();
-  const refresh = useCallback(() => { refreshSite(); menu.refresh(); }, [refreshSite, menu.refresh]);
-  usePortalUpdates(refresh);
+  const { config } = useSite();
   const { basePath } = useInstitution();
   const { pathname, search } = useLocation();
   const searchParams = new URLSearchParams(search);

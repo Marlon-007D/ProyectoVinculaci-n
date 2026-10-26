@@ -3,7 +3,6 @@ import { useEffect, useState } from 'react';
 import { Building2, Globe2, LayoutGrid, Link, Printer, RefreshCw, Search, ShieldCheck, Table2 } from 'lucide-react';
 import { publicSupabase as supabase } from '../../core/supabase/publicClient';
 import { sumMoney } from './projectValidation';
-import { watchPortalUpdates } from '../site/services/portalUpdates';
 import { filterProjectList, formatMoney } from './projectPresentation';
 import { FinancialProgress, ProjectBadge, ProjectEmpty, ProjectLoading, ProjectMetrics } from './ProjectVisuals';
 interface Summary {
@@ -18,8 +17,6 @@ interface Summary {
 export function PublicProjects({ institutionSlug, institutionName }: { institutionSlug?: string; institutionName?: string }) {
     const slug = institutionSlug ?? '';
     const [revision, setRevision] = useState(0);
-    const [refreshTick, setRefreshTick] = useState(0);
-    useEffect(() => watchPortalUpdates(slug, () => setRefreshTick(value => value + 1)), [slug]);
     const [state, setState] = useState<{
         key: string;
         rows: Summary[];
@@ -53,7 +50,7 @@ export function PublicProjects({ institutionSlug, institutionName }: { instituti
             }
         })();
         return () => { active = false; };
-    }, [slug, key, refreshTick]);
+    }, [slug, key]);
     const current = state?.key === key ? state : null;
     const rows = current?.rows ?? [];
     const error = current?.error;
