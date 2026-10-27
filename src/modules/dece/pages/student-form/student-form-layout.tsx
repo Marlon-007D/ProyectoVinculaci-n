@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import FormNavigation from '../../components/form-navigation'
 import { useDeceData } from '../../services/dece-data-context'
 import ConfigurableForm from './configurable-form'
+import PdfActionButton from '../../components/pdf-action-button'
 
 type Props = {
   kind: 'general' | 'authorization'
@@ -17,6 +18,9 @@ type Props = {
   setSection: (section: number) => void
   onBack: () => void
   onNavigate: (screen: DeceScreen) => void
+  allowQuestionManagement?: boolean
+  detailReview?: boolean
+  onDownloadPdf?: () => Promise<void>
 }
 
 export default function StudentFormLayout({
@@ -29,6 +33,9 @@ export default function StudentFormLayout({
   setSection,
   onBack,
   onNavigate,
+  allowQuestionManagement = true,
+  detailReview = false,
+  onDownloadPdf,
 }: Props) {
   const general = kind === 'general'
   const integration = useDeceData()
@@ -47,8 +54,9 @@ export default function StudentFormLayout({
     <div className="page-content container-fluid form-page">
       <button className="back-button btn" onClick={onBack}>
         <FontAwesomeIcon icon={faArrowLeft} aria-hidden="true" />
-        Volver al directorio
+        {detailReview ? 'Volver a revisión de fichas' : 'Volver al directorio'}
       </button>
+      {detailReview && <nav aria-label="Migas de pan" className="mb-3"><ol className="breadcrumb"><li className="breadcrumb-item"><button type="button" className="btn btn-link p-0" onClick={onBack}>Revisión de fichas</button></li><li className="breadcrumb-item active" aria-current="page">{heading}</li></ol></nav>}
       <div className="eyebrow">
         FICHAS ESTUDIANTILES / {general ? 'REGISTRO GENERAL' : 'AUTORIZACIÓN'}
       </div>
@@ -59,7 +67,7 @@ export default function StudentFormLayout({
             {student.name} <span>·</span> {student.grade}
           </p>
         </div>
-        <div className="form-switch">
+        {detailReview ? <div className="form-switch"><PdfActionButton label="Descargar PDF lleno" className="btn btn-primary" generate={onDownloadPdf ?? (async () => {})} /></div> : <div className="form-switch">
           <button
             className={`btn ${general ? 'selected' : ''}`}
             onClick={() => onNavigate('general')}
@@ -72,7 +80,7 @@ export default function StudentFormLayout({
           >
             Autorización
           </button>
-        </div>
+        </div>}
       </div>
       <div className="form-layout">
         <FormNavigation labels={visibleLabels} section={Math.min(section, visibleLabels.length - 1)} setSection={setSection} />
@@ -93,6 +101,7 @@ export default function StudentFormLayout({
               code={kind}
               section={section}
               onSectionsChange={syncLabels}
+              allowQuestionManagement={allowQuestionManagement}
             /> : contents.map((content, index) => (
               <div key={index} hidden={index !== section}>{content}</div>
             ))}

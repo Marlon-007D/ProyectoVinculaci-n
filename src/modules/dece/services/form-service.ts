@@ -19,6 +19,7 @@ export type FormQuestion = {
   source_field: string | null
   is_required: boolean
   is_system: boolean
+  is_active?: boolean
   position: number
   display_config: QuestionDisplayConfig
   form_question_options: Array<{
@@ -437,6 +438,49 @@ export function createDeceFormService(client: SupabaseClient) {
     } satisfies FormRuntime
   }
 
+  async function loadSubmission(submissionId: string, studentId: string) {
+    const { data: submission, error: submissionError } = await client.from('form_submissions')
+      .select('form_submission_id, student_id, form_version_id, status')
+      .eq('form_submission_id', submissionId).eq('student_id', studentId).maybeSingle()
+    if (submissionError) throw submissionError
+    if (!submission) throw new Error('No tienes permiso para consultar este envío.')
+    const { data: version, error: versionError } = await client.from('form_versions')
+      .select('form_version_id, version_number, status, form_definition_id, form_definitions!inner(form_definition_id, name)')
+      .eq('form_version_id', submission.form_version_id).maybeSingle()
+    if (versionError) throw versionError
+    if (!version) throw new Error('No se encontró la versión del envío.')
+    const { data: questionRows, error: questionsError } = await client.from('form_questions')
+      .select('form_question_id, form_version_id, code, label, help_text, data_type, source_field, is_required, is_system, position, display_config, is_active, form_question_options(question_option_id, value, label, position)')
+      .eq('form_version_id', submission.form_version_id).order('position')
+    if (questionsError) throw questionsError
+    const { data: answerRows, error: answersError } = await client.from('form_answers')
+      .select('form_question_id, value_text, value_number, value_boolean, value_date, selected_option_id, form_question_options!form_answer_selected_option_question_fk(value), form_answer_options(question_option_id)')
+      .eq('form_submission_id', submissionId)
+    if (answersError) throw answersError
+    const questions = (questionRows ?? []) as FormQuestion[]
+    const questionsById = new Map(questions.map(question => [question.form_question_id, question]))
+    const answers = Object.fromEntries((answerRows ?? []).map(row => {
+      const question = questionsById.get(row.form_question_id)
+      if (question?.data_type === 'multi_select') {
+        const selectedIds = ((row.form_answer_options ?? []) as Array<{ question_option_id: string }>).map(option => option.question_option_id)
+        return [row.form_question_id, question.form_question_options.filter(option => selectedIds.includes(option.question_option_id)).map(option => option.value)]
+      }
+      const selected = row.form_question_options as { value: string } | Array<{ value: string }> | null
+      return [row.form_question_id, (Array.isArray(selected) ? selected[0]?.value : selected?.value) ?? row.value_text ?? row.value_number ?? row.value_boolean ?? row.value_date ?? null]
+    })) as Record<string, FormAnswerValue>
+    const definition = Array.isArray(version.form_definitions) ? version.form_definitions[0] : version.form_definitions
+    return {
+      definitionId: version.form_definition_id as string,
+      versionId: submission.form_version_id as string,
+      versionNumber: version.version_number as number,
+      status: version.status as FormRuntime['status'],
+      name: definition.name as string,
+      questions,
+      submission: submission as FormSubmission,
+      answers,
+    } satisfies FormRuntime
+  }
+
   async function saveDraft(
     studentId: string,
     versionId: string,
@@ -491,16 +535,21 @@ export function createDeceFormService(client: SupabaseClient) {
       if (error) throw error
 
       if (question.data_type === 'multi_select') {
-        const { error: deleteError } = await client.from('form_answer_options')
-          .delete().eq('form_answer_id', savedAnswer.form_answer_id)
+        const { data: existingOptions, error: existingOptionsError } = await client.from('form_answer_options')
+          .select('form_answer_id').eq('form_answer_id', savedAnswer.form_answer_id)
+        if (existingOptionsError) throw existingOptionsError
+        const { data: deletedOptions, error: deleteError } = await client.from('form_answer_options')
+          .delete().eq('form_answer_id', savedAnswer.form_answer_id).select('form_answer_id')
         if (deleteError) throw deleteError
+        if (deletedOptions?.length !== (existingOptions ?? []).length) throw new Error('No se pudieron actualizar las opciones seleccionadas.')
         const selectedValues = Array.isArray(value) ? value : []
         const selectedOptions = question.form_question_options
           .filter(option => selectedValues.includes(option.value))
           .map(option => ({ form_answer_id: savedAnswer.form_answer_id, form_question_id: questionId, question_option_id: option.question_option_id }))
         if (selectedOptions.length) {
-          const { error: optionsError } = await client.from('form_answer_options').insert(selectedOptions)
+          const { data: insertedOptions, error: optionsError } = await client.from('form_answer_options').insert(selectedOptions).select('form_answer_id')
           if (optionsError) throw optionsError
+          if (insertedOptions?.length !== selectedOptions.length) throw new Error('No se pudieron guardar todas las opciones seleccionadas.')
         }
       }
     }
@@ -543,11 +592,11 @@ export function createDeceFormService(client: SupabaseClient) {
 
   async function reopenSubmission(submissionId: string) {
     const { data, error } = await client.from('form_submissions')
-      .update({ status: 'draft', updated_at: new Date().toISOString() })
-      .eq('form_submission_id', submissionId).eq('status', 'reviewed')
+      .update({ status: 'draft', submitted_at: null, reviewed_by: null, reviewed_at: null, updated_at: new Date().toISOString() })
+      .eq('form_submission_id', submissionId).in('status', ['submitted', 'reviewed'])
       .select('form_submission_id').maybeSingle()
     if (error) throw error
-    if (!data) throw new Error('No se pudo reabrir la ficha: debe estar revisada y visible para DECE.')
+    if (!data) throw new Error('No se pudo reabrir la ficha: sin permiso o el envío ya no está disponible.')
     window.dispatchEvent(new Event('dece:dashboard-refresh'))
   }
 
@@ -665,5 +714,5 @@ export function createDeceFormService(client: SupabaseClient) {
     if (error) throw error
   }
 
-  return { ensureStandardForms, listFormTemplates, createFormTemplate, deactivateFormTemplate, activateFormTemplate, resetDefaultTemplates, loadForm, saveDraft, submit, markReviewed, reopenSubmission, loadOwnSubmission, addQuestion, removeQuestion }
+  return { ensureStandardForms, listFormTemplates, createFormTemplate, deactivateFormTemplate, activateFormTemplate, resetDefaultTemplates, loadForm, loadSubmission, saveDraft, submit, markReviewed, reopenSubmission, loadOwnSubmission, addQuestion, removeQuestion }
 }

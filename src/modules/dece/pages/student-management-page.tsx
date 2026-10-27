@@ -5,6 +5,8 @@ import { useDeceData } from '../services/dece-data-context'
 import { createDeceFormService } from '../services/form-service'
 import type { Student } from '../types/student'
 import PdfActionButton from '../components/pdf-action-button'
+import { RecordCard, RecordGrid } from '../components/shared/RecordGrid'
+import styles from './student-management-page.module.css'
 
 type StudentRecord = {
   student_id: string
@@ -17,7 +19,13 @@ type StudentRecord = {
 }
 type StudentFields = { national_id: string; first_name: string; last_name: string; grade_level: string; enrollment_number: string }
 type Template = { code: string; name: string }
-const pageSize = 25
+const PAGE_SIZES = [10, 20, 30, 40]
+const PREFERENCES_KEY = 'dece.students.preferences'
+type StudentSort = 'last_name' | 'first_name' | 'national_id' | 'grade_level' | 'enrollment_number'
+type StudentView = 'table' | 'cards'
+function studentPreferences(): { pageSize?: number; view?: StudentView } {
+  try { return JSON.parse(localStorage.getItem(PREFERENCES_KEY) || '{}') as { pageSize?: number; view?: StudentView } } catch { return {} }
+}
 const grades = [
   ...Array.from({ length: 10 }, (_, index) => `${index + 1}.º EGB`),
   '1.º BGU', '2.º BGU', '3.º BGU',
@@ -71,6 +79,11 @@ export default function StudentManagementPage({ onOpenForm, onStudentSaved, onOp
   const [search, setSearch] = useState(() => new URLSearchParams(location.search).get('q') ?? '')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useState(() => PAGE_SIZES.includes(studentPreferences().pageSize ?? 10) ? studentPreferences().pageSize! : 10)
+  const [view, setView] = useState<StudentView>(() => studentPreferences().view ?? (window.matchMedia('(max-width: 700px)').matches ? 'cards' : 'table'))
+  const [course, setCourse] = useState('all')
+  const [sort, setSort] = useState<StudentSort>('last_name')
+  const [direction, setDirection] = useState<'asc' | 'desc'>('asc')
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -81,11 +94,12 @@ export default function StudentManagementPage({ onOpenForm, onStudentSaved, onOp
   const [refreshVersion, setRefreshVersion] = useState(0)
   const [announcement, setAnnouncement] = useState('')
   const [createdOutsideFilter, setCreatedOutsideFilter] = useState(false)
-  const rowRef = useRef<HTMLTableRowElement | null>(null)
+  const rowRef = useRef<HTMLElement | null>(null)
   const listRequestId = useRef(0)
   const detailRequestId = useRef(0)
   const deceBasePath = integration?.slug ? `/${integration.slug}/dece` : '/panel/dece'
   const basePath = `${deceBasePath}/estudiantes`
+  useEffect(() => { localStorage.setItem(PREFERENCES_KEY, JSON.stringify({ pageSize, view })) }, [pageSize, view])
 
   const followRoute = useCallback(() => {
     const parts = location.pathname.split('/').filter(Boolean)
@@ -101,6 +115,7 @@ export default function StudentManagementPage({ onOpenForm, onStudentSaved, onOp
     const timer = window.setTimeout(() => { setDebouncedSearch(safeSearch(search)); setPage(0) }, 300)
     return () => window.clearTimeout(timer)
   }, [search])
+  useEffect(() => { setPage(0) }, [course, sort, direction, pageSize])
 
   useEffect(() => {
     if (!integration || !formService) return
@@ -117,26 +132,20 @@ export default function StudentManagementPage({ onOpenForm, onStudentSaved, onOp
     if (routeStudentId) return
     setLoading(true); setError('')
     try {
-      let query = integration.client.from('students')
+      const query = integration.client.from('students')
         .select('student_id, institution_id, national_id, first_name, last_name, grade_level, enrollment_number', { count: 'exact' })
         .eq('institution_id', integration.institutionId)
-      if (debouncedSearch) {
-        const pattern = `%${debouncedSearch}%`
-        query = query.or(`first_name.ilike.${pattern},last_name.ilike.${pattern},national_id.ilike.${pattern},grade_level.ilike.${pattern}`)
-      }
-      const start = page * pageSize
-      const { data, error: queryError, count } = await query.order('last_name').order('first_name').range(start, start + pageSize - 1)
+      const { data, error: queryError, count } = await query.order('last_name').order('first_name')
       if (requestId !== listRequestId.current) return
       if (queryError) throw queryError
       setRecords((data ?? []) as StudentRecord[])
       setTotal(count ?? 0)
-      if (data?.length === 0 && !debouncedSearch && page === 0) setError('No hay estudiantes visibles en esta institución. Verifica que tengas permiso DECE o registra el primer estudiante.')
     } catch (cause) {
       if (requestId !== listRequestId.current) return
       const issue = cause as { message?: string; code?: string }
       setError(issue.code === '42501' ? 'No tienes permiso para consultar estudiantes de esta institución.' : issue.message ? `${issue.message}${issue.code ? ` (${issue.code})` : ''}` : 'No se pudo cargar el listado de estudiantes.')
     } finally { if (requestId === listRequestId.current) setLoading(false) }
-  }, [debouncedSearch, integration, page, routeStudentId])
+  }, [integration, routeStudentId])
 
   useEffect(() => { void reloadList() }, [reloadList, refreshVersion])
 
@@ -214,8 +223,9 @@ export default function StudentManagementPage({ onOpenForm, onStudentSaved, onOp
         onStudentSaved(toStudent(created))
         setCreating(false); setValues(blankFields())
         const activeFilter = safeSearch(search).toLocaleLowerCase()
-        const matchesFilter = !activeFilter || [created.first_name, created.last_name, created.national_id, created.grade_level ?? '']
+        const matchesSearch = !activeFilter || [created.first_name, created.last_name, created.national_id, created.grade_level ?? '']
           .some(value => value.toLocaleLowerCase().includes(activeFilter))
+        const matchesFilter = matchesSearch && (course === 'all' || created.grade_level === course)
         if (matchesFilter) {
           setAnnouncement('Estudiante registrado')
           setCreatedOutsideFilter(false)
@@ -247,13 +257,27 @@ export default function StudentManagementPage({ onOpenForm, onStudentSaved, onOp
     setRefreshVersion(value => value + 1)
   }
 
-  const pageCount = Math.max(1, Math.ceil(total / pageSize))
+  const visibleRecords = useMemo(() => {
+    const needle = debouncedSearch.toLocaleLowerCase()
+    return records.filter(item => (course === 'all' || item.grade_level === course)
+      && (!needle || [item.first_name, item.last_name, item.national_id, item.grade_level ?? ''].some(value => value.toLocaleLowerCase().includes(needle))))
+      .sort((left, right) => {
+        const leftValue = sort === 'last_name' ? `${left.last_name} ${left.first_name}` : String(left[sort] ?? '')
+        const rightValue = sort === 'last_name' ? `${right.last_name} ${right.first_name}` : String(right[sort] ?? '')
+        return leftValue.localeCompare(rightValue, 'es', { numeric: true }) * (direction === 'asc' ? 1 : -1)
+      })
+  }, [course, debouncedSearch, direction, records, sort])
+  const pageCount = Math.max(1, Math.ceil(visibleRecords.length / pageSize))
+  const pageRecords = visibleRecords.slice(page * pageSize, (page + 1) * pageSize)
+  const firstRecord = visibleRecords.length ? page * pageSize + 1 : 0
+  const lastRecord = Math.min(visibleRecords.length, (page + 1) * pageSize)
   const displayedName = record ? `${record.first_name} ${record.last_name}` : ''
 
   return <div className="page-content container-fluid">
+    {record && <nav aria-label="Migas de pan" className={styles.breadcrumb}><ol><li><button type="button" onClick={() => { history.pushState(null, '', basePath); setRouteStudentId(''); setError('') }}>Estudiantes</button></li><li aria-current="page">{displayedName}</li></ol></nav>}
     <div className="eyebrow">GESTIÓN DECE</div>
     <div className="welcome-row list-title"><div><h1>{record ? 'Detalle del estudiante' : 'Estudiantes'}</h1><p className="subheading">Registra y actualiza estudiantes de tu institución.</p></div>
-      {record ? <button className="button btn secondary" type="button" onClick={() => { history.pushState(null, '', basePath); setRouteStudentId(''); setError('') }}>Volver al listado</button> : !creating && <button className="button btn primary" type="button" onClick={() => { setValues(blankFields()); setValidationError(''); setCreating(true) }}>+ Registrar estudiante</button>}
+      {record ? <button className="btn btn-outline-secondary" type="button" onClick={() => { history.pushState(null, '', basePath); setRouteStudentId(''); setError('') }}>Volver al listado</button> : !creating && <button className={`btn btn-primary ${styles.registerButton}`} type="button" onClick={() => { setValues(blankFields()); setValidationError(''); setCreating(true) }}>Registrar estudiante</button>}
     </div>
     {error && <div className="notice sensitive" role="alert">{error}</div>}
     <div className="visually-hidden" aria-live="polite" aria-atomic="true">{announcement}</div>
@@ -269,15 +293,19 @@ export default function StudentManagementPage({ onOpenForm, onStudentSaved, onOp
       <StudentCases studentId={record.student_id} institutionId={integration?.institutionId ?? ''} onNew={() => onOpenCases?.(record.student_id)} onOpenCase={caseId => onOpenCase?.(caseId)} />
     </>}
     {!record && !creating && <>
-      <label className="search-box mb-3"><span className="visually-hidden">Buscar por nombres, apellidos, cédula o grado</span><input className="form-control" aria-label="Buscar estudiantes por nombres, apellidos, cédula o grado" value={search} onChange={event => setSearch(event.target.value)} placeholder="Buscar nombres, apellidos, cédula o grado…" /></label>
-      <p className="visually-hidden" aria-live="polite">{loading ? 'Buscando estudiantes…' : `${total} estudiantes encontrados.`}</p>
-      {loading && records.length > 0 && <small className="text-secondary d-block mb-2" role="status">Actualizando listado…</small>}
-      <section className="table-card table-responsive"><table className="table"><caption className="visually-hidden">Estudiantes de esta institución</caption><thead><tr><th>Apellidos</th><th>Nombres</th><th>Cédula</th><th>Grado</th><th>Matrícula</th><th></th></tr></thead><tbody>
-        {records.map(item => <tr key={item.student_id} ref={item.student_id === highlightId ? rowRef : undefined} tabIndex={item.student_id === highlightId ? -1 : undefined} onFocus={() => setHighlightId('')} className={item.student_id === highlightId ? 'table-primary' : undefined}><td>{item.last_name}</td><td>{item.first_name}</td><td>{item.national_id}</td><td>{item.grade_level}</td><td>{item.enrollment_number ?? '—'}</td><td><button type="button" className="table-link" aria-label={`Editar estudiante con cédula terminada en ${item.national_id.slice(-3)}`} onClick={() => { history.pushState(null, '', `${basePath}/${item.student_id}`); setRouteStudentId(item.student_id) }}>Ver y editar</button></td></tr>)}
-        {!loading && !records.length && !error && <tr><td colSpan={6}>No se encontraron estudiantes con esa búsqueda.</td></tr>}
-      </tbody></table>
-        <div className="d-flex justify-content-between align-items-center p-3"><span>{total} registros · Página {page + 1} de {pageCount}</span><div className="d-flex gap-2"><button className="btn btn-outline-secondary" type="button" disabled={page === 0 || loading} onClick={() => setPage(value => Math.max(0, value - 1))}>Anterior</button><button className="btn btn-outline-secondary" type="button" disabled={page + 1 >= pageCount || loading} onClick={() => setPage(value => value + 1)}>Siguiente</button></div></div>
+      <section className={styles.filters} aria-label="Filtros y orden de estudiantes">
+        <label>Curso<select className="form-select" value={course} onChange={event => setCourse(event.target.value)}><option value="all">Todos los cursos</option>{grades.map(grade => <option key={grade} value={grade}>{grade}</option>)}</select></label>
+        <label className={styles.search}>Buscar estudiante<input className="form-control" aria-label="Buscar estudiantes por nombres, apellidos o cédula" value={search} onChange={event => setSearch(event.target.value)} placeholder="Nombres, apellidos o cédula" /></label>
+        <label>Ordenar por<select className="form-select" value={sort} onChange={event => setSort(event.target.value as StudentSort)}><option value="last_name">Apellidos y nombres</option><option value="first_name">Nombres</option><option value="national_id">Cédula</option><option value="grade_level">Curso</option><option value="enrollment_number">Matrícula</option></select></label>
+        <label>Dirección<select className="form-select" value={direction} onChange={event => setDirection(event.target.value as 'asc' | 'desc')}><option value="asc">Ascendente</option><option value="desc">Descendente</option></select></label>
+        <div className={styles.segment} role="group" aria-label="Vista de estudiantes"><button type="button" aria-pressed={view === 'table'} onClick={() => setView('table')}>Tabla</button><button type="button" aria-pressed={view === 'cards'} onClick={() => setView('cards')}>Tarjetas</button></div>
       </section>
+      <p className="visually-hidden" aria-live="polite">{loading ? 'Buscando estudiantes…' : `${visibleRecords.length} estudiantes encontrados de ${total} registrados.`}</p>
+      {loading && records.length > 0 && <small className="text-secondary d-block mb-2" role="status">Actualizando listado…</small>}
+      {!loading && !visibleRecords.length && !error ? <div className="empty-state">No se encontraron estudiantes con esos filtros.</div> : view === 'table' ? <div className={styles.tableWrap}><table className="table"><caption className="visually-hidden">Estudiantes de esta institución</caption><thead><tr><th>Apellidos</th><th>Nombres</th><th>Cédula</th><th>Curso</th><th>Matrícula</th><th>Acciones</th></tr></thead><tbody>
+        {pageRecords.map(item => <tr key={item.student_id} ref={item.student_id === highlightId ? element => { rowRef.current = element } : undefined} tabIndex={item.student_id === highlightId ? -1 : undefined} onFocus={() => setHighlightId('')} className={item.student_id === highlightId ? 'table-primary' : undefined}><td>{item.last_name}</td><td>{item.first_name}</td><td>{item.national_id}</td><td>{item.grade_level ?? 'Sin curso'}</td><td>{item.enrollment_number ?? '—'}</td><td><button type="button" className={`btn btn-outline-primary btn-sm ${styles.viewButton}`} aria-label={`Ver y editar estudiante con cédula terminada en ${item.national_id.slice(-3)}`} onClick={() => { history.pushState(null, '', `${basePath}/${item.student_id}`); setRouteStudentId(item.student_id) }}>Ver y editar</button></td></tr>)}
+      </tbody></table></div> : <RecordGrid label="Estudiantes" className={styles.studentCards}>{pageRecords.map(item => <li key={item.student_id}><RecordCard ref={item.student_id === highlightId ? rowRef : undefined} tabIndex={item.student_id === highlightId ? -1 : undefined} onFocus={() => setHighlightId('')} className={item.student_id === highlightId ? styles.highlight : undefined}><div className={styles.person}><span aria-hidden="true">{`${item.first_name} ${item.last_name}`.split(/\s+/).slice(0, 2).map(part => part[0]).join('').toUpperCase()}</span><div><h2>{item.last_name}, {item.first_name}</h2><p>{item.grade_level ?? 'Sin curso'}</p></div></div><dl><div><dt>Cédula</dt><dd>{item.national_id}</dd></div><div><dt>Matrícula</dt><dd>{item.enrollment_number ?? '—'}</dd></div></dl><button type="button" className={`btn btn-outline-primary ${styles.viewButton}`} onClick={() => { history.pushState(null, '', `${basePath}/${item.student_id}`); setRouteStudentId(item.student_id) }}>Ver y editar</button></RecordCard></li>)}</RecordGrid>}
+      {visibleRecords.length > 0 && <div className={styles.pagination}><label>Mostrar <select className="form-select" value={pageSize} onChange={event => setPageSize(Number(event.target.value))}>{PAGE_SIZES.map(size => <option key={size} value={size}>{size}</option>)}</select> por página</label><span>Mostrando {firstRecord} a {lastRecord} de {visibleRecords.length}</span><nav aria-label="Paginación de estudiantes"><button className="btn btn-outline-secondary btn-sm" type="button" disabled={page === 0 || loading} onClick={() => setPage(value => Math.max(0, value - 1))}>Anterior</button>{Array.from({ length: pageCount }, (_, index) => <button className="btn btn-sm" type="button" key={index} aria-current={page === index ? 'page' : undefined} onClick={() => setPage(index)}>{index + 1}</button>)}<button className="btn btn-outline-secondary btn-sm" type="button" disabled={page + 1 >= pageCount || loading} onClick={() => setPage(value => value + 1)}>Siguiente</button></nav></div>}
     </>}
     {loading && <p role="status">Cargando estudiantes…</p>}
   </div>
