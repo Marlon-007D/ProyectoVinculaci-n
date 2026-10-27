@@ -70,3 +70,22 @@ test('approval uses the scoped registration RPC with role and modules and never 
   assert.equal(calls[0].args.target_profile_id, 'person');
   assert.deepEqual(calls[0].args.target_modules, assignmentFixture.modules);
 });
+test('editing passes selected modules unchanged and notification failure does not roll back the edit', async () => {
+  const calls = [];
+  const service = createTenantAdminService({ rpc: async (name, args) => { calls.push({ name, args }); return { error: null }; },
+    functions: { invoke: async (name, options) => { calls.push({ name, options }); return { data: null, error: new Error('Rate limit') }; } } });
+  await service.edit(assignmentFixture);
+  assert.equal(calls[0].name, 'admin_tenant_update_access');
+  assert.deepEqual(calls[0].args.target_modules, assignmentFixture.modules);
+  assert.deepEqual(await service.notify({ institutionId: 'a', profileId: 'person', redirect_to: 'https://school.test/panel/admin?institution=a&slug=a' }), { notificationSent: false });
+  assert.equal(calls.length, 2);
+  assert.equal(calls[1].options.body.action, 'notify_access');
+});
+test('invalid request emails cannot reach edit, approval or invitation APIs', async () => {
+  const client = { rpc: async () => { throw new Error('Unexpected request'); }, functions: { invoke: async () => { throw new Error('Unexpected request'); } } };
+  const service = createTenantAdminService(client);
+  const input = { ...assignmentFixture, email: 'gjbrito@espe.edu.ec333333333' };
+  await assert.rejects(service.edit(input), /correo/);
+  await assert.rejects(service.approve({ ...input, profileId: 'person', requestId: 'request' }), /correo/);
+  await assert.rejects(service.invite({ ...input, redirect_to: 'http://localhost:5173/panel/admin?institution=a&slug=a' }), /correo/);
+});

@@ -7,6 +7,17 @@ const env={supabaseUrl:'https://backend.example.test',publicKey:'public-test-key
 const request=(redirect_to='http://localhost:5173/login?institution=a&slug=school-a')=>new Request('https://function.example.test',{method:'POST',headers:{authorization:'Bearer caller-token',origin:'http://localhost:5173','content-type':'application/json'},body:JSON.stringify({...assignmentFixture,redirect_to,action:'invite'})});
 const json=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json'}});
 
+test('malformed institutional emails fail explicitly before any Auth creation or membership write', async () => {
+  let calls = 0;
+  const response = await handleTenantInvitation(new Request('https://function.example.test', {
+    method: 'POST', headers: { authorization: 'Bearer caller-token', origin: env.allowedOrigins[0] },
+    body: JSON.stringify({ ...assignmentFixture, email: 'gjbrito@espe.edu.ec333333333', redirect_to: 'http://localhost:5173/panel/admin?institution=a&slug=school-a' }),
+  }), env, async () => { calls++; throw new Error('Unexpected network operation'); });
+  assert.equal(response.status, 400);
+  assert.match((await response.json()).error, /correo/);
+  assert.equal(calls, 0);
+});
+
 test('existing confirmed and unconfirmed Auth users receive pending institutional access without account deletion',async()=>{
   for(const confirmed of [true,false]){
     const calls=[];
@@ -21,6 +32,7 @@ test('existing confirmed and unconfirmed Auth users receive pending institutiona
       return json(null);
     });
     assert.deepEqual(await response.json(),{assigned:true,pending:true,notificationSent:true});
+    assert(!calls.some(call => call.url.endsWith('/admin/users')), 'Existing Auth users must not be recreated');
     assert(calls.some(call=>call.url.endsWith('/admin_tenant_prepare_invitation')));
     const email=calls.find(call=>call.url.includes(confirmed?'/otp?':'/invite?'));
     assert(email);
@@ -140,6 +152,7 @@ test('account creation rechecks membership assignment with the caller token',asy
     calls.push({url,init});
     if(url.endsWith('/user'))return json({id:'actor'});
     if(url.endsWith('/admin_tenant_capabilities'))return json(true);
+    if(url.endsWith('/admin_tenant_invitation_recipient'))return json(null);
     if(url.includes('/institutions?'))return json([{institution_id:'a',slug:'school-a',is_active:true}]);
     if(url.includes('/roles?'))return json([{role_id:'teacher',name:'teacher'}]);
     if(url.endsWith('/admin/users'))return json({id:'new-profile'});
@@ -159,6 +172,7 @@ test('a rejected assignment cleans up only the newly created account',async()=>{
     calls.push({url,init});
     if(url.endsWith('/user'))return json({id:'actor'});
     if(url.endsWith('/admin_tenant_capabilities'))return json(true);
+    if(url.endsWith('/admin_tenant_invitation_recipient'))return json(null);
     if(url.includes('/institutions?'))return json([{institution_id:'a',slug:'school-a',is_active:true}]);
     if(url.includes('/roles?'))return json([{role_id:'teacher',name:'teacher'}]);
     if(url.endsWith('/admin/users'))return json({id:'new-profile'});
@@ -167,4 +181,5 @@ test('a rejected assignment cleans up only the newly created account',async()=>{
   });
   assert.equal(response.status,500);
   assert(calls.some(call=>call.url.endsWith('/admin/users/new-profile') && call.init.method==='DELETE'));
+  assert.match((await response.json()).error, /Role revoked/);
 });

@@ -4,6 +4,23 @@ import { authProviderHarness } from './mocks/authProviderHarness.mjs';
 
 const session = role => ({ user: { id: 'profile', app_metadata: { role } }, access_token: 'test-token' });
 
+test('Google sessions expose the DECE workspace role only for a verified active membership in the selected school', async t => {
+  const app = authProviderHarness(t);
+  await app.until(value => !value.loading);
+  app.setQuery(async table => {
+    if (table === 'memberships') return [{ institution_id: 'a', role_id: 'dece-role' }];
+    if (table === 'roles') return [{ role_id: 'dece-role', name: 'dece' }];
+    if (table === 'institutions') return [{ institution_id: 'a', slug: 'school-a', is_active: true }];
+    throw new Error('Unexpected table');
+  });
+  app.emit('SIGNED_IN', session('google'));
+  await app.until(value => !value.loading && value.role === 'dece_staff');
+  assert.equal(app.value.institutionId, 'a');
+  app.scope('?institution=b&slug=school-b');
+  await app.until(value => !value.loading && value.roleIssue === 'membership-required');
+  assert.equal(app.value.role, null);
+});
+
 test('Google OAuth reads the current browser origin at sign-in time for all four institutions', async t => {
   const app = authProviderHarness(t);
   await app.until(value => !value.loading);

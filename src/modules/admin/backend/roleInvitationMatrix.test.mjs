@@ -19,6 +19,7 @@ test('Edge invitation forwards each assigned role and selected modules unchanged
     async (url, options) => {
       if (url.endsWith('/auth/v1/user')) return Response.json({ id: 'actor' });
       if (url.endsWith('/admin_tenant_capabilities')) return Response.json(true);
+      if (url.endsWith('/admin_tenant_invitation_recipient')) return Response.json(null);
       if (url.includes('/institutions?')) return Response.json([{ institution_id: slug, slug, is_active: true }]);
       if (url.includes('/roles?')) return Response.json([{ role_id: input.roleId, name: role }]);
       if (url.endsWith('/admin/users')) return Response.json({ id: 'recipient' });

@@ -34,6 +34,11 @@ export function createInvitationAccountService(client: Pick<SupabaseClient, 'aut
         if (record(invitation) && invitation.pending === true && invitation.email === identity.user.email) {
           return { ...verifiedInvitationDetails(invitation.profile, invitation.membership, identity.user.email, institutionId, slug, true), pending: true };
         }
+        const active = await client.rpc('admin_tenant_own_account', { target_institution_id: institutionId });
+        if (active.error && active.error.code !== 'PGRST202') throw new Error('No se pudo verificar tu cuenta institucional.');
+        if (record(active.data) && active.data.email === identity.user.email) {
+          return verifiedInvitationDetails(active.data.profile, active.data.membership, identity.user.email, institutionId, slug);
+        }
         const { data: profile, error: profileError } = await client.from('profiles').select('first_name,last_name,phone').eq('profile_id', userId).maybeSingle();
         const { data: membership, error: membershipError } = await client.from('memberships').select('institution_id,is_active,roles(name),institutions(slug)')
           .eq('profile_id', userId).eq('institution_id', institutionId).eq('is_active', true).maybeSingle();

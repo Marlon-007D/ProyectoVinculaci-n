@@ -2,6 +2,10 @@ import { handleTenantMemberDeletion } from './deleteTenantMember.ts';
 import { canonicalSlug } from '../auth/canonicalSlug.ts';
 import { completeInvitationPassword } from './completeInvitationPassword.ts';
 import { requestInvitationEmail } from './requestInvitationEmail.ts';
+import { notifyTenantAccess } from './notifyTenantAccess.ts';
+import { validateAdminContact } from '../auth/contactValidation.ts';
+
+class InvitationProcessingError extends Error {}
 
 export interface TenantInvitationEnvironment {
   supabaseUrl: string; publicKey: string; serviceRoleKey: string; allowedOrigins: string[];
@@ -24,7 +28,7 @@ function parseInput(value: unknown): InvitationInput {
   if (!Array.isArray(input.modules) || !input.modules.every(item => typeof item === 'string')) throw new Error('Módulos inválidos.');
   const result = input as unknown as InvitationInput;
   if (!/^09\d{8}$/.test(result.phone)) throw new Error('Celular inválido.');
-  return result;
+  return validateAdminContact({ ...result, phone: result.phone.trim(), modules: [...new Set(result.modules)] });
 }
 
 /** Server-only handler. Deploy as admin-tenant-invite; never import it into the browser. */
@@ -47,6 +51,10 @@ export async function handleTenantInvitation(request: Request, env: TenantInvita
         return respond(result.body, result.status);
       }
       if (!authorization?.startsWith('Bearer ')) return respond({ error: 'Inicia sesión.' }, 401);
+      if (payload.action === 'notify_access') {
+        const result = await notifyTenantAccess(request, env, fetcher);
+        return respond(result.body, result.status);
+      }
       if (payload.action === 'complete_invitation_password') {
         const result = await completeInvitationPassword(request, env, fetcher);
         return respond(result.body, result.status);
@@ -63,7 +71,9 @@ export async function handleTenantInvitation(request: Request, env: TenantInvita
   const privilegedHeaders = { apikey: env.serviceRoleKey, Authorization: `Bearer ${env.serviceRoleKey}`, 'Content-Type': 'application/json' };
   try {
     if (!env.supabaseUrl || !env.publicKey || !env.serviceRoleKey) throw new Error('Configuración incompleta.');
-    const input = parseInput(await request.json());
+    let input: InvitationInput;
+    try { input = parseInput(await request.json()); }
+    catch (cause: unknown) { return respond({ error: cause instanceof Error ? cause.message : 'Datos de invitación no válidos.' }, 400); }
     const identity = await fetcher(`${env.supabaseUrl}/auth/v1/user`, { headers: callerHeaders });
     if (!identity.ok) return respond({ error: 'Sesión inválida.' }, 401);
     const capabilities = await fetcher(`${env.supabaseUrl}/rest/v1/rpc/admin_tenant_capabilities`, {
@@ -95,38 +105,54 @@ export async function handleTenantInvitation(request: Request, env: TenantInvita
       email: input.email.trim().toLowerCase(), institution_id: input.institutionId, slug: institutions[0].slug,
       role_id: input.roleId, role: roles[0].name, admin_tenant_onboarding: true };
     redirect.searchParams.set('slug', canonicalSlug(institutions[0].slug));
-    const bytes = crypto.getRandomValues(new Uint8Array(32));
-    const password = Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('');
-    const creation = await fetcher(`${env.supabaseUrl}/auth/v1/admin/users`, {
-      method: 'POST', headers: privilegedHeaders,
-      body: JSON.stringify({ email: input.email.trim().toLowerCase(), password, email_confirm: false,
-        user_metadata: invitationMetadata, app_metadata: { admin_tenant_invitation: invitationMetadata } }),
-    });
-    const account: unknown = await creation.json();
-    let existingConfirmed = false;
-    if (creation.ok && account && typeof account === 'object' && 'id' in account && typeof account.id === 'string') {
-      createdProfile = account.id;
-    } else {
-      const code = invitationAuthErrorCode(account);
-      if (!code || !['email_exists', 'user_already_exists', 'email_already_exists'].includes(code)) {
-        return respond({ error: 'No se pudo crear la cuenta pendiente. Revisa el correo y la configuración de Auth.' }, 409);
-      }
+    async function findRecipient(): Promise<{ profile_id: string; confirmed: boolean } | null> {
       const lookup = await fetcher(`${env.supabaseUrl}/rest/v1/rpc/admin_tenant_invitation_recipient`, {
         method: 'POST', headers: callerHeaders, body: JSON.stringify({ target_institution_id: input.institutionId, target_email: input.email, target_role_id: input.roleId }),
       });
-      const recipient: unknown = lookup.ok ? await lookup.json() : null;
+      if (!lookup.ok) throw new InvitationProcessingError('No se pudo verificar la cuenta existente. Revisa los permisos y el script 007.');
+      const recipient: unknown = await lookup.json();
+      if (recipient === null) return null;
       if (!recipient || typeof recipient !== 'object' || !('profile_id' in recipient) || typeof recipient.profile_id !== 'string'
-        || !('confirmed' in recipient) || typeof recipient.confirmed !== 'boolean') {
-        return respond({ error: 'No se pudo verificar la cuenta existente. Revisa los permisos y el script 007 de invitaciones.' }, 403);
+        || !('confirmed' in recipient) || typeof recipient.confirmed !== 'boolean') throw new InvitationProcessingError('La respuesta de la cuenta existente no es válida.');
+      return { profile_id: recipient.profile_id, confirmed: recipient.confirmed };
+    }
+    const existingRecipient = await findRecipient();
+    let existingConfirmed = existingRecipient?.confirmed ?? false;
+    if (!existingRecipient) {
+      const bytes = crypto.getRandomValues(new Uint8Array(32));
+      const password = Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('');
+      const creation = await fetcher(`${env.supabaseUrl}/auth/v1/admin/users`, {
+        method: 'POST', headers: privilegedHeaders,
+        body: JSON.stringify({ email: input.email.trim().toLowerCase(), password, email_confirm: false,
+          user_metadata: invitationMetadata, app_metadata: { admin_tenant_invitation: invitationMetadata } }),
+      });
+      const account: unknown = await creation.json();
+      if (creation.ok && account && typeof account === 'object' && 'id' in account && typeof account.id === 'string') {
+        createdProfile = account.id;
+      } else {
+        const code = invitationAuthErrorCode(account);
+        const duplicateMessage = account && typeof account === 'object' && 'msg' in account && typeof account.msg === 'string' ? account.msg
+          : account && typeof account === 'object' && 'message' in account && typeof account.message === 'string' ? account.message : '';
+        if ((!code || !['email_exists', 'user_already_exists', 'email_already_exists'].includes(code))
+          && !/already.*(?:registered|exists)|email.*already/i.test(duplicateMessage)) {
+          return respond({ error: 'No se pudo crear la cuenta pendiente. Revisa el correo y la configuración de Auth.' }, 409);
+        }
+        const recipient = await findRecipient();
+        if (!recipient) throw new InvitationProcessingError('La cuenta existente no pudo verificarse tras el conflicto de creación.');
+        existingConfirmed = recipient.confirmed;
       }
-      existingConfirmed = recipient.confirmed;
     }
     const assignment = await fetcher(`${env.supabaseUrl}/rest/v1/rpc/admin_tenant_prepare_invitation`, {
       method: 'POST', headers: callerHeaders, body: JSON.stringify({ target_institution_id: input.institutionId,
         target_role_id: input.roleId, target_email: input.email, target_first_name: input.firstName,
         target_last_name: input.lastName, target_phone: input.phone, target_modules: input.modules }),
     });
-    if (!assignment.ok) throw new Error('La asignación institucional fue rechazada.');
+    if (!assignment.ok) {
+      const failure: unknown = await assignment.json().catch(() => null);
+      const reason = failure && typeof failure === 'object' && 'message' in failure && typeof failure.message === 'string' ? failure.message
+        : failure && typeof failure === 'object' && 'error' in failure && typeof failure.error === 'string' ? failure.error : 'Revisa los permisos y el contrato de invitaciones 007.';
+      throw new InvitationProcessingError(`No se pudo preparar la membresía institucional: ${reason}`);
+    }
     assigned = true;
     // Notification failure must never revoke a successfully assigned membership.
     let notificationSent = false;
@@ -140,7 +166,7 @@ export async function handleTenantInvitation(request: Request, env: TenantInvita
       notificationSent = invitation.ok;
     } catch { notificationSent = false; }
     return respond({ assigned: true, pending: true, notificationSent });
-  } catch {
+  } catch (cause: unknown) {
     let cleanupFailed = false;
     if (createdProfile && !assigned) {
       try {
@@ -148,7 +174,7 @@ export async function handleTenantInvitation(request: Request, env: TenantInvita
         cleanupFailed = !cleanup.ok;
       } catch { cleanupFailed = true; }
     }
-    return respond({ error: 'No se pudo completar la creación institucional.', cleanupFailed }, 500);
+    return respond({ error: cause instanceof InvitationProcessingError ? cause.message : 'No se pudo completar la creación institucional. Revisa la conexión y el contrato de invitaciones del servidor.', cleanupFailed }, 500);
   }
 }
 

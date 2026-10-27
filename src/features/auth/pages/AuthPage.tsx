@@ -16,6 +16,7 @@ import styles from './AuthPage.module.css';
 import { PasswordField } from '../../../modules/admin/auth/PasswordField';
 import { InvitationLinkBoundary } from '../../../modules/admin/auth/InvitationLinkBoundary';
 import { InstitutionalLogin } from '../../../modules/admin';
+import { workspaceAuthRole } from '../../../modules/admin/auth/workspaceAuthRole';
 
 export function AuthPage({ mode = 'login', requestService }: { mode?: 'login' | 'register'; requestService: AccessRequestService }) {
   return <InvitationLinkBoundary><AuthPageContent mode={mode} requestService={requestService} /></InvitationLinkBoundary>;
@@ -115,7 +116,7 @@ function AuthPageContent({ mode, requestService }: { mode: 'login' | 'register';
   if (user && (mfaRequired || mfaEnrollmentRequired)) return <Navigate to={destination} replace />;
   if (user && loadingTenant) return <main className={styles.page} role="status">Verificando la institución asignada…</main>;
   if (user && activeInstitution && effectiveRole && !blockedAccess && !(registering && busy)) {
-    const target = loginDestination({ ...activeInstitution, role: effectiveRole });
+    const target = workspaceAuthRole(effectiveRole) === 'dece_staff' ? '/panel/dece' : loginDestination({ ...activeInstitution, role: effectiveRole });
     return <Navigate to={adminDestination(target, location.search, { institution: activeInstitution.institution_id, slug: activeInstitution.slug })} replace />;
   }
 

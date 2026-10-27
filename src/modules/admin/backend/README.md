@@ -1,5 +1,63 @@
 # Administración por institución
 
+### Módulos predeterminados por rol
+
+Aplicar `012_role_default_modules.sql` después de 011. Vincula DECE con `dece`,
+Gestor de proyectos con `projects` y Editor de contenidos con `portal`, incluyendo
+sus alias. Conserva los módulos seleccionados para los demás roles. Solo otorga
+módulos habilitados en la institución activa.
+
+El trigger diferido conserva los valores al terminar las operaciones de invitación,
+aprobación y edición; también completa las membresías existentes. El snapshot v4
+lee los permisos activos por institución y perfil. El contexto de sesión consulta
+esos mismos permisos después de autenticar, también con Google OAuth.
+
+### Contactos inválidos, cuentas existentes y DECE OAuth
+
+El cliente y la Edge Function validan correos con dominios y sufijos alfabéticos,
+normalizan espacios/caracteres invisibles y conservan los nombres con tildes. Una
+dirección como `persona@espe.edu.ec333333333` se señala y rechaza: no se recorta para
+inventar un destinatario. Si el dato original de Auth es incorrecto, debe revisarse
+la identidad con el responsable; aprobar una solicitud no cambia el correo de Auth.
+
+La invitación consulta primero `admin_tenant_invitation_recipient`: reutiliza la
+cuenta existente, crea Auth solo si no existe y conserva el UPSERT institucional
+de 007. Los conflictos concurrentes de creación se resuelven mediante otra consulta
+autorizada. Los rechazos de preparación muestran el motivo de SQL en vez de ocultarlo
+como un error genérico de creación. Actualizar `admin-tenant-invite` con el paquete
+regenerado para aplicar esta validación y resolución de destinatarios.
+
+Aplicar `011_dece_role_access.sql` después de 010 para asociar el rol DECE verificado
+a su módulo habilitado. Opera únicamente sobre membresías activas y conserva el
+aislamiento institucional. El contexto Auth adapta `dece` a `dece_staff`, identificador
+que consumen las rutas y la barra lateral existentes. El Login y los enlaces de Admin
+usan `/panel/dece` conservando `institution` y `slug`. No se concede acceso por el
+correo de Google ni por metadatos; se exige la misma membresía activa de Auth.uid().
+
+### Guardado de módulos y notificaciones de acceso
+
+Aplicar `010_access_modules.sql` después de 009. La edición de miembros activos
+usa `admin_tenant_update_access`: mantiene la membresía activa y conserva también
+los módulos seleccionados para administradores. No reinicia una invitación ni
+reemplaza tablas de otros módulos. El snapshot sigue consultando la tabla real
+`admin_tenant_member_modules` por institución y perfil; no usa tablas supuestas
+como `user_tenant_modules`.
+
+Actualizar la Edge Function existente `admin-tenant-invite` con el paquete
+regenerado para habilitar `notify_access`. Tanto la edición como la aprobación
+invocan esa acción después de guardar; una nueva invitación conserva su envío
+original. El servidor verifica actor, cuenta, estado activo e institución antes
+de enviar un enlace Auth. Las cuentas confirmadas reciben un magic link; las no
+confirmadas reciben un enlace de invitación. No se revocan membresías ni módulos
+cuando falla el correo. La tabla permite «Reenviar correo de acceso».
+
+La plantilla `access-notification-email.html` puede copiarse en las plantillas
+Magic Link e Invite de Supabase Auth para explicar el cambio de rol y los módulos.
+El nombre concreto del rol se consulta tras autenticar; no se usan metadatos de
+Auth como fuente de autorización. La plantilla remota no cambia al publicar el
+frontend. Un resultado de envío satisfactorio confirma la aceptación del proveedor,
+no la recepción en la bandeja del destinatario. Se mantienen los límites de correo.
+
 ### Registros autónomos y aprobación
 
 El endpoint de `/register` crea una membresía base inactiva, no necesariamente una

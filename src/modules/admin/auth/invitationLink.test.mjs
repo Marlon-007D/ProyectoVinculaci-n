@@ -12,9 +12,9 @@ test('expired email links are classified independently of Google on hash and que
 
 test('invite, recovery and magic-link callbacks support access tokens, token hashes and an already established session',()=>{
   for(const type of ['invite','recovery','magiclink']){
-    assert.deepEqual(parseInvitationLink('',`#type=${type}&access_token=test-access&refresh_token=test-refresh`),{kind:'tokens',accessToken:'test-access',refreshToken:'test-refresh',invitation:true});
+    assert.deepEqual(parseInvitationLink('',`#type=${type}&access_token=test-access&refresh_token=test-refresh`),{kind:'tokens',accessToken:'test-access',refreshToken:'test-refresh',invitation:true,type});
     assert.deepEqual(parseInvitationLink(`?type=${type}&token_hash=test-hash`,''),{kind:'token-hash',tokenHash:'test-hash',type});
-    assert.deepEqual(parseInvitationLink(`?type=${type}`,''),{kind:'session'});
+    assert.deepEqual(parseInvitationLink(`?type=${type}`,''),{kind:'session',type});
   }
 });
 
