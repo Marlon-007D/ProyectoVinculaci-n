@@ -1,6 +1,6 @@
 .site-versions { list-style: none; margin: 0 0 1rem; padding: 0; display: grid; gap: .5rem; }
 .site-versions__item { display: flex; align-items: center; gap: .75rem; width: 100%; min-height: 2.75rem; padding: .5rem .75rem; border: 1px solid var(--site-line); border-radius: var(--site-radius); background: var(--site-paper); color: var(--site-ink); font: inherit; text-align: left; cursor: pointer; }
-.site-versions__item[aria-pressed="true"] { border-color: var(--site-accent); box-shadow: inset 0 0 0 1px var(--site-accent); font-weight: 700; }
+.site-versions__item[aria-pressed="true"] { border: 2px solid var(--site-accent); font-weight: 700; }
 .site-versions__date { color: var(--site-muted); font-size: .9rem; margin-left: auto; }
 .site-versions__badge { padding: .1rem .5rem; border-radius: 999px; background: var(--site-accent); color: var(--site-accent-ink); font-size: .8rem; }
 .site-vpreview { border: 1px solid var(--site-line); border-radius: var(--site-radius); padding: 1rem; }

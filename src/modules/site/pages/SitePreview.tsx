@@ -12,6 +12,9 @@ import { AcademicPostPreviewPage } from "../../../features/academic-content/page
 import { useEventArticle, useNewsArticle } from "../hooks/useContent";
 import { HonorsSection } from "../components/Content/ContentSections";
 import honorsStyles from "../components/Content/HonorsSection.module.css";
+import { LoadingState } from "../components/states/LoadingState";
+import { ErrorState } from "../components/states/ErrorState";
+import { EmptyState } from "../components/states/EmptyState";
 
 export function SitePreview() {
   const [params, setParams] = useSearchParams();
@@ -40,20 +43,23 @@ export function SitePreview() {
     {(entry) => <AcademicPostPreviewPage entry={entry} onBack={() => setParams(current => { const next = new URLSearchParams(current); next.delete("evento"); return next; })} />}
   </AsyncView>;
 
+  if (page.state.status === "loading") return <LoadingState variant="page" pageKind={params.has("slug") ? "content" : "home"} />;
+  if (page.state.status === "error") return <ErrorState title="No se pudo cargar la página" message={page.state.error.message} onRetry={page.reload} />;
+  if (page.state.status === "empty") return <EmptyState title="No hay página publicada" message="Esta dirección no tiene una página publicada." />;
+  if (current.state.status === "loading") return <LoadingState variant="page" pageKind={page.state.data.is_homepage ? "home" : "content"} />;
+
   return (
-    <>
       <AsyncView
         state={current.state}
         onRetry={current.reload}
         loadingVariant="page"
-        emptyTitle="No hay página publicada"
-        emptyMessage="Esta dirección no tiene una página publicada."
+        emptyTitle="No hay contenido publicado"
+        emptyMessage="Esta página todavía no tiene una versión publicada."
       >
         {(v) => {
           const snapshot = parseSnapshot(v.content_snapshot);
           return <PageSections sections={snapshot.sections} template={snapshot.template} isHomepage={page.state.status === "success" && page.state.data.is_homepage} managed={Boolean((v.content_snapshot as Record<string, unknown>)?.publication_state)} />;
         }}
       </AsyncView>
-    </>
   );
 }

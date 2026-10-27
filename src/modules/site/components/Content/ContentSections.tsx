@@ -71,7 +71,7 @@ export function NewsSection({ title = "Noticias", limit = 3 }: Props) {
   const [, setSearchParams] = useSearchParams();
   return (
     <Block title={title}>
-      <AsyncView state={state} onRetry={reload} emptyMessage="Aún no hay noticias publicadas.">
+      <AsyncView state={state} onRetry={reload} loadingVariant="cards" emptyMessage="Aún no hay noticias publicadas.">
         {(list) => (
           <ul className="site-cards">
             {list.map((n) => (
@@ -96,7 +96,7 @@ export function StaffSection({ title = "Nuestro equipo", position }: Props) {
   if (position && state.status !== "success") return null;
   return (
     <Block title={title}>
-      <AsyncView state={state} onRetry={reload} emptyMessage="Aún no hay personal publicado.">
+      <AsyncView state={state} onRetry={reload} loadingVariant="people" emptyMessage="Aún no hay personal publicado.">
         {(list) => (
           <ul className="site-cards">
             {list.map((m) => (
@@ -129,7 +129,7 @@ export function HonorsSection({ title = "Cuadro de honor", limit = 6, className 
   const { state, reload } = useHonors(limit);
   return (
     <Block title={title} className={className}>
-      <AsyncView state={state} onRetry={reload} emptyMessage="Aún no hay reconocimientos publicados.">
+      <AsyncView state={state} onRetry={reload} loadingVariant="people" emptyMessage="Aún no hay reconocimientos publicados.">
         {(list) => className ? (
           <div className={honorsStyles.officialSlots} aria-label="Cuadro de honor oficial">
             {OFFICIAL_DISTINCTIONS.map((distinction) => {
@@ -195,7 +195,7 @@ export function EventsSection({ title = "Próximos eventos", limit = 4 }: Props)
   const [, setSearchParams] = useSearchParams();
   return (
     <Block title={title}>
-      <AsyncView state={state} onRetry={reload} emptyMessage="No hay eventos próximos.">
+      <AsyncView state={state} onRetry={reload} loadingVariant="events" emptyMessage="No hay eventos próximos.">
         {(list) => (
           <ul className="site-cards">
             {list.map((e) => {

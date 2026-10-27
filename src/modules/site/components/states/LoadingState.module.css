@@ -11,6 +11,14 @@
 .cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
 .card { display: grid; align-content: start; gap: .8rem; min-width: 0; min-height: 15rem; padding: 1rem; border: 1px solid #e5e7eb; border-radius: 14px; background: #f3f4f6; }
 .page { min-height: 65vh; }
+.page_content { align-content: start; }
+.pageHeading { display: grid; gap: .75rem; padding-top: clamp(1.5rem, 4vw, 3rem); }
+.contentBlock { max-width: 48rem; }
+.list { width: min(100%, 52rem); }
+.listCard { display: grid; grid-template-columns: 4.5rem minmax(0, 1fr); align-items: center; gap: 1rem; min-height: 7rem; padding: 1rem; border: 1px solid #e5e7eb; border-radius: 12px; background: #f8f9fb; }
+.listCard > div { display: grid; gap: .8rem; }
+.date { width: 4rem; height: 4rem; border-radius: 10px; }
+.avatar { width: 3.5rem; height: 3.5rem; border-radius: 50%; }
 .image { width: 100%; height: auto; aspect-ratio: 16 / 9; border-radius: 8px; background: #e5e7eb; }
 .line { display: block; width: 100%; height: .85rem; border-radius: 999px; background: #d1d5db; animation: pulse 1.4s ease-in-out infinite; }
 .lineStrong { width: 62%; height: 1.3rem; }
@@ -31,6 +39,7 @@
   .card:nth-child(n + 2) { display: none; }
   .hero { min-height: 14rem; }
   .articleImage { aspect-ratio: 4 / 3; }
+  .skeleton { padding-inline: 1rem; }
 }
 
 @media (prefers-reduced-motion: reduce) {
