@@ -4,6 +4,26 @@ import { authProviderHarness } from './mocks/authProviderHarness.mjs';
 
 const session = role => ({ user: { id: 'profile', app_metadata: { role } }, access_token: 'test-token' });
 
+test('Google OAuth reads the current browser origin at sign-in time for all four institutions', async t => {
+  const app = authProviderHarness(t);
+  await app.until(value => !value.loading);
+  for (const origin of ['http://localhost:5173', 'https://proyectovinculaci-n.onrender.com']) {
+    app.setOrigin(origin);
+    for (const slug of ['ue-la-concordia', 'ue-luz-de-america', 'ue-el-esfuerzo', 'ue-puerto-limon']) {
+      const result = await app.value.loginWithGoogle({ institution: `id-${slug}`, slug });
+      assert.equal(result.error, null);
+      const request = app.oauthRequests.at(-1);
+      assert.equal(request.provider, 'google');
+      const callback = new URL(request.options.redirectTo);
+      assert.equal(callback.origin, origin);
+      assert.equal(callback.pathname, '/panel/admin');
+      assert.deepEqual([...callback.searchParams], [['institution', `id-${slug}`], ['slug', slug]]);
+      assert.equal(callback.hash, '');
+    }
+  }
+  assert.equal(app.oauthRequests.length, 8);
+});
+
 test('a fresh password sign-in resolves the role instead of remaining in loading', async t => {
   const app = authProviderHarness(t);
   await app.until(value => !value.loading);
