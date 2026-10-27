@@ -13,10 +13,11 @@ test('a fresh password sign-in resolves the role instead of remaining in loading
 });
 
 for (const role of ['super_admin', 'superadmin']) {
-  test(`${role} bypasses membership queries after session restoration`, async t => {
+  test(`${role} in metadata cannot replace the institution membership`, async t => {
     const app = authProviderHarness(t, session(role));
-    await app.until(value => !value.loading && value.role === 'super_admin');
-    assert.equal(app.calls.includes('memberships'), false);
+    await app.until(value => !value.loading && value.role === 'institution_admin');
+    assert.equal(app.calls.includes('memberships'), true);
+    assert.equal(app.value.institutionId, 'a');
     assert.equal(app.value.roleIssue, null);
   });
 }

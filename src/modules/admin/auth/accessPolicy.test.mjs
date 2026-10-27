@@ -5,13 +5,13 @@ import { resolveAssignedAccess } from './accessPolicy.ts';
 const membership = { institutionId: 'institution-a', slug: 'school-a', role: 'institution_admin', active: true };
 
 for (const role of ['super_admin', 'superadmin']) {
-  test(`${role} ignores tenant selection`, () => {
-    assert.deepEqual(resolveAssignedAccess([{ ...membership, role }], { institution: 'other', slug: 'other' }),
-      { status: 'authorized', role: 'super_admin', institutionId: null });
+  test(`${role} requires an active membership in the selected institution`, () => {
+    assert.deepEqual(resolveAssignedAccess([{ ...membership, role }], { institution: 'other', slug: 'other' }), { status: 'unassigned' });
+    assert.deepEqual(resolveAssignedAccess([{ ...membership, role }], { institution: membership.institutionId }), { status: 'authorized', role: 'super_admin', institutionId: membership.institutionId });
   });
 }
 
-for (const role of ['institution_admin', 'dece', 'dece_staff', 'projects_manager', 'project_manager', 'content_editor', 'editor', 'student']) {
+for (const role of ['admin', 'teacher', 'secretary', 'staff', 'institution_admin', 'dece', 'dece_staff', 'projects_manager', 'project_manager', 'content_editor', 'editor', 'student', 'guest']) {
   test(`${role} grants access only to the assigned active institution`, () => {
     const items = [{ ...membership, role }];
     assert.equal(resolveAssignedAccess(items, { institution: 'institution-a', slug: 'school-a' }).status, 'authorized');
@@ -31,7 +31,7 @@ test('a pending row cannot mask an approved role or a role in another institutio
 
 test('unverified roles are errors; empty or pending memberships allow requesting access', () => {
   assert.equal(resolveAssignedAccess([], {}).status, 'unassigned');
-  for (const role of ['pending', 'viewer', 'guest', 'invitado']) {
+  for (const role of ['pending', 'viewer', 'invitado']) {
     assert.equal(resolveAssignedAccess([{ ...membership, role }], {}).status, 'unassigned');
   }
   for (const role of [null, 'unknown']) {

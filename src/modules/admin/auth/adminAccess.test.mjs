@@ -28,9 +28,9 @@ test('OAuth pending state prevents repeat submissions and supports error recover
 });
 
 for (const role of ['super_admin', 'superadmin']) {
-  test(role + ' bypasses tenant loading, missing memberships and stale request issues', () => {
+  test(role + ' requires its own verified tenant', () => {
     assert.equal(resolveAdminAccess({ ...assigned, role, loadingTenant: true, hasInstitution: false,
-      roleIssue: 'membership-required', tenantError: 'Unavailable' }).status, 'authorized');
+      roleIssue: 'membership-required', tenantError: 'Unavailable' }).status, 'loading');
     assert.equal(resolveAdminAccess({ ...assigned, role, mfaPending: true }).status, 'mfa');
     assert.equal(resolveAdminAccess({ ...assigned, role, hasUser: false }).status, 'login');
     assert.equal(resolveAdminAccess({ ...assigned, role, loading: true }).status, 'loading');
@@ -46,8 +46,8 @@ test('ordinary administrators still require a verified tenant', () => {
 test('login ignores stale route issues for verified sessions but reports actual tenant failures', () => {
   const input = { hasUser: true, role: 'super_admin', roleIssue: 'membership-required', mfaPending: false,
     loadingTenant: true, hasInstitution: false, tenantError: 'Offline' };
-  assert.equal(resolveLoginIssue(input), null);
-  assert.equal(resolveLoginIssue({ ...input, role: 'superadmin' }), null);
+  assert.equal(resolveLoginIssue(input), 'membership-required');
+  assert.equal(resolveLoginIssue({ ...input, role: 'superadmin' }), 'membership-required');
   assert.equal(resolveLoginIssue({ ...input, hasUser: false }), null);
   assert.equal(resolveLoginIssue({ ...input, role: null, mfaPending: true }), null);
   assert.equal(resolveLoginIssue({ ...input, role: null }), 'membership-required');

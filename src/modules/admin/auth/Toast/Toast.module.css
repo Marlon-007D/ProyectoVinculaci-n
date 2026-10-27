@@ -1,5 +1,6 @@
 .region { position: fixed; z-index: 2000; right: 24px; bottom: 24px; width: min(420px, calc(100vw - 48px)); }
 .toast { display: flex; align-items: center; gap: 16px; padding: 16px; border: 1px solid #b8abc8; border-radius: 12px; background: #f5f0fa; color: #352846; font: 500 14px/1.5 system-ui, sans-serif; }
 .toast[data-kind='error'] { border-color: #c9a6a6; background: #fff4f3; color: #8c2925; }
+.toast[data-kind='warning'] { border-color: #b9a16b; background: #fff8e8; color: #634b14; }
 .toast button { border: 0; border-radius: 8px; padding: 8px; background: transparent; color: inherit; font: inherit; cursor: pointer; }
 .toast button:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }

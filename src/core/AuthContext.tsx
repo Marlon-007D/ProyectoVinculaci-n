@@ -1,7 +1,6 @@
 import { readSessionValue, writeSessionValue } from '../modules/admin/auth/sessionStorage';
 import { useLocation } from 'react-router-dom';
 import { accessScopeKey, resolveAssignedAccess } from '../modules/admin/auth/accessPolicy';
-import { hasSuperAdminAccess, isSuperAdmin, type GlobalAdminAuthority } from './auth/superAdmin';
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from './supabaseClient';
@@ -30,18 +29,6 @@ interface AuthContextType {
   updatePassword: (password: string) => Promise<{ error: Error | null }>;
   logout: () => Promise<void>;
 }
-
-// Composition boundary: authority comes from authenticated backend responses.
-const globalAdminAuthority: GlobalAdminAuthority = {
-  getVerifiedRole: async (profileId) => {
-    const { data } = await supabase.auth.getUser();
-    return data.user?.id === profileId ? data.user.app_metadata.role : null;
-  },
-  hasGlobalRole: async () => {
-    const { data } = await supabase.rpc('is_super_admin');
-    return data === true;
-  },
-};
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -143,14 +130,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setRoleError(null);
     setRoleIssue(null);
     try {
-      const globalAdmin = await hasSuperAdminAccess(userId, globalAdminAuthority);
+      const { data: identity, error: identityError } = await supabase.auth.getUser();
       if (!current()) return;
-      if (globalAdmin) {
-        setRole('super_admin');
-        setInstitutionId(null);
-        setMfaEnrollmentRequired(false);
-        return;
-      }
+      if (identityError || identity.user?.id !== userId) throw new Error('La identidad de la sesión no pudo verificarse.');
       const { data: memberships, error } = await supabase.from('memberships')
         .select('institution_id, role_id').eq('profile_id', userId).eq('is_active', true);
       if (!current()) return;
@@ -164,10 +146,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (!current()) return;
       if (rolesError) throw rolesError;
       const roleNames = new Map((roles ?? []).map(item => [item.role_id, item.name]));
-      if (memberships.some(item => isSuperAdmin(roleNames.get(item.role_id)))) {
-        setRole('super_admin'); setInstitutionId(null); setMfaEnrollmentRequired(false);
-        return;
-      }
       const { data: institutions, error: institutionError } = await supabase.from('institutions')
         .select('institution_id, slug, is_active').in('institution_id', memberships.map(item => item.institution_id));
       if (!current()) return;
@@ -204,7 +182,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     if (!user || loading || mfaRequired || mfaEnrollmentRequired || resolvedScope.current === scopeKey) return;
-    if (isSuperAdmin(role)) { resolvedScope.current = scopeKey; return; }
     setLoading(true);
     const revision = roleRevision.current + 1;
     void fetchUserRoleAndTenant(user.id).finally(() => {
@@ -402,7 +379,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       mfaChallengeRef.current = null;
   };
 
-  const scopePending = Boolean(user && !isSuperAdmin(role) && !mfaRequired && !mfaEnrollmentRequired && resolvedScope.current !== scopeKey);
+  const scopePending = Boolean(user && !mfaRequired && !mfaEnrollmentRequired && resolvedScope.current !== scopeKey);
   return (
     <AuthContext.Provider value={{ user, session, role, roleError, roleIssue, institutionId, loading: loading || scopePending, login, loginWithGoogle, requestLoginLink, register, isPasswordRecovery, mfaRequired, mfaEnrollmentRequired, completeMfaEnrollment, mfaChallengeReady: Boolean(mfaChallengeId), verifyMfa, requestPasswordReset, updatePassword, logout }}>
       {children}

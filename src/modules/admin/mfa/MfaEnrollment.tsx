@@ -1,3 +1,4 @@
+import { AdminForm } from '../auth/AdminForm';
 import { useToastMessage, useToast } from '../auth/Toast/Toast';
 import React, { useState } from 'react';
 import { Check, Copy, Eye, EyeOff, KeyRound, LockKeyhole, ShieldCheck, Smartphone } from 'lucide-react';
@@ -137,7 +138,7 @@ export const MfaEnrollment: React.FC<Props> = ({ onEnrolled }) => {
         )}
 
         {(qrCode || existingFactor || verifiedButNotSaved) && (
-          <form className={styles.form} onSubmit={(event) => void verifyCode(event)}>
+          <AdminForm className={styles.form} onSubmit={(event) => void verifyCode(event)}>
             {qrCode && !verifiedButNotSaved && <>
               <div className={styles.instruction}><span>1</span><div><strong>Escanea el código QR</strong><p>Abre tu app autenticadora y agrega una cuenta escaneando este código.</p></div></div>
               <div className={styles.qrFrame}><img src={qrCode} alt="Código QR para vincular una aplicación autenticadora" /></div>
@@ -159,15 +160,15 @@ export const MfaEnrollment: React.FC<Props> = ({ onEnrolled }) => {
             {!verifiedButNotSaved && <>
               <div className={styles.instruction}><span>2</span><div><strong>Escribe el código de seis dígitos</strong><p>El código cambia automáticamente cada 30 segundos.</p></div></div>
               <label className={styles.codeLabel} htmlFor="mfa-code">Código de verificación</label>
-              <input id="mfa-code" className={styles.codeInput} type="text" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} placeholder="000000" value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, '').slice(0, 6))} aria-describedby="mfa-code-help" />
+              <input id="mfa-code" className={styles.codeInput} type="text" inputMode="numeric" autoComplete="one-time-code" required pattern="[0-9]{6}" maxLength={6} placeholder="000000" value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, '').slice(0, 6))} aria-describedby="mfa-code-help" />
               <span id="mfa-code-help" className={styles.helper}>Solo números, sin espacios.</span>
             </>}
 
-            <button type="submit" disabled={busy || (!verifiedButNotSaved && code.length !== 6)} className={styles.primaryButton}>
+            <button type="submit" disabled={busy} className={styles.primaryButton}>
               {busy ? 'Verificando…' : verifiedButNotSaved ? 'Guardar y continuar' : 'Verificar y activar'}
             </button>
             {qrCode && !verifiedButNotSaved && <button type="button" disabled={busy} className={styles.textButton} onClick={() => void beginEnrollment()}>Generar un nuevo código QR</button>}
-          </form>
+          </AdminForm>
         )}
 
         <p className={styles.privacy}><LockKeyhole size={14} /> Tu clave de configuración se muestra solo en esta sesión y no se guarda en el navegador.</p>
