@@ -15,6 +15,7 @@ export function authProviderHarness(t, initialSession = null) {
   let value;
   const snapshots = [];
   const calls = [];
+  const oauthRequests = [];
   const location = { pathname: '/panel/admin', search: '', origin: 'http://localhost:5173' };
   const stored = new Map([['auth-login-method', 'password']]);
   const previousWindow = globalThis.window;
@@ -71,6 +72,7 @@ export function authProviderHarness(t, initialSession = null) {
   };
   const client = {
     auth: {
+      signInWithOAuth: async request => { oauthRequests.push(request); return { error: null }; },
       getSession: async () => ({ data: { session }, error: null }),
       getUser: async () => ({ data: { user: session?.user ?? null }, error: null }),
       onAuthStateChange(callback) { listener = callback; return { data: { subscription: { unsubscribe() {} } } }; },
@@ -123,7 +125,8 @@ export function authProviderHarness(t, initialSession = null) {
   });
   render();
   return {
-    get value() { return value; }, snapshots, calls,
+    get value() { return value; }, snapshots, calls, oauthRequests,
+    setOrigin(origin) { location.origin = origin; },
     setQuery(next) { query = next; },
     emit(event, nextSession) { session = nextSession; listener(event, nextSession); },
     scope(search) { location.search = search; render(); },
