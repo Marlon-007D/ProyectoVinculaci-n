@@ -33,7 +33,8 @@ test('tabs include only their explicit role categories', () => {
   assert.equal(membershipTab('editor'), 'team');
   assert.equal(membershipTab('student'), 'students');
   assert.equal(membershipTab(null), 'registered');
-  for (const role of ['super_admin', 'viewer', 'unknown']) assert.equal(membershipTab(role), null);
+  assert.equal(membershipTab('super_admin'), 'team');
+  for (const role of ['viewer', 'unknown']) assert.equal(membershipTab(role), null);
 });
 
 test('removing roles rejects the session owner and unauthenticated actors', () => {
@@ -52,10 +53,10 @@ test('institution changes recalculate memberships without leaking global account
     { profile_id: 'registered', institution_id: 'a', role_name: null },
     { profile_id: 'student', institution_id: 'b', role_name: 'student' },
   ];
-  assert.deepEqual(visibleInstitutionMemberships(members, 'a', false).map(item => item.profile_id), ['local', 'registered']);
+  assert.deepEqual(visibleInstitutionMemberships(members, 'a', false).map(item => item.profile_id), ['global', 'local', 'registered']);
   assert.deepEqual(visibleInstitutionMemberships(members, 'b', false).map(item => item.profile_id), ['student']);
   assert.deepEqual(visibleInstitutionMemberships(members, null, false), []);
-  assert.equal(visibleInstitutionMemberships(members, 'a', true).some(item => item.role_name === 'super_admin'), false);
+  assert.equal(visibleInstitutionMemberships(members, 'a', true).every(item => item.institution_id === 'a'), true);
 });
 
 test('an account with a special role is not also counted as an unassigned account', () => {

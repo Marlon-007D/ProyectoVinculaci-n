@@ -1,3 +1,4 @@
+import { AdminForm } from '../auth/AdminForm';
 import { ToastBoundary, useToastMessage } from '../auth/Toast/Toast';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { AccessRequestService } from './membershipRequestService';
@@ -50,12 +51,12 @@ function MembershipRequestPanelContent({ institution, slug, service, onContinue 
       case 'pending': return <><p role="status">Pendiente de aprobación. Tu institución debe asignarte un rol antes de habilitar tu acceso.</p><button type="button" onClick={() => setRevision(value => value + 1)}>Consultar estado</button></>;
       case 'approved': return <><p role="status">Tu solicitud fue aprobada.</p><button type="button" onClick={onContinue}>Continuar al panel</button></>;
       case 'error': return <><button type="button" onClick={() => setRevision(value => value + 1)}>Volver a intentar</button></>;
-      case 'ready': return <form onSubmit={submit} className={styles.form}>
+      case 'ready': return <AdminForm onSubmit={submit} className={styles.form}>
         <label>Nombres<input name="firstName" defaultValue={draft.current.firstName} autoComplete="given-name" maxLength={100} required /></label>
         <label>Apellidos<input name="lastName" defaultValue={draft.current.lastName} autoComplete="family-name" maxLength={100} required /></label>
         <label>Celular<input name="phone" defaultValue={draft.current.phone} type="tel" autoComplete="tel-national" inputMode="numeric" pattern="09[0-9]{8}" maxLength={10} title="Celular ecuatoriano de 10 dígitos que empiece con 09" required /></label>
         <button type="submit">Enviar solicitud</button>
-      </form>;
+      </AdminForm>;
       default: { const exhaustive: never = state; return exhaustive; }
     }
   }

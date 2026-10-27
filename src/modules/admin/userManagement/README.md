@@ -1,5 +1,11 @@
 # Solicitudes pendientes de membresía
 
+> Contrato vigente: [administración por institución](../backend/README.md).
+> El panel usa exclusivamente los RPC `admin_tenant_*`. Super Admin es un rol
+> de membresía de una institución, sin autorización global. El material siguiente
+> describe el seed y las pruebas de la migración anterior; no basta para activar
+> el panel actual. No ejecutar seeds contra producción como parte de este cambio.
+
 Esta entrega conserva el registro y las notificaciones institucionales existentes. Las nuevas solicitudes de `admin_membership_requests` y el seed se integran con las tres pestañas. La ruta `/login` de `develop` incorpora Google OAuth y el formulario de solicitud mediante el contrato tipado de este módulo.
 
 Guía directa: [Google OAuth y aprobación en El Esfuerzo y las otras unidades](./GOOGLE_OAUTH_TEST.md).
@@ -52,10 +58,9 @@ a `approved` en una sola transacción. Si falla cualquier paso, sigue pendiente.
 Las siguientes consultas actualizan el contador y muestran la cuenta en la
 pestaña correspondiente a su rol. No se requieren cambios en otros módulos.
 
-Solo un administrador global puede asignar el rol de administrador institucional.
-Las cuentas globales, las aprobaciones propias y las aprobaciones de otra
-institución se rechazan en el servidor. Los roles existentes y las membresías
-desactivadas no se sobrescriben mediante solicitudes.
+Solo el Super Admin de la institución puede asignar su administrador institucional.
+El administrador asigna roles internos. Las aprobaciones propias, de mayor
+jerarquía y de otra institución se rechazan en el nuevo contrato del servidor.
 
 ## Activación de la base de datos
 

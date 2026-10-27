@@ -1,31 +1,58 @@
+import { AdminForm } from './auth/AdminForm';
+import { createTenantAdminService } from './userManagement/tenantAdminService';
+import { supabase } from '../../core/supabaseClient';
 import { adminDestination } from './auth/institutionNavigation';
-import { ToastBoundary, useToastMessage } from './auth/Toast/Toast';
-import { isGlobalAdmin as isSuperAdmin } from './auth/accessPolicy';
+import { ToastBoundary, useToast, useToastMessage } from './auth/Toast/Toast';
+import { canonicalTenantRole, isTenantAdmin, isTenantSuperAdmin as isSuperAdmin } from './auth/accessPolicy';
 import { useEffect, useState, type FormEvent } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../core/AuthContext';
 import { useTenant } from '../../core/TenantContext';
 import { MfaEnrollment } from './mfa/MfaEnrollment';
 import { SuperAdminPanel } from './superadmin/SuperAdminPanel';
+import { TenantSelector } from './superadmin/TenantSelector';
+import { tenantSelectionDestination } from './superadmin/tenantSelection';
 import { UserManagement } from './userManagement/UserManagement';
 import styles from './AdminRoutes.module.css';
 import { resolveAdminAccess } from './auth/adminAccess';
-import { loginDestination } from '../../core/auth/loginAccess';
+import { AssignedModulesPanel } from './auth/AssignedModulesPanel';
+import { TenantUrlBoundary } from './auth/TenantUrlBoundary';
+
+
+import { AdminSessionPolicy } from './auth/AdminSessionPolicy';
+import { AdminSessionFeedback } from './auth/AdminSessionFeedback';
+import { PendingInvitationGate } from './auth/PendingInvitationGate';
+import { InvitationLinkBoundary } from './auth/InvitationLinkBoundary';
+
+const tenantAdminService = createTenantAdminService(supabase);
+
 
 export default function AdminRoutes(props: { superadminOnly?: boolean }) {
-  return <ToastBoundary><AdminRoutesContent {...props} /></ToastBoundary>;
+  return <ToastBoundary><InvitationLinkBoundary><PendingInvitationGate><AdminSessionPolicy><AdminSessionFeedback><TenantUrlBoundary><AdminRoutesContent {...props} /></TenantUrlBoundary></AdminSessionFeedback></AdminSessionPolicy></PendingInvitationGate></InvitationLinkBoundary></ToastBoundary>;
 }
 
 function AdminRoutesContent({ superadminOnly = false }: { superadminOnly?: boolean }) {
-  const { user, role, roleIssue, loading, logout, mfaRequired, mfaEnrollmentRequired, completeMfaEnrollment, verifyMfa, mfaChallengeReady } = useAuth();
-  const { activeInstitution, loadingTenant, tenantError } = useTenant();
+  const { user, role, roleIssue, institutionId, loading, logout, mfaRequired, mfaEnrollmentRequired, completeMfaEnrollment, verifyMfa, mfaChallengeReady } = useAuth();
+  const { activeInstitution, institutions, setActiveInstitution, loadingTenant, tenantError } = useTenant();
   const [error, setError] = useState('');
   useToastMessage(error);
   const [busy, setBusy] = useState(false);
   const [code, setCode] = useState('');
+
+  const notify = useToast();
   const location = useLocation();
   const navigate = useNavigate();
   const scopedSearch = new URL(adminDestination(location.pathname, location.search), window.location.origin).search;
+
+  function selectInstitution(selectedId: string) {
+    if (selectedId === activeInstitution?.institution_id) return;
+    const destination = tenantSelectionDestination(institutions, selectedId, location.search, location.hash);
+    const selected = institutions.find(item => item.institution_id === selectedId);
+    if (!destination || !selected) return;
+    setActiveInstitution(selected);
+    navigate(destination);
+    notify(`Unidad educativa seleccionada: ${selected.name}.`, 'success');
+  }
 
   async function signOut() {
     try {
@@ -52,22 +79,22 @@ function AdminRoutesContent({ superadminOnly = false }: { superadminOnly?: boole
 
   useEffect(() => {
     if (!user || !role || loading || mfaRequired || mfaEnrollmentRequired || loadingTenant) return;
+    if (user.user_metadata?.admin_tenant_onboarding === true) return;
     if (isSuperAdmin(role)) {
       return;
     }
-    if (role === 'institution_admin') {
+    if (isTenantAdmin(role)) {
       if (location.pathname === '/panel/superadmin' || location.pathname === '/system-admin')
         navigate(adminDestination('/panel/admin', location.search), { replace: true });
       return;
     }
     if (!activeInstitution) return;
-    const destination = adminDestination(loginDestination({ ...activeInstitution, role: activeInstitution.role }), location.search, { institution: activeInstitution.institution_id, slug: activeInstitution.slug });
-    if (location.pathname.startsWith('/panel/')) navigate(destination, { replace: true });
+    if (location.pathname !== '/panel/admin') navigate(adminDestination('/panel/admin', location.search), { replace: true });
   }, [activeInstitution, loading, loadingTenant, mfaEnrollmentRequired, mfaRequired, role, location.pathname, location.search, navigate, user]);
 
   const access = resolveAdminAccess({ loading, hasUser: Boolean(user), role, roleIssue,
     mfaPending: mfaRequired || mfaEnrollmentRequired, loadingTenant,
-    hasInstitution: Boolean(activeInstitution), tenantError });
+    hasInstitution: Boolean(activeInstitution && activeInstitution.institution_id === institutionId && role && canonicalTenantRole(role) === canonicalTenantRole(activeInstitution.role)), tenantError });
   switch (access.status) {
     case 'loading': return <main className={styles.page} role="status" aria-live="polite" aria-busy="true">{access.message}</main>;
     case 'login': return <Navigate to={{ pathname: '/login', search: scopedSearch, hash: location.hash }} state={{ accessIssue: access.issue }} replace />;
@@ -77,9 +104,10 @@ function AdminRoutesContent({ superadminOnly = false }: { superadminOnly?: boole
   }
 
   if (mfaEnrollmentRequired) return <MfaEnrollment onEnrolled={completeMfaEnrollment} />;
-  if (mfaRequired) return <main className={styles.page}><section className={styles.card}><p className={styles.eyebrow}>VERIFICACIÓN DE CUENTA</p><h1>Confirma tu identidad</h1><p className={styles.help}>Ingresa el código temporal de seis dígitos de tu aplicación autenticadora.</p>{mfaChallengeReady ? <form className={styles.form} onSubmit={submitMfa}><label htmlFor="mfa-code">Código de verificación</label><input id="mfa-code" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={code} onChange={event => setCode(event.target.value.replace(/\D/g, '').slice(0, 6))} required /><button disabled={busy || code.length !== 6}>{busy ? 'Verificando…' : 'Verificar y continuar'}</button></form> : <p role="alert">No se pudo iniciar la verificación. Cierra sesión e inténtalo de nuevo.</p>}<button onClick={() => void signOut()}>Cerrar sesión</button></section></main>;
+  if (mfaRequired) return <main className={styles.page}><section className={styles.card}><p className={styles.eyebrow}>VERIFICACIÓN DE CUENTA</p><h1>Confirma tu identidad</h1><p className={styles.help}>Ingresa el código temporal de seis dígitos de tu aplicación autenticadora.</p>{mfaChallengeReady ? <AdminForm className={styles.form} onSubmit={submitMfa}><label htmlFor="mfa-code">Código de verificación</label><input id="mfa-code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} value={code} onChange={event => setCode(event.target.value.replace(/\D/g, '').slice(0, 6))} required /><button disabled={busy}>{busy ? 'Verificando…' : 'Verificar y continuar'}</button></AdminForm> : <p role="alert">No se pudo iniciar la verificación. Cierra sesión e inténtalo de nuevo.</p>}<button onClick={() => void signOut()}>Cerrar sesión</button></section></main>;
   if (superadminOnly && !isSuperAdmin(role)) return <Navigate to={adminDestination('/panel/admin', location.search)} replace />;
-  if (isSuperAdmin(role)) return <main className={styles.admin}>{superadminOnly ? <SuperAdminPanel /> : <UserManagement />}</main>;
-  if (role === 'institution_admin') return <main className={styles.admin}><UserManagement /></main>;
+  if (isSuperAdmin(role)) return <main className={styles.admin}><TenantSelector institutions={institutions} selectedId={activeInstitution?.institution_id ?? ''} onSelect={selectInstitution} />{superadminOnly ? <SuperAdminPanel service={tenantAdminService} /> : <UserManagement service={tenantAdminService} />}</main>;
+  if (isTenantAdmin(role)) return <main className={styles.admin}><UserManagement service={tenantAdminService} /></main>;
+  if (activeInstitution) return <main className={styles.admin}><AssignedModulesPanel institution={activeInstitution} /></main>;
   return <main className={styles.page}><section className={styles.card}><h1>Acceso restringido</h1><p>Tu cuenta aún no tiene un rol administrativo asignado.</p><button onClick={() => void signOut()}>Cerrar sesión</button></section></main>;
 }

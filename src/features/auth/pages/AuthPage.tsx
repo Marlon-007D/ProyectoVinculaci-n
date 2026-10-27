@@ -2,9 +2,9 @@ import { adminDestination } from '../../../modules/admin/auth/institutionNavigat
 import { loginDestination } from '../../../core/auth/loginAccess';
 import { resolveLoginIssue } from '../utils/adminAccess';
 import { useTenant } from '../../../core/TenantContext';
-import { useToastMessage } from '../../../shared/components/Toast/Toast';
+import { useToast, useToastMessage } from '../../../modules/admin/auth/Toast/Toast';
 import { isSuperAdmin } from '../../../core/auth/superAdmin';
-import { useReducer, useRef, type FormEvent } from 'react';
+import { useReducer, useRef, useState, type FormEvent } from 'react';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../core/AuthContext';
 import { GoogleButton } from '../components/GoogleButton';
@@ -13,14 +13,24 @@ import { institutionContextFromSearch, institutionSearch } from '../utils/google
 import { MembershipRequestPanel } from '../../../modules/admin/userManagement/MembershipRequestPanel';
 import type { AccessRequestService } from '../../../modules/admin/userManagement/membershipRequestService';
 import styles from './AuthPage.module.css';
+import { PasswordField } from '../../../modules/admin/auth/PasswordField';
+import { InvitationLinkBoundary } from '../../../modules/admin/auth/InvitationLinkBoundary';
+import { InstitutionalLogin } from '../../../modules/admin';
 
 export function AuthPage({ mode = 'login', requestService }: { mode?: 'login' | 'register'; requestService: AccessRequestService }) {
-  const { login, register, loginWithGoogle, user, role, roleIssue, loading, mfaRequired, mfaEnrollmentRequired, logout } = useAuth();
+  return <InvitationLinkBoundary><AuthPageContent mode={mode} requestService={requestService} /></InvitationLinkBoundary>;
+}
+
+function AuthPageContent({ mode, requestService }: { mode: 'login' | 'register'; requestService: AccessRequestService }) {
+  const { login, register, loginWithGoogle, user, role, roleIssue, loading, mfaRequired, mfaEnrollmentRequired, logout, requestPasswordReset } = useAuth();
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
   const { activeInstitution, loadingTenant, tenantError } = useTenant();
   const location = useLocation();
   const navigate = useNavigate();
   const [state, dispatch] = useReducer(authFormReducer, { status: 'idle' });
   const pendingRef = useRef(false);
+  const notify = useToast();
   const params = new URLSearchParams(location.search);
   const context = institutionContextFromSearch(location.search);
   const portalParams = new URLSearchParams();
@@ -78,7 +88,26 @@ export function AuthPage({ mode = 'login', requestService }: { mode?: 'login' | 
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    void authenticate('credentials', event.currentTarget);
+    if (pendingRef.current || busy) return;
+    const form = event.currentTarget;
+    const values = new FormData(form);
+    const email = String(values.get('email') ?? '').trim();
+    const password = String(values.get('password') ?? '');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      notify('Por favor, ingresa un correo electrónico válido.');
+      form.querySelector<HTMLInputElement>('#auth-email')?.focus();
+      return;
+    }
+    if (!password.trim() || password.length < (registering ? 8 : 6)) {
+      notify(`Ingresa una contraseña de al menos ${registering ? 8 : 6} caracteres.`);
+      form.querySelector<HTMLInputElement>('#auth-password')?.focus();
+      return;
+    }
+    if (registering && (!String(values.get('firstName') ?? '').trim() || !String(values.get('lastName') ?? '').trim())) {
+      notify('Completa todos los campos obligatorios.');
+      return;
+    }
+    void authenticate('credentials', form);
   }
 
   if (loading) return <main className={styles.page} role="status">Cargando tu acceso…</main>;
@@ -89,6 +118,12 @@ export function AuthPage({ mode = 'login', requestService }: { mode?: 'login' | 
     const target = loginDestination({ ...activeInstitution, role: effectiveRole });
     return <Navigate to={adminDestination(target, location.search, { institution: activeInstitution.institution_id, slug: activeInstitution.slug })} replace />;
   }
+
+  if (!registering && !user) return <InstitutionalLogin email={loginEmail} password={loginPassword}
+    onEmailChange={setLoginEmail} onPasswordChange={setLoginPassword} busy={busy}
+    error={state.status === 'error' ? state.message : ''} onSubmit={submit} requestPasswordReset={requestPasswordReset}>
+    <GoogleButton disabled={busy} pending={busy && state.method === 'google'} onClick={() => void authenticate('google')} />
+  </InstitutionalLogin>;
 
   return <main className={styles.page}>
     <div className={styles.layout}>
@@ -112,14 +147,14 @@ export function AuthPage({ mode = 'login', requestService }: { mode?: 'login' | 
         {state.status !== 'registered' && <>
           <GoogleButton disabled={busy} pending={state.status === 'pending' && state.method === 'google'} onClick={() => void authenticate('google')} />
           <div className={styles.separator}>O entra con</div>
-          <form onSubmit={submit} className={styles.form} aria-busy={busy}>
+          <form noValidate onSubmit={submit} className={styles.form} aria-busy={busy}>
             <fieldset disabled={busy} className={styles.fields}>
               {registering && <>
                 <label htmlFor="auth-first-name">Nombres</label><input id="auth-first-name" name="firstName" autoComplete="given-name" required />
                 <label htmlFor="auth-last-name">Apellidos</label><input id="auth-last-name" name="lastName" autoComplete="family-name" required />
               </>}
               <label htmlFor="auth-email">Correo electrónico</label><input id="auth-email" name="email" type="email" autoComplete="username" required />
-              <label htmlFor="auth-password">Contraseña</label><input id="auth-password" name="password" type="password" autoComplete={registering ? 'new-password' : 'current-password'} minLength={registering ? 8 : undefined} required />
+              <PasswordField label="Contraseña" id="auth-password" name="password" autoComplete={registering ? 'new-password' : 'current-password'} minLength={registering ? 8 : undefined} disabled={busy} required />
               <button className={styles.submit} type="submit">{busy ? 'Procesando…' : registering ? 'Crear cuenta' : 'Iniciar sesión'}</button>
             </fieldset>
           </form>
