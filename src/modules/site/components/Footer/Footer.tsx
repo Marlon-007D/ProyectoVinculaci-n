@@ -4,7 +4,7 @@ import { flattenLeaves } from "../../utils/menuTree";
 import { MenuLink } from "../Navigation/MenuLink";
 
 export function Footer({ config, tree = [] }: { config: SiteConfig; tree?: MenuNode[] }) {
-  const links = flattenLeaves(tree);
+  const links = flattenLeaves(tree).slice(0, 5);
   const hasContact = Boolean(config.email || config.phone);
   return (
     <footer className="site-footer">
@@ -24,18 +24,18 @@ export function Footer({ config, tree = [] }: { config: SiteConfig; tree?: MenuN
           </nav>
         )}
         {(hasContact || config.social.length > 0) && (
-          <div>
+          <div className="site-footer__extras">
             {hasContact && (
-              <>
+              <section className="site-footer__group">
                 <h2 className="site-footer__heading">Contacto</h2>
                 <ul className="site-footer__contact">
                   {config.email && <li><a href={`mailto:${config.email}`}>{config.email}</a></li>}
                   {config.phone && <li><a href={`tel:${config.phone.replace(/\s/g, "")}`}>{config.phone}</a></li>}
                 </ul>
-              </>
+              </section>
             )}
             {config.social.length > 0 && (
-              <>
+              <section className="site-footer__group">
                 <h2 className="site-footer__heading">Redes</h2>
                 <ul className="site-footer__links" aria-label="Redes sociales">
                   {config.social.map((s) => (
@@ -46,7 +46,7 @@ export function Footer({ config, tree = [] }: { config: SiteConfig; tree?: MenuN
                     </li>
                   ))}
                 </ul>
-              </>
+              </section>
             )}
           </div>
         )}

@@ -34,8 +34,8 @@
 .site-block > .site-container > p { color: var(--site-muted); max-width: 44rem; }
 
 .site-cards { list-style: none; margin: 2rem 0 0; padding: 0; display: grid; gap: 1.25rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); }
-.site-cards .site-card { padding: 1.5rem; border: 1px solid var(--site-line); border-radius: 14px; background: #ffffff; box-shadow: 0 6px 18px rgb(15 41 62 / .05); transition: transform .2s ease, box-shadow .2s ease; }
-.site-cards .site-card:hover { transform: translateY(-3px); box-shadow: 0 12px 28px rgb(15 41 62 / .1); }
+.site-cards .site-card { padding: 1.5rem; border: 1px solid var(--site-line); border-radius: 14px; background: #ffffff; transition: border-color .2s ease, background-color .2s ease; }
+.site-cards .site-card:hover { border-color: color-mix(in srgb, var(--site-accent) 45%, var(--site-line)); }
 .site-cards h3 { margin: 0 0 .5rem; font-size: 1.3rem; }
 .site-cards .site-card p { color: var(--site-muted); font-size: .95rem; margin: 0; }
 .site-block--dark .site-cards .site-card p { color: #b6c6d8; }
@@ -83,8 +83,8 @@
 .site-hero h2 { text-wrap: balance; letter-spacing: -.02em; }
 .site-hero__eyebrow { display: inline-flex; align-items: center; gap: .5rem; padding: .35rem .85rem; border-radius: 999px; background: rgb(242 185 90 / .14); border: 1px solid rgb(242 185 90 / .38); }
 .site-hero__eyebrow::before { content: ""; width: .45rem; height: .45rem; border-radius: 50%; background: var(--site-gold); }
-.site-hero .site-btn { transition: transform .18s ease, box-shadow .18s ease, background-color .18s ease; }
-.site-hero .site-btn--primary:hover { transform: translateY(-1px); box-shadow: 0 10px 22px rgb(0 0 0 / .28); }
+.site-hero .site-btn { transition: background-color .18s ease, color .18s ease; }
+.site-hero .site-btn--primary:hover { background: color-mix(in srgb, var(--site-gold) 82%, #ffffff); }
 .site-hero .site-btn--ghost:hover { transform: translateY(-1px); }
 
 .site-block { padding: 5rem 0; }
@@ -98,7 +98,7 @@
 .site-cards h3 { font-size: 1.35rem; line-height: 1.25; }
 .site-news__date { display: inline-block; padding: .2rem .55rem; border-radius: 6px; background: color-mix(in srgb, var(--site-accent) 10%, transparent); }
 
-.site-avatar { width: 3.25rem; height: 3.25rem; box-shadow: 0 0 0 4px color-mix(in srgb, var(--site-gold) 28%, transparent); }
+.site-avatar { width: 3.25rem; height: 3.25rem; }
 .site-person__role { font-size: .92rem; }
 
 .site-event { padding: 1rem; border-radius: 14px; border: 1px solid var(--site-line); background: var(--site-paper); }
@@ -176,11 +176,29 @@
 .site-root .site-hero .site-btn--primary:hover, .site-root .site-hero .site-btn--ghost:hover { transform: none; box-shadow: none; }
 
 @media (max-width: 640px) {
-  .site-root .site-hero { min-height: 0; padding-block: 3.5rem; }
-  .site-root .site-hero--compact { padding-block: 2.5rem; }
-  .site-root .site-block { padding-block: 2.5rem; }
-  .site-root .site-block h2 { margin-bottom: 1.1rem; }
-  .site-root .site-cards, .site-root .site-gallery { margin-top: 1.25rem; }
+  .site-root .site-hero { min-height: 0; padding-block: 2.75rem; }
+  .site-root .site-hero h2 { font-size: clamp(1.85rem, 8vw, 2.6rem); }
+  .site-root .site-hero p { font-size: 1rem; }
+  .site-root .site-hero__actions { align-items: stretch; }
+  .site-root .site-hero__actions .site-btn { justify-content: center; }
+  .site-root .site-hero--compact { padding-block: 2rem; }
+  .site-root .site-block { padding-block: 2rem; }
+  .site-root .site-block h2 { margin-bottom: 1rem; }
+  .site-root .site-cards, .site-root .site-gallery { margin-top: 1rem; }
+  .site-root .site-cards { grid-template-columns: minmax(0, 1fr); gap: .75rem; }
+  .site-root .site-cards .site-card { padding: 1rem; border-radius: 12px; }
+  .site-root .site-event__open { gap: .75rem; }
+  .site-root .site-event__date { width: 3.5rem; min-height: 3.75rem; }
+  .site-root .site-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .site-root .site-stats li { padding: 1rem .75rem; }
+  .site-root .site-stats li:nth-child(2n) { border-right: 0; }
+  .site-root .site-container { padding-inline: max(1rem, env(safe-area-inset-left)); }
+}
+
+@media (max-width: 380px) {
+  .site-root .site-hero__actions .site-btn { width: 100%; }
+  .site-root .site-stats { grid-template-columns: minmax(0, 1fr); }
+  .site-root .site-stats li, .site-root .site-stats li:first-child { border: 1px solid var(--site-line); }
 }
 
 
@@ -246,9 +264,7 @@
 }
 .site-root .site-gallery__item figcaption { padding: .5rem .65rem .65rem; }
 .site-root .site-cards .site-card:focus-within,
-.site-root .site-gallery__item:focus-within figure {
-  border-color: var(--site-accent);
-}
+.site-root .site-gallery__item:focus-within figure { border-color: var(--site-accent); }
 
 @media (max-width: 640px) {
   .site-root .site-cards .site-card:has(> .site-img) > .site-img {
@@ -262,15 +278,13 @@
 .site-root .site-cards .site-card,
 .site-root .site-stats li,
 .site-root .site-gallery__item figure {
-  transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease, background-color .2s ease;
+  transition: border-color .2s ease, background-color .2s ease;
 }
 
 @media (hover: hover) and (pointer: fine) {
   .site-root .site-cards .site-card:hover,
   .site-root .site-stats li:hover,
   .site-root .site-gallery__item figure:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 10px 24px color-mix(in srgb, var(--site-ink) 16%, transparent);
     border-color: color-mix(in srgb, var(--site-accent) 48%, var(--site-line));
   }
 }
@@ -278,22 +292,20 @@
 .site-root .site-cards .site-card:focus-within,
 .site-root .site-stats li:focus-within,
 .site-root .site-gallery__item:focus-within figure {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px color-mix(in srgb, var(--site-ink) 14%, transparent);
   border-color: color-mix(in srgb, var(--site-accent) 55%, var(--site-line));
 }
 
 .site-root .site-cards .site-card:active,
 .site-root .site-stats li:active,
 .site-root .site-gallery__item figure:active {
-  transform: translateY(-1px);
+  background-color: var(--site-surface);
 }
 
 @media (prefers-reduced-motion: reduce) {
   .site-root .site-cards .site-card,
   .site-root .site-stats li,
   .site-root .site-gallery__item figure {
-    transition: box-shadow .2s ease, border-color .2s ease, background-color .2s ease;
+    transition: border-color .2s ease, background-color .2s ease;
   }
   .site-root .site-cards .site-card:hover,
   .site-root .site-cards .site-card:focus-within,
