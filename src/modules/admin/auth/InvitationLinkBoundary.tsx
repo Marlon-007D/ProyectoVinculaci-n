@@ -40,7 +40,11 @@ function InvitationLinkContent({ children }: { children: ReactNode }) {
         await captureInvitationSession(link, supabase.auth, () => active);
         if (!active) return;
         setLink({ kind: 'none' });
-        navigate(invitationLanding(location.search, link.kind !== 'tokens' || link.invitation === true), { replace: true });
+        // Active users receiving a sign-in notification do not reset their password.
+        // PendingInvitationGate still checks the database for pending magic-link users.
+        const passwordRequired = link.type ? link.type === 'invite' || link.type === 'recovery'
+          : link.kind !== 'tokens' || link.invitation === true;
+        navigate(invitationLanding(location.search, passwordRequired), { replace: true });
       } catch (error: unknown) {
         if (!active) return;
         const expired = error && typeof error === 'object' && 'code' in error && error.code === 'otp_expired';

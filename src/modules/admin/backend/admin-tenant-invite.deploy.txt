@@ -52,6 +52,33 @@ export function canonicalSlug(value: string): string {
 }
 
 
+export function normalizeAdminEmail(value: string): string {
+  return value.normalize('NFC').replace(/[\u200B-\u200D\uFEFF]/g, '').trim().toLowerCase();
+}
+
+export function isValidAdminEmail(value: string): boolean {
+  const email = normalizeAdminEmail(value);
+  if (email.length > 254 || email.includes('..')) return false;
+  return /^[a-z0-9.!#$%&'*+/=?^_`{|}~-]{1,64}@(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/i.test(email)
+    && !email.startsWith('.') && !email.includes('.@');
+}
+
+export function normalizeContactName(value: string): string {
+  return value.normalize('NFC').replace(/[\u0000-\u001F\u007F\u200B-\u200D\uFEFF]/g, ' ').trim().replace(/\s+/g, ' ');
+}
+
+export function normalizeContact<T extends { email: string; first_name: string; last_name: string }>(contact: T): T {
+  return { ...contact, email: normalizeAdminEmail(contact.email), first_name: normalizeContactName(contact.first_name), last_name: normalizeContactName(contact.last_name) };
+}
+
+export function validateAdminContact<T extends { email: string; firstName: string; lastName: string }>(input: T): T {
+  const result = { ...input, email: normalizeAdminEmail(input.email), firstName: normalizeContactName(input.firstName), lastName: normalizeContactName(input.lastName) };
+  if (!isValidAdminEmail(result.email)) throw new Error('El correo electrónico no es válido. Revisa la dirección original; no se eliminará texto para cambiar el destinatario.');
+  if (!result.firstName || !result.lastName || result.firstName.length > 100 || result.lastName.length > 100) throw new Error('Revisa nombres y apellidos: son obligatorios y admiten hasta 100 caracteres.');
+  return result;
+}
+
+
 
 export interface DeleteMemberEnvironment {
   supabaseUrl: string; publicKey: string; serviceRoleKey: string; allowedOrigins: string[];
@@ -217,6 +244,58 @@ export async function requestInvitationEmail(request: Request, env: EmailEnviron
 
 
 
+interface NotificationEnvironment { supabaseUrl: string; publicKey: string; serviceRoleKey: string; allowedOrigins: string[] }
+const notificationRecord = (value: unknown): value is Record<string, unknown> => value !== null && typeof value === 'object' && !Array.isArray(value);
+
+export async function notifyTenantAccess(request: Request, env: NotificationEnvironment, fetcher: typeof fetch = fetch) {
+  const failure = (error: string, status = 403) => ({ status, body: { error, notificationSent: false } });
+  try {
+    const input: unknown = await request.json();
+    if (!notificationRecord(input) || typeof input.institutionId !== 'string' || typeof input.profileId !== 'string'
+      || typeof input.redirect_to !== 'string') return failure('Selecciona una cuenta institucional válida.', 400);
+    const authorization = request.headers.get('authorization') ?? '';
+    const caller = { apikey: env.publicKey, Authorization: authorization, 'Content-Type': 'application/json' };
+    const identityResponse = await fetcher(`${env.supabaseUrl}/auth/v1/user`, { headers: caller });
+    const identity: unknown = identityResponse.ok ? await identityResponse.json() : null;
+    if (!notificationRecord(identity) || typeof identity.id !== 'string') return failure('Sesión inválida.', 401);
+    const snapshotResponse = await fetcher(`${env.supabaseUrl}/rest/v1/rpc/admin_tenant_snapshot_v3`, {
+      method: 'POST', headers: caller, body: JSON.stringify({ target_institution_id: input.institutionId }),
+    });
+    const snapshot: unknown = snapshotResponse.ok ? await snapshotResponse.json() : null;
+    if (!notificationRecord(snapshot) || snapshot.institution_id !== input.institutionId || typeof snapshot.actor_role !== 'string' || !Array.isArray(snapshot.members)) return failure('No tienes permisos en esta institución.');
+    const member: unknown = snapshot.members.find((row: unknown) => notificationRecord(row) && row.profile_id === input.profileId && row.institution_id === input.institutionId);
+    if (!notificationRecord(member) || member.is_active !== true || typeof member.role_name !== 'string' || typeof member.email !== 'string'
+      || !canManageTenantMember({ profileId: identity.id, institutionId: input.institutionId, role: snapshot.actor_role },
+        { profileId: input.profileId, institutionId: input.institutionId, role: member.role_name })) return failure('No puedes notificar a esta cuenta.');
+    const redirect = new URL(input.redirect_to);
+    if (!env.allowedOrigins.includes(redirect.origin) || redirect.origin !== request.headers.get('origin')
+      || redirect.pathname !== '/panel/admin' || redirect.hash || redirect.username || redirect.password
+      || redirect.searchParams.getAll('institution').length !== 1 || redirect.searchParams.get('institution') !== input.institutionId
+      || redirect.searchParams.getAll('slug').length !== 1 || [...redirect.searchParams.keys()].some(key => !['institution', 'slug'].includes(key))) return failure('La redirección institucional no es válida.', 400);
+    const institutionQuery = new URLSearchParams({ institution_id: `eq.${input.institutionId}`, select: 'slug,is_active' });
+    const institutionResponse = await fetcher(`${env.supabaseUrl}/rest/v1/institutions?${institutionQuery}`, { headers: caller });
+    const institutions: unknown = institutionResponse.ok ? await institutionResponse.json() : null;
+    if (!Array.isArray(institutions) || !notificationRecord(institutions[0]) || institutions[0].is_active !== true || typeof institutions[0].slug !== 'string'
+      || canonicalSlug(institutions[0].slug) !== canonicalSlug(redirect.searchParams.get('slug') ?? '')) return failure('El enlace no corresponde al plantel.', 400);
+    redirect.searchParams.set('slug', canonicalSlug(institutions[0].slug));
+    const privileged = { apikey: env.serviceRoleKey, Authorization: `Bearer ${env.serviceRoleKey}`, 'Content-Type': 'application/json' };
+    const accountResponse = await fetcher(`${env.supabaseUrl}/auth/v1/admin/users/${encodeURIComponent(input.profileId)}`, { headers: privileged });
+    const account: unknown = accountResponse.ok ? await accountResponse.json() : null;
+    if (!notificationRecord(account) || account.email !== member.email) return failure('No se pudo verificar el destinatario.', 409);
+    const endpoint = account.email_confirmed_at ? 'otp' : 'invite';
+    const email = await fetcher(`${env.supabaseUrl}/auth/v1/${endpoint}?redirect_to=${encodeURIComponent(redirect.href)}`, {
+      method: 'POST', headers: privileged, signal: AbortSignal.timeout(15000),
+      body: JSON.stringify(endpoint === 'otp' ? { email: member.email, create_user: false }
+        : { email: member.email, data: { first_name: member.first_name, last_name: member.last_name, phone: member.phone, role: member.role_name, institution_id: input.institutionId, slug: institutions[0].slug } }),
+    });
+    return { status: 200, body: { notificationSent: email.ok, rateLimited: email.status === 429 } };
+  } catch { return failure('No se pudo enviar el correo. El acceso guardado no se modificó.', 503); }
+}
+
+
+
+class InvitationProcessingError extends Error {}
+
 export interface TenantInvitationEnvironment {
   supabaseUrl: string; publicKey: string; serviceRoleKey: string; allowedOrigins: string[];
 }
@@ -238,7 +317,7 @@ function parseInput(value: unknown): InvitationInput {
   if (!Array.isArray(input.modules) || !input.modules.every(item => typeof item === 'string')) throw new Error('Módulos inválidos.');
   const result = input as unknown as InvitationInput;
   if (!/^09\d{8}$/.test(result.phone)) throw new Error('Celular inválido.');
-  return result;
+  return validateAdminContact({ ...result, phone: result.phone.trim(), modules: [...new Set(result.modules)] });
 }
 
 /** Server-only handler. Deploy as admin-tenant-invite; never import it into the browser. */
@@ -261,6 +340,10 @@ export async function handleTenantInvitation(request: Request, env: TenantInvita
         return respond(result.body, result.status);
       }
       if (!authorization?.startsWith('Bearer ')) return respond({ error: 'Inicia sesión.' }, 401);
+      if (payload.action === 'notify_access') {
+        const result = await notifyTenantAccess(request, env, fetcher);
+        return respond(result.body, result.status);
+      }
       if (payload.action === 'complete_invitation_password') {
         const result = await completeInvitationPassword(request, env, fetcher);
         return respond(result.body, result.status);
@@ -277,7 +360,9 @@ export async function handleTenantInvitation(request: Request, env: TenantInvita
   const privilegedHeaders = { apikey: env.serviceRoleKey, Authorization: `Bearer ${env.serviceRoleKey}`, 'Content-Type': 'application/json' };
   try {
     if (!env.supabaseUrl || !env.publicKey || !env.serviceRoleKey) throw new Error('Configuración incompleta.');
-    const input = parseInput(await request.json());
+    let input: InvitationInput;
+    try { input = parseInput(await request.json()); }
+    catch (cause: unknown) { return respond({ error: cause instanceof Error ? cause.message : 'Datos de invitación no válidos.' }, 400); }
     const identity = await fetcher(`${env.supabaseUrl}/auth/v1/user`, { headers: callerHeaders });
     if (!identity.ok) return respond({ error: 'Sesión inválida.' }, 401);
     const capabilities = await fetcher(`${env.supabaseUrl}/rest/v1/rpc/admin_tenant_capabilities`, {
@@ -309,38 +394,54 @@ export async function handleTenantInvitation(request: Request, env: TenantInvita
       email: input.email.trim().toLowerCase(), institution_id: input.institutionId, slug: institutions[0].slug,
       role_id: input.roleId, role: roles[0].name, admin_tenant_onboarding: true };
     redirect.searchParams.set('slug', canonicalSlug(institutions[0].slug));
-    const bytes = crypto.getRandomValues(new Uint8Array(32));
-    const password = Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('');
-    const creation = await fetcher(`${env.supabaseUrl}/auth/v1/admin/users`, {
-      method: 'POST', headers: privilegedHeaders,
-      body: JSON.stringify({ email: input.email.trim().toLowerCase(), password, email_confirm: false,
-        user_metadata: invitationMetadata, app_metadata: { admin_tenant_invitation: invitationMetadata } }),
-    });
-    const account: unknown = await creation.json();
-    let existingConfirmed = false;
-    if (creation.ok && account && typeof account === 'object' && 'id' in account && typeof account.id === 'string') {
-      createdProfile = account.id;
-    } else {
-      const code = invitationAuthErrorCode(account);
-      if (!code || !['email_exists', 'user_already_exists', 'email_already_exists'].includes(code)) {
-        return respond({ error: 'No se pudo crear la cuenta pendiente. Revisa el correo y la configuración de Auth.' }, 409);
-      }
+    async function findRecipient(): Promise<{ profile_id: string; confirmed: boolean } | null> {
       const lookup = await fetcher(`${env.supabaseUrl}/rest/v1/rpc/admin_tenant_invitation_recipient`, {
         method: 'POST', headers: callerHeaders, body: JSON.stringify({ target_institution_id: input.institutionId, target_email: input.email, target_role_id: input.roleId }),
       });
-      const recipient: unknown = lookup.ok ? await lookup.json() : null;
+      if (!lookup.ok) throw new InvitationProcessingError('No se pudo verificar la cuenta existente. Revisa los permisos y el script 007.');
+      const recipient: unknown = await lookup.json();
+      if (recipient === null) return null;
       if (!recipient || typeof recipient !== 'object' || !('profile_id' in recipient) || typeof recipient.profile_id !== 'string'
-        || !('confirmed' in recipient) || typeof recipient.confirmed !== 'boolean') {
-        return respond({ error: 'No se pudo verificar la cuenta existente. Revisa los permisos y el script 007 de invitaciones.' }, 403);
+        || !('confirmed' in recipient) || typeof recipient.confirmed !== 'boolean') throw new InvitationProcessingError('La respuesta de la cuenta existente no es válida.');
+      return { profile_id: recipient.profile_id, confirmed: recipient.confirmed };
+    }
+    const existingRecipient = await findRecipient();
+    let existingConfirmed = existingRecipient?.confirmed ?? false;
+    if (!existingRecipient) {
+      const bytes = crypto.getRandomValues(new Uint8Array(32));
+      const password = Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('');
+      const creation = await fetcher(`${env.supabaseUrl}/auth/v1/admin/users`, {
+        method: 'POST', headers: privilegedHeaders,
+        body: JSON.stringify({ email: input.email.trim().toLowerCase(), password, email_confirm: false,
+          user_metadata: invitationMetadata, app_metadata: { admin_tenant_invitation: invitationMetadata } }),
+      });
+      const account: unknown = await creation.json();
+      if (creation.ok && account && typeof account === 'object' && 'id' in account && typeof account.id === 'string') {
+        createdProfile = account.id;
+      } else {
+        const code = invitationAuthErrorCode(account);
+        const duplicateMessage = account && typeof account === 'object' && 'msg' in account && typeof account.msg === 'string' ? account.msg
+          : account && typeof account === 'object' && 'message' in account && typeof account.message === 'string' ? account.message : '';
+        if ((!code || !['email_exists', 'user_already_exists', 'email_already_exists'].includes(code))
+          && !/already.*(?:registered|exists)|email.*already/i.test(duplicateMessage)) {
+          return respond({ error: 'No se pudo crear la cuenta pendiente. Revisa el correo y la configuración de Auth.' }, 409);
+        }
+        const recipient = await findRecipient();
+        if (!recipient) throw new InvitationProcessingError('La cuenta existente no pudo verificarse tras el conflicto de creación.');
+        existingConfirmed = recipient.confirmed;
       }
-      existingConfirmed = recipient.confirmed;
     }
     const assignment = await fetcher(`${env.supabaseUrl}/rest/v1/rpc/admin_tenant_prepare_invitation`, {
       method: 'POST', headers: callerHeaders, body: JSON.stringify({ target_institution_id: input.institutionId,
         target_role_id: input.roleId, target_email: input.email, target_first_name: input.firstName,
         target_last_name: input.lastName, target_phone: input.phone, target_modules: input.modules }),
     });
-    if (!assignment.ok) throw new Error('La asignación institucional fue rechazada.');
+    if (!assignment.ok) {
+      const failure: unknown = await assignment.json().catch(() => null);
+      const reason = failure && typeof failure === 'object' && 'message' in failure && typeof failure.message === 'string' ? failure.message
+        : failure && typeof failure === 'object' && 'error' in failure && typeof failure.error === 'string' ? failure.error : 'Revisa los permisos y el contrato de invitaciones 007.';
+      throw new InvitationProcessingError(`No se pudo preparar la membresía institucional: ${reason}`);
+    }
     assigned = true;
     // Notification failure must never revoke a successfully assigned membership.
     let notificationSent = false;
@@ -354,7 +455,7 @@ export async function handleTenantInvitation(request: Request, env: TenantInvita
       notificationSent = invitation.ok;
     } catch { notificationSent = false; }
     return respond({ assigned: true, pending: true, notificationSent });
-  } catch {
+  } catch (cause: unknown) {
     let cleanupFailed = false;
     if (createdProfile && !assigned) {
       try {
@@ -362,7 +463,7 @@ export async function handleTenantInvitation(request: Request, env: TenantInvita
         cleanupFailed = !cleanup.ok;
       } catch { cleanupFailed = true; }
     }
-    return respond({ error: 'No se pudo completar la creación institucional.', cleanupFailed }, 500);
+    return respond({ error: cause instanceof InvitationProcessingError ? cause.message : 'No se pudo completar la creación institucional. Revisa la conexión y el contrato de invitaciones del servidor.', cleanupFailed }, 500);
   }
 }
 

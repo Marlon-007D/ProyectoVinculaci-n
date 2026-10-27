@@ -16,6 +16,8 @@ export interface AssignTenantRole {
   institutionId: string; email: string; roleId: string; firstName: string; lastName: string; phone: string; modules: string[];
 }
 export interface TenantAdminService {
+  edit(input: AssignTenantRole): Promise<void>;
+  notify(input: { institutionId: string; profileId: string; redirect_to: string }): Promise<{ notificationSent: boolean }>;
   approve(input: AssignTenantRole & { profileId: string; requestId: string }): Promise<void>;
   load(institutionId: string): Promise<TenantSnapshot>;
   invite(input: AssignTenantRole & { redirect_to: string }): Promise<{ notificationSent: boolean }>;

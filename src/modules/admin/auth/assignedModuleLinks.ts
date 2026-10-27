@@ -4,7 +4,7 @@ export function assignedModuleLinks(institution: { institution_id: string; slug:
   const modules = [
     { key: 'inicio', label: 'Inicio', path: '/panel' },
     { key: 'projects', label: 'Proyectos', path: '/panel/proyectos' },
-    { key: 'dece', label: 'DECE', path: `/${encodeURIComponent(institution.slug)}/dece` },
+    { key: 'dece', label: 'DECE', path: '/panel/dece' },
     { key: 'simuladores', label: 'Simuladores', path: '/panel/simuladores' },
     { key: 'portal', label: 'Portal web', path: '/panel/portal' },
   ];

@@ -3,9 +3,9 @@ import { currentAdminScope } from './institutionNavigation.ts';
 export const expiredInvitationMessage = 'El enlace de invitación ha expirado o ya fue utilizado. Solicita un nuevo acceso.';
 type LinkType = 'invite' | 'recovery' | 'magiclink';
 export type InvitationLink = { kind: 'none' } | { kind: 'error'; message: string }
-  | { kind: 'tokens'; accessToken: string; refreshToken: string; invitation?: true }
+  | { kind: 'tokens'; accessToken: string; refreshToken: string; invitation?: true; type?: LinkType }
   | { kind: 'token-hash'; tokenHash: string; type: LinkType }
-  | { kind: 'session' };
+  | { kind: 'session'; type?: LinkType };
 
 export function parseInvitationLink(search: string, hash: string): InvitationLink {
   const query = new URLSearchParams(search);
@@ -19,10 +19,10 @@ export function parseInvitationLink(search: string, hash: string): InvitationLin
     return { kind: 'error', message: 'No se pudo verificar el enlace de acceso. Solicita una nueva invitación.' };
   }
   const accessToken = get('access_token');
-  if (accessToken) return { kind: 'tokens', accessToken, refreshToken: get('refresh_token') ?? '', ...(invitation ? { invitation: true as const } : {}) };
+  if (accessToken) return { kind: 'tokens', accessToken, refreshToken: get('refresh_token') ?? '', ...(invitation ? { invitation: true as const, type } : {}) };
   const tokenHash = get('token_hash');
   if (invitation && tokenHash) return { kind: 'token-hash', tokenHash, type };
-  if (invitation) return { kind: 'session' };
+  if (invitation) return { kind: 'session', type };
   return { kind: 'none' };
 }
 

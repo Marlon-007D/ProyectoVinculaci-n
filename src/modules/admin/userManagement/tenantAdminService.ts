@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { TenantAdminService, TenantSnapshot } from './tenantAdmin.types';
+import { normalizeContact, validateAdminContact } from '../auth/contactValidation.ts';
 
 
 export function validateTenantSnapshot(data: unknown, institutionId: string): TenantSnapshot {
@@ -25,7 +26,8 @@ export function validateTenantSnapshot(data: unknown, institutionId: string): Te
     || !data.modules.every(name => typeof name === 'string')) {
     throw new Error('La respuesta institucional contiene datos incompletos.');
   }
-  return data as TenantSnapshot;
+  const snapshot = data as TenantSnapshot;
+  return { ...snapshot, members: snapshot.members.map(normalizeContact), requests: snapshot.requests.map(normalizeContact) };
 }
 
 export function createTenantAdminService(client: Pick<SupabaseClient, 'rpc' | 'functions' | 'from'>): TenantAdminService {
@@ -40,8 +42,25 @@ export function createTenantAdminService(client: Pick<SupabaseClient, 'rpc' | 'f
     }
   }
   return {
+    async edit(input) {
+      input = validateAdminContact(input);
+      await rpc('admin_tenant_update_access', { target_institution_id: input.institutionId,
+        target_role_id: input.roleId, target_email: input.email, target_first_name: input.firstName,
+        target_last_name: input.lastName, target_phone: input.phone, target_modules: input.modules });
+    },
+    async notify(input) {
+      try {
+        const { data, error } = await client.functions.invoke<{ notificationSent?: boolean }>('admin-tenant-invite', {
+          body: { action: 'notify_access', ...input },
+        });
+        return { notificationSent: !error && data?.notificationSent === true };
+      } catch { return { notificationSent: false }; }
+    },
     async load(institutionId) {
       if (!institutionId) throw new Error('Selecciona una institución autorizada.');
+      const mapped = await client.rpc('admin_tenant_snapshot_v4', { target_institution_id: institutionId });
+      if (!mapped.error) return validateTenantSnapshot(mapped.data, institutionId);
+      if (mapped.error.code !== 'PGRST202') throw new Error(mapped.error.message);
       const newest = await client.rpc('admin_tenant_snapshot_v3', { target_institution_id: institutionId });
       if (!newest.error) return validateTenantSnapshot(newest.data, institutionId);
       if (newest.error.code !== 'PGRST202') throw new Error(newest.error.message);
@@ -51,11 +70,13 @@ export function createTenantAdminService(client: Pick<SupabaseClient, 'rpc' | 'f
       return validateTenantSnapshot(result.data, institutionId);
     },
     async approve(input) {
+      input = validateAdminContact(input);
       await rpc('admin_tenant_approve_registration', { target_institution_id: input.institutionId,
         target_profile_id: input.profileId, target_request_id: input.requestId, target_role_id: input.roleId,
         target_first_name: input.firstName, target_last_name: input.lastName, target_phone: input.phone, target_modules: input.modules });
     },
     async invite(input) {
+      input = validateAdminContact(input);
       try {
         const contract = await client.functions.invoke<{ invitationContract?: string }>('admin-tenant-invite', { body: { action: 'capabilities' } });
         if (contract.error || contract.data?.invitationContract !== 'pending-v1') throw new Error('Actualiza admin-tenant-invite al contrato de invitaciones pendientes antes de enviar invitaciones.');

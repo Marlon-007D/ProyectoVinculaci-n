@@ -12,7 +12,7 @@ test('self-registration requests and approved guests are scoped, atomic and sepa
     await db.exec(fixtureSQL);
     await db.exec("ALTER TABLE auth.users ADD COLUMN email_confirmed_at timestamptz; ALTER TABLE auth.users ADD COLUMN raw_user_meta_data jsonb DEFAULT '{}'::jsonb");
     for (const label of (await readFile(new URL('./001_role_labels.sql', import.meta.url), 'utf8')).replace(/^--.*$/gm, '').split(';').filter(value => value.trim())) await db.exec(label);
-    for (const file of ['002_tenant_admin.sql', '006_pending_invitations.sql', '007_existing_user_invitations.sql', '008_guest_role_label.sql', '009_registration_requests.sql']) await db.exec(await readFile(new URL(file, import.meta.url), 'utf8'));
+    for (const file of ['002_tenant_admin.sql', '006_pending_invitations.sql', '007_existing_user_invitations.sql', '008_guest_role_label.sql', '009_registration_requests.sql', '010_access_modules.sql']) await db.exec(await readFile(new URL(file, import.meta.url), 'utf8'));
     async function asUser(actor, sql, args = []) {
       await db.exec('SET ROLE authenticated'); await db.query("SELECT set_config('request.jwt.claim.sub',$1,false)", [id(actor)]);
       try { return (await db.query(sql, args)).rows; } finally { await db.exec('RESET ROLE'); }
@@ -38,12 +38,20 @@ test('self-registration requests and approved guests are scoped, atomic and sepa
       assert(!refreshed.requests.some(row => row.profile_id === id(person)));
       const member = refreshed.members.find(row => row.profile_id === id(person));
       assert.equal(member.role_name, 'guest'); assert.equal(member.is_active, true); assert.deepEqual(member.modules, ['inicio']);
+      const own = (await asUser(person, 'SELECT admin_tenant_own_account($1) data', [id(institution)]))[0].data;
+      assert.equal(own, null); // Registration email has not been verified yet.
       await assert.rejects(asUser(3, 'SELECT admin_tenant_approve_registration($1,$2,$3,$4,$5,$6,$7,$8)', args), /pendiente/);
       assert.equal((await asUser(person, 'SELECT admin_tenant_actor_role($1) role', [id(institution)]))[0].role, 'guest');
     }
     // The explicit access-request table remains supported by the same operation.
     await asUser(3, 'SELECT admin_tenant_approve_registration($1,$2,$3,$4,$5,$6,$7,$8)', [id(100), id(6), id(300), guest, 'Ana', 'Torres', '0991234567', []]);
     assert.equal((await db.query('SELECT status FROM admin_membership_requests WHERE request_id=$1', [id(300)])).rows[0].status, 'approved');
+    await asUser(1, 'SELECT admin_tenant_update_access($1,$2,$3,$4,$5,$6,$7)', [id(100), 'admina@example.test', id(201), 'Admin', 'Unidad', '0991234567', ['inicio']]);
+    const updated = (await asUser(1, 'SELECT admin_tenant_snapshot_v3($1) data', [id(100)]))[0].data.members.find(member => member.profile_id === id(3));
+    assert.deepEqual(updated.modules, ['inicio']);
+    await asUser(3, 'SELECT admin_tenant_update_access($1,$2,$3,$4,$5,$6,$7)', [id(100), 'person1100@example.test', id(202), 'Registro', 'Unidad', '0991234567', ['simuladores']]);
+    const internal = (await asUser(3, 'SELECT admin_tenant_snapshot_v3($1) data', [id(100)]))[0].data.members.find(member => member.profile_id === id(1100));
+    assert.equal(internal.role_name, 'student'); assert.deepEqual(internal.modules, ['simuladores']); assert.equal(internal.is_active, true);
   } finally { await db.close(); }
 });
 

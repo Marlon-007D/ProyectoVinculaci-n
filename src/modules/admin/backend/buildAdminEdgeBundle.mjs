@@ -2,7 +2,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 
 export async function createAdminEdgeBundle() {
-  const files = ['../auth/accessPolicy.ts', '../auth/canonicalSlug.ts', './deleteTenantMember.ts', './completeInvitationPassword.ts', './requestInvitationEmail.ts', './inviteTenantUser.ts'];
+  const files = ['../auth/accessPolicy.ts', '../auth/canonicalSlug.ts', '../auth/contactValidation.ts', './deleteTenantMember.ts', './completeInvitationPassword.ts', './requestInvitationEmail.ts', './notifyTenantAccess.ts', './inviteTenantUser.ts'];
   const sources = await Promise.all(files.map(path => readFile(new URL(path, import.meta.url), 'utf8')));
   const combined = sources.map(source => source.replace(/^import .*;\r?\n/gm, '')).join('\n\n');
   return combined + `

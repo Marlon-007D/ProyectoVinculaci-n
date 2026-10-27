@@ -1,6 +1,7 @@
 import { readSessionValue, writeSessionValue } from '../modules/admin/auth/sessionStorage';
 import { useLocation } from 'react-router-dom';
 import { accessScopeKey, resolveAssignedAccess } from '../modules/admin/auth/accessPolicy';
+import { workspaceAuthRole } from '../modules/admin/auth/workspaceAuthRole';
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from './supabaseClient';
@@ -163,7 +164,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         case 'verification-failed':
           throw new Error('No se pudo verificar el rol institucional asignado.');
         case 'authorized':
-          setRole(assigned.role); setInstitutionId(assigned.institutionId);
+          setRole(workspaceAuthRole(assigned.role)); setInstitutionId(assigned.institutionId);
           break;
         default: { const exhaustive: never = assigned; return exhaustive; }
       }
