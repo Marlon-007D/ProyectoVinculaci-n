@@ -21,9 +21,21 @@ export function SitePreview() {
   const location = useLocation();
   const selectedModuleId = params.get("module");
   const selectedCourseId = params.get("course");
+  const [evaluationActive, setEvaluationActive] = useState(false);
+
+  if (params.get("simulator")) return <div className="site-module-frame site-module-frame--simulators"><PortalSimulatorsPage /></div>;
+  if (params.get("honores") === "1") return <main className={`site-honors-page ${honorsStyles.page}`}>
+    <HonorsSection title="Distinciones oficiales" limit={100} className={honorsStyles.section} />
+  </main>;
+  if (params.get("courses") === "1") return <SchoolCoursesPage selectedModuleId={selectedModuleId} selectedCourseId={selectedCourseId} evaluationActive={evaluationActive} onSelectModule={moduleId => setParams(current => { const next = new URLSearchParams(current); next.set("courses", "1"); next.set("module", moduleId); next.delete("course"); return next })} onSelectCourse={courseId => setParams(current => { const next = new URLSearchParams(current); next.set("course", courseId); return next })} courseHrefFor={courseId => { const next = new URLSearchParams(params); if (selectedModuleId) next.set("module", selectedModuleId); next.set("course", courseId); next.set("courses", "1"); return `${location.pathname}?${next.toString()}` }} onBackToModules={() => { setEvaluationActive(false); setParams(current => { const next = new URLSearchParams(current); next.delete("module"); next.delete("course"); return next }) }} onBackToModule={() => { setEvaluationActive(false); setParams(current => { const next = new URLSearchParams(current); next.delete("course"); return next }) }} onEvaluationChange={setEvaluationActive} />;
+
+  return <PublishedSitePreview />;
+}
+
+function PublishedSitePreview() {
+  const [params, setParams] = useSearchParams();
   const newsId = params.get("noticia");
   const eventId = params.get("evento");
-  const [evaluationActive, setEvaluationActive] = useState(false);
   const page = usePage(params.get("slug") ?? undefined);
   const article = useNewsArticle(newsId);
   const eventArticle = useEventArticle(eventId);
@@ -31,11 +43,6 @@ export function SitePreview() {
   const current = usePageVersion(pageId, undefined);
   const refresh = useCallback(() => { page.refresh(); current.refresh(); }, [page.refresh, current.refresh]);
   usePortalUpdates(refresh);
-  if (params.get("simulator")) return <div className="site-module-frame site-module-frame--simulators"><PortalSimulatorsPage /></div>;
-  if (params.get("honores") === "1") return <main className={`site-honors-page ${honorsStyles.page}`}>
-    <HonorsSection title="Distinciones oficiales" limit={100} className={honorsStyles.section} />
-  </main>;
-  if (params.get("courses") === "1") return <SchoolCoursesPage selectedModuleId={selectedModuleId} selectedCourseId={selectedCourseId} evaluationActive={evaluationActive} onSelectModule={moduleId => setParams(current => { const next = new URLSearchParams(current); next.set("courses", "1"); next.set("module", moduleId); next.delete("course"); return next })} onSelectCourse={courseId => setParams(current => { const next = new URLSearchParams(current); next.set("course", courseId); return next })} courseHrefFor={courseId => { const next = new URLSearchParams(params); if (selectedModuleId) next.set("module", selectedModuleId); next.set("course", courseId); next.set("courses", "1"); return `${location.pathname}?${next.toString()}` }} onBackToModules={() => { setEvaluationActive(false); setParams(current => { const next = new URLSearchParams(current); next.delete("module"); next.delete("course"); return next }) }} onBackToModule={() => { setEvaluationActive(false); setParams(current => { const next = new URLSearchParams(current); next.delete("course"); return next }) }} onEvaluationChange={setEvaluationActive} />;
   if (newsId) return <AsyncView state={article.state} onRetry={article.reload} loadingVariant="article" emptyTitle="No encontramos esta noticia" emptyMessage="Puede que se haya retirado o que el enlace no sea válido.">
     {(entry) => <AcademicPostPreviewPage entry={entry} onBack={() => setParams(current => { const next = new URLSearchParams(current); next.delete("noticia"); return next; })} />}
   </AsyncView>;
