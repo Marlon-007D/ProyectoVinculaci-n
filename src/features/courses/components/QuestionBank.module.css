@@ -1076,6 +1076,83 @@
 .evaluation-time-track { height:10px; overflow:hidden; border-radius:999px; background:#f1f3f4; }
 .evaluation-time-bar { display:block; height:100%; min-width:0; border-radius:999px; background:#7eaa87; }
 .evaluation-time-bar.is-incorrect { background:#d48a83; }
+
+/* Evaluation overview follows the institutional portal palette and surfaces. */
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .course-evaluations-panel.evaluation-overview {
+  box-sizing:border-box;
+  width:100%;
+  max-width:none;
+  margin:0;
+  padding:clamp(20px,2.4vw,32px);
+  border:1px solid var(--site-line,#d5dbe1);
+  border-radius:16px;
+  color:var(--site-ink,#1f2933);
+  background:var(--site-paper,#fff);
+}
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-overview .evaluation-welcome-copy h2,
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-overview .evaluation-attempt-card > header { color:var(--site-navy,#0a233f); }
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-overview .evaluation-welcome-copy p { color:var(--site-muted,#52606d); }
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-overview .question-bank-icon {
+  color:var(--site-navy,#0a233f);
+  background:color-mix(in srgb,var(--site-gold,#f2b95a) 34%,#fff);
+}
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-overview .evaluation-welcome-illustration,
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-overview .evaluation-welcome-illustration:nth-child(n) {
+  border:1px solid var(--site-line,#d5dbe1);
+  border-radius:12px;
+  background:var(--site-surface,#f3f5f7);
+}
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-overview .evaluation-artwork-number {
+  color:var(--site-navy,#0a233f);
+  background:var(--site-gold,#f2b95a);
+}
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-overview .evaluation-attempt-card {
+  border:1px solid var(--site-line,#d5dbe1);
+  border-radius:12px;
+  background:var(--site-paper,#fff);
+}
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-overview .evaluation-attempt-icon {
+  color:var(--site-accent,#1d4e89);
+  background:#e8eef5;
+}
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-overview .evaluation-status-chip,
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-overview .evaluation-attempt-card .evaluation-status-chip,
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-overview .evaluation-attempt-card .evaluation-status-chip.is-answered,
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-overview .evaluation-attempt-card .evaluation-status-chip.is-elapsed,
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-overview .evaluation-attempt-card .evaluation-status-chip.is-progress,
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-overview .evaluation-attempt-card .evaluation-status-chip.is-time-left,
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-overview .evaluation-attempt-card .evaluation-status-chip.is-complete,
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-overview .evaluation-attempt-card .evaluation-status-chip.is-score {
+  border:0;
+  color:var(--site-navy,#0a233f);
+  background:#f1f4f7;
+}
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-overview .evaluation-attempt-card .evaluation-status-chip svg { color:var(--site-accent,#1d4e89); }
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-overview .evaluation-attempt-card .evaluation-resume-button,
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-overview .evaluation-entry-action {
+  border:0;
+  color:#fff;
+  background:var(--site-navy,#0a233f);
+}
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-overview .evaluation-attempt-card .evaluation-resume-button:hover,
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-overview .evaluation-entry-choice:hover:not(:disabled) .evaluation-entry-action { background:#173f70; }
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-overview .evaluation-entry-choice {
+  border:1px solid var(--site-line,#d5dbe1);
+  border-radius:12px;
+  color:var(--site-navy,#0a233f);
+  background:var(--site-paper,#fff);
+}
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-overview .evaluation-entry-choice .question-type-number {
+  color:var(--site-accent,#1d4e89);
+  background:#e8eef5;
+}
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-overview .evaluation-entry-choice .question-bank-choice-copy strong { color:var(--site-navy,#0a233f); }
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-overview .evaluation-entry-choice .question-bank-choice-copy small { color:var(--site-muted,#52606d); }
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-overview .evaluation-attempt-limit {
+  border:1px solid var(--site-line,#d5dbe1);
+  color:var(--site-navy,#0a233f);
+  background:var(--site-surface,#f3f5f7);
+}
 .evaluation-time-bar.is-unanswered { background:#b5bec0; }
 .evaluation-time-row > strong { color:#4f5b53; font:500 12px 'Roboto',Arial,sans-serif; text-align:right; }
 .evaluation-topics-card > p { margin:0; color:#5f6368; font:400 14px/1.5 'Roboto',Arial,sans-serif; }
