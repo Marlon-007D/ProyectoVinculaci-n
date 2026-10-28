@@ -91,7 +91,7 @@ export function SchoolCoursesPage({ selectedModuleId = null, selectedCourseId = 
           })}
             </nav>
             <span className="course-topic-nav-separator" aria-hidden="true" />
-            <button type="button" className={`course-topic-tab course-evaluation-topic${evaluationActive ? ' active' : ''}`} aria-label="Evaluaciones" aria-current={evaluationActive ? 'page' : undefined} onClick={() => { showSectionSkeleton(); onEvaluationChange(!evaluationActive) }}><span className="course-topic-tab-icon"><ClipboardCheck size={17} aria-hidden="true" /></span><span>Evaluaciones</span></button>
+            <button type="button" className={`course-topic-tab course-evaluation-topic${evaluationActive ? ' active' : ''}`} aria-label="Evaluaciones" aria-current={evaluationActive ? 'page' : undefined} onClick={() => { if (evaluationActive) return; showSectionSkeleton(); onEvaluationChange(true) }}><span className="course-topic-tab-icon"><ClipboardCheck size={17} aria-hidden="true" /></span><span>Evaluaciones</span></button>
           </aside>
           <article className={`course-topic-content${evaluationActive ? ' course-topic-evaluation-content' : ''}`} aria-busy={isSectionLoading}>
             {isSectionLoading
