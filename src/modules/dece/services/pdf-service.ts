@@ -1,10 +1,12 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { FormQuestion } from './form-service'
+import { getPublicUrlFromPath } from '../../site/utils/mediaUrl'
 
 type Institution = { institution_id: string; name: string }
 type Student = { student_id: string; institution_id: string; first_name: string; last_name: string; national_id: string | null; grade_level: string | null; enrollment_number: string | null; birth_date: string | null }
 type FormMeta = { form_definition_id: string; code: string; name: string }
-type PdfContext = { institution: Institution; student: Student | null; generatedBy: string; title: string }
+type PdfLogo = { data: string; width: number; height: number }
+type PdfContext = { institution: Institution; student: Student | null; generatedBy: string; title: string; logo: PdfLogo | null }
 type DeceCase = { dece_case_id: string; institution_id: string; student_id: string; case_number: string; reason: string; primary_category: string; risk_level: string; confidentiality_level: string; status: string; opened_by: string | null; created_at: string }
 type DeceVisit = { dece_visit_id: string; dece_case_id: string; visit_date: string; summary: string; attention_notes: string | null; attended_by: string | null }
 type DeceAction = { dece_action_id: string; dece_case_id: string; description: string; due_date: string | null; is_completed: boolean; completed_at: string | null; responsible_profile_id: string | null }
@@ -18,6 +20,52 @@ const risks: Record<string, string> = { low: 'Bajo', medium: 'Medio', high: 'Alt
 const confidentiality: Record<string, string> = { restricted: 'Restringido', highly_restricted: 'Altamente restringido' }
 const categories: Record<string, string> = { physical: 'Física', psychological: 'Psicológica', social: 'Social', family: 'Familiar', academic: 'Académica', behavioral: 'Conductual', other: 'Otra' }
 const formStatuses: Record<string, string> = { draft: 'Borrador', submitted: 'Enviada', reviewed: 'Revisada' }
+const logoCache = new Map<string, Promise<PdfLogo | null>>()
+
+function resolvedLogoUrl(value: unknown): string | null {
+  if (typeof value !== 'string' || !value.trim()) return null
+  const raw = value.trim()
+  try {
+    const url = /^https:\/\//i.test(raw) ? new URL(raw) : raw.startsWith('/') && !raw.startsWith('//') ? new URL(getPublicUrlFromPath(raw.slice(1)) ?? '') : null
+    return url?.protocol === 'https:' ? url.href : null
+  } catch { return null }
+}
+
+async function convertLogo(url: string): Promise<PdfLogo | null> {
+  try {
+    const controller = new AbortController(), timer = window.setTimeout(() => controller.abort(), 5000)
+    let blob: Blob
+    try {
+      const response = await fetch(url, { signal: controller.signal, mode: 'cors', credentials: 'omit' })
+      if (!response.ok) return null
+      blob = await response.blob()
+    } finally { window.clearTimeout(timer) }
+    const objectUrl = URL.createObjectURL(blob)
+    try {
+      const image = new Image(); image.src = objectUrl; await image.decode()
+      if (!image.naturalWidth || !image.naturalHeight) return null
+      const scale = Math.min(1, 400 / Math.max(image.naturalWidth, image.naturalHeight))
+      const width = Math.max(1, Math.round(image.naturalWidth * scale)), height = Math.max(1, Math.round(image.naturalHeight * scale))
+      const canvas = document.createElement('canvas'); canvas.width = width; canvas.height = height
+      const context = canvas.getContext('2d'); if (!context) return null
+      context.drawImage(image, 0, 0, width, height)
+      return { data: canvas.toDataURL('image/png'), width, height }
+    } finally { URL.revokeObjectURL(objectUrl) }
+  } catch { return null }
+}
+
+function institutionLogo(client: SupabaseClient, institutionId: string): Promise<PdfLogo | null> {
+  const cached = logoCache.get(institutionId); if (cached) return cached
+  const pending = (async () => {
+    try {
+      const { data, error } = await client.from('site_settings').select('logo_url').eq('institution_id', institutionId).maybeSingle()
+      const url = error || !data ? null : resolvedLogoUrl(data.logo_url)
+      return url ? await convertLogo(url) : null
+    } catch { return null }
+  })()
+  logoCache.set(institutionId, pending)
+  return pending
+}
 
 function check<T>(data: T | null, error: { code?: string; message?: string } | null, fallback: string): NonNullable<T> {
   if (error) throw new Error(error.code === '42501' ? 'No tienes permiso para consultar estos datos.' : fallback)
@@ -56,7 +104,7 @@ async function loadContext(client: SupabaseClient, institutionId: string, studen
     const { data, error } = await client.from('students').select('student_id,institution_id,first_name,last_name,national_id,grade_level,enrollment_number,birth_date').eq('student_id', studentId).eq('institution_id', institutionId).maybeSingle()
     student = check(data, error, 'No se pudo cargar el estudiante de esta institución.')
   }
-  return { institution, student, generatedBy: '', title: '' }
+  return { institution, student, generatedBy: '', title: '', logo: await institutionLogo(client, institutionId) }
 }
 
 async function loadGeneratedBy(client: SupabaseClient, profileId?: string) {
@@ -76,31 +124,74 @@ async function pdfDoc(title: string) {
 
 function addHeader(pdf: import('jspdf').jsPDF, context: PdfContext, page: number, total: number) {
   const w = pdf.internal.pageSize.getWidth(), h = pdf.internal.pageSize.getHeight()
-  pdf.setFont('helvetica', 'bold'); pdf.setFontSize(8); pdf.setTextColor(0); pdf.text('CONFIDENCIAL', 15, 11)
-  pdf.setFont('helvetica', 'normal'); pdf.text(context.institution.name, w - 15, 11, { align: 'right', maxWidth: 125 })
+  let textLeft = 15
+  if (context.logo) {
+    const width = Math.min(10 * context.logo.width / context.logo.height, 35), height = width * context.logo.height / context.logo.width
+    pdf.addImage(context.logo.data, 'PNG', 15, 2, width, height); textLeft = 18 + width
+  }
+  pdf.setFont('helvetica', 'bold'); pdf.setFontSize(8); pdf.setTextColor(0); pdf.text('CONFIDENCIAL', textLeft, 8)
+  pdf.setFont('helvetica', 'normal'); pdf.text(context.institution.name, w - 15, 8, { align: 'right', maxWidth: Math.max(30, w - textLeft - 65) })
   pdf.setDrawColor(90); pdf.setLineWidth(.25); pdf.line(15, 14, w - 15, 14)
   pdf.line(15, h - 13, w - 15, h - 13); pdf.setFontSize(8); pdf.text(`Página ${page} de ${total}`, w - 15, h - 8, { align: 'right' })
 }
 
+const COVER_LAYOUT = { maxLogoHeight: 25, logoTextGap: 4, sideMargin: 20, firstBaseline: 30, departmentGap: 4, contentGap: 12, minimumAdvance: 26 } // Medidas en mm; conserva el espacio original de la caratula.
+
+function drawCoverHeader(pdf: import('jspdf').jsPDF, context: PdfContext) {
+  const pageWidth = pdf.internal.pageSize.getWidth()
+  const maxContentWidth = pageWidth - COVER_LAYOUT.sideMargin * 2
+  const logoWidth = context.logo ? Math.min(COVER_LAYOUT.maxLogoHeight * context.logo.width / context.logo.height, maxContentWidth - COVER_LAYOUT.logoTextGap) : 0
+  const logoHeight = context.logo ? logoWidth * context.logo.height / context.logo.width : 0
+  const textMaxWidth = maxContentWidth - (context.logo ? logoWidth + COVER_LAYOUT.logoTextGap : 0)
+
+  pdf.setTextColor(0); pdf.setFont('helvetica', 'bold'); pdf.setFontSize(16)
+  const nameLines = pdf.splitTextToSize(context.institution.name, textMaxWidth) as string[]
+  const nameWidth = Math.max(...nameLines.map(line => pdf.getTextWidth(line)))
+  const nameLineHeight = pdf.getTextDimensions('Ag').h
+  const nameLineStep = pdf.getFontSize() * 25.4 / 72 * 1.15
+  pdf.setFont('helvetica', 'normal'); pdf.setFontSize(11)
+  const departmentLines = pdf.splitTextToSize('Departamento de Consejer\u00eda Estudiantil', textMaxWidth) as string[]
+  const departmentWidth = Math.max(...departmentLines.map(line => pdf.getTextWidth(line)))
+  const departmentLineHeight = pdf.getTextDimensions('Ag').h
+  const departmentLineStep = pdf.getFontSize() * 25.4 / 72 * 1.15
+  const textWidth = Math.max(nameWidth, departmentWidth)
+  const textHeight = nameLineHeight + Math.max(0, nameLines.length - 1) * nameLineStep + COVER_LAYOUT.departmentGap + departmentLineHeight + Math.max(0, departmentLines.length - 1) * departmentLineStep
+  const blockWidth = (context.logo ? logoWidth + COVER_LAYOUT.logoTextGap : 0) + textWidth
+  const blockX = (pageWidth - blockWidth) / 2
+  const textX = blockX + (context.logo ? logoWidth + COVER_LAYOUT.logoTextGap : 0)
+  const nameBaseline = COVER_LAYOUT.firstBaseline
+  const departmentBaseline = nameBaseline + Math.max(nameLineHeight, nameLineStep * nameLines.length) + COVER_LAYOUT.departmentGap
+  const leftAligned = Boolean(context.logo)
+
+  pdf.setFont('helvetica', 'bold'); pdf.setFontSize(16)
+  for (const [index, line] of nameLines.entries()) pdf.text(line, leftAligned ? textX : pageWidth / 2, nameBaseline + index * nameLineStep, { align: leftAligned ? 'left' : 'center' })
+  pdf.setFont('helvetica', 'normal'); pdf.setFontSize(11)
+  for (const [index, line] of departmentLines.entries()) pdf.text(line, leftAligned ? textX : pageWidth / 2, departmentBaseline + index * departmentLineStep, { align: leftAligned ? 'left' : 'center' })
+  if (context.logo) {
+    const textTop = nameBaseline - nameLineHeight
+    const textBottom = departmentBaseline + Math.max(0, departmentLines.length - 1) * departmentLineStep + departmentLineHeight
+    pdf.addImage(context.logo.data, 'PNG', blockX, textTop + (textBottom - textTop - logoHeight) / 2, logoWidth, logoHeight)
+  }
+  const headerHeight = Math.max(COVER_LAYOUT.minimumAdvance, textHeight + COVER_LAYOUT.contentGap)
+  return COVER_LAYOUT.firstBaseline + headerHeight
+}
+
 function cover(pdf: import('jspdf').jsPDF, context: PdfContext, title: string) {
-  const w = pdf.internal.pageSize.getWidth(); let y = 30
-  pdf.setTextColor(0); pdf.setFont('helvetica', 'bold'); pdf.setFontSize(16); pdf.text(context.institution.name, w / 2, y, { align: 'center', maxWidth: w - 30 }); y += 10
-  pdf.setFontSize(11); pdf.text('Departamento de Consejería Estudiantil', w / 2, y, { align: 'center' }); y += 16
+  const w = pdf.internal.pageSize.getWidth(); let y = drawCoverHeader(pdf, context)
   pdf.setFontSize(15); pdf.text(title, w / 2, y, { align: 'center', maxWidth: w - 30 }); y += 18
   if (context.student) {
     pdf.setFontSize(10); pdf.setFont('helvetica', 'normal')
-    for (const [label, value] of [['Apellidos y nombres', studentName(context.student)], ['Cédula', context.student.national_id ?? ''], ['Año de EGB / grado', context.student.grade_level ?? ''], ['Matrícula', context.student.enrollment_number ?? '']]) {
+    for (const [label, value] of [['Apellidos y nombres', studentName(context.student)], ['C\u00e9dula', context.student.national_id ?? ''], ['A\u00f1o de EGB / grado', context.student.grade_level ?? ''], ['Matr\u00edcula', context.student.enrollment_number ?? '']]) {
       pdf.setFont('helvetica', 'bold'); pdf.text(`${label}:`, 20, y); pdf.setFont('helvetica', 'normal'); pdf.text(value || '________________________________', 65, y, { maxWidth: w - 85 }); y += 9
     }
   } else {
     pdf.setFontSize(10); pdf.setFont('helvetica', 'normal')
-    for (const label of ['Apellidos y nombres', 'Cédula', 'Año de EGB / grado', 'Matrícula']) { pdf.text(`${label}:  ________________________________________________`, 20, y); y += 9 }
+    for (const label of ['Apellidos y nombres', 'C\u00e9dula', 'A\u00f1o de EGB / grado', 'Matr\u00edcula']) { pdf.text(`${label}:  ________________________________________________`, 20, y); y += 9 }
   }
-  y += 6; pdf.text(`Fecha de emisión: ${date(new Date().toISOString())}`, 20, y); y += 8
+  y += 6; pdf.text(`Fecha de emisi\u00f3n: ${date(new Date().toISOString())}`, 20, y); y += 8
   if (context.generatedBy) pdf.text(`Generado por: ${context.generatedBy}`, 20, y)
   return y + 14
 }
-
 function pageCursor(pdf: import('jspdf').jsPDF) {
   let y = 21
   const ensure = (height: number) => { if (y + height > 277) { pdf.addPage(); y = 21 } }
@@ -234,7 +325,7 @@ export function createDecePdfService(client: SupabaseClient) {
     const { data: optionData, error: optionError } = await client.from('form_question_options').select('question_option_id,value').in('form_question_id', itemQuestions.map(question => question.form_question_id))
     const options = itemQuestions.length ? check(optionData, optionError, 'No se pudieron cargar las opciones de respuesta.') : []
     const optionById = new Map((options ?? []).map(row => [row.question_option_id, row.value]))
-    const title = `${definition.name} · ${studentName(student)}`; const pdf = await pdfDoc(title); const cursor = pageCursor(pdf); cursor.y = cover(pdf, context, definition.name)
+    const title = `${definition.name} Â· ${studentName(student)}`; const pdf = await pdfDoc(title); const cursor = pageCursor(pdf); cursor.y = cover(pdf, context, definition.name)
     cursor.text('Estado', formStatuses[submission.status] ?? submission.status); cursor.text('Fecha de envío', date(submission.submitted_at)); cursor.text('Fecha de revisión', date(submission.reviewed_at)); cursor.text('Versión', String(version.version_number))
     const valueFor = (question: FormQuestion) => {
       const answer = answerById.get(question.form_question_id)
@@ -277,11 +368,11 @@ export function createDecePdfService(client: SupabaseClient) {
     if (!visits.length) cursor.paragraph('Sin registros')
     for (const visit of visits) {
       const observations = related.observations.filter(item => item.dece_visit_id === visit.dece_visit_id)
-      const content = [visit.summary, visit.attention_notes ?? 'Sin registros', profileName(related.profiles, visit.attended_by) || 'Sin responsable registrado', ...observations.map(item => `Observación: ${categories[item.category] ?? item.category} · ${risks[item.severity] ?? item.severity} · ${item.requires_follow_up ? 'Requiere seguimiento' : 'No requiere seguimiento'} · ${item.description}`)]
+      const content = [visit.summary, visit.attention_notes ?? 'Sin registros', profileName(related.profiles, visit.attended_by) || 'Sin responsable registrado', ...observations.map(item => `Observación: ${categories[item.category] ?? item.category} Â· ${risks[item.severity] ?? item.severity} Â· ${item.requires_follow_up ? 'Requiere seguimiento' : 'No requiere seguimiento'} Â· ${item.description}`)]
       cursor.ensure(12 + content.reduce((height, value) => height + cursor.measure(value), 0))
-      cursor.heading(`Visita · ${date(visit.visit_date, true)}`); cursor.text('Resumen', visit.summary); cursor.text('Notas de atención', visit.attention_notes ?? 'Sin registros'); cursor.text('Atendió', profileName(related.profiles, visit.attended_by))
+      cursor.heading(`Visita Â· ${date(visit.visit_date, true)}`); cursor.text('Resumen', visit.summary); cursor.text('Notas de atención', visit.attention_notes ?? 'Sin registros'); cursor.text('Atendió', profileName(related.profiles, visit.attended_by))
       if (!observations.length) cursor.paragraph('Observaciones: Sin registros')
-      for (const observation of observations) cursor.paragraph(`Observación: ${categories[observation.category] ?? observation.category} · ${risks[observation.severity] ?? observation.severity} · ${observation.requires_follow_up ? 'Requiere seguimiento' : 'No requiere seguimiento'} · ${observation.description}`)
+      for (const observation of observations) cursor.paragraph(`Observación: ${categories[observation.category] ?? observation.category} Â· ${risks[observation.severity] ?? observation.severity} Â· ${observation.requires_follow_up ? 'Requiere seguimiento' : 'No requiere seguimiento'} Â· ${observation.description}`)
     }
     const actions = related.actions.filter(action => action.dece_case_id === row.dece_case_id)
     cursor.heading('Acuerdos y acciones', actions.length ? 10 : 8)
@@ -289,8 +380,8 @@ export function createDecePdfService(client: SupabaseClient) {
     for (const action of actions) {
       const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Guayaquil', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date())
       const today = `${parts.find(item => item.type === 'year')?.value}-${parts.find(item => item.type === 'month')?.value}-${parts.find(item => item.type === 'day')?.value}`
-      const state = action.is_completed ? `Completada · ${date(action.completed_at)}` : action.due_date && action.due_date < today ? 'Vencida' : 'Pendiente'
-      cursor.paragraph(`${action.description} · Responsable: ${profileName(related.profiles, action.responsible_profile_id) || 'Sin responsable'} · Fecha límite: ${date(action.due_date)} · Estado: ${state}`)
+      const state = action.is_completed ? `Completada Â· ${date(action.completed_at)}` : action.due_date && action.due_date < today ? 'Vencida' : 'Pendiente'
+      cursor.paragraph(`${action.description} Â· Responsable: ${profileName(related.profiles, action.responsible_profile_id) || 'Sin responsable'} Â· Fecha límite: ${date(action.due_date)} Â· Estado: ${state}`)
     }
   }
 
@@ -306,10 +397,10 @@ export function createDecePdfService(client: SupabaseClient) {
   async function studentFile(institutionId: string, studentId: string, includeForms: boolean, profileId?: string) {
     const context = await loadContext(client, institutionId, studentId); context.generatedBy = await loadGeneratedBy(client, profileId)
     const caseRows = await loadCases(institutionId, studentId); const related = await caseRelated(caseRows)
-    const pdf = await pdfDoc(`Expediente DECE · ${studentName(context.student)}`); const cursor = pageCursor(pdf); cursor.y = cover(pdf, context, 'Expediente del estudiante')
+    const pdf = await pdfDoc(`Expediente DECE Â· ${studentName(context.student)}`); const cursor = pageCursor(pdf); cursor.y = cover(pdf, context, 'Expediente del estudiante')
     cursor.heading('Resumen de casos')
     if (!caseRows.length) cursor.paragraph('Sin registros')
-    caseRows.forEach(row => cursor.paragraph(`${row.case_number} · ${statuses[row.status] ?? row.status} · Riesgo: ${risks[row.risk_level] ?? row.risk_level} · ${date(row.created_at)}`))
+    caseRows.forEach(row => cursor.paragraph(`${row.case_number} Â· ${statuses[row.status] ?? row.status} Â· Riesgo: ${risks[row.risk_level] ?? row.risk_level} Â· ${date(row.created_at)}`))
     for (const row of caseRows) renderCase(cursor, row, related)
     if (includeForms) {
       cursor.heading('Fichas llenadas')
@@ -321,7 +412,7 @@ export function createDecePdfService(client: SupabaseClient) {
         const version = check(versionData, versionError, 'No se pudo cargar la versión de una ficha.')
         const { data: definitionData, error: formError } = await client.from('form_definitions').select('name,code').eq('form_definition_id', version.form_definition_id).eq('institution_id', institutionId).maybeSingle()
         const definition = check(definitionData, formError, 'No se pudo cargar una ficha del estudiante.')
-        cursor.heading(`${definition.name} · ${formStatuses[submission.status] ?? submission.status}`); cursor.text('Fecha de envío', date(submission.submitted_at)); cursor.text('Fecha de revisión', date(submission.reviewed_at))
+        cursor.heading(`${definition.name} Â· ${formStatuses[submission.status] ?? submission.status}`); cursor.text('Fecha de envío', date(submission.submitted_at)); cursor.text('Fecha de revisión', date(submission.reviewed_at))
         const allQuestions = await questions(client, submission.form_version_id, true)
         const { data: answerRows, error: answerError } = await client.from('form_answers').select('form_question_id,value_text,value_number,value_boolean,value_date,selected_option_id,form_answer_options(question_option_id)').eq('form_submission_id', submission.form_submission_id)
         const answerList = check(answerRows, answerError, 'No se pudieron cargar las respuestas de una ficha.') as Answer[]

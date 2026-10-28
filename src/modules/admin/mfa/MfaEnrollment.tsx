@@ -1,3 +1,5 @@
+import { AdminForm } from '../auth/AdminForm';
+import { useToastMessage, useToast } from '../auth/Toast/Toast';
 import React, { useState } from 'react';
 import { Check, Copy, Eye, EyeOff, KeyRound, LockKeyhole, ShieldCheck, Smartphone } from 'lucide-react';
 import { supabase } from '../../../core/supabaseClient';
@@ -13,6 +15,8 @@ export const MfaEnrollment: React.FC<Props> = ({ onEnrolled }) => {
   const [verifiedButNotSaved, setVerifiedButNotSaved] = useState(false);
   const [code, setCode] = useState('');
   const [message, setMessage] = useState('');
+  const notify = useToast();
+  useToastMessage(message);
   const [busy, setBusy] = useState(false);
   const [showSecret, setShowSecret] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -64,7 +68,7 @@ export const MfaEnrollment: React.FC<Props> = ({ onEnrolled }) => {
       setMessage('El código se verificó. No se pudo guardar el estado de seguridad; revisa que la migración MFA esté aplicada y vuelve a intentar guardar.');
       return false;
     }
-    setMessage('Autenticación en dos pasos activada correctamente.');
+    notify('Autenticación en dos pasos activada correctamente.', 'success');
     onEnrolled();
     return true;
   };
@@ -74,8 +78,13 @@ export const MfaEnrollment: React.FC<Props> = ({ onEnrolled }) => {
     if (verifiedButNotSaved) {
       setBusy(true);
       setMessage('');
-      try { await persistEnrollment(); }
-      finally { setBusy(false); }
+      try {
+        await persistEnrollment();
+      } catch {
+        setMessage('No se pudo guardar la configuración de seguridad. Inténtalo de nuevo.');
+      } finally {
+        setBusy(false);
+      }
       return;
     }
     if (!factorId || !/^\d{6}$/.test(code)) return;
@@ -129,7 +138,7 @@ export const MfaEnrollment: React.FC<Props> = ({ onEnrolled }) => {
         )}
 
         {(qrCode || existingFactor || verifiedButNotSaved) && (
-          <form className={styles.form} onSubmit={(event) => void verifyCode(event)}>
+          <AdminForm className={styles.form} onSubmit={(event) => void verifyCode(event)}>
             {qrCode && !verifiedButNotSaved && <>
               <div className={styles.instruction}><span>1</span><div><strong>Escanea el código QR</strong><p>Abre tu app autenticadora y agrega una cuenta escaneando este código.</p></div></div>
               <div className={styles.qrFrame}><img src={qrCode} alt="Código QR para vincular una aplicación autenticadora" /></div>
@@ -151,18 +160,17 @@ export const MfaEnrollment: React.FC<Props> = ({ onEnrolled }) => {
             {!verifiedButNotSaved && <>
               <div className={styles.instruction}><span>2</span><div><strong>Escribe el código de seis dígitos</strong><p>El código cambia automáticamente cada 30 segundos.</p></div></div>
               <label className={styles.codeLabel} htmlFor="mfa-code">Código de verificación</label>
-              <input id="mfa-code" className={styles.codeInput} type="text" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} placeholder="000000" value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, '').slice(0, 6))} aria-describedby="mfa-code-help" />
+              <input id="mfa-code" className={styles.codeInput} type="text" inputMode="numeric" autoComplete="one-time-code" required pattern="[0-9]{6}" maxLength={6} placeholder="000000" value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, '').slice(0, 6))} aria-describedby="mfa-code-help" />
               <span id="mfa-code-help" className={styles.helper}>Solo números, sin espacios.</span>
             </>}
 
-            <button type="submit" disabled={busy || (!verifiedButNotSaved && code.length !== 6)} className={styles.primaryButton}>
+            <button type="submit" disabled={busy} className={styles.primaryButton}>
               {busy ? 'Verificando…' : verifiedButNotSaved ? 'Guardar y continuar' : 'Verificar y activar'}
             </button>
             {qrCode && !verifiedButNotSaved && <button type="button" disabled={busy} className={styles.textButton} onClick={() => void beginEnrollment()}>Generar un nuevo código QR</button>}
-          </form>
+          </AdminForm>
         )}
 
-        {message && <p role="status" aria-live="polite" className={styles.status}>{message}</p>}
         <p className={styles.privacy}><LockKeyhole size={14} /> Tu clave de configuración se muestra solo en esta sesión y no se guarda en el navegador.</p>
       </section>
     </main>

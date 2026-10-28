@@ -1,3 +1,5 @@
+import { isSuperAdmin } from '../../core/auth/superAdmin';
+import { institutionSearch } from '../../features/auth/utils/googleOAuth';
 import { useState, type FormEvent } from 'react';
 import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../core/AuthContext';
@@ -13,9 +15,10 @@ export function LoginRoute() {
   const { slug = '' } = useParams<{ slug: string }>();
   const [params] = useSearchParams();
   const institutionReference = slug || params.get('institution');
-  const adminPath = institutionReference
-    ? '/panel/admin?' + new URLSearchParams({ institution: institutionReference }).toString()
-    : '/panel/admin';
+  const adminParams = new URLSearchParams(params);
+  if (institutionReference) adminParams.set('institution', institutionReference);
+  if (slug) adminParams.set('slug', slug);
+  const adminPath = '/panel/admin' + institutionSearch(adminParams.toString());
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -34,7 +37,7 @@ export function LoginRoute() {
 
   if (loading) return <main className={styles.page} role="status">Verificando tu acceso…</main>;
   if (!user) return <InstitutionalLogin email={email} password={password} error={error} busy={busy} onEmailChange={setEmail} onPasswordChange={setPassword} onSubmit={submit} requestPasswordReset={requestPasswordReset} />;
-  if (mfaRequired || mfaEnrollmentRequired || role === 'super_admin' || roleError || !role)
+  if (mfaRequired || mfaEnrollmentRequired || isSuperAdmin(role) || roleError || !role)
     return <Navigate to={adminPath} replace />;
   if (loadingTenant) return <main className={styles.page} role="status">Consultando tus instituciones…</main>;
 

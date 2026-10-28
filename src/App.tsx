@@ -17,6 +17,9 @@ import { SessionProvider } from './core/auth/session';
 import AdminRoutes from './modules/admin/AdminRoutes';
 import SimulatorApp from './app/App';
 import { AcademicManagementRoutes } from './features/feats/pages/AcademicManagementRoutes';
+import { AuthPage } from './features/auth/pages/AuthPage';
+import { membershipRequestService } from './modules/admin/userManagement/membershipRequestService';
+import { RegistrationRoute } from './modules/auth/RegistrationRoute';
 
 const ModuleRoutes = lazy(() => import('./modules/projects/integration/ModuleRoutes'));
 const modulePage = <ModuleBoundary><Suspense fallback={<p role="status">Cargando módulo…</p>}><ModuleRoutes /></Suspense></ModuleBoundary>;
@@ -27,7 +30,7 @@ function SlugSessionRoute() {
   const location = useLocation();
   if (RESERVED_SLUGS.has(slug.toLowerCase())) return <SiteApp />;
   if (location.pathname.endsWith('/login'))
-    return <Navigate to={'/panel/admin' + location.search} replace />;
+    return <Navigate to={'/login?' + new URLSearchParams({ ...Object.fromEntries(new URLSearchParams(location.search)), slug }).toString()} replace />;
   return <InstitutionProvider><InstitutionSessionLayout><SessionProvider /></InstitutionSessionLayout></InstitutionProvider>;
 }
 
@@ -98,8 +101,11 @@ function RoutesWithAuth() {
   if (user && (mfaRequired || mfaEnrollmentRequired) && protectedRoute && !mfaScreen)
     return <Navigate to={'/panel/admin' + location.search} replace />;
   return <><ProjectSessionHost /><Routes>
+    <Route path="/login" element={<AuthPage requestService={membershipRequestService} />} />
+    <Route path="/register" element={<RegistrationRoute />} />
     <Route path="/panel" element={<InstitutionalPanelWithChrome />} />
     <Route path="/panel/admin" element={<AdminRoutesWithInstitutionalChrome />} />
+    <Route path="/panel/instituciones" element={<AdminRoutesWithInstitutionalChrome superadminOnly />} />
     <Route path="/panel/superadmin" element={<AdminRoutesWithInstitutionalChrome superadminOnly />} />
     <Route element={<AcademicManagementWithInstitutionalChrome />}>
       <Route path="/panel/cursos" element={<AcademicManagementRoutes />} />

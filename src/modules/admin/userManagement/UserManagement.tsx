@@ -1,448 +1,200 @@
-import { registrationError } from '../../../core/auth/registrationFlow';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { canRemoveMembership, membershipTab, membershipTabs, type MembershipTab } from './membershipVisibility';
-import { Clock3, ShieldCheck, Users } from 'lucide-react';
-import { supabase } from '../../../core/supabaseClient';
+import { AdminForm } from '../auth/AdminForm';
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { useAuth } from '../../../core/AuthContext';
 import { useTenant } from '../../../core/TenantContext';
-import { canAssignRole, canonicalRole } from '../../../core/auth/institutionalRoles';
-import { logAuditEvent } from '../../../core/auditLogger';
+import { canonicalTenantRole, canDeleteTenantMember, canAssignTenantRole, canManageTenantMember, isTenantManager, isTenantSuperAdmin } from '../auth/accessPolicy';
+import { useToast } from '../auth/Toast/Toast';
+
+import type { TenantAdminService, TenantMember, TenantRequest, TenantSnapshot } from './tenantAdmin.types';
 import styles from './UserManagement.module.css';
+import { invitationRedirect } from '../auth/tenantUrl';
+import { Trash2 } from 'lucide-react';
+import { pendingInvitationInput } from './pendingInvitation';
+import { isValidAdminEmail, normalizeAdminEmail, normalizeContactName } from '../auth/contactValidation';
+import { assignedRoleModules, defaultRoleModule } from '../auth/roleModules';
 
-interface RoleOption { role_id: string; name: string }
-interface UserMember {
-  access_request_id?: string;
-  profile_id: string;
-  institution_id: string;
-  email: string;
-  first_name: string;
-  last_name: string;
-  role_name: string;
-  institution_name: string;
-  mfa_enabled: boolean;
-  mfa_required: boolean;
-  is_active: boolean;
-}
+type ScopeState = { key: string; status: 'loading' } | { key: string; status: 'ready'; data: TenantSnapshot } | { key: string; status: 'error'; message: string };
+type MemberOperation = 'deactivate' | 'delete';
+type Action = { status: 'idle' } | { status: 'saving'; key: string } | { status: 'confirm' | 'removing'; key: string; member: TenantMember; operation: MemberOperation };
+const emptyForm = () => ({ email: '', firstName: '', lastName: '', phone: '', roleId: '', modules: [] as string[] });
+const moduleLabels: Record<string, string> = { inicio: 'Inicio', projects: 'Proyectos', simuladores: 'Simuladores', portal: 'Portal', dece: 'DECE' };
+const labels: Record<string, string> = { super_admin: 'Super Admin de la unidad educativa', institution_admin: 'Administrador de la unidad educativa', teacher: 'Docente', secretary: 'Secretaría', staff: 'Personal', dece: 'Personal DECE', projects_manager: 'Gestor de proyectos', content_editor: 'Editor de contenidos', student: 'Estudiante', guest: 'Invitado', viewer: 'Invitado pendiente', invitado: 'Invitado pendiente', pending: 'Pendiente' };
+const roleLabel = (role: string) => labels[canonicalTenantRole(role)] ?? role;
+const errorMessage = (error: unknown) => error instanceof Error ? error.message : 'No se pudo completar la operación.';
 
-const roleLabels: Record<string, string> = {
-  institution_admin: 'Administrador institucional',
-  dece_staff: 'Equipo DECE',
-  project_manager: 'Gestor de proyectos',
-  editor: 'Editor de contenidos',
-  viewer: 'Pendiente',
-  pending: 'Pendiente',
-  guest: 'Invitado',
-  dece: 'Equipo DECE',
-  projects_manager: 'Gestor de proyectos',
-  content_editor: 'Editor de contenidos',
-  student: 'Estudiante',
-};
-const formatRole = (role: string) => roleLabels[role] ?? role.replaceAll('_', ' ');
-
-export const UserManagement: React.FC = () => {
-  const { role: currentRole, user } = useAuth();
-  const location = useLocation();
-  const navigate = useNavigate();
-  const { institutions: tenantInstitutions, loadingTenant, activeInstitution } = useTenant();
-  const params = new URLSearchParams(location.search);
-  const requestedInstitution = params.get('institution');
-  const requestedSlug = params.get('slug');
-  const scopedInstitution = requestedInstitution || requestedSlug
-    ? tenantInstitutions.find(item => (!requestedInstitution || item.institution_id === requestedInstitution || item.slug === requestedInstitution)
-      && (!requestedSlug || item.slug === requestedSlug)) : activeInstitution;
-  const currentInstitutionId = scopedInstitution?.institution_id ?? null;
-  const isPlatformAdmin = currentRole === 'super_admin';
-  const isInstitutionAdmin = scopedInstitution?.role === 'institution_admin';
-  const [email, setEmail] = useState('');
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [roleId, setRoleId] = useState('');
-  const [institutionId, setInstitutionId] = useState('');
-  const [roles, setRoles] = useState<RoleOption[]>([]);
-  const [members, setMembers] = useState<UserMember[]>([]);
+export function UserManagement({ service }: { service: TenantAdminService }) {
+  const { user, role, institutionId: authInstitutionId, loading: loadingAuth } = useAuth();
+  const { activeInstitution, loadingTenant } = useTenant();
+  const institutionId = activeInstitution?.institution_id ?? '';
+  const actorRole = activeInstitution?.role ?? '';
+  const authorized = Boolean(user && institutionId && authInstitutionId === institutionId && role && canonicalTenantRole(role) === canonicalTenantRole(actorRole) && isTenantManager(actorRole));
+  const key = `${user?.id ?? ''}:${institutionId}:${actorRole}`;
+  const activeKey = useRef(key);
+  activeKey.current = key;
+  const sequence = useRef(0);
+  const busyKey = useRef<string | null>(null);
+  const [state, setState] = useState<ScopeState>({ status: 'loading', key });
+  const [action, setAction] = useState<Action>({ status: 'idle' });
+  const [form, setForm] = useState(emptyForm);
+  const [approval, setApproval] = useState<TenantRequest | null>(null);
   const [search, setSearch] = useState('');
-  const [roleFilter, setRoleFilter] = useState('');
-  const [activeTab, setActiveTab] = useState<MembershipTab>('team');
-  const loadSequence = useRef(0);
-  const [msg, setMsg] = useState('');
-  const [feedbackType, setFeedbackType] = useState<'success' | 'error'>('success');
-  const [loadError, setLoadError] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [removingKey, setRemovingKey] = useState('');
-  const [pendingRemoval, setPendingRemoval] = useState<UserMember | null>(null);
-
-  const availableInstitutions = useMemo(() => isPlatformAdmin
-    ? tenantInstitutions
-    : tenantInstitutions.filter((item) => item.role === 'institution_admin'),
-  [isPlatformAdmin, tenantInstitutions]);
-
-  const loadData = useCallback(async () => {
-    if (loadingTenant) return;
-    const sequence = ++loadSequence.current;
-    setLoading(true);
-    setLoadError('');
-    const targetInstitutionId = isPlatformAdmin ? null : currentInstitutionId;
-    if (!isPlatformAdmin && !targetInstitutionId) {
-      setMembers([]);
-      setRoles([]);
-      setLoadError('Esta cuenta no tiene una institución asignada para administrar.');
-      setLoading(false);
-      return;
+  const notify = useToast();
+  const load = useCallback(async () => {
+    const request = ++sequence.current;
+    setState({ status: 'loading', key });
+    try {
+      if (!authorized) throw new Error('No tienes permisos administrativos en la institución activa.');
+      const data = await service.load(institutionId);
+      if (activeKey.current !== key || request !== sequence.current) return;
+      if (canonicalTenantRole(data.actor_role) !== canonicalTenantRole(actorRole)) throw new Error('Tu rol cambió. Vuelve a iniciar sesión.');
+      setState({ status: 'ready', key, data });
+    } catch (error: unknown) {
+      if (activeKey.current !== key || request !== sequence.current) return;
+      const message = errorMessage(error);
+      setState({ status: 'error', key, message });
+      notify(message);
     }
-
-    const [roleResult, membershipResult, pendingResult] = await Promise.all([
-      supabase.from('roles').select('role_id, name').order('name'),
-      supabase.rpc('list_managed_memberships', {
-        target_institution_id: targetInstitutionId,
-      }),
-      currentInstitutionId ? supabase.rpc('admin_pending_institution_access', { target_institution_id: currentInstitutionId }) : Promise.resolve({ data: [], error: null }),
-    ]);
-    if (sequence !== loadSequence.current) return;
-    const failure = roleResult.error ?? membershipResult.error;
-    if (failure) {
-      setMembers([]);
-      setRoles([]);
-      setLoadError('No se pudieron cargar los usuarios y roles. Inténtalo de nuevo.');
-      setLoading(false);
-      return;
-    }
-
-    setRoles((roleResult.data ?? []).filter((item) => canAssignRole(isPlatformAdmin ? 'super_admin' : 'institution_admin', item.name)));
-    const existing = ((membershipResult.data ?? []) as UserMember[]).filter(member => isPlatformAdmin ? member.role_name === 'institution_admin' : member.institution_id === currentInstitutionId && member.role_name !== 'super_admin');
-    const requests = (pendingResult.data ?? []) as { request_id: string; profile_id: string; institution_id: string; email: string; first_name: string; last_name: string }[];
-    const pending: UserMember[] = requests.map(request => ({ ...request, access_request_id: request.request_id, role_name: 'pending', is_active: false,
-      institution_name: tenantInstitutions.find(item => item.institution_id === request.institution_id)?.name ?? '', mfa_enabled: false, mfa_required: false }));
-    setMembers([...existing.filter(member => !pending.some(request => request.profile_id === member.profile_id && request.institution_id === member.institution_id)), ...pending]);
-    if (pendingResult.error) setLoadError('No se pudieron consultar las nuevas solicitudes. Verifica la migración 0009 y los permisos de la institución.');
-    setLoading(false);
-  }, [currentInstitutionId, isPlatformAdmin, loadingTenant, tenantInstitutions]);
-
+  }, [authorized, institutionId, actorRole, key, notify, service]);
   useEffect(() => {
-    if (loadingTenant) return;
-    setInstitutionId((current) => {
-      if (!isPlatformAdmin) return currentInstitutionId ?? '';
-      return currentInstitutionId ?? (availableInstitutions.some((item) => item.institution_id === current) ? current : '');
-    });
-    void loadData().catch(() => { setMembers([]); setLoadError('No se pudieron cargar las membresías. Intenta nuevamente.'); setLoading(false); });
-  }, [availableInstitutions, currentInstitutionId, isPlatformAdmin, loadData, loadingTenant]);
-
-  useEffect(() => { setRoleFilter(''); setPendingRemoval(null); }, [currentInstitutionId]);
-  const visibleMembers = useMemo(() => {
-    const scope = isPlatformAdmin && !requestedInstitution && !requestedSlug ? institutionId : currentInstitutionId;
-    return members.filter(member => (isPlatformAdmin || member.role_name !== 'super_admin') && (!scope || member.institution_id === scope));
-  }, [members, isPlatformAdmin, currentInstitutionId, institutionId, requestedInstitution, requestedSlug]);
-  const tabMembers = useMemo(() => visibleMembers.filter(member => membershipTab(canonicalRole(member.role_name)) === activeTab), [visibleMembers, activeTab]);
-  const tabCounts = Object.fromEntries(membershipTabs.map(tab => [tab.id, visibleMembers.filter(member => membershipTab(canonicalRole(member.role_name)) === tab.id).length]));
-  const filteredMembers = useMemo(() => {
-    const normalizedSearch = search.trim().toLocaleLowerCase();
-    return tabMembers.filter((member) => {
-      const matchesInstitution = !isPlatformAdmin || !institutionId || member.institution_id === institutionId;
-      const matchesRole = !roleFilter || member.role_name === roleFilter;
-      const matchesSearch = !normalizedSearch || [member.email, member.first_name, member.last_name, member.institution_name, formatRole(member.role_name)]
-        .some((value) => value?.toLocaleLowerCase().includes(normalizedSearch));
-      return matchesInstitution && matchesRole && matchesSearch;
-    });
-  }, [institutionId, isPlatformAdmin, tabMembers, roleFilter, search]);
-
-  const filterRoles = useMemo(() => [...new Set([...roles.map(role => role.name), ...tabMembers.map(member => member.role_name)])].filter(role => role !== 'super_admin').sort(), [roles, tabMembers]);
-
-  const pendingRequestCount = members.filter(member => member.institution_id === currentInstitutionId && !member.is_active && canonicalRole(member.role_name) === 'pending').length;
-  const pendingMfaCount = filteredMembers.filter((member) => member.mfa_required && !member.mfa_enabled).length;
-
-  const [approvingKey, setApprovingKey] = useState('');
-  async function notifyMember(profileId: string, tenantId: string) {
-    try {
-      const { data, error } = await supabase.functions.invoke('notify-approved-member', { body: { profileId, institutionId: tenantId } });
-      return { notified: !error && data?.notified === true, message: error ? (await registrationError(error)).message : data?.message as string | undefined };
-    } catch (error) { return { notified: false, message: (await registrationError(error)).message }; }
+    setForm(emptyForm()); setApproval(null); setSearch(''); setAction({ status: 'idle' });
+    if (!loadingAuth && !loadingTenant) void load();
+    return () => { sequence.current++; };
+  }, [load, loadingAuth, loadingTenant]);
+  if (loadingAuth || loadingTenant || state.key !== key || state.status === 'loading') return <section className={styles.container} role="status" aria-busy="true">Verificando la institución y sus permisos…</section>;
+  if (state.status === 'error') return <section className={styles.container}><p>{state.message}</p><button type="button" className={styles.btnSubmit} onClick={() => void load()}>Volver a verificar</button></section>;
+  const snapshot = state.data;
+  const superAdmin = isTenantSuperAdmin(actorRole);
+  const selectedRole = snapshot.roles.find(item => item.role_id === form.roleId);
+  const requiredModule = selectedRole ? defaultRoleModule(selectedRole.name) : undefined;
+  const busy = action.status !== 'idle' && action.key === key && action.status !== 'confirm';
+  const actor = { profileId: user?.id ?? '', institutionId, role: actorRole };
+  const canManage = (member: TenantMember | TenantRequest) => canManageTenantMember(actor, { profileId: member.profile_id, institutionId: member.institution_id, role: 'role_name' in member ? member.role_name : 'pending' });
+  const canDelete = (member: TenantMember) => canDeleteTenantMember(actor, { profileId: member.profile_id, institutionId: member.institution_id, role: member.role_name });
+  const rows = snapshot.members.filter(member => member.institution_id === institutionId
+    && !member.invitation_pending
+    && (member.is_active || !['pending', 'guest', 'invitado', 'viewer'].includes(member.role_name))
+    && [member.email, member.first_name, member.last_name, roleLabel(member.role_name)].some(value => value.toLocaleLowerCase('es').includes(search.trim().toLocaleLowerCase('es'))));
+  function editMember(member: TenantMember | TenantRequest) {
+    if (!canManage(member) || busy) return;
+    setApproval('request_id' in member ? member : null);
+    setForm({ email: member.email, firstName: member.first_name, lastName: member.last_name, phone: member.phone, roleId: 'role_name' in member ? snapshot.roles.find(role => canonicalTenantRole(role.name) === canonicalTenantRole(member.role_name))?.role_id ?? '' : '', modules: 'modules' in member ? member.modules : [] });
+    document.getElementById('member-role')?.focus();
   }
-  async function retryNotification(member: UserMember) {
-    if (approvingKey) return;
-    setApprovingKey(member.profile_id);
-    const { notified, message } = await notifyMember(member.profile_id, member.institution_id);
-    setFeedbackType(notified ? 'success' : 'error');
-    setMsg(notified ? 'Notificación de aprobación enviada correctamente.' : message || 'La membresía está aprobada. El correo sigue pendiente de envío.');
-    setApprovingKey('');
-  }
-  async function approveMember(member: UserMember, nextRoleId: string) {
-    if ((!isInstitutionAdmin && !isPlatformAdmin) || approvingKey || member.profile_id === user?.id || member.institution_id !== currentInstitutionId || !roles.some(role => role.role_id === nextRoleId)) return;
-    setApprovingKey(member.profile_id);
-    setMsg('');
-    try {
-      const { error } = member.access_request_id ? await supabase.rpc('approve_institution_access', { target_request_id: member.access_request_id, target_role_id: nextRoleId }) : await supabase.rpc('approve_institution_member', { target_profile_id: member.profile_id, target_institution_id: currentInstitutionId, target_role_id: nextRoleId });
-      if (error) throw error;
-      await logAuditEvent({ action: 'APPROVE_MEMBER', entity: 'memberships', institutionId: currentInstitutionId ?? undefined, details: { profileId: member.profile_id, roleId: nextRoleId } });
-      const { notified, message } = await notifyMember(member.profile_id, member.institution_id);
-      setFeedbackType(notified ? 'success' : 'error');
-      setMsg(notified ? 'Solicitud aprobada, rol asignado y notificación enviada correctamente.' : message || 'La membresía está aprobada y el rol fue asignado. El correo está pendiente de envío.');
-      await loadData();
-    } catch (error) { setFeedbackType('error'); setMsg((await registrationError(error)).message); }
-    finally { setApprovingKey(''); }
-  }
-
-  const handleAssignUser = async (event: React.FormEvent) => {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setMsg('');
-    const normalizedEmail = email.trim().toLowerCase();
-    const normalizedFirstName = firstName.trim();
-    const normalizedLastName = lastName.trim();
-    const normalizedPhone = phone.trim();
-    const selectedRole = roles.find((item) => item.role_id === roleId);
-    const targetInstitutionId = isPlatformAdmin ? institutionId : currentInstitutionId;
-
-    if (!normalizedFirstName || !normalizedLastName) {
-      setFeedbackType('error');
-      setMsg('Escribe los nombres y apellidos reales de la persona.');
-      return;
-    }
-    if (!/^09\d{8}$/.test(normalizedPhone)) {
-      setFeedbackType('error');
-      setMsg('Ingresa un celular ecuatoriano de 10 dígitos que empiece con 09.');
-      return;
-    }
-    if (!targetInstitutionId || !selectedRole || !canAssignRole(isPlatformAdmin ? 'super_admin' : 'institution_admin', selectedRole.name)) {
-      setFeedbackType('error');
-      setMsg('Selecciona la institución y el rol que vas a asignar.');
-      return;
-    }
-
-    setSaving(true);
+    if (busyKey.current === key || !authorized) return;
+    if (!isValidAdminEmail(form.email)) { notify('El correo electrónico no es válido. Revisa la dirección original antes de procesar la cuenta.', 'warning'); return; }
+    const selected = snapshot.roles.find(item => item.role_id === form.roleId);
+    if (!selected || !canAssignTenantRole(actorRole, selected.name)) { notify('El rol seleccionado no está permitido para tu cuenta.'); return; }
+    if (!form.firstName.trim() || !form.lastName.trim() || !/^09\d{8}$/.test(form.phone)) { notify('Revisa los nombres, apellidos y el celular ecuatoriano.'); return; }
+    let modules: string[];
+    try { modules = assignedRoleModules(selected.name, form.modules, snapshot.modules); }
+    catch (cause: unknown) { notify(errorMessage(cause), 'warning'); return; }
+    const input = { institutionId, email: normalizeAdminEmail(form.email), roleId: form.roleId, firstName: normalizeContactName(form.firstName), lastName: normalizeContactName(form.lastName), phone: form.phone, modules };
+    busyKey.current = key;
+    setAction({ status: 'saving', key });
     try {
-      const pendingRequest = members.find(member => member.access_request_id && member.institution_id === targetInstitutionId && member.email.toLowerCase() === normalizedEmail);
-      const { error } = pendingRequest ? await supabase.rpc('approve_institution_access', { target_request_id: pendingRequest.access_request_id, target_role_id: roleId }) : await supabase.rpc('assign_institution_role', {
-        target_email: normalizedEmail,
-        target_role_id: roleId,
-        target_institution_id: targetInstitutionId,
-        target_first_name: normalizedFirstName,
-        target_last_name: normalizedLastName,
-        target_phone: normalizedPhone,
-      });
-
-      if (error) {
-        const missingAccount = error.message.includes('No existe una cuenta registrada');
-        if (missingAccount && (isPlatformAdmin || (isInstitutionAdmin && availableInstitutions.some(item => item.institution_id === targetInstitutionId)))) {
-          const { data: invitation, error: inviteError } = await supabase.functions.invoke('invite-institution-user', {
-            body: { email: normalizedEmail, roleId, institutionId: targetInstitutionId, firstName: normalizedFirstName, lastName: normalizedLastName, phone: normalizedPhone },
-          });
-          if (inviteError) {
-            setFeedbackType('error');
-            setMsg((await registrationError(inviteError)).message);
-            return;
-          }
-          await logAuditEvent({ action: 'INVITE_AND_ASSIGN_ROLE', entity: 'memberships', details: { email: normalizedEmail, roleId, institutionId: targetInstitutionId }, institutionId: targetInstitutionId });
-          setFeedbackType(invitation?.notified ? 'success' : 'error');
-          setMsg(invitation?.notified ? 'Cuenta aprobada, rol asignado y notificación enviada correctamente.' : invitation?.testNotified ? invitation.message : 'El rol fue asignado. La notificación por correo está pendiente de envío.');
-          clearForm();
-          await loadData();
-          return;
-        }
-        setFeedbackType('error');
-        setMsg(missingAccount
-          ? 'La cuenta no existe y tu membresía no permite invitar usuarios a esta institución.'
-          : error.message);
+      if (approval) {
+        await service.approve({ ...input, profileId: approval.profile_id, requestId: approval.request_id });
+        if (activeKey.current !== key) return;
+        setState(current => current.key === key && current.status === 'ready' ? { ...current, data: {
+          ...current.data,
+          requests: current.data.requests.filter(request => request.profile_id !== approval.profile_id),
+          members: [...current.data.members.filter(member => member.profile_id !== approval.profile_id), {
+            profile_id: approval.profile_id, institution_id: institutionId, email: input.email,
+            first_name: input.firstName, last_name: input.lastName, phone: input.phone,
+            role_name: selected.name, is_active: true, modules: input.modules, invitation_pending: false,
+          }],
+        } } : current);
+        setApproval(null); setForm(emptyForm());
+        const delivery = await service.notify({ institutionId, profileId: approval.profile_id, redirect_to: invitationRedirect(window.location.origin, activeInstitution!) });
+        if (activeKey.current === key) notify(delivery.notificationSent ? 'Acceso asignado y correo de notificación enviado correctamente.'
+          : 'Solicitud aprobada y módulos guardados. No se pudo enviar el correo; utiliza «Reenviar correo de acceso».', delivery.notificationSent ? 'success' : 'warning');
         return;
       }
-
-      await logAuditEvent({ action: 'ASSIGN_ROLE', entity: 'memberships', details: { email: normalizedEmail, roleId, institutionId: targetInstitutionId }, institutionId: targetInstitutionId });
-      const { data: managed } = await supabase.rpc('list_managed_memberships', { target_institution_id: targetInstitutionId });
-      const assigned = managed?.find((member: UserMember) => member.email?.toLowerCase() === normalizedEmail);
-      const { notified, message } = assigned ? await notifyMember(assigned.profile_id, targetInstitutionId) : { notified: false, message: undefined };
-      setFeedbackType(notified ? 'success' : 'error');
-      setMsg(notified ? 'Rol asignado y notificación enviada correctamente.' : message || 'El rol fue asignado. La notificación por correo está pendiente de envío.');
-      clearForm();
-      await loadData();
-    } catch {
-      setFeedbackType('error');
-      setMsg('Ocurrió un problema de conexión al asignar el rol. Inténtalo de nuevo.');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const clearForm = () => {
-    setEmail('');
-    setFirstName('');
-    setLastName('');
-    setPhone('');
-    setRoleId('');
-  };
-
-  const confirmRemoveRole = async () => {
-    if (!pendingRemoval || removingKey) return;
-    const member = pendingRemoval;
-    if (!canRemoveMembership(user?.id, member.profile_id, member.role_name)) { setPendingRemoval(null); return; }
-    if (!isPlatformAdmin && (!isInstitutionAdmin || member.institution_id !== currentInstitutionId)) {
-      setFeedbackType('error');
-      setMsg('Selecciona un usuario de la institución que administras.');
-      setPendingRemoval(null);
-      return;
-    }
-    const key = `${member.profile_id}-${member.institution_id}`;
-    setRemovingKey(key);
-    setMsg('');
+      const existing = snapshot.members.find(member => member.email.toLowerCase() === input.email);
+      if (existing && !canManage(existing)) throw new Error('No puedes modificar esa cuenta en esta institución.');
+      if (existing?.is_active && !existing.invitation_pending) {
+        await service.edit(input);
+        const delivery = await service.notify({ institutionId, profileId: existing.profile_id, redirect_to: invitationRedirect(window.location.origin, activeInstitution!) });
+        if (activeKey.current !== key) return;
+        notify(delivery.notificationSent ? 'Acceso asignado y correo de notificación enviado correctamente.'
+          : 'Rol y módulos guardados. No se pudo enviar el correo; utiliza «Reenviar correo de acceso».', delivery.notificationSent ? 'success' : 'warning');
+        setForm(emptyForm()); await load(); return;
+      }
+      const result = await service.invite({ ...input, redirect_to: invitationRedirect(window.location.origin, activeInstitution!) });
+      if (activeKey.current !== key) return;
+      if (!result.notificationSent) {
+        notify('La invitación quedó pendiente. El correo no se pudo enviar; usa «Reenviar invitación» en la fila de la persona. Si hay un límite de envíos, espera antes de reintentar.', 'warning');
+        await load();
+        return;
+      }
+      notify('Acceso asignado y correo de notificación enviado correctamente.', 'success');
+      setForm(emptyForm());
+      await load();
+    } catch (error: unknown) { if (activeKey.current === key) notify(errorMessage(error)); }
+    finally { if (busyKey.current === key) busyKey.current = null; if (activeKey.current === key) setAction({ status: 'idle' }); }
+  }
+  async function remove(member: TenantMember, operation: MemberOperation) {
+    if (busyKey.current === key || !authorized || !(operation === 'delete' ? canDelete(member) : canManage(member))) return;
+    busyKey.current = key;
+    setAction({ status: 'removing', key, member, operation });
     try {
-      const { error } = await supabase.rpc('remove_institution_role', {
-        target_institution_id: member.institution_id,
-        target_profile_id: member.profile_id,
-      });
-      if (error) throw error;
-      setPendingRemoval(null);
-      await logAuditEvent({ action: 'REMOVE_ROLE', entity: 'memberships', details: { email: member.email, role: member.role_name }, institutionId: member.institution_id });
-      setFeedbackType('success');
-      setMsg('Rol retirado correctamente.');
-      await loadData();
-    } catch (error) {
-      setFeedbackType('error');
-      setMsg((await registrationError(error)).message);
-    } finally {
-      setRemovingKey('');
-    }
-  };
-
-  return (
-    <section className={styles.container} aria-labelledby="institution-users-title">
-      <header className={styles.header}>
-        <div>
-          <p className={styles.eyebrow}>SEGURIDAD Y ACCESOS</p>
-          <h2 id="institution-users-title">{isPlatformAdmin ? 'Administradores institucionales' : 'Gestión de Miembros y Solicitudes'}</h2>
-          <p className={styles.intro}>{isPlatformAdmin
-            ? 'Asigna administradores institucionales. Cada plantel gestiona sus roles operativos.'
-            : 'Aprueba solicitudes y asigna roles a los miembros de tu institución.'}</p>
-        </div>
-        <span className={styles.scopeBadge}>{isPlatformAdmin ? 'Alcance global' : availableInstitutions[0]?.name ?? 'Tu institución'}</span>
-      </header>
-
-      <div className={styles.summary} aria-label="Resumen de cuentas">
-        <article className={styles.summaryCard}><span className={styles.summaryIcon} aria-hidden="true"><Users size={21} /></span><div><span>Usuarios visibles</span><strong>{loading ? '—' : filteredMembers.length}</strong></div></article>
-        <article className={styles.summaryCard}><span className={`${styles.summaryIcon} ${styles.secureIcon}`} aria-hidden="true"><ShieldCheck size={21} /></span><div><span>Con TOTP activo</span><strong>{loading ? '—' : filteredMembers.filter((member) => member.mfa_enabled).length}</strong></div></article>
-        <article className={styles.summaryCard}><span className={`${styles.summaryIcon} ${styles.pendingIcon}`} aria-hidden="true"><Clock3 size={21} /></span><div><span>{isPlatformAdmin ? 'MFA pendiente' : 'Solicitudes pendientes'}</span><strong>{loading ? '—' : isPlatformAdmin ? pendingMfaCount : pendingRequestCount}</strong></div></article>
-      </div>
-
-      <section className={styles.assignmentCard} aria-labelledby="assign-user-title">
-        <div className={styles.sectionHeading}>
-          <div><h3 id="assign-user-title">{isPlatformAdmin ? 'Asignar administrador institucional' : 'Asignar un rol'}</h3><p>Los permisos se limitan a la institución seleccionada. La contraseña nunca se solicita ni se almacena aquí.</p></div>
-          <span className={styles.secureLabel}><ShieldCheck size={14} aria-hidden="true" /> Operación protegida</span>
-        </div>
-        {!isPlatformAdmin && <p className={styles.scopeNotice}>Las asignaciones se aplican únicamente a <strong>{availableInstitutions[0]?.name ?? 'tu institución asignada'}</strong>.</p>}
-        <form onSubmit={handleAssignUser} className={styles.form} aria-busy={saving}>
-          <label className={styles.field} htmlFor="member-email">Correo de la cuenta
-            <input id="member-email" type="email" autoComplete="email" placeholder="persona@institucion.edu.ec" value={email} onChange={(event) => setEmail(event.target.value)} required className={styles.input} />
-          </label>
-          <label className={styles.field} htmlFor="member-first-name">Nombres
-            <input id="member-first-name" type="text" autoComplete="given-name" placeholder="Nombres reales" value={firstName} onChange={(event) => setFirstName(event.target.value)} required className={styles.input} />
-          </label>
-          <label className={styles.field} htmlFor="member-last-name">Apellidos
-            <input id="member-last-name" type="text" autoComplete="family-name" placeholder="Apellidos reales" value={lastName} onChange={(event) => setLastName(event.target.value)} required className={styles.input} />
-          </label>
-          <label className={styles.field} htmlFor="member-phone">Celular
-            <input id="member-phone" type="tel" inputMode="numeric" autoComplete="tel-national" placeholder="09XXXXXXXX" value={phone} onChange={(event) => setPhone(event.target.value.replace(/\D/g, '').slice(0, 10))} minLength={10} maxLength={10} pattern="09[0-9]{8}" title="Ingresa 10 dígitos, empezando por 09" required className={styles.input} />
-          </label>
-          <label className={styles.field} htmlFor="member-role">Rol institucional
-            <select id="member-role" value={roleId} onChange={(event) => setRoleId(event.target.value)} required className={styles.select}>
-              <option value="">Seleccionar rol</option>
-              {roles.map((item) => <option key={item.role_id} value={item.role_id}>{formatRole(item.name)}</option>)}
-            </select>
-          </label>
-          {isPlatformAdmin && <label className={styles.field} htmlFor="member-institution">Institución
-            <select id="member-institution" value={institutionId} onChange={(event) => setInstitutionId(event.target.value)} required className={styles.select}>
-              <option value="">Seleccionar institución</option>
-              {availableInstitutions.map((institution) => <option key={institution.institution_id} value={institution.institution_id}>{institution.name}</option>)}
-            </select>
-          </label>}
-          <button type="submit" disabled={saving || loading || availableInstitutions.length === 0} className={styles.btnSubmit}>
-            {saving && <span className={styles.buttonSpinner} aria-hidden="true" />}{saving ? ' Preparando invitación…' : 'Asignar rol'}
-          </button>
-        </form>
-        {saving && <p className={styles.progressNotice} role="status" aria-live="polite">Verificando la cuenta y preparando la asignación o invitación segura…</p>}
-        {msg && <p role={feedbackType === 'error' ? 'alert' : 'status'} className={feedbackType === 'error' ? styles.errorFeedback : styles.successFeedback}>{msg}</p>}
-      </section>
-
-      <section className={styles.membersCard} aria-labelledby="members-title">
-        <div className={styles.tabs} role="tablist" aria-label="Tipos de cuentas">
-          {membershipTabs.map((tab, index) => <button key={tab.id} id={`membership-tab-${tab.id}`} type="button" role="tab"
-            aria-selected={activeTab === tab.id} aria-controls="membership-tab-panel" tabIndex={activeTab === tab.id ? 0 : -1}
-            className={styles.tab} onClick={() => { setActiveTab(tab.id); setRoleFilter(''); setPendingRemoval(null); }}
-            onKeyDown={event => {
-              const next = event.key === 'ArrowRight' ? (index + 1) % membershipTabs.length
-                : event.key === 'ArrowLeft' ? (index + membershipTabs.length - 1) % membershipTabs.length
-                  : event.key === 'Home' ? 0 : event.key === 'End' ? membershipTabs.length - 1 : null;
-              if (next === null) return;
-              event.preventDefault();
-              setActiveTab(membershipTabs[next].id); setRoleFilter(''); setPendingRemoval(null);
-              document.getElementById(`membership-tab-${membershipTabs[next].id}`)?.focus();
-            }}>{tab.label}<span className={styles.tabCount}>{loading || loadingTenant ? '…' : tabCounts[tab.id]}</span></button>)}
-        </div>
-        <div id="membership-tab-panel" role="tabpanel" aria-labelledby={`membership-tab-${activeTab}`} tabIndex={0}>
-
-        <div className={styles.membersHeading}>
-          <div><h3 id="members-title">Membresías registradas</h3><p>El estado TOTP indica si la cuenta está protegida y si debe completar el enrolamiento.</p></div>
-          <div className={styles.filters}>
-            {isPlatformAdmin && <label className={styles.srOnly} htmlFor="membership-institution-filter">Filtrar por institución</label>}
-            {isPlatformAdmin && <select id="membership-institution-filter" value={requestedInstitution || requestedSlug ? currentInstitutionId ?? '' : institutionId} onChange={(event) => {
-              if (requestedInstitution || requestedSlug) {
-                const next = new URLSearchParams(location.search);
-                next.delete('slug');
-                if (event.target.value) next.set('institution', event.target.value); else next.delete('institution');
-                navigate({ pathname: location.pathname, search: next.size ? '?' + next.toString() : '' });
-              }
-              setInstitutionId(event.target.value); setRoleFilter(''); setPendingRemoval(null);
-            }} className={styles.filterSelect}>
-              <option value="">Todas las instituciones</option>
-              {availableInstitutions.map((institution) => <option key={institution.institution_id} value={institution.institution_id}>{institution.name}</option>)}
-            </select>}
-            <label className={styles.srOnly} htmlFor="membership-role-filter">Filtrar por rol</label>
-            <select id="membership-role-filter" value={roleFilter} onChange={(event) => setRoleFilter(event.target.value)} className={styles.filterSelect}>
-              <option value="">Todos los roles</option>
-              {filterRoles.map((role) => <option key={role} value={role}>{formatRole(role)}</option>)}
-            </select>
-            <label className={styles.srOnly} htmlFor="membership-search">Buscar usuarios</label>
-            <input id="membership-search" type="search" placeholder="Buscar correo, nombre o rol" value={search} onChange={(event) => setSearch(event.target.value)} className={styles.searchInput} />
-          </div>
-        </div>
-        {loadError && <p role="alert" className={styles.errorFeedback}>{loadError}</p>}
-        {loading ? <div className={styles.loadingState}>Cargando membresías…</div> : (
-          <div className={styles.tableWrap}>
-            <table className={styles.table}>
-              <thead><tr><th>Cuenta</th><th>Rol</th><th>Institución</th><th>Autenticación</th><th>Acciones</th></tr></thead>
-              <tbody>
-                {filteredMembers.length === 0 && <tr><td colSpan={5} className={styles.emptyState}>No hay membresías que coincidan con estos filtros.</td></tr>}
-                {filteredMembers.map((member) => {
-                  const key = `${member.profile_id}-${member.institution_id}`;
-                  const mfaStatus = member.access_request_id ? 'Acceso pendiente' : member.mfa_enabled ? 'Activo' : member.mfa_required ? 'Pendiente' : 'No requerido';
-                  const mfaClass = member.mfa_enabled ? styles.mfaActive : member.mfa_required ? styles.mfaPending : styles.mfaOptional;
-                  const displayName = `${member.first_name ?? ''} ${member.last_name ?? ''}`.trim();
-                  return <tr key={key}>
-                    <td><div className={styles.personCell}><span className={styles.avatar} aria-hidden="true">{(displayName || member.email || '?').charAt(0).toUpperCase()}</span><span><strong>{displayName || 'Perfil sin nombre'}</strong><small>{member.email || 'Correo no disponible'}</small></span></div></td>
-                    <td><span className={styles.roleBadge}>{formatRole(member.role_name)}</span>{!member.is_active && canonicalRole(member.role_name) === 'pending' && <small className={styles.membershipState}>Pendiente de aprobación</small>}</td>
-                    <td>{member.institution_name || 'Alcance global'}</td>
-                    <td><span className={`${styles.mfaBadge} ${mfaClass}`}><span aria-hidden="true" />{mfaStatus}</span></td>
-                    <td>{!isPlatformAdmin && !['super_admin', 'institution_admin'].includes(member.role_name) && <select className={styles.memberRoleSelect} value="" disabled={Boolean(approvingKey) || member.profile_id === user?.id} aria-label={`Asignar rol a ${member.email}`} onChange={event => void approveMember(member, event.target.value)}><option value="">{member.is_active ? 'Cambiar rol' : 'Aprobar y asignar rol'}</option>{roles.map(role => <option key={role.role_id} value={role.role_id}>{formatRole(role.name)}</option>)}</select>}{(isPlatformAdmin ? member.role_name === 'institution_admin' : !['super_admin', 'institution_admin'].includes(member.role_name)) && <button type="button" disabled={removingKey === key || member.profile_id === user?.id} title={member.profile_id === user?.id ? 'No puedes quitar tu propio rol.' : undefined} onClick={() => { setMsg(''); setPendingRemoval(member); }} className={styles.btnRemove} aria-label={`Quitar rol de ${member.email}`}>
-                      {removingKey === key ? 'Quitando…' : 'Quitar rol'}
-                    </button>}{member.is_active && (isPlatformAdmin ? member.role_name === 'institution_admin' : !['super_admin', 'institution_admin'].includes(member.role_name)) && <button type="button" className={styles.btnRemove} disabled={Boolean(approvingKey)} onClick={() => void retryNotification(member)}>Reintentar notificación</button>}</td>
-                  </tr>;
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-        </div>
-      </section>
-
-      {pendingRemoval && <div className={styles.modalBackdrop} onMouseDown={(event) => { if (event.target === event.currentTarget && !removingKey) setPendingRemoval(null); }}>
-        <section className={styles.confirmModal} role="dialog" aria-modal="true" aria-labelledby="remove-role-title" aria-describedby="remove-role-description">
-          <span className={styles.modalEyebrow}>CONFIRMAR CAMBIO DE ACCESO</span>
-          <h3 id="remove-role-title">¿Quitar este rol?</h3>
-          <p id="remove-role-description">Se quitará el rol <strong>{formatRole(pendingRemoval.role_name)}</strong> de <strong>{pendingRemoval.email}</strong> en {pendingRemoval.institution_name}. La cuenta de autenticación no se eliminará.</p>
-          {msg && feedbackType === 'error' && <p role="alert" className={styles.modalError}>{msg}</p>}
-          <div className={styles.modalActions}>
-            <button type="button" disabled={Boolean(removingKey)} onClick={() => { setPendingRemoval(null); setMsg(''); }} className={styles.btnCancel}>Cancelar</button>
-            <button type="button" disabled={Boolean(removingKey)} onClick={() => void confirmRemoveRole()} className={styles.btnConfirmRemove}>{removingKey ? 'Quitando…' : 'Sí, quitar rol'}</button>
-          </div>
-        </section>
-      </div>}
+      if (operation === 'delete') await service.deleteMember(institutionId, member.profile_id);
+      else await service.remove(institutionId, member.profile_id);
+      if (activeKey.current !== key) return;
+      setState(current => current.key === key && current.status === 'ready' ? { ...current, data: {
+        ...current.data, members: operation === 'delete' ? current.data.members.filter(item => item.profile_id !== member.profile_id || item.institution_id !== institutionId)
+          : current.data.members.map(item => item.profile_id === member.profile_id && item.institution_id === institutionId ? { ...item, is_active: false } : item),
+      } } : current);
+      const message = operation === 'deactivate' ? 'Rol desactivado en esta institución.' : 'Miembro eliminado correctamente de la Unidad Educativa.';
+      notify(message, 'success');
+    } catch (error: unknown) { if (activeKey.current === key) notify(errorMessage(error)); }
+    finally { if (busyKey.current === key) busyKey.current = null; if (activeKey.current === key) setAction({ status: 'idle' }); }
+  }
+  async function resend(member: TenantMember) {
+    if (busyKey.current === key || !authorized || !canManage(member) || !activeInstitution) return;
+    busyKey.current = key;
+    setAction({ status: 'saving', key });
+    try {
+      const input = pendingInvitationInput(snapshot, member, institutionId);
+      const result = await service.notify({ institutionId, profileId: member.profile_id, pending: true, redirect_to: invitationRedirect(window.location.origin, activeInstitution) });
+      if (activeKey.current !== key) return;
+      notify(result.notificationSent ? `Invitación reenviada correctamente al correo ${input.email}.`
+        : 'El acceso sigue pendiente. No se pudo enviar el correo; espera antes de usar «Reenviar invitación» nuevamente.',
+      result.notificationSent ? 'success' : 'warning');
+    } catch (error: unknown) { if (activeKey.current === key) notify(errorMessage(error)); }
+    finally { if (busyKey.current === key) busyKey.current = null; if (activeKey.current === key) setAction({ status: 'idle' }); }
+  }
+  async function notifyMember(member: TenantMember) {
+    if (busyKey.current === key || !authorized || !canManage(member) || !activeInstitution) return;
+    busyKey.current = key; setAction({ status: 'saving', key });
+    try {
+      const result = await service.notify({ institutionId, profileId: member.profile_id, redirect_to: invitationRedirect(window.location.origin, activeInstitution) });
+      if (activeKey.current === key) notify(result.notificationSent ? 'Acceso asignado y correo de notificación enviado correctamente.'
+        : 'No se pudo enviar el correo. El acceso y los módulos siguen guardados; espera antes de reintentar.', result.notificationSent ? 'success' : 'warning');
+    } catch (error: unknown) { if (activeKey.current === key) notify(errorMessage(error)); }
+    finally { if (busyKey.current === key) busyKey.current = null; if (activeKey.current === key) setAction({ status: 'idle' }); }
+  }
+  return <section className={styles.container} aria-labelledby="institution-users-title">
+    <header className={styles.header}><div><p className={styles.eyebrow}>SEGURIDAD Y ACCESOS</p><h2 id="institution-users-title">{superAdmin ? 'Administradores de mi institución' : 'Usuarios y roles de mi institución'}</h2><p className={styles.intro}>{superAdmin ? 'Autoriza a los administradores de tu plantel.' : 'Asigna roles internos y los módulos que necesita cada persona.'}</p></div><span className={styles.scopeBadge}>{activeInstitution?.name}</span></header>
+    <section className={styles.assignmentCard}><h3>{approval ? 'Aprobar solicitud de registro' : 'Asignar acceso'}</h3><p className={styles.scopeNotice}>Las asignaciones se aplican únicamente a <strong>{activeInstitution?.name}</strong>.</p>
+      <AdminForm onSubmit={submit} className={styles.form} aria-busy={busy}>
+        <label className={styles.field}>Correo<input className={styles.input} type="email" autoComplete="email" required readOnly={Boolean(approval)} disabled={busy} value={form.email} onChange={event => setForm({ ...form, email: event.target.value })} /></label>
+        <label className={styles.field}>Nombres<input className={styles.input} autoComplete="given-name" required disabled={busy} value={form.firstName} onChange={event => setForm({ ...form, firstName: event.target.value })} /></label>
+        <label className={styles.field}>Apellidos<input className={styles.input} autoComplete="family-name" required disabled={busy} value={form.lastName} onChange={event => setForm({ ...form, lastName: event.target.value })} /></label>
+        <label className={styles.field}>Celular<input className={styles.input} type="tel" autoComplete="tel-national" pattern="09[0-9]{8}" maxLength={10} required disabled={busy} value={form.phone} onChange={event => setForm({ ...form, phone: event.target.value.replace(/\D/g, '').slice(0, 10) })} /></label>
+        <label className={styles.field} htmlFor="member-role">Rol<select id="member-role" className={styles.select} required disabled={busy} value={form.roleId} onChange={event => { const chosen = snapshot.roles.find(item => item.role_id === event.target.value); try { setForm({ ...form, roleId: event.target.value, modules: chosen ? assignedRoleModules(chosen.name, form.modules, snapshot.modules) : form.modules }); } catch (cause: unknown) { notify(errorMessage(cause), 'warning'); } }}><option value="">Seleccionar rol</option>{snapshot.roles.filter(item => canAssignTenantRole(actorRole, item.name) && (approval || canonicalTenantRole(item.name) !== 'guest')).map(item => <option key={item.role_id} value={item.role_id}>{roleLabel(item.name)}</option>)}</select></label>
+        <fieldset disabled={busy} className={styles.field}><legend>Módulos asignados</legend>{snapshot.modules.map(name => <label key={name}><input type="checkbox" disabled={name === requiredModule} checked={form.modules.includes(name) || name === requiredModule} onChange={event => setForm({ ...form, modules: event.target.checked ? [...form.modules, name] : form.modules.filter(item => item !== name) })} /> {name}</label>)}</fieldset>
+        <button className={styles.btnSubmit} disabled={busy} type="submit">{busy ? 'Guardando…' : approval ? 'Aprobar y asignar rol' : 'Asignar acceso'}</button>
+        {approval && <button className={styles.btnCancel} type="button" disabled={busy} onClick={() => { setApproval(null); setForm(emptyForm()); }}>Cancelar aprobación</button>}
+      </AdminForm>
     </section>
-  );
-};
+    <section className={styles.membersCard}><div className={styles.membersHeading}><h3>Miembros de {activeInstitution?.name}</h3><label className={styles.field}>Buscar<input className={styles.searchInput} type="search" value={search} onChange={event => setSearch(event.target.value)} /></label></div>
+      <div className={styles.tableWrap}><table className={styles.table}><thead><tr><th>Cuenta</th><th>Rol</th><th>Módulos</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>{rows.map(member => <tr key={member.profile_id}><td>{member.first_name} {member.last_name}<br />{member.email}</td><td>{roleLabel(member.role_name)}</td><td>{member.modules.map(name => (moduleLabels[name] ?? name)).join(', ') || 'Sin módulos asignados'}</td><td>{member.is_active ? 'Activo' : 'Inactivo'}</td><td>{canManage(member) && <><button className={styles.btnRemove} type="button" disabled={busy || !member.is_active} onClick={() => void notifyMember(member)}>Reenviar correo de acceso</button><button className={styles.btnRemove} type="button" disabled={busy} onClick={() => editMember(member)}>Asignar rol</button><button className={styles.btnRemove} type="button" disabled={busy || !member.is_active} onClick={() => setAction({ status: 'confirm', key, member, operation: 'deactivate' })}>Desactivar rol</button></>}{canDelete(member) && <button className={styles.btnDelete} type="button" disabled={busy} onClick={() => setAction({ status: 'confirm', key, member, operation: 'delete' })}><Trash2 size={16} aria-hidden="true" />Eliminar miembro</button>}</td></tr>)}{!rows.length && <tr><td colSpan={5}>No hay usuarios que coincidan.</td></tr>}</tbody></table></div>
+      <h3>Invitaciones pendientes de mi institución</h3><div className={styles.tableWrap}><table className={styles.table}><thead><tr><th>Cuenta</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>{snapshot.members.filter(member => member.institution_id === institutionId && member.invitation_pending).map(member => <tr key={member.profile_id}><td>{member.first_name} {member.last_name}<br />{member.email}</td><td>Invitado · Pendiente de aceptación</td><td><button className={styles.btnRemove} type="button" disabled={busy || !canManage(member)} onClick={() => void resend(member)}>Reenviar invitación</button></td></tr>)}{!snapshot.members.some(member => member.invitation_pending) && <tr><td colSpan={3}>No hay invitaciones pendientes.</td></tr>}</tbody></table></div>
+      <h3>Solicitudes de mi institución</h3><button type="button" className={styles.btnRemove} disabled={busy} onClick={() => void load()}>Actualizar solicitudes</button><div className={styles.tableWrap}><table className={styles.table}><thead><tr><th>Correo</th><th>Nombres</th><th>Apellidos</th><th>Celular</th><th>Acción</th></tr></thead><tbody>{snapshot.requests.filter(request => request.institution_id === institutionId).map(request => <tr key={request.request_id}><td>{request.email}{!isValidAdminEmail(request.email) && <p role="status">Correo no válido: revisa la identidad original en Auth.</p>}</td><td>{request.first_name}</td><td>{request.last_name}</td><td>{request.phone || 'Por completar'}</td><td><button className={styles.btnRemove} type="button" disabled={busy || !canManage(request)} onClick={() => editMember(request)}>Aprobar y asignar rol</button></td></tr>)}{!snapshot.requests.length && <tr><td colSpan={5}>No hay solicitudes pendientes.</td></tr>}</tbody></table></div>
+    </section>
+    {(action.status === 'confirm' || action.status === 'removing') && action.key === key && <div className={styles.modalBackdrop}><section className={styles.confirmModal} role="dialog" aria-modal="true" aria-labelledby="remove-role-title"><h3 id="remove-role-title">{action.operation === 'delete' ? 'Eliminar miembro' : 'Desactivar rol'}</h3><p>{action.operation === 'delete' ? <>¿Estás seguro de que deseas eliminar a {`${action.member.first_name} ${action.member.last_name}`.trim() || action.member.email} de {activeInstitution?.name}? Esta acción le quitará la membresía a esta institución.</> : <>Se desactivará el rol de {action.member.email} únicamente en {activeInstitution?.name}.</>}</p><div className={styles.modalActions}><button className={styles.btnCancel} type="button" disabled={busy} onClick={() => setAction({ status: 'idle' })}>Cancelar</button><button className={styles.btnConfirmRemove} type="button" disabled={busy} onClick={() => void remove(action.member, action.operation)}>Confirmar</button></div></section></div>}
+  </section>;
+}

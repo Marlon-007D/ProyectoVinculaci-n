@@ -1,3 +1,4 @@
+import { institutionSearch } from '../../../../features/auth/utils/googleOAuth';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Award, BookOpenText, Building2, Calculator, CalendarDays, ChevronDown, FolderKanban, HeartHandshake, Home, Layers3, LogOut, Newspaper, PanelLeftClose, PanelLeftOpen, PanelTop, ShieldCheck } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
@@ -25,8 +26,14 @@ const workspaceLinks: LinkItem[] = [
 ];
 
 export function PrivateWorkspace({ children }: { children: ReactNode }) {
-  const { pathname } = useLocation();
+  const { pathname, search, hash } = useLocation();
   const navigate = useNavigate();
+  const contextSearch = institutionSearch(search);
+  const scopedPath = (path: string) => path + contextSearch;
+  useEffect(() => {
+    if (search !== contextSearch) navigate({ pathname, search: contextSearch, hash }, { replace: true });
+  }, [pathname, search, contextSearch, hash, navigate]);
+
   const { user, role, logout, loading: loadingAuth } = useAuth();
   const { activeInstitution, institutions, setActiveInstitution, hasModuleAccess, loadingTenant } = useTenant();
   const sidebarLoading = loadingAuth || loadingTenant;
@@ -69,7 +76,7 @@ export function PrivateWorkspace({ children }: { children: ReactNode }) {
   async function signOut() {
     if (!allowLeave()) return;
     await logout();
-    navigate('/panel/admin', { replace: true });
+    navigate(scopedPath('/panel/admin'), { replace: true });
   }
 
   return <div className={`${styles.workspace} ${sidebarCollapsed ? styles.workspaceCollapsed : ''}`}>
@@ -86,7 +93,10 @@ export function PrivateWorkspace({ children }: { children: ReactNode }) {
         {!sidebarCollapsed && role === 'super_admin' && institutions.length > 1 && <label className={styles.institutionPicker}>
         <span className={styles.selectControl}><Building2 size={17} aria-hidden="true" /><select value={activeInstitution?.institution_id ?? ''} onChange={event => {
           const selected = institutions.find(item => item.institution_id === event.target.value);
-          if (selected) setActiveInstitution(selected);
+          if (selected) {
+            setActiveInstitution(selected);
+            navigate(pathname + '?' + new URLSearchParams({ institution: selected.institution_id, slug: selected.slug }).toString());
+          }
         }}>
           {institutions.map(item => <option key={item.institution_id} value={item.institution_id}>{item.name}</option>)}
         </select></span>
@@ -94,26 +104,26 @@ export function PrivateWorkspace({ children }: { children: ReactNode }) {
       </div>
       <nav className={styles.nav} onClickCapture={event => { if ((event.target as HTMLElement).closest("a") && !allowLeave()) { event.preventDefault(); event.stopPropagation(); } }}>
         {role === 'super_admin' ? <>
-          <Link data-tone="institutions" to="/panel/superadmin" title="Instituciones educativas: gestiona las instituciones del sistema" aria-current={pathname === '/panel/superadmin' ? 'page' : undefined}><Building2 size={20} aria-hidden="true" /><span>Instituciones educativas</span></Link>
-          <Link data-tone="admin" to="/panel/admin" title="Seguridad y usuarios: administra cuentas y permisos" aria-current={pathname === '/panel/admin' ? 'page' : undefined}><ShieldCheck size={20} aria-hidden="true" /><span>Seguridad y usuarios</span></Link>
+          <Link data-tone="institutions" to={scopedPath("/panel/superadmin")} title="Instituciones educativas: gestiona las instituciones del sistema" aria-current={pathname === '/panel/superadmin' ? 'page' : undefined}><Building2 size={20} aria-hidden="true" /><span>Instituciones educativas</span></Link>
+          <Link data-tone="admin" to={scopedPath("/panel/admin")} title="Seguridad y usuarios: administra cuentas y permisos" aria-current={pathname === '/panel/admin' ? 'page' : undefined}><ShieldCheck size={20} aria-hidden="true" /><span>Seguridad y usuarios</span></Link>
         </> : <>
-          {links.map(item => { const Icon = item.icon; const descriptions: Record<string, string> = { Inicio: 'Resumen del panel institucional', Proyectos: 'Gestiona proyectos de vinculación', DECE: 'Atención y acompañamiento estudiantil', Simuladores: 'Herramientas académicas de cálculo', 'Portal Web': 'Administra el contenido del sitio institucional' }; return <Link data-tone={toneFor(item.path)} key={item.path} to={item.path} title={`${item.label}: ${descriptions[item.label]}`} aria-current={pathname === item.path || pathname.startsWith(`${item.path}/`) ? 'page' : undefined}><Icon size={20} aria-hidden="true" /><span>{item.label}</span></Link>; })}
-          {!isDeceStaff && <Link data-tone="admin" to="/panel/admin" title="Administración: consulta cuentas, accesos y permisos" aria-current={pathname === '/panel/admin' ? 'page' : undefined}><ShieldCheck size={20} aria-hidden="true" /><span>Administración</span></Link>}
+          {links.map(item => { const Icon = item.icon; const descriptions: Record<string, string> = { Inicio: 'Resumen del panel institucional', Proyectos: 'Gestiona proyectos de vinculación', DECE: 'Atención y acompañamiento estudiantil', Simuladores: 'Herramientas académicas de cálculo', 'Portal Web': 'Administra el contenido del sitio institucional' }; return <Link data-tone={toneFor(item.path)} key={item.path} to={scopedPath(item.path)} title={`${item.label}: ${descriptions[item.label]}`} aria-current={pathname === item.path || pathname.startsWith(`${item.path}/`) ? 'page' : undefined}><Icon size={20} aria-hidden="true" /><span>{item.label}</span></Link>; })}
+          {!isDeceStaff && <Link data-tone="admin" to={scopedPath("/panel/admin")} title="Administración: consulta cuentas, accesos y permisos" aria-current={pathname === '/panel/admin' ? 'page' : undefined}><ShieldCheck size={20} aria-hidden="true" /><span>Administración</span></Link>}
         </>}
         {canManageAcademicContent && <>
           <section className={`${styles.navGroup} ${openGroup === 'courses' ? '' : styles.collapsed}`}>
             <button type="button" title="Cursos: organiza categorías y módulos académicos" className={coursesActive ? styles.groupButtonActive : styles.groupButton} aria-expanded={openGroup === 'courses'} onClick={() => { if (sidebarCollapsed) setSidebarCollapsed(false); setOpenGroup(value => value === 'courses' && !sidebarCollapsed ? null : 'courses'); }}><BookOpenText size={20} aria-hidden="true" /><span>Cursos</span><ChevronDown size={18} aria-hidden="true" /></button>
             <div className={styles.subnav}>
-              <Link title="Categorías: clasifica la oferta de cursos" to="/panel/cursos/categorias" aria-current={pathname === '/panel/cursos/categorias' ? 'page' : undefined}><FolderKanban size={18} aria-hidden="true" /><span>Categorías</span></Link>
-              <Link title="Módulos: administra los contenidos de los cursos" to="/panel/cursos/modulos" aria-current={pathname === '/panel/cursos/modulos' ? 'page' : undefined}><Layers3 size={18} aria-hidden="true" /><span>Módulos</span></Link>
+              <Link title="Categorías: clasifica la oferta de cursos" to={scopedPath("/panel/cursos/categorias")} aria-current={pathname === '/panel/cursos/categorias' ? 'page' : undefined}><FolderKanban size={18} aria-hidden="true" /><span>Categorías</span></Link>
+              <Link title="Módulos: administra los contenidos de los cursos" to={scopedPath("/panel/cursos/modulos")} aria-current={pathname === '/panel/cursos/modulos' ? 'page' : undefined}><Layers3 size={18} aria-hidden="true" /><span>Módulos</span></Link>
             </div>
           </section>
           <section className={`${styles.navGroup} ${openGroup === 'publications' ? '' : styles.collapsed}`}>
             <button type="button" title="Publicaciones: gestiona noticias, eventos y reconocimientos" className={publicationsActive ? styles.groupButtonActive : styles.groupButton} aria-expanded={openGroup === 'publications'} onClick={() => { if (sidebarCollapsed) setSidebarCollapsed(false); setOpenGroup(value => value === 'publications' && !sidebarCollapsed ? null : 'publications'); }}><Newspaper size={20} aria-hidden="true" /><span>Publicaciones</span><ChevronDown size={18} aria-hidden="true" /></button>
             <div className={styles.subnav}>
-              <Link title="Noticias: publica novedades institucionales" to="/panel/publicaciones/noticias" aria-current={pathname === '/panel/publicaciones/noticias' ? 'page' : undefined}><Newspaper size={18} aria-hidden="true" /><span>Noticias</span></Link>
-              <Link title="Eventos: publica actividades y fechas institucionales" to="/panel/publicaciones/eventos" aria-current={pathname === '/panel/publicaciones/eventos' ? 'page' : undefined}><CalendarDays size={18} aria-hidden="true" /><span>Eventos</span></Link>
-              <Link title="Cuadro de honor: administra reconocimientos estudiantiles" to="/panel/publicaciones/cuadro-de-honor" aria-current={pathname === '/panel/publicaciones/cuadro-de-honor' ? 'page' : undefined}><Award size={18} aria-hidden="true" /><span>Cuadro de honor</span></Link>
+              <Link title="Noticias: publica novedades institucionales" to={scopedPath("/panel/publicaciones/noticias")} aria-current={pathname === '/panel/publicaciones/noticias' ? 'page' : undefined}><Newspaper size={18} aria-hidden="true" /><span>Noticias</span></Link>
+              <Link title="Eventos: publica actividades y fechas institucionales" to={scopedPath("/panel/publicaciones/eventos")} aria-current={pathname === '/panel/publicaciones/eventos' ? 'page' : undefined}><CalendarDays size={18} aria-hidden="true" /><span>Eventos</span></Link>
+              <Link title="Cuadro de honor: administra reconocimientos estudiantiles" to={scopedPath("/panel/publicaciones/cuadro-de-honor")} aria-current={pathname === '/panel/publicaciones/cuadro-de-honor' ? 'page' : undefined}><Award size={18} aria-hidden="true" /><span>Cuadro de honor</span></Link>
             </div>
           </section>
         </>}

@@ -9,4 +9,8 @@ const base = process.env.GITHUB_ACTIONS === 'true'
 export default defineConfig({
   base,
   plugins: [react()],
+  server: {
+    host: true,
+    allowedHosts: true
+  }
 })

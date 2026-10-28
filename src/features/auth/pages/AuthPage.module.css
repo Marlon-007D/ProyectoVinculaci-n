@@ -1,0 +1,26 @@
+.page { min-height: 100vh; padding: 32px; display: grid; place-items: center; background: #f3f5f7; color: #1f2933; font-family: Inter, system-ui, sans-serif; }
+.layout { width: min(100%, 1000px); display: grid; grid-template-columns: 1fr 1fr; border: 1px solid #dce1e7; border-radius: 16px; overflow: hidden; background: #fff; }
+.panel { display: flex; flex-direction: column; justify-content: space-between; gap: 48px; padding: 48px; background: #e9dff1; color: #352846; }
+.panel h2 { font-size: 32px; margin-bottom: 24px; color: inherit; }
+.panel p { line-height: 1.7; }
+.brand { font-weight: 600; }
+.content { padding: 48px; min-width: 0; }
+.backLink { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; margin-bottom: 20px; color: #675078; font-size: 14px; line-height: 1.5; text-decoration: none; }
+.backLink svg { flex-shrink: 0; }
+.backLink:hover { text-decoration: underline; }
+.content h1 { font-size: 28px; margin: 0 0 12px; }
+.help { color: #52606d; margin-bottom: 32px; }
+.separator { display: flex; align-items: center; gap: 16px; margin: 24px 0; color: #52606d; font-size: 14px; }
+.separator::before, .separator::after { content: ''; flex: 1; border-top: 1px solid #dce1e7; }
+.form, .fields { display: grid; gap: 12px; }
+.fields { border: 0; padding: 0; margin: 0; min-width: 0; }
+.fields label { font-size: 14px; font-weight: 500; }
+.fields input { width: 100%; min-height: 48px; padding: 12px; border: 1px solid #747775; border-radius: 8px; background: #fff; color: #1f2933; font: inherit; }
+.submit { min-height: 48px; margin-top: 12px; padding: 12px 16px; border: 1px solid #675078; border-radius: 8px; background: #675078; color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
+.submit:hover { background: #534060; }
+.fields:disabled { opacity: .65; }
+.content :is(input, button, a):focus-visible { outline: 3px solid #675078; outline-offset: 3px; }
+.error { color: #9b1c1c; }
+.switchLink { margin: 24px 0 0; font-size: 14px; }
+.switchLink a { color: #675078; }
+@media (max-width: 720px) { .page { padding: 16px; } .layout { grid-template-columns: 1fr; } .panel { padding: 24px; gap: 16px; } .panel h2 { font-size: 24px; margin-bottom: 12px; } .content { padding: 32px 24px; } }
