@@ -1291,3 +1291,50 @@
   .evaluation-time-label { font-size:11px; }
   .evaluation-analysis-heading h2 { font-size:21px; }
 }
+
+/* Resultado de evaluación con la misma identidad visual del portal. */
+:global(.course-evaluation-page) .evaluation-view-tabs-sticky { background:var(--site-paper,#fff); }
+:global(.course-evaluation-page) .evaluation-view-tabs { background:#e8eef5; }
+:global(.course-evaluation-page) .evaluation-view-tab { color:var(--site-navy,#0a233f); font-family:var(--site-font,Arial,sans-serif); font-weight:600; }
+:global(.course-evaluation-page) .evaluation-view-tab.is-active { color:#fff; background:var(--site-navy,#0a233f); }
+:global(.course-evaluation-page) .evaluation-view-tab.is-active svg { color:var(--site-gold,#f2b95a); }
+:global(.course-evaluation-page) .evaluation-view-tab:focus-visible { outline-color:var(--site-navy,#0a233f); }
+:global(.course-evaluation-page) .evaluation-review-card {
+  border:1px solid var(--site-line,#d5dbe1);
+  border-radius:14px;
+  background:var(--site-paper,#fff);
+}
+:global(.course-evaluation-page) .evaluation-review-summary { border-bottom-color:var(--site-line,#d5dbe1); }
+:global(.course-evaluation-page) .evaluation-review-summary > strong,
+:global(.course-evaluation-page) .evaluation-review-summary > p { color:var(--site-navy,#0a233f); font-family:var(--site-font,Arial,sans-serif); }
+:global(.course-evaluation-page) .evaluation-review-summary > strong span { color:var(--site-muted,#52606d); }
+:global(.course-evaluation-page) .evaluation-review-table-wrap { border-color:var(--site-line,#d5dbe1); }
+:global(.course-evaluation-page) .evaluation-review-table { color:var(--site-ink,#1f2933); font-family:var(--site-font,Arial,sans-serif); }
+:global(.course-evaluation-page) .evaluation-review-table th,
+:global(.course-evaluation-page) .evaluation-review-table td { border-bottom-color:var(--site-line,#d5dbe1); }
+:global(.course-evaluation-page) .evaluation-review-table th { color:var(--site-navy,#0a233f); background:#e8eef5; }
+:global(.course-evaluation-page) .evaluation-review-table tbody tr:nth-child(even) { background:#f7f9fb; }
+:global(.course-evaluation-page) .evaluation-review-status.is-correct { color:var(--site-navy,#0a233f); background:color-mix(in srgb,var(--site-gold,#f2b95a) 30%,#fff); }
+:global(.course-evaluation-page) .evaluation-review-status.is-unanswered { color:var(--site-muted,#52606d); background:#eef2f6; }
+:global(.course-evaluation-page) .evaluation-review-back { color:#fff; background:var(--site-navy,#0a233f); font-family:var(--site-font,Arial,sans-serif); }
+:global(.course-evaluation-page) .evaluation-review-back:hover { background:#173f70; }
+:global(.course-evaluation-page) .evaluation-review-back:focus-visible { outline-color:var(--site-navy,#0a233f); }
+:global(.course-evaluation-page) .evaluation-analysis-heading > div > span,
+:global(.course-evaluation-page) .evaluation-analysis-heading h2,
+:global(.course-evaluation-page) .evaluation-analysis-heading > strong { color:var(--site-navy,#0a233f); font-family:var(--site-font,Arial,sans-serif); }
+:global(.course-evaluation-page) .evaluation-analysis-heading > strong small,
+:global(.course-evaluation-page) .evaluation-time-note,
+:global(.course-evaluation-page) .evaluation-time-label,
+:global(.course-evaluation-page) .evaluation-topics-card > p,
+:global(.course-evaluation-page) .evaluation-topics-card li { color:var(--site-muted,#52606d); }
+:global(.course-evaluation-page) .evaluation-kpi,
+:global(.course-evaluation-page) .evaluation-analysis-card { border-color:var(--site-line,#d5dbe1); border-radius:14px; background:var(--site-paper,#fff); }
+:global(.course-evaluation-page) .evaluation-kpi,
+:global(.course-evaluation-page) .evaluation-kpi > strong,
+:global(.course-evaluation-page) .evaluation-analysis-card h3 { color:var(--site-navy,#0a233f); font-family:var(--site-font,Arial,sans-serif); }
+:global(.course-evaluation-page) .evaluation-kpi > span,
+:global(.course-evaluation-page) .evaluation-kpi > strong small { color:var(--site-muted,#52606d); }
+:global(.course-evaluation-page) .evaluation-kpi.is-time,
+:global(.course-evaluation-page) .evaluation-kpi.is-average { color:var(--site-accent,#1d4e89); }
+:global(.course-evaluation-page) .evaluation-time-track { background:#e8eef5; }
+:global(.course-evaluation-page) .evaluation-time-bar { background:var(--site-navy,#0a233f); }
