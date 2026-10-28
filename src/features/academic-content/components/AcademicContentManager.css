@@ -1,5 +1,5 @@
 .academic-content-page.page-content { padding-top: 22px; }
-.academic-content-page.is-honor-page { --accent: #426b4a; --accent-hover: #34593b; --accent-soft: #eaf4ec; --accent-container: #d9efdd; --accent-focus: #bfdcc4; padding-inline: clamp(24px,4vw,48px); padding-bottom: 56px; }
+.academic-content-page.is-honor-page { --accent: #164a7c; --accent-hover: #123d68; --accent-soft: #e7f0fb; --accent-container: #dbe9f8; --accent-focus: #c8ddf3; padding-inline: clamp(24px,4vw,48px); padding-bottom: 56px; }
 .academic-page-heading { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-bottom: 22px; }
 .academic-page-heading h1 { margin: 0; color: #302a34; font: 600 30px/1.15 'Outfit',sans-serif; }
 .academic-page-heading p { margin: 7px 0 0; color: var(--muted); font-size: 14px; }
@@ -53,8 +53,8 @@
 .honor-official-slot.is-school-standard-bearer { grid-area: plantel; }
 .honor-official-slot.is-school-second-escort { grid-area: plantel-second; }
 .honor-official-slot.is-city-standard-bearer,.honor-official-slot.is-school-standard-bearer { z-index: 1; transform: translateY(-22px); transform-origin: center; transition: transform 180ms ease, background-color 180ms ease; }
-.honor-official-slot.is-city-standard-bearer { --honor-highlight-bg: #e2f1e6; --honor-highlight-chip: #d3eadb; --honor-highlight-ink: #2f6847; --honor-highlight-line: #b9dcc5; color: var(--honor-highlight-ink); background: var(--honor-highlight-bg); }
-.honor-official-slot.is-school-standard-bearer { --honor-highlight-bg: #ece0f6; --honor-highlight-chip: #e4d5f0; --honor-highlight-ink: #5b4672; --honor-highlight-line: #d0bde0; color: var(--honor-highlight-ink); background: var(--honor-highlight-bg); }
+.honor-official-slot.is-city-standard-bearer { --honor-highlight-bg: #e7f0fb; --honor-highlight-chip: #d7e7f8; --honor-highlight-ink: #1d568d; --honor-highlight-line: #bed5ec; color: var(--honor-highlight-ink); background: var(--honor-highlight-bg); }
+.honor-official-slot.is-school-standard-bearer { --honor-highlight-bg: #f0f5fc; --honor-highlight-chip: #e1ecf8; --honor-highlight-ink: #2a5f93; --honor-highlight-line: #c8dcef; color: var(--honor-highlight-ink); background: var(--honor-highlight-bg); }
 .honor-official-slot.is-city-standard-bearer .honor-slot-student-name,.honor-official-slot.is-city-standard-bearer .honor-slot-distinction,.honor-official-slot.is-school-standard-bearer .honor-slot-student-name,.honor-official-slot.is-school-standard-bearer .honor-slot-distinction { color: var(--honor-highlight-ink); }
 .honor-official-slot.is-city-standard-bearer .honor-slot-copy > .honor-slot-title-row > .honor-slot-student-name,.honor-official-slot.is-school-standard-bearer .honor-slot-copy > .honor-slot-title-row > .honor-slot-student-name { color: inherit; }
 .honor-official-slot.is-city-standard-bearer .honor-card-action,.honor-official-slot.is-city-standard-bearer .honor-card-action.is-danger,.honor-official-slot.is-school-standard-bearer .honor-card-action,.honor-official-slot.is-school-standard-bearer .honor-card-action.is-danger { color: var(--honor-highlight-ink); }
@@ -65,11 +65,11 @@
 .honor-official-slot.is-city-standard-bearer .honor-slot-meta svg,.honor-official-slot.is-school-standard-bearer .honor-slot-meta svg { color: inherit; }
 .honor-official-slot.is-city-standard-bearer .honor-meta-separator,.honor-official-slot.is-school-standard-bearer .honor-meta-separator { background: var(--honor-highlight-line); }
 .honor-official-slot.is-first-escort { z-index: 1; background: #fbfdff; transform: translateY(-4px) scale(1.025); transform-origin: center; transition: transform 180ms ease, background-color 180ms ease; }
-.honor-official-slot.is-flag-bearer-slot { --honor-highlight-bg: #fff0bf; --honor-highlight-chip: #ffedaa; --honor-highlight-ink: #684f0c; --honor-highlight-line: #c9b66e; z-index: 2; justify-self: stretch; color: var(--honor-highlight-ink); background: var(--honor-highlight-bg); transform: translateY(-22px); transform-origin: center; transition: transform 180ms ease, background-color 180ms ease; }
+.honor-official-slot.is-flag-bearer-slot { --honor-highlight-bg: #dbe9f8; --honor-highlight-chip: #c8ddf3; --honor-highlight-ink: #164a7c; --honor-highlight-line: #aac9e7; z-index: 2; justify-self: stretch; color: var(--honor-highlight-ink); background: var(--honor-highlight-bg); transform: translateY(-22px); transform-origin: center; transition: transform 180ms ease, background-color 180ms ease; }
 .honor-official-slot.is-flag-bearer-slot .honor-slot-student-name,.honor-official-slot.is-flag-bearer-slot .honor-slot-distinction { color: var(--honor-highlight-ink); }
 .honor-official-slot.is-flag-bearer-slot .honor-slot-copy > .honor-slot-title-row > .honor-slot-student-name { color: inherit; }
 .honor-official-slot.is-flag-bearer-slot .honor-card-action,.honor-official-slot.is-flag-bearer-slot .honor-card-action.is-danger { color: var(--honor-highlight-ink); }
-.honor-official-slot.is-flag-bearer-slot .honor-card-action:hover,.honor-official-slot.is-flag-bearer-slot .honor-card-action.is-danger:hover { color: #493805; background: #f5dfa0; }
+.honor-official-slot.is-flag-bearer-slot .honor-card-action:hover,.honor-official-slot.is-flag-bearer-slot .honor-card-action.is-danger:hover { color: #123d68; background: #c8ddf3; }
 .honor-official-slot.is-flag-bearer-slot .honor-slot-meta { color: var(--honor-highlight-ink); }
 .honor-official-slot.is-flag-bearer-slot .honor-slot-meta span { color: var(--honor-highlight-ink); background: var(--honor-highlight-chip); }
 .honor-official-slot.is-flag-bearer-slot .honor-slot-meta svg { color: inherit; }
