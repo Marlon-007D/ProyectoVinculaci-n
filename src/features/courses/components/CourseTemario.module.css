@@ -34,15 +34,15 @@
   padding: 16px;
   border: 1px solid var(--site-line, #d5dbe1);
   border-radius: 12px;
-  background: #e8eef5;
+  background: #e8f0f8;
 }
 
-/* Pasteles de la paleta institucional: azul marino y dorado del portal. */
-.concept:nth-child(6n + 2) { background: #eff4f8; }
-.concept:nth-child(6n + 3) { background: #fff3dc; }
-.concept:nth-child(6n + 4) { background: #e9eef7; }
-.concept:nth-child(6n + 5) { background: #fff7e8; }
-.concept:nth-child(6n) { background: #f1f4f8; }
+/* Pasteles derivados solo del azul institucional. */
+.concept:nth-child(6n + 2) { background: #f0f5fa; }
+.concept:nth-child(6n + 3) { background: #e5eef8; }
+.concept:nth-child(6n + 4) { background: #edf3f9; }
+.concept:nth-child(6n + 5) { background: #e9f1f9; }
+.concept:nth-child(6n) { background: #f3f7fb; }
 
 
 /* Las tarjetas anchas alternan con las compactas para formar un mosaico. */

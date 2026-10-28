@@ -245,8 +245,10 @@
   min-height:calc(100dvh - var(--site-header-h,72px));
   color:var(--site-ink,#1f2933);
   font-family:var(--site-font,Arial,sans-serif);
-  background:var(--site-surface,#f3f5f7);
+  background:var(--site-paper,#fff);
 }
+.site-root--course,
+.site-root--course .site-main--course { background:var(--site-paper,#fff); }
 .site-root--course .school-modules-home.page-content,
 .site-root--course .school-module-courses.page-content,
 .site-root--course .course-detail-page.page-content,
@@ -256,7 +258,7 @@
   min-height:calc(100dvh - var(--site-header-h,72px));
   margin:0;
   padding:clamp(1.5rem,3vw,3rem) clamp(1.25rem,4vw,4rem) 3rem;
-  background:var(--site-surface,#f3f5f7);
+  background:var(--site-paper,#fff);
 }
 .site-root--course .school-module-grid { padding-inline:0; }
 .site-root--course .course-detail-page .course-topics-section {
