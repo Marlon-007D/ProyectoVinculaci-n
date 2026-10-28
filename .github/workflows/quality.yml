@@ -42,36 +42,37 @@ jobs:
       SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
       SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION }}
     steps:
+      - name: Require SonarQube configuration
+        run: |
+          test -n "$SONAR_TOKEN" || { echo "::error::Configure the SONAR_TOKEN secret."; exit 1; }
+          if [ -z "$SONAR_HOST_URL" ] && [ -z "$SONAR_ORGANIZATION" ]; then
+            echo "::error::Configure SONAR_HOST_URL for SonarQube Server or SONAR_ORGANIZATION for SonarQube Cloud."
+            exit 1
+          fi
+
       - name: Checkout
-        if: ${{ env.SONAR_TOKEN != '' }}
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
       - name: Set up Node.js
-        if: ${{ env.SONAR_TOKEN != '' }}
         uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: npm
 
       - name: Install dependencies
-        if: ${{ env.SONAR_TOKEN != '' }}
         run: npm ci
 
       - name: Scan with SonarQube
-        if: ${{ env.SONAR_TOKEN != '' }}
         uses: SonarSource/sonarqube-scan-action@v8.3.0
         with:
           args: >-
+            -Dsonar.qualitygate.wait=true
             -Dsonar.organization=${{ env.SONAR_ORGANIZATION }}
         env:
           SONAR_TOKEN: ${{ env.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ env.SONAR_HOST_URL }}
-
-      - name: Report missing SonarQube credentials
-        if: ${{ env.SONAR_TOKEN == '' }}
-        run: echo 'SonarQube scan skipped. Configure the SONAR_TOKEN secret to enable it.' >> "$GITHUB_STEP_SUMMARY"
 
   snyk-code:
     name: Snyk Code analysis
@@ -80,20 +81,16 @@ jobs:
     env:
       SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
     steps:
+      - name: Require Snyk credentials
+        run: test -n "$SNYK_TOKEN" || { echo "::error::Configure the SNYK_TOKEN secret."; exit 1; }
+
       - name: Checkout
-        if: ${{ env.SNYK_TOKEN != '' }}
         uses: actions/checkout@v6
 
       - name: Set up Snyk CLI
-        if: ${{ env.SNYK_TOKEN != '' }}
         uses: snyk/actions/setup@master
 
       - name: Scan source code
-        if: ${{ env.SNYK_TOKEN != '' }}
-        run: snyk code test --severity-threshold=high
+        run: snyk code test
         env:
           SNYK_TOKEN: ${{ env.SNYK_TOKEN }}
-
-      - name: Report missing Snyk credentials
-        if: ${{ env.SNYK_TOKEN == '' }}
-        run: echo 'Snyk Code scan skipped. Configure the SNYK_TOKEN secret to enable it.' >> "$GITHUB_STEP_SUMMARY"

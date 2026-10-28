@@ -1,6 +1,6 @@
 # Calidad y seguridad del código
 
-El repositorio usa GitHub Actions como verificación automática principal para cada push y pull request a `main`, `master` o `develop`. La compilación ejecuta `npm ci` y `npm run build` (incluye el chequeo de TypeScript). SonarQube y Snyk Code se ejecutan cuando sus credenciales están configuradas.
+El repositorio usa GitHub Actions como verificación automática principal para cada push a cualquier rama y cada pull request dirigido a `main`, `master` o `develop`. La compilación ejecuta `npm ci` y `npm run build` (incluye el chequeo de TypeScript). SonarQube y Snyk Code son checks obligatorios: el workflow falla si no están configuradas sus credenciales, si un escaneo no puede completarse o si se incumple el Quality Gate de SonarQube o se encuentran hallazgos de Snyk Code.
 
 ## GitHub Actions
 
@@ -15,7 +15,7 @@ En la configuración del repositorio, agrega estos valores:
 
 El `sonar.projectKey` y el nombre iniciales están en `sonar-project.properties`. Si el proyecto registrado en SonarQube usa otra clave, actualiza `sonar.projectKey` para que coincida.
 
-Los escaneos que no tienen token configurado se marcan como omitidos en el resumen del workflow; no bloquean el build. Configura ambos secretos para activar los escaneos. Después, si deben ser obligatorios para integrar cambios, marca esos checks como requeridos en las reglas de protección de ramas de GitHub.
+Configura ambos secretos y las variables de SonarQube antes de integrar cambios. Para que GitHub impida integrar cambios cuando falle un check, marca `Typecheck and build`, `SonarQube analysis` y `Snyk Code analysis` como checks requeridos en las reglas de protección de ramas. Sin esa regla, GitHub mostrará el estado del workflow, pero no bloqueará el merge por sí solo.
 
 ## Jenkins
 
@@ -24,7 +24,7 @@ Los escaneos que no tienen token configurado se marcan como omitidos en el resum
 - NodeJS Plugin con una instalación llamada `Node 22`.
 - SonarQube Scanner Plugin, una instalación de servidor llamada `SonarQube` y `sonar-scanner` disponible en el agente.
 - Una credencial de tipo Secret text con ID `SNYK_TOKEN`.
-- `SONAR_TOKEN` como variable de entorno protegida del job. Para SonarQube Cloud, define también `SONAR_ORGANIZATION`; para Server, define `SONAR_HOST_URL` en la instalación de servidor de Jenkins.
+- Configura el servidor y token en `SonarQube` dentro del plugin. Para SonarQube Cloud, define `SONAR_ORGANIZATION`; para Server, define `SONAR_HOST_URL` en la instalación del servidor de Jenkins.
 - El plugin Workspace Cleanup para que `cleanWs()` elimine el workspace al finalizar.
 
 Conecta el repositorio a Jenkins mediante un Multibranch Pipeline/webhook si se desea ejecutar este pipeline en cada cambio. GitHub Actions sigue siendo el CI principal; habilitar ambas automatizaciones sobre los mismos eventos duplica ejecuciones.

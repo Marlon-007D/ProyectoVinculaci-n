@@ -20,12 +20,9 @@ pipeline {
     }
 
     stage('SonarQube') {
-      when {
-        expression { return env.SONAR_TOKEN?.trim() }
-      }
       steps {
         withSonarQubeEnv('SonarQube') {
-          sh 'sonar-scanner -Dsonar.organization="$SONAR_ORGANIZATION"'
+          sh 'sonar-scanner -Dsonar.organization="$SONAR_ORGANIZATION" -Dsonar.qualitygate.wait=true'
         }
       }
     }
@@ -33,7 +30,7 @@ pipeline {
     stage('Snyk Code') {
       steps {
         withCredentials([string(credentialsId: 'SNYK_TOKEN', variable: 'SNYK_TOKEN')]) {
-          sh 'npx --yes snyk@latest code test --severity-threshold=high'
+          sh 'npx --yes snyk@latest code test'
         }
       }
     }
