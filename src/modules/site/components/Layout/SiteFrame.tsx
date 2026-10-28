@@ -7,6 +7,7 @@ import { Footer } from "../Footer/Footer";
 import { Header } from "../Header/Header";
 import { PublicSidebar } from "../Navigation/PublicSidebar";
 import "../../styles/layout.css";
+import "../../styles/module-integrations.css";
 
 interface Props {
   config: SiteConfig;
@@ -23,7 +24,7 @@ export function SiteFrame({ config, menu, homeUrl, header, hideFooter = false, s
   const [params] = useSearchParams();
   const isStandaloneSimulator = Boolean(params.get("simulator"));
   const isStandaloneCourse = params.get("courses") === "1" && Boolean(params.get("course"));
-  const hideSiteChrome = isStandaloneSimulator || isStandaloneCourse;
+  const hideSiteChrome = isStandaloneCourse;
   return (
     <div className={`site-root${isStandaloneSimulator ? " site-root--simulator" : ""}${isStandaloneCourse ? " site-root--course" : ""}`} style={config.themeVars}>
       {!hideSiteChrome && <a className="site-skip" href="#contenido">Saltar al contenido</a>}

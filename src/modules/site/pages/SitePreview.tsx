@@ -31,7 +31,7 @@ export function SitePreview() {
   const current = usePageVersion(pageId, undefined);
   const refresh = useCallback(() => { page.refresh(); current.refresh(); }, [page.refresh, current.refresh]);
   usePortalUpdates(refresh);
-  if (params.get("simulator")) return <PortalSimulatorsPage />;
+  if (params.get("simulator")) return <div className="site-module-frame site-module-frame--simulators"><PortalSimulatorsPage /></div>;
   if (params.get("honores") === "1") return <main className={`site-honors-page ${honorsStyles.page}`}>
     <HonorsSection title="Distinciones oficiales" limit={100} className={honorsStyles.section} />
   </main>;

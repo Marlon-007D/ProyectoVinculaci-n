@@ -54,9 +54,8 @@ export function MobileNavigation({ tree, loginUrl }: { tree: MenuNode[]; loginUr
 
   return (
     <div className="site-mnav">
-      <button ref={btnRef} type="button" className="site-mnav__button" aria-expanded={open} aria-controls={panelId} onClick={() => setOpen((o) => !o)}>
-        <span className="site-mnav__icon" aria-hidden="true" />
-        <span>{open ? "Cerrar menú" : "Menú"}</span>
+      <button ref={btnRef} type="button" className="site-mnav__button" aria-label={open ? "Cerrar navegación" : "Abrir navegación"} aria-expanded={open} aria-controls={panelId} onClick={() => setOpen((o) => !o)}>
+        <span className="site-mnav__icon material-symbols-rounded" aria-hidden="true">menu</span>
       </button>
       <nav id={panelId} className="site-mnav__panel" aria-label="Principal (móvil)" hidden={!open}>
         <ul className="site-mnav__list">
