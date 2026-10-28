@@ -1229,6 +1229,45 @@
 :global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-question-area .evaluation-question-navigation > button:focus-visible,
 :global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-question-area .evaluation-action-row > button:focus-visible,
 :global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-question-list > button:focus-visible { outline-color:var(--site-navy,#0a233f); }
+
+/* Panel de apoyo de la evaluación: superficie blanca y paleta institucional. */
+:global(.course-evaluation-page) .evaluation-rail {
+  border:1px solid var(--site-line,#d5dbe1);
+  border-radius:14px;
+  background:var(--site-paper,#fff);
+}
+:global(.course-evaluation-page) .evaluation-support-card {
+  padding:12px;
+  border:0;
+  border-radius:12px;
+  background:var(--site-paper,#fff);
+}
+:global(.course-evaluation-page) .evaluation-support-card > .question-encouragement {
+  grid-template-columns:68px minmax(0,1fr);
+  gap:10px;
+  min-height:68px;
+  padding:0;
+  background:transparent;
+}
+:global(.course-evaluation-page) .evaluation-support-card .question-encouragement-vector {
+  width:68px;
+  height:68px;
+}
+:global(.course-evaluation-page) .evaluation-support-card .question-encouragement-copy,
+:global(.course-evaluation-page) .evaluation-support-card .question-encouragement-copy > span { color:var(--site-muted,#52606d); }
+:global(.course-evaluation-page) .evaluation-support-card .question-encouragement-copy strong { color:var(--site-navy,#0a233f); }
+:global(.course-evaluation-page) .evaluation-support-card > .evaluation-timer {
+  gap:7px;
+  padding:4px 2px 0;
+  color:var(--site-navy,#0a233f);
+  background:transparent;
+}
+:global(.course-evaluation-page) .evaluation-support-card .evaluation-timer-label { color:var(--site-navy,#0a233f); }
+:global(.course-evaluation-page) .evaluation-support-card .evaluation-timer-track { height:6px; background:#e8eef5; }
+:global(.course-evaluation-page) .evaluation-support-card .evaluation-timer-track > span { background:var(--site-navy,#0a233f); }
+:global(.course-evaluation-page) .evaluation-question-list > button { color:var(--site-navy,#0a233f); background:var(--site-paper,#fff); font-family:var(--site-font,Arial,sans-serif); }
+:global(.course-evaluation-page) .evaluation-question-list > button.answered:not(.current) { color:var(--site-navy,#0a233f); background:#e8eef5; }
+:global(.course-evaluation-page) .evaluation-question-list > button.current { color:var(--site-navy,#0a233f); background:var(--site-gold,#f2b95a); }
 .evaluation-time-bar.is-unanswered { background:#b5bec0; }
 .evaluation-time-row > strong { color:#4f5b53; font:500 12px 'Roboto',Arial,sans-serif; text-align:right; }
 .evaluation-topics-card > p { margin:0; color:#5f6368; font:400 14px/1.5 'Roboto',Arial,sans-serif; }
