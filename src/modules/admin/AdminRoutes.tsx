@@ -1,3 +1,4 @@
+import { useInitialPrivateLoad } from './userManagement/useInitialPrivateLoad';
 import { AdminSkeleton, AssignedModulesSkeleton } from './userManagement/AdminSkeleton';
 import { AdminForm } from './auth/AdminForm';
 import { createTenantAdminService } from './userManagement/tenantAdminService';
@@ -96,8 +97,9 @@ function AdminRoutesContent({ superadminOnly = false }: { superadminOnly?: boole
   const access = resolveAdminAccess({ loading, hasUser: Boolean(user), role, roleIssue,
     mfaPending: mfaRequired || mfaEnrollmentRequired, loadingTenant,
     hasInstitution: Boolean(activeInstitution && activeInstitution.institution_id === institutionId && role && canonicalTenantRole(role) === canonicalTenantRole(activeInstitution.role)), tenantError });
+  const showSkeleton = useInitialPrivateLoad(user ? `${user.id}:${user.last_sign_in_at ?? ''}` : undefined, 'panel', access.status === 'loading', Boolean(user && role && location.pathname.startsWith('/panel/') && !mfaRequired && !mfaEnrollmentRequired), loading);
   switch (access.status) {
-    case 'loading': return <main className={styles.page} role="status" aria-live="polite" aria-busy="true">{isTenantAdmin(role) || isSuperAdmin(role) ? <AdminSkeleton /> : <AssignedModulesSkeleton />}</main>;
+    case 'loading': return <main className={styles.page} role="status" aria-live="polite" aria-busy="true">{showSkeleton ? (isTenantAdmin(role) || isSuperAdmin(role) ? <AdminSkeleton /> : <AssignedModulesSkeleton />) : access.message}</main>;
     case 'login': return <Navigate to={{ pathname: '/login', search: scopedSearch, hash: location.hash }} state={{ accessIssue: access.issue }} replace />;
     case 'mfa':
     case 'authorized': break;

@@ -1,3 +1,4 @@
+import { useInitialPrivateLoad } from './useInitialPrivateLoad';
 import { AdminSkeleton } from './AdminSkeleton';
 import { AdminForm } from '../auth/AdminForm';
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
@@ -42,7 +43,7 @@ export function UserManagement({ service }: { service: TenantAdminService }) {
   const notify = useToast();
   const load = useCallback(async () => {
     const request = ++sequence.current;
-    setState({ status: 'loading', key });
+    setState(current => current.key === key && current.status === 'ready' ? current : { status: 'loading', key });
     try {
       if (!authorized) throw new Error('No tienes permisos administrativos en la institución activa.');
       const data = await service.load(institutionId);
@@ -61,7 +62,9 @@ export function UserManagement({ service }: { service: TenantAdminService }) {
     if (!loadingAuth && !loadingTenant) void load();
     return () => { sequence.current++; };
   }, [load, loadingAuth, loadingTenant]);
-  if (loadingAuth || loadingTenant || state.key !== key || state.status === 'loading') return <AdminSkeleton />;
+  const pending = loadingAuth || loadingTenant || state.key !== key || state.status === 'loading';
+  const showSkeleton = useInitialPrivateLoad(user ? `${user.id}:${user.last_sign_in_at ?? ''}` : undefined, 'members', pending, authorized, loadingAuth);
+  if (pending) return showSkeleton ? <AdminSkeleton /> : <p role="status" aria-busy="true">Verificando el acceso institucional?</p>;
   if (state.status === 'error') return <section className={styles.container}><p>{state.message}</p><button type="button" className={styles.btnSubmit} onClick={() => void load()}>Volver a verificar</button></section>;
   const snapshot = state.data;
   const superAdmin = isTenantSuperAdmin(actorRole);
