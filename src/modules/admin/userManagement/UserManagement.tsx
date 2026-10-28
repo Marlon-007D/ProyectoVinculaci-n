@@ -158,7 +158,7 @@ export function UserManagement({ service }: { service: TenantAdminService }) {
     setAction({ status: 'saving', key });
     try {
       const input = pendingInvitationInput(snapshot, member, institutionId);
-      const result = await service.invite({ ...input, redirect_to: invitationRedirect(window.location.origin, activeInstitution) });
+      const result = await service.notify({ institutionId, profileId: member.profile_id, pending: true, redirect_to: invitationRedirect(window.location.origin, activeInstitution) });
       if (activeKey.current !== key) return;
       notify(result.notificationSent ? `Invitación reenviada correctamente al correo ${input.email}.`
         : 'El acceso sigue pendiente. No se pudo enviar el correo; espera antes de usar «Reenviar invitación» nuevamente.',

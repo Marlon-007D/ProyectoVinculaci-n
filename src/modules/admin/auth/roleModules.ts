@@ -9,5 +9,5 @@ export function defaultRoleModule(role: string): string | undefined {
 export function assignedRoleModules(role: string, selected: readonly string[], enabled: readonly string[]): string[] {
   const required = defaultRoleModule(role);
   if (required && !enabled.includes(required)) throw new Error(`El módulo ${required} debe estar habilitado en esta institución para asignar este rol.`);
-  return [...new Set([...selected.filter(module => enabled.includes(module)), ...(required ? [required] : [])])];
+  return [...new Set([...selected.filter(module => enabled.includes(module)), ...(required ? [required] : []), ...(canonicalTenantRole(role) === 'student' ? ['inicio', 'projects', 'simuladores'].filter(module => enabled.includes(module)) : [])])];
 }

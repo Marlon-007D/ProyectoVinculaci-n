@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useTenant } from '../../../core/TenantContext';
 import { useAuth } from '../../../core/AuthContext';
 import { supabase } from '../../../core/supabaseClient';
 import { createInvitationAccountService } from './invitationAccount';
@@ -13,6 +14,7 @@ const accounts = createInvitationAccountService(supabase);
 /** Only the acceptance screen is available here; no panel access is granted. */
 export function PendingInvitationGate({ children }: { children: ReactNode }) {
   const { user } = useAuth();
+  const { reloadInstitutions } = useTenant();
   const location = useLocation();
   const navigate = useNavigate();
   const notify = useToast();
@@ -32,8 +34,20 @@ export function PendingInvitationGate({ children }: { children: ReactNode }) {
         if (!userId || !institutionId) { if (active) setProbe({ key, pending: false }); return; }
         const result = await supabase.rpc('admin_tenant_own_invitation', { target_institution_id: institutionId });
         if (result.error && result.error.code !== 'PGRST202') throw new Error('No se pudo consultar la invitación de esta institución.');
+        if (!active) return;
         const data: unknown = result.data;
-        const pending = Boolean(data && typeof data === 'object' && 'pending' in data && data.pending === true);
+        let pending = Boolean(data && typeof data === 'object' && 'pending' in data && data.pending === true);
+        if (pending && data && typeof data === 'object' && 'requires_password' in data && data.requires_password === false) {
+          await accounts.accept(institutionId);
+          const refreshed = await supabase.auth.refreshSession();
+          if (refreshed.error) throw refreshed.error;
+          if (!active) return;
+          reloadInstitutions();
+          const destination = replaceInvitationHistory(window.history, institutionId, slug);
+          navigate(destination, { replace: true });
+          notify('Acceso activado correctamente.', 'success');
+          pending = false;
+        }
         if (active) setProbe({ key, pending });
       } catch {
         if (active) setProbe({ key, pending: false, error: 'No se pudo verificar tu invitación. Revisa la conexión y vuelve a intentarlo.' });
@@ -45,7 +59,7 @@ export function PendingInvitationGate({ children }: { children: ReactNode }) {
   if (!user || completed === key) return children;
   if (probe?.key !== key) return <p role="status">Consultando tu acceso institucional…</p>;
   if (probe.error) return <section><p>{probe.error}</p><button type="button" onClick={() => { setProbe(null); setRevision(value => value + 1); }}>Reintentar</button></section>;
-  if (!probe.pending && user.user_metadata?.admin_tenant_onboarding !== true && params.get('accept_invitation') !== '1') return children;
+  if (!probe.pending) return children;
   return <InvitationAcceptance userId={user.id} institutionId={institutionId} slug={slug} institutionName={slug} service={accounts} complete={async password => {
     const { details, synchronized } = await completeInvitationAccount(supabase.auth, accounts, {
       userId: user.id, institutionId, slug, password,
