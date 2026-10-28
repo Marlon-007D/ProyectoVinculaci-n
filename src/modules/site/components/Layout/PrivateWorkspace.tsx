@@ -44,6 +44,7 @@ export function PrivateWorkspace({ children }: { children: ReactNode }) {
     return hasModuleAccess(item.module);
   });
   const canManageAcademicContent = role === 'super_admin' || role === 'institution_admin';
+  const workspaceLabel = isDeceStaff ? 'DECE' : role === 'super_admin' ? 'Administración' : 'Panel institucional';
   const coursesActive = pathname.startsWith('/panel/cursos');
   const publicationsActive = pathname.startsWith('/panel/publicaciones');
   const [openGroup, setOpenGroup] = useState<'courses' | 'publications' | null>(null);
@@ -90,7 +91,9 @@ export function PrivateWorkspace({ children }: { children: ReactNode }) {
         <button className={styles.sidebarToggle} type="button" onClick={() => { setSidebarCollapsed(value => !value); setOpenGroup(null); }} aria-label={sidebarCollapsed ? 'Expandir menú' : 'Contraer menú'} title={sidebarCollapsed ? 'Expandir menú' : 'Contraer menú'}>
           {sidebarCollapsed ? <PanelLeftOpen size={20} aria-hidden="true" /> : <PanelLeftClose size={20} aria-hidden="true" />}
         </button>
-        {!sidebarCollapsed && role === 'super_admin' && institutions.length > 1 && <label className={styles.institutionPicker}>
+        {!sidebarCollapsed && <div className={styles.workspaceTitle}><span><Building2 size={20} aria-hidden="true" /></span><strong>{workspaceLabel}</strong></div>}
+      </div>
+      {!sidebarCollapsed && role === 'super_admin' && institutions.length > 1 && <label className={styles.institutionPicker}>
         <span className={styles.selectControl}><Building2 size={17} aria-hidden="true" /><select value={activeInstitution?.institution_id ?? ''} onChange={event => {
           const selected = institutions.find(item => item.institution_id === event.target.value);
           if (selected) {
@@ -101,7 +104,6 @@ export function PrivateWorkspace({ children }: { children: ReactNode }) {
           {institutions.map(item => <option key={item.institution_id} value={item.institution_id}>{item.name}</option>)}
         </select></span>
       </label>}
-      </div>
       <nav className={styles.nav} onClickCapture={event => { if ((event.target as HTMLElement).closest("a") && !allowLeave()) { event.preventDefault(); event.stopPropagation(); } }}>
         {role === 'super_admin' ? <>
           <Link data-tone="institutions" to={scopedPath("/panel/superadmin")} title="Instituciones educativas: gestiona las instituciones del sistema" aria-current={pathname === '/panel/superadmin' ? 'page' : undefined}><Building2 size={20} aria-hidden="true" /><span>Instituciones educativas</span></Link>
