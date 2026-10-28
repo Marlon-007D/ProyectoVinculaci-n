@@ -20,7 +20,7 @@
     "typecheck": "tsc -b",
     "preview": "vite preview",
     "portable": "node server.mjs",
-    "test:projects": "node --test --test-isolation=none supabase/tests/frontend_projects.test.cjs supabase/tests/shared_integration.test.cjs supabase/tests/portal_updates.test.cjs"
+    "test:projects": "node --test --test-isolation=none supabase/tests/frontend_projects.test.cjs supabase/tests/xlsx_writer.test.cjs supabase/tests/projects_forms_reports.test.cjs supabase/tests/single_instance.test.cjs supabase/tests/notify_adapter.test.cjs"
   },
   "dependencies": {
     "@fortawesome/fontawesome-svg-core": "^7.3.1",

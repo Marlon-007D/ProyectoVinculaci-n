@@ -1,7 +1,13 @@
-import {Component,type ReactNode} from 'react';
-import styles from './ModuleBoundary.module.css';
-export class ModuleBoundary extends Component<{children:ReactNode},{failed:boolean}>{
-  state={failed:false};
-  static getDerivedStateFromError(){return {failed:true};}
-  render(){return this.state.failed?<main className={styles.notice}><h1>No se pudo abrir el módulo</h1><p>Reintenta la carga. Si el problema continúa, solicita que revisen su configuración.</p><button onClick={()=>window.location.reload()}>Reintentar</button><a href="/">Volver al portal</a></main>:this.props.children;}
+import type {ReactNode} from 'react';
+import {ConfirmHost} from '../../../shared/components/ConfirmDialog/ConfirmHost';
+import {ErrorBoundary} from '../../../shared/components/ErrorPage/ErrorBoundary';
+import {ErrorPage} from '../../../shared/components/ErrorPage/ErrorPage';
+import {NotifyBridge} from '../../../shared/components/Toaster/NotifyBridge';
+// A failed lazy chunk stays cached by React, so retrying needs a full reload requested by the person.
+// The confirmation host renders only if App.tsx has not mounted its own (see singleInstance.ts).
+export function ModuleBoundary({children}:{children:ReactNode}){
+  return <>
+    <ErrorBoundary fallback={()=><ErrorPage kind="module" onRetry={()=>window.location.reload()}/>}>{children}</ErrorBoundary>
+    <NotifyBridge/><ConfirmHost/>
+  </>;
 }

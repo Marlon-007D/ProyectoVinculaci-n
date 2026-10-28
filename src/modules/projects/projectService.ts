@@ -1,5 +1,5 @@
 import { supabase } from '../../core/supabaseClient';
-import { ecuadorToday, isCalendarDate, isMoney, MAX_STORED_MONEY, projectDateWindow, remainingMoney, sumMoney, toCents, validateProjectDates, type ProjectAcademicPeriod } from './projectValidation';
+import { ecuadorToday, isCalendarDate, isMoney, MAX_STORED_MONEY, projectDateWindow, remainingMoney, sumMoney, TEXT_LIMITS, toCents, validateProjectDates, validateText, type ProjectAcademicPeriod } from './projectValidation';
 import type { BudgetItem, Expense, MemberOption, Project, ProjectMember } from './types';
 interface ProfileRow { profile_id: string; first_name: string; last_name: string; email: string }
 interface MemberRow { deleted_at?:string|null; revision?:number; full_name?:string; email?:string; project_member_id: string; project_id: string; profile_id: string; role: ProjectMember['role']; profiles?: ProfileRow | null }
@@ -22,10 +22,14 @@ export function projectError(error:unknown):string {
     }
     if(['42703','42P01','PGRST200','PGRST204'].includes(String(error.code)))return 'La estructura disponible no coincide con la consulta. Revisa el esquema y los permisos existentes con el responsable técnico.';
     if(error.code==='23505')return 'Ese registro ya existe. Actualiza los datos antes de continuar.';
+    if(error.code==='23514')return 'Un texto está vacío o supera la longitud permitida. Revisa los campos y vuelve a intentarlo.';
   }
   return error&&typeof error==='object'&&'message' in error?String(error.message):'No se pudo completar la operación. Comprueba la conexión e inténtalo de nuevo.';
 }
 function checkMoney(amount:number,positive=true){if(!isMoney(amount)||amount>MAX_STORED_MONEY||(positive?amount<=0:amount<0))throw new Error('Introduce un importe válido con máximo dos decimales y dentro de la capacidad del registro.');}
+/** Defense in depth: the forms already trim and limit every text, the service repeats it before writing. */
+function checkText(value:string,max:number,label:string){const result=validateText(value,max);if(!result.ok)throw new Error(`${label}: ${result.message}`);return result.value;}
+function checkOptionalText(value:string,max:number,label:string){const text=value.trim();if(text.length>max)throw new Error(`${label}: máximo ${max} caracteres (tienes ${text.length}).`);return text;}
 function requireLogicalDeletion(project:Project){if(project.revision===undefined)throw new Error('La eliminación lógica todavía no está habilitada. No se ha retirado ningún registro.');}
 export function createProjectService(institutionId:string,today:()=>string=ecuadorToday,revision?:number) {
   if(!institutionId)throw new Error('Selecciona una institución.');
@@ -71,28 +75,29 @@ export function createProjectService(institutionId:string,today:()=>string=ecuad
     getProject,getMemberOptions,getAcademicPeriod,
     async updateProject(projectId:string,input:{name:string;description:string;budget_total:number;start_date:string;end_date:string}) {
       checkMoney(input.budget_total,false);
-      if(!input.name.trim()||input.name.trim().length>255)throw new Error('Introduce un nombre de hasta 255 caracteres.');
+      const name=checkText(input.name,TEXT_LIMITS.projectName,'El nombre del proyecto');const description=checkOptionalText(input.description,TEXT_LIMITS.description,'El objetivo');
       if(!isCalendarDate(input.start_date)||!isCalendarDate(input.end_date)||input.end_date<input.start_date)throw new Error('Introduce un período de ejecución válido.');
       const project=await getProject(projectId);
       if(toCents(input.budget_total)<toCents(sumMoney(project.budget_items.map(b=>b.allocated_amount))))throw new Error('El presupuesto no puede ser menor a la suma de los rubros.');
       if(project.budget_items.some(b=>b.expenses.some(e=>e.date<input.start_date||e.date>input.end_date)))throw new Error('Las fechas deben incluir los gastos vigentes.');
-      await operation('update_project',{project_id:projectId,...input,name:input.name.trim(),description:input.description.trim()});
+      await operation('update_project',{project_id:projectId,...input,name,description});
     },
     async archiveProject(projectId:string){await operation('archive_project',{project_id:projectId});},
     async restoreProject(projectId:string,expectedRevision?:number){await operation('restore_project',{project_id:projectId,...(expectedRevision===undefined?{}:{expected_revision:expectedRevision})});},
     async updateProjectMember(projectId:string,memberId:string,role:string){
-      if(!role.trim()||role.trim().length>100)throw new Error('Introduce una responsabilidad de hasta 100 caracteres.');
-      await operation('update_member',{project_id:projectId,project_member_id:memberId,role:role.trim()});
+      const checked=checkText(role,TEXT_LIMITS.role,'La responsabilidad');
+      await operation('update_member',{project_id:projectId,project_member_id:memberId,role:checked});
     },
     async updateExpense(budgetId:string,projectId:string,expenseId:string,amount:number,description:string,date:string){
       checkMoney(amount);
-      if(!description.trim()||!isCalendarDate(date))throw new Error('Completa el concepto y una fecha válida del gasto.');
+      const concept=checkText(description,TEXT_LIMITS.expense,'El concepto del gasto');
+      if(!isCalendarDate(date))throw new Error('Completa el concepto y una fecha válida del gasto.');
       const {project,item}=await getBudget(projectId,budgetId);
       const expense=item.expenses.find(e=>e.expense_id===expenseId);
       if(!expense)throw new Error('Gasto no disponible.');
       if(date<project.start_date||date>project.end_date||date>today())throw new Error('La fecha debe estar dentro del proyecto y no puede ser futura.');
       if(toCents(amount)>toCents(item.allocated_amount)-toCents(item.spent_amount)+toCents(expense.amount))throw new Error('El gasto supera el saldo disponible del rubro.');
-      await operation('update_expense',{project_id:projectId,budget_item_id:budgetId,expense_id:expenseId,amount,description:description.trim(),date});
+      await operation('update_expense',{project_id:projectId,budget_item_id:budgetId,expense_id:expenseId,amount,description:concept,date});
     },
     async setStatus(projectId:string,active:boolean){await operation('set_status',{project_id:projectId,active});},
     async getProjects():Promise<{data:Project[];source:'supabase'}>{
@@ -110,11 +115,11 @@ export function createProjectService(institutionId:string,today:()=>string=ecuad
     },
     async createProject(input:{name:string;description:string;budget_total:number;start_date:string;end_date:string}){
       checkMoney(input.budget_total,false);
-      if(!input.name.trim()||input.name.length>255)throw new Error('Introduce un nombre de hasta 255 caracteres.');
+      const name=checkText(input.name,TEXT_LIMITS.projectName,'El nombre del proyecto');const description=checkOptionalText(input.description,TEXT_LIMITS.description,'El objetivo');
       validateProjectDates(input.start_date,input.end_date,undefined,today());
       const period=await getAcademicPeriod();
       validateProjectDates(input.start_date,input.end_date,period??undefined,today());
-      const data=await operation<ProjectRow>('create_project',{...input,name:input.name.trim(),description:input.description.trim()});
+      const data=await operation<ProjectRow>('create_project',{...input,name,description});
       return {data:mapProject(data),source:'supabase' as const};
     },
     async setPublication(projectId:string,published:boolean){
@@ -122,30 +127,30 @@ export function createProjectService(institutionId:string,today:()=>string=ecuad
       const data=await operation<ProjectRow>('publish',{project_id:projectId,published});return data.is_public;
     },
     async addBudgetItem(projectId:string,name:string,amount:number):Promise<BudgetItem>{
-      checkMoney(amount);if(!name.trim())throw new Error('Escribe el nombre del rubro.');
+      checkMoney(amount);const itemName=checkText(name,TEXT_LIMITS.budgetName,'El nombre del rubro');
       const project=await getProject(projectId);
       if(toCents(sumMoney(project.budget_items.map(b=>b.allocated_amount)))+toCents(amount)>toCents(project.budget_total))throw new Error('Los rubros superan el presupuesto disponible.');
-      const data=await operation<ItemRow>('add_budget',{project_id:projectId,name:name.trim(),amount});
+      const data=await operation<ItemRow>('add_budget',{project_id:projectId,name:itemName,amount});
       return {...data,allocated_amount:Number(data.allocated_amount),spent_amount:0,expenses:[]};
     },
     async updateBudgetItem(projectId:string,budgetId:string,name:string,amount:number){
-      checkMoney(amount);if(!name.trim())throw new Error('Escribe el nombre del rubro.');
+      checkMoney(amount);const itemName=checkText(name,TEXT_LIMITS.budgetName,'El nombre del rubro');
       const {project,item}=await getBudget(projectId,budgetId);
       if(toCents(amount)<toCents(item.spent_amount))throw new Error('La asignación no puede ser menor al gasto ejecutado.');
       const other=sumMoney(project.budget_items.filter(b=>b.budget_item_id!==budgetId).map(b=>b.allocated_amount));
       if(toCents(other)+toCents(amount)>toCents(project.budget_total))throw new Error('Los rubros superan el presupuesto del proyecto.');
-      await operation('update_budget',{project_id:projectId,budget_item_id:budgetId,name:name.trim(),amount});
+      await operation('update_budget',{project_id:projectId,budget_item_id:budgetId,name:itemName,amount});
     },
     async deleteBudgetItem(projectId:string,budgetId:string){
       const {project,item}=await getBudget(projectId,budgetId);requireLogicalDeletion(project);if(item.expenses.length)throw new Error('No se puede eliminar un rubro con gastos.');
       await operation('delete_budget',{project_id:projectId,budget_item_id:budgetId});
     },
     async addExpense(budgetId:string,projectId:string,amount:number,description:string,date:string):Promise<Expense>{
-      checkMoney(amount);if(!description.trim()||!isCalendarDate(date))throw new Error('Completa el concepto y una fecha válida del gasto.');
+      checkMoney(amount);const concept=checkText(description,TEXT_LIMITS.expense,'El concepto del gasto');if(!isCalendarDate(date))throw new Error('Completa el concepto y una fecha válida del gasto.');
       const {project,item}=await getBudget(projectId,budgetId);
       if(date<project.start_date||date>project.end_date||date>today())throw new Error('La fecha debe estar dentro del proyecto y no puede ser futura.');
       if(toCents(amount)>toCents(remainingMoney(item.allocated_amount,item.spent_amount)))throw new Error('El gasto supera el saldo disponible del rubro.');
-      const data=await operation<ExpenseRow>('add_expense',{project_id:projectId,budget_item_id:budgetId,amount,description:description.trim(),date});
+      const data=await operation<ExpenseRow>('add_expense',{project_id:projectId,budget_item_id:budgetId,amount,description:concept,date});
       return expenseFromRow(data);
     },
     async deleteExpense(budgetId:string,projectId:string,expenseId:string){
@@ -153,10 +158,10 @@ export function createProjectService(institutionId:string,today:()=>string=ecuad
       await operation('delete_expense',{project_id:projectId,budget_item_id:budgetId,expense_id:expenseId});
     },
     async addProjectMember(projectId:string,member:{profile_id:string;role:ProjectMember['role']}):Promise<void>{
-      if(!member.role.trim()||member.role.trim().length>100)throw new Error('Introduce una responsabilidad de hasta 100 caracteres.');
+      const role=checkText(member.role,TEXT_LIMITS.role,'La responsabilidad');
       await getProject(projectId);
       const options=await getMemberOptions();if(!options.some(p=>p.profile_id===member.profile_id))throw new Error('Selecciona un perfil de esta institución.');
-      await operation('add_member',{project_id:projectId,profile_id:member.profile_id,role:member.role.trim()});
+      await operation('add_member',{project_id:projectId,profile_id:member.profile_id,role});
     },
     async removeProjectMember(projectId:string,memberId:string){
       requireLogicalDeletion(await getProject(projectId));

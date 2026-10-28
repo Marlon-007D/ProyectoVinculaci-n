@@ -69,48 +69,102 @@
 .project-search>div { display:flex; align-items:center; gap:8px; }
 .project-results { display:flex; justify-content:space-between; gap:12px; }
 .project-list-card footer { display:flex; flex-wrap:wrap; justify-content:space-between; gap:10px; }
-/* Public transparency: scoped so the management screens keep their layout. */
-.project-public { max-width:1280px; margin-inline:auto; padding:32px clamp(16px,3vw,40px) 48px; min-height:0; background:#f6f8fa; color:#20364d; }
-.public-hero { display:flex; align-items:center; justify-content:space-between; gap:32px; padding:clamp(24px,4vw,48px); border:1px solid #d6e2ec; border-radius:24px; background:#edf3f8; }
-.public-hero h1 { margin:12px 0 16px; font-size:clamp(30px,4vw,48px); line-height:1.12; color:#102e4d; }
-.public-hero p { max-width:600px; line-height:1.7; }
-.public-hero .project-eyebrow { display:flex; align-items:center; gap:8px; font-size:11px; letter-spacing:.1em; color:#365d80; }
-.public-trust { display:inline-flex; align-items:center; gap:8px; font-size:12px; color:#3c655b; }
-.public-hero-symbol { flex:0 0 190px; display:grid; justify-items:center; gap:20px; color:#52748d; }
-.public-hero-symbol span { max-width:170px; text-align:center; font-size:10px; letter-spacing:.12em; line-height:1.8; }
-.public-institution-bar { display:flex; justify-content:space-between; align-items:center; gap:16px; padding:20px 4px; border-bottom:1px solid #dbe4ec; }
-.public-institution-bar>div { display:flex; align-items:center; gap:12px; min-width:0; }
-.public-institution-bar strong { overflow-wrap:anywhere; font-size:15px; }
-.public-institution-bar button { flex-shrink:0; }
-.project-public .project-section-heading { display:flex; justify-content:space-between; align-items:center; gap:20px; flex-wrap:wrap; margin-top:32px; }
-.project-public h2 { margin:0 0 8px; font-size:25px; line-height:1.3; }
-.project-public .project-muted { margin:0; line-height:1.6; }
-.public-actions,.project-view-switch { display:flex; gap:8px; flex-wrap:wrap; }
-.project-public .project-metrics { gap:12px; margin-block:24px; }
-.project-public .project-metrics>div { border:1px solid #dbe4ec; border-radius:16px; padding:20px; }
-.project-public .project-metrics dd { font-size:clamp(20px,2vw,27px); }
-.public-overview { display:grid; grid-template-columns:1fr 1fr; align-items:center; gap:32px; padding:20px 24px; border:1px solid #dbe4ec; border-radius:16px; background:#fff; }
-.public-overview-note { display:flex; gap:12px; align-items:center; color:#456172; }
-.public-overview-note p { display:grid; gap:8px; margin:0; font-size:13px; line-height:1.5; }
-.public-overview-note span { color:#607286; font-size:12px; }
-.public-filters { display:grid; grid-template-columns:minmax(0,2fr) repeat(2,minmax(0,1fr)); padding:20px; background:#fff; border:1px solid #dbe4ec; border-radius:16px; }
-.project-public .project-results { align-items:center; color:#607286; font-size:13px; }
-.project-public .project-list-grid { align-items:stretch; gap:20px; }
-.project-public .project-public-card { display:flex; flex-direction:column; min-width:0; margin:0; padding:24px; border:1px solid #dbe4ec; border-radius:18px; background:#fff; }
-.project-public-card .project-card-top { justify-content:space-between; margin:0 0 20px; }
-.project-public-card h3 { margin:0 0 16px; font-size:23px; line-height:1.35; overflow-wrap:anywhere; }
-.project-public-card .project-objective { margin-bottom:20px; color:#506477; font-size:14px; line-height:1.7; overflow-wrap:anywhere; }
-.project-public-card .project-public-totals { margin-top:auto; padding-top:20px; border-top:1px solid #e4ebf0; }
-.project-public-card .project-public-totals dd { font-size:clamp(15px,1.7vw,20px); overflow-wrap:anywhere; }
-.project-public-card .project-financial-progress { margin-bottom:0; }
-.public-comparison { overflow-x:auto; border:1px solid #dbe4ec; border-radius:16px; background:#fff; }
-.public-comparison table { min-width:720px; }
-.public-comparison caption { padding:16px; }
-.public-print-context { font-size:12px; color:#607286; line-height:1.6; }
-.public-explainer { display:flex; gap:16px; padding:24px; margin-top:32px; border-radius:16px; background:#eaf1ef; color:#3c5b53; }
-.public-explainer>svg { flex-shrink:0; }
-.public-explainer h2 { font-size:18px; }
-.public-explainer p { font-size:13px; line-height:1.8; margin:8px 0 0; }
-@media(max-width:900px) { .project-public .project-metrics { grid-template-columns:repeat(2,minmax(0,1fr)); } .public-hero-symbol { display:none; } .public-overview { grid-template-columns:1fr; gap:12px; } }
-@media(max-width:700px) { .project-stats,.project-metrics { grid-template-columns:repeat(2,minmax(0,1fr)); } .project-team-grid,.project-grid { grid-template-columns:1fr; } .project-public-totals { grid-template-columns:1fr; } .public-filters { grid-template-columns:1fr; } .public-institution-bar { align-items:flex-start; flex-direction:column; } .project-public .project-public-totals { grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; } .project-public .project-public-card { padding:20px; } .project-public .project-metrics>div { padding:16px; } .public-explainer { padding:20px; } }
-@media print { :global(body):has(.project-report) * { visibility:hidden; } :global(body):has(.project-report) .project-report,:global(body):has(.project-report) .project-report * { visibility:visible; } .project-report { position:absolute; left:0; top:0; width:100%; padding:12px; } .project-report :is(button,input,select) { display:none; } }
+@media(max-width:700px) { .project-stats,.project-metrics { grid-template-columns:repeat(2,minmax(0,1fr)); } .project-team-grid,.project-grid { grid-template-columns:1fr; } .project-public-totals { grid-template-columns:1fr; } }
+
+.project-badge.is-active { background:#e6f4ea; color:#137333; }
+.project-badge.is-closed { background:#eef1f4; color:#4f5d6c; }
+.project-badge>span { width:7px; height:7px; margin-right:7px; border-radius:50%; background:currentColor; }
+
+/* Text that never breaks cards or tables. */
+.project-card,.project-member,.project-budget-card,.project-detail-header,.project-stats>div { min-width:0; overflow-wrap:anywhere; }
+/* Tables: long text wraps inside a minimum width; amounts, dates and headings never split (the wrapper scrolls). */
+.project-table td { overflow-wrap:anywhere; min-width:12ch; }
+.project-table th,.project-table .project-amount,.project-table .project-nowrap { white-space:nowrap; overflow-wrap:normal; }
+.project-member h3,.project-member p,.project-member small,.project-budget-heading h3,.project-detail h1,.project-detail-objective { overflow-wrap:anywhere; min-width:0; }
+
+/*
+ * Form field: the single canonical style of every input, select, textarea and date of the module (Field in FormField.tsx).
+ * Same values the controls had with styles.field of AdminCourseCategoriesPage.module.css: #f2f3f3 surface, 12px radius,
+ * 2px #9bc3f5 outline with 2px offset on focus. No shadows. The rules live here and not under .project-panel so they apply anywhere.
+ * The cards of the module are always white, so there is no dark variant.
+ */
+.project-field {
+  --field-surface:#f2f3f3; --field-surface-hover:#eceeee; --field-surface-disabled:#eceeee;
+  --field-border:#e1e3e3; --field-border-hover:#cfd3d3; --field-border-disabled:#e1e3e3;
+  --field-text:var(--admin-ink,#24364b); --field-placeholder:#627184; --field-disabled-text:#627184;
+  --field-focus:#9bc3f5; --field-error:#b3261e; --field-error-surface:#fdf4f3; --field-error-text:#9f271f;
+  display:grid; align-content:start; gap:8px; min-width:0; color:var(--admin-ink,#24364b); font-size:13px; font-weight:600; line-height:1.4;
+}
+.project-field :is(input,select,textarea) {
+  width:100%; min-width:0; min-height:44px; padding:10px 13px; border:1px solid var(--field-border); border-radius:12px; outline:0;
+  background-color:var(--field-surface); color:var(--field-text); font:400 14px/1.4 Roboto,Arial,sans-serif; color-scheme:light;
+}
+.project-field textarea { min-height:76px; resize:vertical; }
+.project-field :is(input,select,textarea)::placeholder { color:var(--field-placeholder); opacity:1; }
+.project-field :is(input,select,textarea):hover:not(:disabled) { border-color:var(--field-border-hover); background-color:var(--field-surface-hover); }
+.project-field :is(input,select,textarea):focus-visible { outline:2px solid var(--field-focus); outline-offset:2px; }
+.project-field :is(input,select,textarea)[aria-invalid="true"] { border-color:var(--field-error); background-color:var(--field-error-surface); }
+.project-field :is(input,select,textarea)[aria-invalid="true"]:focus-visible { outline-color:var(--field-error); }
+.project-field :is(input,select,textarea):disabled { border-color:var(--field-border-disabled); background-color:var(--field-surface-disabled); color:var(--field-disabled-text); cursor:not-allowed; -webkit-text-fill-color:var(--field-disabled-text); }
+.project-field-foot { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; min-width:0; }
+/* Nothing to show: collapse the row but keep the polite live region in the layout so screen readers announce later changes. */
+.project-field-foot:not(:has(.project-field-hint,.project-field-error,.project-field-counter,.project-field-notice:not(:empty))) { height:0; margin-top:-8px; overflow:hidden; }
+.project-field-messages { display:grid; gap:4px; min-width:0; flex:1; }
+.project-field-error,.project-field-notice:not(:empty) { display:flex; align-items:flex-start; gap:6px; margin:0; font-size:12px; font-weight:500; line-height:1.4; }
+.project-field-notice:empty { display:none; }
+.project-field-error { color:var(--field-error-text); }
+.project-field-notice { color:#6b4300; }
+.project-field-error>svg,.project-field-notice>svg { flex-shrink:0; margin-top:1px; }
+.project-field-hint { margin:0; color:var(--admin-muted); font-size:12px; font-weight:400; line-height:1.4; }
+.project-field-hint.is-warning { color:#8a5300; }
+.project-field-counter { margin-left:auto; color:var(--admin-muted); font-size:11px; font-weight:400; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.project-field-counter.is-over { color:var(--field-error-text); font-weight:600; }
+.project-form-grid>.project-field { align-self:start; }
+.project-filter { flex:1 1 200px; }
+.project-filter-search { flex:2 1 320px; }
+.project-field-icon { position:relative; display:block; }
+.project-field-icon>svg { position:absolute; left:14px; top:50%; transform:translateY(-50%); color:var(--admin-muted); pointer-events:none; }
+.project-field-icon>input { padding-left:42px; }
+@media(prefers-reduced-motion:no-preference) { .project-field :is(input,select,textarea) { transition:border-color .15s ease,background-color .15s ease,outline-color .15s ease; } }
+@media(max-width:700px) { .project-field :is(input,select,textarea) { font-size:16px; } }
+@media(prefers-contrast:more) {
+  .project-field { --field-border:#4a5565; --field-border-hover:#1d2733; --field-placeholder:#3f4c5c; --field-focus:#155fc0; --field-error:#8c1d18; --field-error-text:#7a1712; }
+  .project-field :is(input,select,textarea) { border-width:2px; }
+  .project-field :is(input,select,textarea):focus-visible { outline-width:3px; }
+}
+@media(forced-colors:active) {
+  .project-field :is(input,select,textarea) { border:2px solid CanvasText; background-color:Canvas; color:FieldText; }
+  .project-field :is(input,select,textarea):focus-visible { outline:3px solid Highlight; }
+  .project-field :is(input,select,textarea)[aria-invalid="true"] { border-style:dashed; }
+  .project-field :is(input,select,textarea):disabled { border-color:GrayText; color:GrayText; }
+}
+.project-notice { margin:12px 0; padding:12px 16px; border-radius:12px; background:#fff4e0; color:#6b4300; font-size:13px; line-height:1.5; }
+.project-disabled-reason { margin:0; color:var(--admin-muted); font-size:12px; line-height:1.4; }
+
+/* Institution switcher (same layout as the one in the portal editor). */
+.project-institution { display:flex; align-items:flex-end; gap:12px; max-width:440px; margin-block:12px; }
+.project-institution>svg { color:var(--admin-blue); flex-shrink:0; margin-bottom:13px; }
+.project-institution-field { flex:1; }
+.project-institution-name { display:inline-flex; align-items:center; gap:8px; color:var(--admin-muted); font-size:13px; }
+
+/* File picker: native input hidden but reachable; a styled button names the chosen file. */
+.project-file { display:flex; flex-wrap:wrap; align-items:center; gap:10px; min-width:0; }
+.project-file-input,.project-panel .project-file-input { position:absolute; min-width:0; min-height:0; padding:0; border:0; width:1px; height:1px; overflow:hidden; clip:rect(0,0,0,0); clip-path:inset(50%); white-space:nowrap; }
+.project-file-button,.project-panel .project-file-button { display:inline-flex; align-items:center; gap:8px; min-height:42px; padding:0 17px; border-radius:22px; background:#e8f1ff; color:#38516e; cursor:pointer; font:600 13px Roboto,Arial,sans-serif; }
+.project-file-button:hover { background:#dceaff; }
+.project-file-input:focus-visible+.project-file-button { outline:2px solid #9bc3f5; outline-offset:2px; }
+.project-file-input:disabled+.project-file-button { opacity:.5; cursor:default; }
+.project-file-name { min-width:0; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--admin-muted); font-size:12px; font-weight:400; }
+
+/* Financial report on screen. */
+.project-report-total { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px 24px; margin-block:16px; padding:16px 20px; border-radius:16px; background:#f3f7fb; }
+.project-report-total>div { display:grid; gap:6px; }
+.project-report-total span { color:var(--admin-muted); font-size:13px; }
+.project-report-total strong { font-size:22px; font-weight:600; font-variant-numeric:tabular-nums; }
+.report-filters>.project-field { min-width:160px; }
+.project-report-actions { display:flex; flex-wrap:wrap; gap:10px; }
+.project-report-heading { display:grid; gap:4px; margin-bottom:12px; }
+.project-report-heading p { margin:0; color:var(--admin-muted); font-size:14px; }
+.project-report-summary { grid-template-columns:repeat(4,minmax(0,1fr)); margin-block:16px; }
+@media(max-width:700px) { .project-report-summary { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media(max-width:700px) { .project-report-content .project-section-heading { flex-direction:column; align-items:stretch; } .project-report-actions>button { flex:1 1 auto; } }

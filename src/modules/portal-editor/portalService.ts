@@ -2,7 +2,7 @@ import { menuIdentity, validateMenuHierarchy } from './portalMenus';
 import { institutionalMenuEntries } from '../site/utils/institutionalNavigation';
 import { supabase } from '../../core/supabaseClient';
 import { getUserInstitutions } from '../projects/integration/accessService';
-import { newSnapshot, normalizeSnapshot, safeUrl, sectionTypes, withCurrentIdentity, type PortalSnapshot } from './contract';
+import { MAX_SECTION_RECORDS, newSnapshot, normalizeSnapshot, safeUrl, sectionTypes, withCurrentIdentity, type PortalSnapshot } from './contract';
 import { parseSnapshot } from '../site/utils/snapshot';
 import type { Json } from '../site/types/common';
 
@@ -16,11 +16,24 @@ async function actor(institutionId:string,publish=false){
   if(!institution||!roles.includes(institution.role)||!institution.enabled_modules?.includes('portal'))throw new Error('Tu cuenta no tiene permiso para esta operación del portal.');
   return data.user;
 }
-async function pageVersions(pageId:string):Promise<VersionRow[]>{
-  const {data,error}=await supabase.from('publication_versions').select('publication_version_id,page_id,version_number,content_snapshot,published_by').eq('page_id',pageId).order('version_number',{ascending:false});
-  if(error)throw error;return data as unknown as VersionRow[];
+/** Latest published version only; older snapshots are history and are not needed to edit. */
+async function latestVersion(pageId:string):Promise<VersionRow|null>{
+  const {data,error}=await supabase.from('publication_versions').select('publication_version_id,page_id,version_number,content_snapshot,published_by').eq('page_id',pageId).order('version_number',{ascending:false}).limit(1).maybeSingle();
+  if(error)throw error;return data as unknown as VersionRow|null;
 }
 export interface PortalSectionOption { type:string; default_properties:Record<string,unknown> }
+/** Public records the portal can show; undefined when the count could not be read. */
+export type PublicRecordCounts = { news?: number; events?: number; honors?: number };
+export async function loadPublicRecordCounts(institutionId:string):Promise<PublicRecordCounts>{
+  // Same filters as the public readers in site/services/content.ts, counted without loading rows.
+  const [news,events,honors]=await Promise.all([
+    supabase.from('news').select('news_id',{count:'exact',head:true}).eq('institution_id',institutionId).eq('is_published',true),
+    supabase.from('events').select('event_id',{count:'exact',head:true}).eq('institution_id',institutionId).gte('event_date',new Date().toISOString()),
+    supabase.from('public_honors').select('honor_id',{count:'exact',head:true}).eq('institution_id',institutionId),
+  ]);
+  const value=(result:{error:unknown;count:number|null})=>result.error||typeof result.count!=='number'?undefined:result.count;
+  return {news:value(news),events:value(events),honors:value(honors)};
+}
 export async function loadSectionCatalog():Promise<PortalSectionOption[]>{
   const {data,error}=await supabase.from('section_type_schemas').select('type,default_properties').eq('is_active',true).order('type');
   if(error)throw error;
@@ -38,28 +51,46 @@ export async function loadPortalConfiguration(institutionId:string,institutionNa
   }
   base.menus=menuIdentity((menus.data??[]).map(menu=>({...menu,id:menu.menu_id})));return base;
 }
-async function existingSnapshot(page:PageRow):Promise<PortalSnapshot>{
-  const institution=await supabase.from('institutions').select('name').eq('institution_id',page.institution_id).single();if(institution.error)throw institution.error;
-  const base=await loadPortalConfiguration(page.institution_id,institution.data.name);
+async function existingSnapshot(page:PageRow,config?:PortalSnapshot):Promise<PortalSnapshot>{
+  let base:PortalSnapshot;
+  if(config)base=structuredClone(config);
+  else{
+    const institution=await supabase.from('institutions').select('name').eq('institution_id',page.institution_id).single();if(institution.error)throw institution.error;
+    base=await loadPortalConfiguration(page.institution_id,institution.data.name);
+  }
   base.title=page.title;base.slug=page.slug;base.is_homepage=page.is_homepage;
   const sections=await supabase.from('page_sections').select('page_section_id,type,position,is_visible,properties').eq('page_id',page.page_id).order('position');if(sections.error)throw sections.error;
   base.sections=parseSnapshot({sections:sections.data??[]} as Json).sections;return base;
+}
+/**
+ * Pages published by the public portal (not by this editor) store only `sections`/`template`.
+ * Read them with the same parser the portal uses, so the editor opens exactly what visitors see.
+ */
+export function legacyPublishedSnapshot(page:Pick<PageRow,'title'|'slug'|'is_homepage'>,content:unknown,config:PortalSnapshot):PortalSnapshot{
+  const parsed=parseSnapshot(content as Json);
+  return {...structuredClone(config),publication_state:'published',title:page.title,slug:page.slug,is_homepage:page.is_homepage,
+    template:parsed.template??config.template,
+    // The portal renders "hero" exactly like "banner"; the editor and the server only know "banner".
+    sections:parsed.sections.map(section=>section.type==='hero'?{...section,type:'banner'}:section)};
 }
 export async function listPortalPages(institutionId:string):Promise<PortalDraft[]>{
   await actor(institutionId);
   const {data,error}=await supabase.from('pages').select('page_id,institution_id,title,slug,status,is_homepage').eq('institution_id',institutionId).order('title');
   if(error)throw error;
+  // One identity read for the whole list, not one per page.
+  const config=await loadPortalConfiguration(institutionId,'');
+  const complete=(value:PortalSnapshot):PortalSnapshot=>{
+    const current=withCurrentIdentity(value,config);
+    return {...current,menus:menuIdentity(current.menus)};
+  };
   return Promise.all((data??[]).map(async page=>{
-    const versions=await pageVersions(page.page_id);const latest=versions[0];
-    const draft=await supabase.from('portal_editor_drafts').select('revision,snapshot').eq('page_id',page.page_id).maybeSingle();if(draft.error)throw draft.error;
+    const [latest,draft]=await Promise.all([latestVersion(page.page_id),supabase.from('portal_editor_drafts').select('revision,snapshot').eq('page_id',page.page_id).maybeSingle()]);
+    if(draft.error)throw draft.error;
     const published_slug=page.status==='published'?page.slug:undefined;
-    const config=await loadPortalConfiguration(institutionId,'');
-    const complete=(value:PortalSnapshot):PortalSnapshot=>{
-      const current=withCurrentIdentity(value,config);
-      return {...current,menus:menuIdentity(current.menus)};
-    };
     if(draft.data)return {page_id:page.page_id,status:page.status,revision:draft.data.revision,snapshot:complete(draft.data.snapshot as PortalSnapshot),published_slug};
-    return {page_id:page.page_id,status:page.status,revision:latest?.version_number??0,snapshot:latest?.content_snapshot?.schema_version===1?complete(latest.content_snapshot):await existingSnapshot(page),published_slug};
+    if(latest)return {page_id:page.page_id,status:page.status,revision:latest.version_number,
+      snapshot:complete(latest.content_snapshot?.schema_version===1?latest.content_snapshot:legacyPublishedSnapshot(page,latest.content_snapshot,config)),published_slug};
+    return {page_id:page.page_id,status:page.status,revision:0,snapshot:complete(await existingSnapshot(page,config)),published_slug};
   }));
 }
 function validate(snapshot:PortalSnapshot){
@@ -73,7 +104,9 @@ function validate(snapshot:PortalSnapshot){
   if(snapshot.sections.length>40||snapshot.menus.length>30)throw new Error('Usa como máximo 40 secciones y 30 enlaces.');
   for(const menu of snapshot.menus)if(!menu.label.trim()||menu.label.length>100||menu.url.length>255||!safeUrl(menu.url))throw new Error('Revisa el texto y destino de los enlaces.');
   if(!['classic','cards','editorial'].includes(snapshot.template))throw new Error('Selecciona una plantilla válida.');
-  for(const section of snapshot.sections){if(!Object.hasOwn(sectionTypes,section.type))throw new Error('Tipo de sección no compatible.');const p=section.properties;if(p.url&&!safeUrl(p.url))throw new Error('Hay un enlace de sección no válido.');if(p.image_url&&(!safeUrl(p.image_url)||!String(p.image_url).startsWith('https://')||!String(p.alt??'').trim()))throw new Error('Cada imagen necesita una URL HTTPS y texto alternativo.');}
+  for(const section of snapshot.sections){if(!Object.hasOwn(sectionTypes,section.type))throw new Error('Tipo de sección no compatible.');const p=section.properties;
+    if(p.limit!==undefined&&(!Number.isInteger(p.limit)||Number(p.limit)<1||Number(p.limit)>MAX_SECTION_RECORDS))throw new Error(`La cantidad de registros de una sección debe estar entre 1 y ${MAX_SECTION_RECORDS}.`);
+    if(Array.isArray(p.buttons)){if(p.buttons.length>4)throw new Error('La portada admite hasta 4 botones.');for(const b of p.buttons){const button=(b&&typeof b==='object'?b:{}) as Record<string,unknown>;if(typeof button.label!=='string'||!button.label.trim()||button.label.length>40||!safeUrl(button.url))throw new Error('Cada botón de la portada necesita un texto de hasta 40 caracteres y un destino válido.');}}if(p.url&&!safeUrl(p.url))throw new Error('Hay un enlace de sección no válido.');if(p.image_url&&(!safeUrl(p.image_url)||!String(p.image_url).startsWith('https://')||!String(p.alt??'').trim()))throw new Error('Cada imagen necesita una URL HTTPS y texto alternativo.');}
 }
 /** The server saves a private draft or publishes the entire configuration atomically. */
 export async function savePortal(institutionId:string,pageId:string|null,expectedRevision:number,snapshot:PortalSnapshot,publish:boolean):Promise<PortalDraft>{

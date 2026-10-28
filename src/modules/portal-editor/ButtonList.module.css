@@ -1,0 +1,13 @@
+.list { display: grid; gap: 12px; min-width: 0; margin: 6px 0 0; padding: 16px; border: 1px solid #dbe5e8; border-radius: 14px; background: #fff; }
+.list legend { padding: 0 6px; color: var(--admin-ink, #24364b); font-size: 14px; font-weight: 700; }
+.hint { margin: 0; color: var(--admin-muted, #5f6b7a); font-size: 12px; line-height: 1.5; }
+.empty { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border: 1px dashed #c8d6e0; border-radius: 12px; background: #f8fafc; color: var(--admin-muted, #5f6b7a); font-size: 13px; }
+.item { display: grid; gap: 4px; padding: 14px; border: 1px solid #e3eaef; border-radius: 12px; background: #fbfcfd; }
+.heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.heading strong { display: inline-flex; align-items: center; gap: 8px; color: var(--admin-ink, #24364b); font-size: 13px; }
+.badge { padding: 3px 9px; border-radius: 12px; background: #e8f1ff; color: #174ea6; font-size: 11px; font-weight: 650; }
+.actions { display: flex; gap: 6px; }
+.list .actions button { min-width: 34px; min-height: 34px; padding: 0 10px; }
+.list .actions .remove { background: #fdecea; color: #a8261b; }
+.list .actions .remove:hover:not(:disabled) { background: #fadad6; }
+.list .add { justify-self: start; border: 1px dashed #9cbbe0; background: #f4f8ff; color: #174ea6; }

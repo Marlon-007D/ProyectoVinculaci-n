@@ -1,0 +1,75 @@
+/* The printable report is mounted in <body> only while printing. On screen it never shows. */
+.sheet { display: none; }
+
+@media print {
+  /* Hide the whole site (header, menu, footer, social links, toasts, accessibility button): only the report prints. */
+  :global(body):has(> .sheet) > *:not(.sheet) { display: none !important; }
+  :global(body):has(> .sheet) { background: #fff !important; margin: 0 !important; }
+
+  .sheet {
+    display: block;
+    color: #1d1b20;
+    background: #fff;
+    font: 11px/1.45 Roboto, Arial, sans-serif;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  /* No animations, fades or translucency in the printed report. */
+  .sheet, .sheet * { animation: none !important; transition: none !important; opacity: 1 !important; backdrop-filter: none !important; box-shadow: none !important; }
+  .sheet h1, .sheet h2, .sheet h3, .sheet p { margin: 0; }
+
+  .header { display: flex; align-items: center; gap: 14px; padding-bottom: 10px; border-bottom: 3px solid var(--print-accent, #6750a4); }
+  .logo, .initials { flex: none; width: 54px; height: 54px; object-fit: contain; }
+  .initials { display: grid; place-items: center; border: 2px solid var(--print-accent, #6750a4); border-radius: 12px; color: var(--print-accent, #6750a4); font-size: 20px; font-weight: 700; }
+  .titles { min-width: 0; flex: 1; }
+  .institution { font-size: 13px; font-weight: 700; overflow-wrap: anywhere; }
+  .title { margin-top: 2px !important; font-size: 18px; font-weight: 700; line-height: 1.25; }
+  .subtitle { margin-top: 2px !important; font-size: 13px; font-weight: 600; overflow-wrap: anywhere; }
+  .issued { flex: none; text-align: right; color: #49454f; font-size: 10px; line-height: 1.5; }
+
+  .details { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 20px; margin-top: 10px; font-size: 11px; }
+  .details dt { display: inline; color: #49454f; font-weight: 600; }
+  .details dt::after { content: ': '; }
+  .details dd { display: inline; margin: 0; overflow-wrap: anywhere; }
+
+  .summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-top: 14px; break-inside: avoid; }
+  .box { padding: 8px 10px; border: 1px solid #cac4d0; border-radius: 8px; min-width: 0; }
+  .box dt { color: #49454f; font-size: 10px; }
+  .box dd { margin: 3px 0 0; font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+
+  .filters { margin-top: 10px !important; padding: 6px 10px; border-left: 3px solid var(--print-accent, #6750a4); background: #f7f2fa; font-size: 10.5px; overflow-wrap: anywhere; }
+
+  .section { margin-top: 16px; }
+  .section > h2 { margin-bottom: 6px !important; font-size: 13px; font-weight: 700; break-after: avoid; }
+  .table { width: 100%; border-collapse: collapse; table-layout: auto; font-size: 10.5px; }
+  .table thead { display: table-header-group; }
+  .table tfoot { display: table-row-group; }
+  .table tr { break-inside: avoid; page-break-inside: avoid; }
+  .table th { padding: 5px 6px; border-bottom: 2px solid #49454f; background: #f3edf7; color: #1d1b20; font-weight: 700; text-align: left; vertical-align: bottom; }
+  .table td { padding: 5px 6px; border-bottom: 1px solid #cac4d0; vertical-align: top; overflow-wrap: anywhere; }
+  .table th, .table td { min-width: 0; }
+  .table .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .table .nowrap { white-space: nowrap; }
+  .table .total th, .table .total td { border-top: 2px solid #49454f; border-bottom: 0; background: #f3edf7; font-weight: 700; }
+  .empty { padding: 8px 0; color: #49454f; }
+
+  .note { margin-top: 14px !important; padding-top: 8px; border-top: 1px solid #cac4d0; color: #49454f; font-size: 10.5px; break-inside: avoid; }
+
+  .signatures { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-top: 28px; break-inside: avoid; }
+  .sign { display: grid; gap: 6px; min-width: 0; }
+  .sign h3 { font-size: 11px; font-weight: 700; }
+  .signBody { display: grid; grid-template-columns: minmax(0, 1fr) 62px; gap: 10px; align-items: end; }
+  .line { height: 56px; border-bottom: 1px solid #1d1b20; }
+  .stamp { display: grid; place-items: end center; width: 62px; height: 62px; border: 1px dashed #79747e; border-radius: 50%; padding-bottom: 6px; color: #79747e; font-size: 8px; }
+  .caption { color: #49454f; font-size: 9.5px; }
+}
+
+/* Page margins and «Página 1 de 3» (page boxes need Chrome/Edge 131+; elsewhere the page prints without the number). */
+@page {
+  margin: 16mm 14mm 18mm;
+  @bottom-right { content: "Página " counter(page) " de " counter(pages); font: 9px Roboto, Arial, sans-serif; color: #49454f; }
+}
+
+@media print {
+  .subtle { display: block; margin-top: 2px; color: #49454f; font-size: 9.5px; font-weight: 400; white-space: nowrap; }
+}

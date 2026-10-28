@@ -55,3 +55,65 @@ export function executionPercent(budget:number,spent:number):number {
   const denominator=BigInt(toCents(budget));
   return Number((BigInt(toCents(spent))*10000n+denominator/2n)/denominator)/100;
 }
+
+/** Character limits shared by the forms, the service and the proposed database CHECK constraints. */
+export const TEXT_LIMITS = { projectName: 120, budgetName: 120, expense: 150, role: 80, description: 1000, search: 100 } as const;
+
+export type FieldResult<T> = { ok: true; value: T } | { ok: false; message: string };
+
+/** Trim, reject blank values and enforce the maximum length. */
+export function validateText(raw: string, max: number): FieldResult<string> {
+  const value = raw.trim();
+  if (!raw.length) return { ok: false, message: 'Este campo es obligatorio.' };
+  if (!value) return { ok: false, message: 'No puede quedar solo con espacios.' };
+  if (value.length > max) return { ok: false, message: `Máximo ${max} caracteres (tienes ${value.length}).` };
+  return { ok: true, value };
+}
+
+/** Accepts «350,20» or «350.20». One message per failure, shown under the field. */
+export function parseMoneyInput(raw: string, { allowZero = false }: { allowZero?: boolean } = {}): FieldResult<number> {
+  const text = raw.trim();
+  if (!text) return { ok: false, message: 'Ingresa un monto.' };
+  const negative = text.startsWith('-');
+  const body = negative ? text.slice(1).trim() : text;
+  const match = /^(\d+)(?:[.,](\d*))?$/.exec(body);
+  if (!match) return { ok: false, message: 'Ingresa solo números (ej. 350,20).' };
+  if (negative && /[1-9]/.test(body)) return { ok: false, message: 'El monto no puede ser negativo.' };
+  if ((match[2] ?? '').length > 2) return { ok: false, message: 'Ingresa un monto con máximo 2 decimales (ej. 350,20).' };
+  const value = Number(`${match[1]}.${match[2] || '0'}`);
+  if (value > MAX_STORED_MONEY) return { ok: false, message: 'El monto máximo es $9.999.999.999,99.' };
+  if (value === 0 && !allowZero) return { ok: false, message: 'El monto debe ser mayor que $0,00.' };
+  return { ok: true, value };
+}
+
+export const MAX_INTEGER_DIGITS = 10;
+export type MoneyTrim = '' | 'decimals' | 'integers' | 'negative' | 'chars';
+export const MONEY_TRIM_MESSAGES: Record<Exclude<MoneyTrim, ''>, string> = {
+  decimals: 'Ingresa un monto con máximo 2 decimales (ej. 350,20).',
+  integers: `El monto admite hasta ${MAX_INTEGER_DIGITS} dígitos enteros.`,
+  negative: 'El monto no puede ser negativo.',
+  chars: 'Ingresa solo números (ej. 350,20).',
+};
+
+/**
+ * Cleans what is typed or pasted in an amount field: digits and one decimal separator, at most
+ * 10 integer digits and 2 decimals. «1.234,50» or «1,234.50» keep the last separator as decimal.
+ * `trimmed` names the first rule that removed characters, to explain it under the field.
+ */
+export function sanitizeMoneyInput(raw: string): { text: string; trimmed: MoneyTrim } {
+  let trimmed: MoneyTrim = raw.includes('-') ? 'negative' : /[^\d.,\s-]/.test(raw) ? 'chars' : '';
+  const kept = raw.replace(/[^\d.,]/g, '');
+  const commas = (kept.match(/,/g) ?? []).length;
+  const dots = (kept.match(/\./g) ?? []).length;
+  // One kind repeated («1.234.567») is grouping; with both kinds the last one is the decimal separator.
+  const decimalIndex = commas && dots ? Math.max(kept.lastIndexOf(','), kept.lastIndexOf('.'))
+    : commas + dots === 1 ? kept.search(/[.,]/) : -1;
+  const separator = decimalIndex >= 0 ? kept[decimalIndex] : '';
+  let integer = (decimalIndex >= 0 ? kept.slice(0, decimalIndex) : kept).replace(/\D/g, '');
+  let decimals = decimalIndex >= 0 ? kept.slice(decimalIndex + 1).replace(/\D/g, '') : '';
+  integer = integer.replace(/^0+(?=\d)/, '');
+  if (integer.length > MAX_INTEGER_DIGITS) { integer = integer.slice(0, MAX_INTEGER_DIGITS); trimmed ||= 'integers'; }
+  if (decimals.length > 2) { decimals = decimals.slice(0, 2); trimmed ||= 'decimals'; }
+  if (separator && !integer) integer = '0';
+  return { text: separator ? `${integer}${separator}${decimals}` : integer, trimmed };
+}
