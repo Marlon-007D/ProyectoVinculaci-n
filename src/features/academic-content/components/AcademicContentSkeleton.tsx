@@ -7,6 +7,20 @@ export function AcademicContentSkeleton({ kind, title }: Props) {
   const honor = kind === 'honor'
   const periods = kind === 'period'
   const rows = periods ? 4 : 3
+  if (kind === 'news' || kind === 'event') {
+    return <section className={`page-content academic-content-page academic-content-skeleton academic-publication-skeleton is-${kind}`} role="status" aria-label={`Cargando ${title.toLocaleLowerCase('es-EC')}`} aria-busy="true">
+      <span className="academic-skeleton-sr-only">Cargando contenido</span>
+      <div className="academic-publication-skeleton-toolbar"><i /><i /><i /><span /><b /></div>
+      <div className="academic-publication-skeleton-grid">{Array.from({ length: 5 }, (_, index) => <article className="academic-publication-skeleton-card" key={index}><i /><div><b /><b /><span /><span /><small /><em /><em /><em /></div></article>)}</div>
+    </section>
+  }
+  if (honor) {
+    return <section className="page-content academic-content-page academic-content-skeleton academic-honors-skeleton is-honor-page" role="status" aria-label={`Cargando ${title.toLocaleLowerCase('es-EC')}`} aria-busy="true">
+      <span className="academic-skeleton-sr-only">Cargando contenido</span>
+      <div className="academic-honors-skeleton-heading"><b /><span /></div>
+      <div className="academic-honors-skeleton-grid">{Array.from({ length: 9 }, (_, index) => <article key={index}><i /><div><b /><span /><small /></div></article>)}</div>
+    </section>
+  }
   return <section className={`page-content academic-content-page academic-content-skeleton is-${kind}`} role="status" aria-label={`Cargando ${title.toLocaleLowerCase('es-EC')}`} aria-busy="true">
     <span className="academic-skeleton-sr-only">Cargando contenido</span>
     <div className="academic-skeleton-heading"><div><i /><b /></div><span /></div>
