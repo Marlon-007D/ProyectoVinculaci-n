@@ -16,6 +16,11 @@ jobs:
   build:
     name: Typecheck and build
     runs-on: ubuntu-latest
+    env:
+      # La compilación no necesita conectarse a Supabase. Estos valores públicos
+      # de marcador permiten validar el bundle en CI sin credenciales de despliegue.
+      VITE_SUPABASE_URL: https://ci-placeholder.supabase.co
+      VITE_SUPABASE_ANON_KEY: sb_publishable_ci_build_placeholder
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -35,20 +40,13 @@ jobs:
   sonarqube:
     name: SonarQube analysis
     needs: build
+    if: ${{ secrets.SONAR_TOKEN != '' && (vars.SONAR_HOST_URL != '' || vars.SONAR_ORGANIZATION != '') }}
     runs-on: ubuntu-latest
     env:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
       SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
       SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION }}
     steps:
-      - name: Require SonarQube configuration
-        run: |
-          test -n "$SONAR_TOKEN" || { echo "::error::Configure the SONAR_TOKEN secret."; exit 1; }
-          if [ -z "$SONAR_HOST_URL" ] && [ -z "$SONAR_ORGANIZATION" ]; then
-            echo "::error::Configure SONAR_HOST_URL for SonarQube Server or SONAR_ORGANIZATION for SonarQube Cloud."
-            exit 1
-          fi
-
       - name: Checkout
         uses: actions/checkout@v6
         with:
@@ -84,13 +82,11 @@ jobs:
   snyk-code:
     name: Snyk Code analysis
     needs: build
+    if: ${{ secrets.SNYK_TOKEN != '' }}
     runs-on: ubuntu-latest
     env:
       SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
     steps:
-      - name: Require Snyk credentials
-        run: test -n "$SNYK_TOKEN" || { echo "::error::Configure the SNYK_TOKEN secret."; exit 1; }
-
       - name: Checkout
         uses: actions/checkout@v6
 

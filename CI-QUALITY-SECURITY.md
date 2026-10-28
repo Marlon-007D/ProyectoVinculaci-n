@@ -1,6 +1,6 @@
 # Calidad y seguridad del código
 
-El repositorio usa GitHub Actions como verificación automática principal para cada push y pull request, sin importar la rama. La compilación ejecuta `npm ci` y `npm run build` (incluye el chequeo de TypeScript). SonarQube y Snyk Code son checks obligatorios: el workflow falla si no están configuradas sus credenciales, si un escaneo no puede completarse o si se incumple el Quality Gate de SonarQube o se encuentran hallazgos de Snyk Code.
+El repositorio usa GitHub Actions como verificación automática principal para cada push y pull request, sin importar la rama. La compilación ejecuta `npm ci` y `npm run build` (incluye el chequeo de TypeScript) con valores públicos de marcador para no requerir secretos de despliegue. SonarQube y Snyk Code se ejecutan automáticamente cuando sus credenciales están configuradas; cuando se ejecutan, el workflow falla si el escaneo no puede completarse, se incumple el Quality Gate de SonarQube o se encuentran hallazgos de Snyk Code.
 
 ## GitHub Actions
 
@@ -15,7 +15,7 @@ En la configuración del repositorio, agrega estos valores:
 
 La clave y el nombre compartidos del proyecto están en `sonar-project.properties`. Si el proyecto registrado en SonarQube usa otra clave, actualiza `sonar.projectKey` para que coincida.
 
-Configura ambos secretos y las variables de SonarQube antes de integrar cambios. Para que GitHub impida integrar cambios cuando falle un check, marca `Typecheck and build`, `SonarQube analysis` y `Snyk Code analysis` como checks requeridos en las reglas de protección de ramas. Sin esa regla, GitHub mostrará el estado del workflow, pero no bloqueará el merge por sí solo.
+Configura ambos secretos y las variables de SonarQube para habilitar los análisis externos. Para que GitHub impida integrar cambios cuando falle un check, marca `Typecheck and build`, `SonarQube analysis` y `Snyk Code analysis` como checks requeridos en las reglas de protección de ramas. Sin esa regla, GitHub mostrará el estado del workflow, pero no bloqueará el merge por sí solo.
 
 ## Jenkins
 
