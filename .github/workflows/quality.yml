@@ -40,28 +40,42 @@ jobs:
   sonarqube:
     name: SonarQube analysis
     needs: build
-    if: ${{ secrets.SONAR_TOKEN != '' && (vars.SONAR_HOST_URL != '' || vars.SONAR_ORGANIZATION != '') }}
     runs-on: ubuntu-latest
     env:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
       SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
       SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION }}
     steps:
+      - name: Check SonarQube configuration
+        id: sonar-config
+        shell: bash
+        run: |
+          if [ -n "$SONAR_TOKEN" ] && { [ -n "$SONAR_HOST_URL" ] || [ -n "$SONAR_ORGANIZATION" ]; }; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "SonarQube omitted: configure SONAR_TOKEN and SONAR_HOST_URL or SONAR_ORGANIZATION to enable it."
+          fi
+
       - name: Checkout
+        if: ${{ steps.sonar-config.outputs.enabled == 'true' }}
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
       - name: Set up Node.js
+        if: ${{ steps.sonar-config.outputs.enabled == 'true' }}
         uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: npm
 
       - name: Install dependencies
+        if: ${{ steps.sonar-config.outputs.enabled == 'true' }}
         run: npm ci
 
       - name: Prepare SonarQube parameters
+        if: ${{ steps.sonar-config.outputs.enabled == 'true' }}
         id: sonar-parameters
         shell: bash
         run: |
@@ -70,6 +84,7 @@ jobs:
           fi
 
       - name: Scan with SonarQube
+        if: ${{ steps.sonar-config.outputs.enabled == 'true' }}
         uses: SonarSource/sonarqube-scan-action@v8.3.0
         with:
           args: >-
@@ -82,18 +97,31 @@ jobs:
   snyk-code:
     name: Snyk Code analysis
     needs: build
-    if: ${{ secrets.SNYK_TOKEN != '' }}
     runs-on: ubuntu-latest
     env:
       SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
     steps:
+      - name: Check Snyk configuration
+        id: snyk-config
+        shell: bash
+        run: |
+          if [ -n "$SNYK_TOKEN" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "Snyk Code omitted: configure SNYK_TOKEN to enable it."
+          fi
+
       - name: Checkout
+        if: ${{ steps.snyk-config.outputs.enabled == 'true' }}
         uses: actions/checkout@v6
 
       - name: Set up Snyk CLI
+        if: ${{ steps.snyk-config.outputs.enabled == 'true' }}
         uses: snyk/actions/setup@master
 
       - name: Scan source code
+        if: ${{ steps.snyk-config.outputs.enabled == 'true' }}
         run: snyk code test
         env:
           SNYK_TOKEN: ${{ env.SNYK_TOKEN }}
