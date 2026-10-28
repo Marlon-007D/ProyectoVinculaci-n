@@ -4,15 +4,15 @@ import { handleTenantInvitation } from './inviteTenantUser.ts';
 
 const origin = 'https://proyectovinculaci-n.onrender.com';
 const env = { supabaseUrl: 'https://backend.test', publicKey: 'public', serviceRoleKey: 'server', allowedOrigins: [origin] };
-function scenario({ slug = 'ue-puerto-limon', role = 'teacher', confirmed = true, active = true, actor = 'institution_admin', mailStatus = 200 } = {}) {
+function scenario({ slug = 'ue-puerto-limon', role = 'teacher', confirmed = true, active = true, actor = 'institution_admin', mailStatus = 200, pending = false, missingNames = false } = {}) {
   const calls = [];
   const request = new Request('https://edge.test', { method: 'POST', headers: { origin, authorization: 'Bearer caller' },
-    body: JSON.stringify({ action: 'notify_access', institutionId: 'school', profileId: 'person', redirect_to: `${origin}/panel/admin?institution=school&slug=${slug}` }) });
+    body: JSON.stringify({ action: 'notify_access', pending, institutionId: 'school', profileId: 'person', redirect_to: `${origin}/panel/admin?institution=school&slug=${slug}` }) });
   const fetcher = async (url, options) => {
     calls.push({ url, options });
     if (url.endsWith('/auth/v1/user')) return Response.json({ id: 'actor' });
     if (url.endsWith('/admin_tenant_snapshot_v3')) return Response.json({ institution_id: 'school', actor_role: actor,
-      members: [{ profile_id: 'person', institution_id: 'school', is_active: active, role_name: role, email: 'person@example.test', first_name: 'Ana', last_name: 'Torres', phone: '0991234567' }] });
+      members: [{ profile_id: 'person', institution_id: 'school', is_active: active, invitation_pending: pending, role_name: role, email: 'person@example.test', first_name: missingNames ? null : 'Ana', last_name: missingNames ? '' : 'Torres', phone: '0991234567' }] });
     if (url.includes('/institutions?')) return Response.json([{ slug, is_active: true }]);
     if (url.endsWith('/admin/users/person')) return Response.json({ email: 'person@example.test', email_confirmed_at: confirmed ? 'verified' : null });
     if (url.includes('/otp?') || url.includes('/invite?')) return Response.json({}, { status: mailStatus });
@@ -55,4 +55,18 @@ test('rate limits do not report delivery or undo saved access', async () => {
   const f = scenario({ mailStatus: 429 });
   const response = await handleTenantInvitation(f.request, env, f.fetcher);
   assert.deepEqual(await response.json(), { notificationSent: false, rateLimited: true });
+});
+
+test('pending resend uses stored identity and fallback names without recreating membership', async () => {
+  for (const slug of ['ue-la-concordia','ue-luz-de-america','ue-el-esfuerzo','ue-puerto-limon']) {
+    const f = scenario({ slug, active: false, pending: true, missingNames: true, confirmed: false });
+    const response = await handleTenantInvitation(f.request, env, f.fetcher);
+    assert.equal((await response.json()).notificationSent, true);
+    const sent = f.calls.find(call => call.url.includes('/invite?'));
+    const body = JSON.parse(sent.options.body);
+    assert.equal(body.email, 'person@example.test');
+    assert.equal(body.data.first_name, 'person');
+    assert.equal(body.data.last_name, 'Invitado');
+    assert(!f.calls.some(call => /prepare_invitation|admin\/users$/.test(call.url)));
+  }
 });

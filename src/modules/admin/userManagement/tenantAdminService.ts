@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { TenantAdminService, TenantSnapshot } from './tenantAdmin.types';
-import { normalizeContact, validateAdminContact } from '../auth/contactValidation.ts';
+import { normalizeContact, extractRequestEmail, validateAdminContact } from '../auth/contactValidation.ts';
 
 
 export function validateTenantSnapshot(data: unknown, institutionId: string): TenantSnapshot {
@@ -15,7 +15,8 @@ export function validateTenantSnapshot(data: unknown, institutionId: string): Te
   }
   for (const row of [...data.members, ...data.requests]) {
     if (!row || typeof row !== 'object' || row.institution_id !== institutionId
-      || !['profile_id', 'email', 'first_name', 'last_name', 'phone'].every(key => typeof row[key] === 'string')) {
+      || !['profile_id', 'email', 'phone'].every(key => typeof row[key] === 'string')
+      || !['first_name', 'last_name'].every(key => row[key] == null || typeof row[key] === 'string')) {
       throw new Error('La respuesta contiene registros ajenos a la institución activa.');
     }
   }
@@ -27,7 +28,7 @@ export function validateTenantSnapshot(data: unknown, institutionId: string): Te
     throw new Error('La respuesta institucional contiene datos incompletos.');
   }
   const snapshot = data as TenantSnapshot;
-  return { ...snapshot, members: snapshot.members.map(normalizeContact), requests: snapshot.requests.map(normalizeContact) };
+  return { ...snapshot, members: snapshot.members.map(normalizeContact), requests: snapshot.requests.map(row => normalizeContact({ ...row, email: extractRequestEmail(row.email) })) };
 }
 
 export function createTenantAdminService(client: Pick<SupabaseClient, 'rpc' | 'functions' | 'from'>): TenantAdminService {

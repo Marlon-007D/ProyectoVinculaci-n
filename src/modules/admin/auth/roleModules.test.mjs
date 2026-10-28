@@ -11,8 +11,13 @@ test('canonical roles and aliases automatically add their module without losing 
 });
 
 test('student, teacher, secretary, staff and guest keep only the explicitly selected enabled modules', () => {
-  for (const role of ['student','teacher','secretary','staff','guest']) {
+  for (const role of ['teacher','secretary','staff','guest']) {
     assert.deepEqual(assignedRoleModules(role, ['simuladores','portal'], ['simuladores']), ['simuladores']);
     assert.deepEqual(assignedRoleModules(role, [], ['simuladores']), []);
   }
+});
+
+test('student receives enabled learning modules without enabling disabled or administrative modules', () => {
+ assert.deepEqual(assignedRoleModules('student', [], ['inicio','projects','simuladores','dece','portal']), ['inicio','projects','simuladores']);
+ assert.deepEqual(assignedRoleModules('student', [], ['inicio']), ['inicio']);
 });

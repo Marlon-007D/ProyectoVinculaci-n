@@ -1,5 +1,17 @@
 # Administración por institución
 
+### Reenvío de invitaciones con datos personales incompletos
+
+La fila pendiente usa `notify_access` con `pending: true`: el servidor vuelve a
+verificar institución, destinatario y permisos y envía el correo sin ejecutar el
+alta ni reemplazar módulos. Para datos ausentes usa el usuario del correo y
+`Invitado` en los metadatos del envío. Redesplegar el paquete de la Edge Function.
+
+Solo en solicitudes entrantes se extrae mediante regex el correo que precede a
+un sufijo numérico, por ejemplo `persona@espe.edu.ec333`. Las direcciones ambiguas
+no se recortan. La aprobación sigue vinculada al perfil original; esta limpieza
+de presentación no modifica ni confirma otra dirección en Supabase Auth.
+
 ### Módulos predeterminados por rol
 
 Aplicar `012_role_default_modules.sql` después de 011. Vincula DECE con `dece`,
