@@ -1,22 +1,20 @@
 import styles from "./LoadingState.module.css";
 
-export type LoadingVariant = "page" | "cards" | "article";
+export type LoadingVariant = "page" | "cards" | "article" | "events" | "people";
+type PageKind = "home" | "content";
 
 function Placeholder({ className = "" }: { className?: string }) {
   return <span className={`${styles.line} ${className}`} aria-hidden="true" />;
 }
 
-function CardSkeleton() {
-  return <div className={styles.card} aria-hidden="true">
-    <span className={`${styles.line} ${styles.image}`} />
-    <Placeholder className={styles.lineStrong} />
-    <Placeholder />
-    <Placeholder className={styles.lineShort} />
-  </div>;
-}
-
-export function LoadingState({ label = "Cargando contenido", inline = false, variant = "cards" }: { label?: string; inline?: boolean; variant?: LoadingVariant }) {
+export function LoadingState({ label = "Cargando contenido", inline = false, variant = "cards", pageKind = "home" }: { label?: string; inline?: boolean; variant?: LoadingVariant; pageKind?: PageKind }) {
   if (inline) return <div className={styles.inline} role="status" aria-live="polite"><span className={styles.dot} aria-hidden="true" /><span>{label}</span></div>;
+
+  // Keep sections that load independently from stacking several card skeletons
+  // beneath the page-level loader.
+  if (variant === "cards" || variant === "events" || variant === "people") {
+    return <div className={styles.inline} role="status" aria-live="polite"><span className={styles.dot} aria-hidden="true" /><span>{label}</span></div>;
+  }
 
   if (variant === "article") return <div className={styles.article} role="status" aria-label={label} aria-busy="true">
     <span className={`${styles.line} ${styles.articleImage}`} aria-hidden="true" />
@@ -29,12 +27,19 @@ export function LoadingState({ label = "Cargando contenido", inline = false, var
     </div>
   </div>;
 
-  return <div className={`${styles.skeleton} ${variant === "page" ? styles.page : ""}`} role="status" aria-label={label} aria-busy="true">
-    {variant === "page" && <div className={styles.hero} aria-hidden="true"><Placeholder className={styles.lineTiny} /><Placeholder className={styles.lineStrong} /><Placeholder className={styles.lineShort} /></div>}
-    <section className={styles.block} aria-hidden="true">
-      <Placeholder className={styles.lineStrong} />
-      <div className={styles.cards}><CardSkeleton /><CardSkeleton /><CardSkeleton /></div>
+  return <div className={`${styles.skeleton} ${styles.page}`} role="status" aria-label={label} aria-busy="true">
+    <section className={`${styles.pagePanel} ${pageKind === "home" ? styles.pagePanelHome : styles.pagePanelContent}`} aria-hidden="true">
+      {pageKind === "home" ? <>
+        <Placeholder className={styles.lineTiny} />
+        <Placeholder className={styles.lineHeadline} />
+        <Placeholder className={styles.lineHeadlineSecond} />
+        <div className={styles.pageHeroActions}><span /><span /></div>
+      </> : <>
+        <Placeholder className={styles.lineHeadline} />
+        <Placeholder />
+        <Placeholder />
+        <Placeholder className={styles.lineShort} />
+      </>}
     </section>
-    {variant === "page" && <section className={styles.block} aria-hidden="true"><Placeholder className={styles.lineStrong} /><div className={styles.cards}><CardSkeleton /><CardSkeleton /><CardSkeleton /></div></section>}
   </div>;
 }

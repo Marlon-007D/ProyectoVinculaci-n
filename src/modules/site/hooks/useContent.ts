@@ -1,10 +1,23 @@
+import { useEffect } from "react";
 import { useAsync } from "./useAsync";
+import { usePortalUpdates } from './usePortalUpdates';
 import { useInstitution } from "../context/InstitutionContext";
 import { getEventEntry, getEvents, getHonors, getNews, getNewsEntry, getStaff } from "../services/content";
 
 export function useNews(limit?: number) {
   const { institutionId } = useInstitution();
-  return useAsync(() => getNews(institutionId, limit), [institutionId, limit]);
+  const result = useAsync(() => getNews(institutionId, limit), [institutionId, limit]);
+  usePortalUpdates(result.refresh);
+  useEffect(() => {
+    const reload = () => result.reload();
+    window.addEventListener("storage", reload);
+    window.addEventListener("academic-content-updated", reload);
+    return () => {
+      window.removeEventListener("storage", reload);
+      window.removeEventListener("academic-content-updated", reload);
+    };
+  }, [result.reload]);
+  return result;
 }
 
 export function useNewsArticle(newsId: string | null) {
@@ -17,17 +30,41 @@ export function useNewsArticle(newsId: string | null) {
 
 export function useStaff(position?: string) {
   const { institutionId } = useInstitution();
-  return useAsync(() => getStaff(institutionId, position), [institutionId, position]);
+  const result = useAsync(() => getStaff(institutionId, position), [institutionId, position]);
+  usePortalUpdates(result.refresh);
+  return result;
 }
 
 export function useHonors(limit?: number) {
   const { institutionId } = useInstitution();
-  return useAsync(() => getHonors(institutionId, limit), [institutionId, limit]);
+  const result = useAsync(() => getHonors(institutionId, limit), [institutionId, limit]);
+  usePortalUpdates(result.refresh);
+  useEffect(() => {
+    const reload = () => result.reload();
+    window.addEventListener("storage", reload);
+    window.addEventListener("academic-content-updated", reload);
+    return () => {
+      window.removeEventListener("storage", reload);
+      window.removeEventListener("academic-content-updated", reload);
+    };
+  }, [result.reload]);
+  return result;
 }
 
 export function useEvents(limit?: number) {
   const { institutionId } = useInstitution();
-  return useAsync(() => getEvents(institutionId, limit), [institutionId, limit]);
+  const result = useAsync(() => getEvents(institutionId, limit), [institutionId, limit]);
+  usePortalUpdates(result.refresh);
+  useEffect(() => {
+    const reload = () => result.reload();
+    window.addEventListener("storage", reload);
+    window.addEventListener("academic-content-updated", reload);
+    return () => {
+      window.removeEventListener("storage", reload);
+      window.removeEventListener("academic-content-updated", reload);
+    };
+  }, [result.reload]);
+  return result;
 }
 
 export function useEventArticle(eventId: string | null) {
