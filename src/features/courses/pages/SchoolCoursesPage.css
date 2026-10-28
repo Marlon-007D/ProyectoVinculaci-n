@@ -370,3 +370,10 @@
   color:#fff;
   background:var(--site-accent,#1d4e89);
 }
+@media(min-width:961px){
+  .site-root--course .course-detail-page .course-topics-section .course-topic-layout { grid-template-columns:280px minmax(0,1fr); }
+  .site-root--course .course-detail-page .course-topic-sidebar { width:280px; padding:16px; }
+  .site-root--course .course-detail-page .course-topic-nav { width:100%; }
+  .site-root--course .course-detail-page .course-topic-nav button.course-topic-tab,
+  .site-root--course .course-detail-page .course-topic-sidebar > button.course-topic-tab { padding-inline:14px; }
+}
