@@ -1,0 +1,19 @@
+.line, .detail, .action, .input, .square {
+  display: block;
+  background: var(--admin-skeleton-color, #e9e5ef);
+  border-radius: 8px;
+  animation: pulse 1.8s ease-in-out infinite;
+}
+.line { width: 80%; min-width: 64px; height: 16px; }
+.detail { width: 65%; height: 12px; margin-top: 8px; }
+.action { width: 120px; max-width: 100%; height: 36px; }
+.input { width: 100%; height: 44px; border: 1px solid #e2ddea; }
+.modules { min-width: 0; }
+.modules h3 { margin: 0 0 16px; font-size: 1rem; }
+.moduleList { display: grid; gap: 12px; }
+.module { display: flex; align-items: center; gap: 8px; }
+.square { width: 16px; height: 16px; flex: 0 0 16px; border-radius: 4px; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }
+@media (prefers-reduced-motion: reduce) {
+  .line, .detail, .action, .input, .square { animation: none; }
+}

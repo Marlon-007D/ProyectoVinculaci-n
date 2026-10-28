@@ -5,6 +5,7 @@ import { supabase } from '../../../core/supabaseClient';
 import { ToastBoundary, useToastMessage } from './Toast/Toast';
 import { expiredInvitationMessage, invitationLanding, parseInvitationLink } from './invitationLink';
 import styles from './CompleteInvitation.module.css';
+import { recoverInvitationSession } from './recoverInvitationSession';
 import { captureInvitationSession } from './invitationLinkSession';
 import { RequestInvitationEmail } from './RequestInvitationEmail';
 import { requestInvitationEmailService } from './requestInvitationEmailService';
@@ -23,7 +24,7 @@ function InvitationLinkContent({ children }: { children: ReactNode }) {
   const [failure, setFailure] = useState<string | null>(null);
   const [sessionChecked, setSessionChecked] = useState<string | null>(null);
   const sessionKey = `${userId ?? ''}:${location.pathname}:${location.search}`;
-  const message = link.kind === 'error' ? link.message : failure;
+  const message = failure;
   useToastMessage(message);
   useEffect(() => {
     const inspect = () => { setFailure(null); setLink(parseInvitationLink(window.location.search, window.location.hash)); };
@@ -34,7 +35,16 @@ function InvitationLinkContent({ children }: { children: ReactNode }) {
   useEffect(() => {
     let active = true;
     async function capture() {
-      if (link.kind === 'none' || link.kind === 'error') return;
+      if (link.kind === 'none') return;
+      if (link.kind === 'error') {
+        const recovered = await recoverInvitationSession(supabase, location.search);
+        if (!active) return;
+        if (recovered) {
+          setLink({ kind: 'none' });
+          navigate(invitationLanding(location.search), { replace: true });
+        } else setFailure(link.message);
+        return;
+      }
       try {
         // Await the SDK's automatic URL processing before attempting explicit capture.
         await captureInvitationSession(link, supabase.auth, () => active);
@@ -47,6 +57,13 @@ function InvitationLinkContent({ children }: { children: ReactNode }) {
         navigate(invitationLanding(location.search, passwordRequired), { replace: true });
       } catch (error: unknown) {
         if (!active) return;
+        const recovered = await recoverInvitationSession(supabase, location.search);
+        if (!active) return;
+        if (recovered) {
+          setLink({ kind: 'none' });
+          navigate(invitationLanding(location.search), { replace: true });
+          return;
+        }
         const expired = error && typeof error === 'object' && 'code' in error && error.code === 'otp_expired';
         setFailure(expired ? expiredInvitationMessage : 'No se pudo verificar el enlace de acceso. Solicita una nueva invitación.');
       }
@@ -77,7 +94,7 @@ function InvitationLinkContent({ children }: { children: ReactNode }) {
     navigate({ pathname: '/login', search: destination.search, hash: '' }, { replace: true });
   }}>Volver al inicio de sesión</button>
     <RequestInvitationEmail key={location.search} institutionId={new URLSearchParams(location.search).get('institution') ?? new URLSearchParams(location.search).get('institution_id') ?? ''}
-      requestEmail={(email, institutionId) => requestInvitationEmailService(supabase, email, institutionId)} />
+      requestEmail={(email, institutionId) => requestInvitationEmailService(supabase, email, institutionId, new URLSearchParams(location.search).get('slug') ?? undefined)} />
   </section>;
   if (link.kind !== 'none') return <p className={styles.card} role="status" aria-busy="true">Verificando el enlace de acceso…</p>;
   if (userId && !location.pathname.startsWith('/panel/') && sessionChecked !== sessionKey) return <p className={styles.card} role="status">Verificando tu acceso institucional…</p>;

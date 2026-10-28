@@ -232,6 +232,7 @@ export async function requestInvitationEmail(request: Request, env: EmailEnviron
     if (!institutionResponse.ok) throw new Error('Institution lookup failed');
     const institutions: unknown = await institutionResponse.json();
     if (!Array.isArray(institutions) || !isRecord(institutions[0]) || typeof institutions[0].slug !== 'string') return accepted();
+    if (typeof input.slug === 'string' && canonicalSlug(input.slug) !== canonicalSlug(institutions[0].slug)) return accepted();
     const accountResponse = await fetcher(`${env.supabaseUrl}/auth/v1/admin/users/${encodeURIComponent(profileId)}`, { headers });
     if (!accountResponse.ok) throw new Error('Identity lookup failed');
     const account: unknown = await accountResponse.json();

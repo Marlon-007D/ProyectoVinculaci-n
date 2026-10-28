@@ -1,3 +1,4 @@
+import { AdminSkeleton } from './AdminSkeleton';
 import { AdminForm } from '../auth/AdminForm';
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { useAuth } from '../../../core/AuthContext';
@@ -60,7 +61,7 @@ export function UserManagement({ service }: { service: TenantAdminService }) {
     if (!loadingAuth && !loadingTenant) void load();
     return () => { sequence.current++; };
   }, [load, loadingAuth, loadingTenant]);
-  if (loadingAuth || loadingTenant || state.key !== key || state.status === 'loading') return <section className={styles.container} role="status" aria-busy="true">Verificando la institución y sus permisos…</section>;
+  if (loadingAuth || loadingTenant || state.key !== key || state.status === 'loading') return <AdminSkeleton />;
   if (state.status === 'error') return <section className={styles.container}><p>{state.message}</p><button type="button" className={styles.btnSubmit} onClick={() => void load()}>Volver a verificar</button></section>;
   const snapshot = state.data;
   const superAdmin = isTenantSuperAdmin(actorRole);

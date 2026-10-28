@@ -1,3 +1,4 @@
+import { AdminSkeleton, AssignedModulesSkeleton } from './userManagement/AdminSkeleton';
 import { AdminForm } from './auth/AdminForm';
 import { createTenantAdminService } from './userManagement/tenantAdminService';
 import { supabase } from '../../core/supabaseClient';
@@ -96,7 +97,7 @@ function AdminRoutesContent({ superadminOnly = false }: { superadminOnly?: boole
     mfaPending: mfaRequired || mfaEnrollmentRequired, loadingTenant,
     hasInstitution: Boolean(activeInstitution && activeInstitution.institution_id === institutionId && role && canonicalTenantRole(role) === canonicalTenantRole(activeInstitution.role)), tenantError });
   switch (access.status) {
-    case 'loading': return <main className={styles.page} role="status" aria-live="polite" aria-busy="true">{access.message}</main>;
+    case 'loading': return <main className={styles.page} role="status" aria-live="polite" aria-busy="true">{isTenantAdmin(role) || isSuperAdmin(role) ? <AdminSkeleton /> : <AssignedModulesSkeleton />}</main>;
     case 'login': return <Navigate to={{ pathname: '/login', search: scopedSearch, hash: location.hash }} state={{ accessIssue: access.issue }} replace />;
     case 'mfa':
     case 'authorized': break;
