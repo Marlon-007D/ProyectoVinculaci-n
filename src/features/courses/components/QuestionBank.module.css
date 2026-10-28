@@ -1137,6 +1137,7 @@
 :global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-overview .evaluation-attempt-card .evaluation-resume-button:hover,
 :global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-overview .evaluation-entry-choice:hover:not(:disabled) .evaluation-entry-action { background:#173f70; }
 :global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-overview .evaluation-entry-choice {
+  margin:20px 0;
   border:1px solid var(--site-line,#d5dbe1);
   border-radius:12px;
   color:var(--site-navy,#0a233f);
