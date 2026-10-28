@@ -33,13 +33,13 @@
 .aside{background:var(--site-paper,#fff);border-right-color:var(--site-line,#d5dbe1);scrollbar-color:#b7c4d1 #edf2f6}
 .aside::-webkit-scrollbar-track{background:#edf2f6}.aside::-webkit-scrollbar-thumb{background:#b7c4d1}.aside::-webkit-scrollbar-thumb:hover{background:#7b93aa}
 .institutionPicker select{background:#e8eef5;color:var(--site-navy,#0a233f)}.institutionPicker select:hover{background:#dfe8f2}.institutionPicker select:focus{outline-color:#c8d9eb}.institutionPicker option{color:var(--site-navy,#0a233f)}
-.nav a{border-radius:12px;color:var(--site-navy,#0a233f)}.nav a:hover{background:var(--site-surface,#f3f5f7);color:var(--site-navy,#0a233f)}.nav a[aria-current="page"]{box-shadow:inset 4px 0 0 var(--site-gold,#f2b95a);background:#e8eef5;color:var(--site-navy,#0a233f)}
+.nav a{border-radius:12px;color:var(--site-navy,#0a233f)}.nav a:hover{background:var(--site-surface,#f3f5f7);color:var(--site-navy,#0a233f)}.nav a[aria-current="page"]{background:#e8eef5;color:var(--site-navy,#0a233f)}
 .aside .nav a[data-tone] svg{background:#e8eef5;color:var(--site-navy,#0a233f)}.aside .nav a[aria-current="page"] svg{background:var(--site-navy,#0a233f);color:var(--site-gold,#f2b95a)}
-.groupButton,.groupButtonActive{border-radius:12px;color:var(--site-navy,#0a233f)}.groupButton:hover{background:var(--site-surface,#f3f5f7)}.groupButtonActive{box-shadow:inset 4px 0 0 var(--site-gold,#f2b95a);background:#e8eef5;color:var(--site-navy,#0a233f)}
+.groupButton,.groupButtonActive{border-radius:12px;color:var(--site-navy,#0a233f)}.groupButton:hover{background:var(--site-surface,#f3f5f7)}.groupButtonActive{background:#e8eef5;color:var(--site-navy,#0a233f)}
 .aside .nav .groupButton>svg:first-child,.aside .nav .groupButtonActive>svg:first-child,.aside .nav .navGroup:nth-of-type(2) .groupButton>svg:first-child,.aside .nav .navGroup:nth-of-type(2) .groupButtonActive>svg:first-child{background:#e8eef5;color:var(--site-navy,#0a233f)}
 .aside .nav .groupButtonActive>svg:first-child,.aside .nav .navGroup:nth-of-type(2) .groupButtonActive>svg:first-child{background:var(--site-navy,#0a233f);color:var(--site-gold,#f2b95a)}
 .subnav a{border-radius:10px}.aside .nav .subnav a[href$="/categorias"] svg,.aside .nav .subnav a[href$="/modulos"] svg,.aside .nav .subnav a[href$="/noticias"] svg,.aside .nav .subnav a[href$="/eventos"] svg,.aside .nav .subnav a[href$="/cuadro-de-honor"] svg{background:#e8eef5;color:var(--site-navy,#0a233f)}
-.subnav a[aria-current="page"]{box-shadow:inset 3px 0 0 var(--site-gold,#f2b95a);background:#e8eef5;color:var(--site-navy,#0a233f)}.aside .nav .subnav a[aria-current="page"] svg{background:var(--site-navy,#0a233f);color:var(--site-gold,#f2b95a)}
+.subnav a[aria-current="page"]{background:#e8eef5;color:var(--site-navy,#0a233f)}.aside .nav .subnav a[aria-current="page"] svg{background:var(--site-navy,#0a233f);color:var(--site-gold,#f2b95a)}
 .aside .nav :is(a,button):focus-visible{outline-color:var(--site-navy,#0a233f)}
 
 /* El menú privado conserva la misma tarjeta y escala visual del temario público. */
@@ -52,7 +52,7 @@
 .sidebarToggle{border-radius:10px;color:var(--site-navy,#0a233f)}.sidebarToggle:hover,.sidebarToggle:focus-visible{background:#e8eef5;color:var(--site-navy,#0a233f)}
 .nav{gap:6px}.nav a{min-height:58px;padding-inline:10px}.navGroup{gap:3px}.groupButton,.groupButtonActive{min-height:58px;padding-inline:10px}.subnav{padding-left:12px}.subnav a{min-height:50px;padding-inline:9px}
 .aside .nav a[data-tone] svg,.aside .nav .groupButton>svg:first-child,.aside .nav .groupButtonActive>svg:first-child,.aside .nav .navGroup:nth-of-type(2) .groupButton>svg:first-child,.aside .nav .navGroup:nth-of-type(2) .groupButtonActive>svg:first-child,.aside .nav .subnav a[href$="/categorias"] svg,.aside .nav .subnav a[href$="/modulos"] svg,.aside .nav .subnav a[href$="/noticias"] svg,.aside .nav .subnav a[href$="/eventos"] svg,.aside .nav .subnav a[href$="/cuadro-de-honor"] svg{background:#e8eef5;color:#477b2b}
-.nav a[aria-current="page"],.groupButtonActive,.subnav a[aria-current="page"]{box-shadow:inset 4px 0 0 var(--site-gold,#f2b95a);background:#e8eef5;color:var(--site-navy,#0a233f)}
+.nav a[aria-current="page"],.groupButtonActive,.subnav a[aria-current="page"]{background:#e8eef5;color:var(--site-navy,#0a233f)}
 .aside .nav a[aria-current="page"] svg,.aside .nav .groupButtonActive>svg:first-child,.aside .nav .navGroup:nth-of-type(2) .groupButtonActive>svg:first-child,.aside .nav .subnav a[aria-current="page"] svg{background:#477b2b;color:#fff}
 .account{margin-top:14px;padding:14px 4px 0}.content{border-radius:16px;overflow:hidden}
 .workspaceCollapsed{grid-template-columns:108px minmax(0,1fr)}.workspaceCollapsed .aside{padding:16px 10px}.workspaceCollapsed .sidebarTop{padding:8px 0;background:transparent;border-color:transparent}.workspaceCollapsed .content{border-radius:16px}

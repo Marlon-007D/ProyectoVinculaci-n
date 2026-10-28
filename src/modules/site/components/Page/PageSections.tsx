@@ -192,7 +192,6 @@ function standardHomepageSections(sections: PageSection[], institutionName: stri
     { type: "news", title: "Noticias", properties: { title: "Últimas noticias", limit: 3 } },
     { type: "events", title: "Eventos", properties: { title: "Próximos eventos", limit: 4 } },
     { type: "staff", title: "Equipo", properties: { title: "Nuestro equipo" } },
-    { type: "honors", title: "Reconocimientos", properties: { title: "Cuadro de honor", limit: 6 } },
     { type: "social_links", title: "Redes", properties: { title: "Síguenos en redes" } },
   ];
   for (const section of standardSections) {
@@ -434,7 +433,8 @@ export function PageSections({ sections, isHomepage = false, managed = false, te
   const pageSections = !managed && onHomepage && isElEsfuerzo
     ? standardHomepageSections(sections, institution?.name || "nuestra institución")
     : sections.filter((s) => s.is_visible).sort((a, b) => a.position - b.position);
-  const visible = onHomepage ? pageSections : standardizeInformationalPage(pageSections, query.get("slug") ?? "");
+  const visible = (onHomepage ? pageSections : standardizeInformationalPage(pageSections, query.get("slug") ?? ""))
+    .filter((section) => !onHomepage || section.type !== "honors");
   if (visible.length === 0) return <p className="site-container site-section">Esta página aún no tiene contenido.</p>;
   const primaryHeroId = onHomepage ? visible.find((section) => section.type === "banner" || section.type === "hero")?.id : undefined;
   const content = visible.map((s) => <Section key={s.id} s={s} social={social} isHomepage={onHomepage} isPrimaryHomepageHero={s.id === primaryHeroId} />);

@@ -313,7 +313,7 @@
 .appShell :global(.nav-item){width:100%;min-height:58px;padding:8px 10px;border-radius:10px;color:#0a233f}
 .appShell :global(.nav-item):hover{background:#f3f5f7;color:#0a233f}
 .appShell :global(.nav-item) :global(.svg-inline--fa),.appShell :global(.nav-item):nth-of-type(n) :global(.svg-inline--fa){width:42px;height:42px;padding:11px;border-radius:50%;background:#e8eef5;color:#477b2b}
-.appShell :global(.nav-item).active{box-shadow:inset 4px 0 0 #f2b95a;background:#e8eef5;color:#0a233f}
+.appShell :global(.nav-item).active{background:#e8eef5;color:#0a233f}
 .appShell :global(.nav-item).active :global(.svg-inline--fa){background:#477b2b;color:#fff}
 .appShell :global(.sidebar-note){margin:14px 0 12px;border-color:#d5dbe1;background:#f8fafc}
 .appShell :global(.sidebar button:focus-visible){outline-color:#0a233f}

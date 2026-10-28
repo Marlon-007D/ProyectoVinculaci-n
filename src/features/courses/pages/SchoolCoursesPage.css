@@ -358,7 +358,6 @@
 }
 .site-root--course .course-detail-page .course-topic-nav button.course-topic-tab.active,
 .site-root--course .course-detail-page .course-topic-sidebar > button.course-topic-tab.active {
-  border-left:4px solid var(--site-gold,#f2b95a);
   color:var(--site-navy,#0a233f);
   background:var(--accent-soft,#e8eef5);
 }
