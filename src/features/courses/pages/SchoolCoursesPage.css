@@ -281,3 +281,47 @@
   .site-root--course .course-detail-page.page-content,
   .site-root--course .course-evaluation-page.page-content { padding:1.25rem 1rem 2rem; }
 }
+
+/* La navegación del curso retoma la identidad del portal institucional. */
+.site-root--course .course-detail-page .course-topic-sidebar {
+  gap:10px;
+  padding:12px;
+  border:1px solid var(--site-navy,#0a233f);
+  border-radius:12px;
+  color:#fff;
+  background:var(--site-navy,#0a233f);
+}
+.site-root--course .course-detail-page .course-sidebar-courses-link {
+  border:1px solid rgb(255 255 255 / .34);
+  border-radius:8px;
+  color:#fff;
+  background:transparent;
+}
+.site-root--course .course-detail-page .course-sidebar-courses-link:hover { background:rgb(255 255 255 / .12); }
+.site-root--course .course-detail-page .course-sidebar-courses-link:focus-visible { outline-color:var(--site-gold,#f2b95a); }
+.site-root--course .course-detail-page .course-sidebar-courses-icon {
+  color:var(--site-navy,#0a233f);
+  background:var(--site-gold,#f2b95a);
+}
+.site-root--course .course-detail-page .course-sidebar-sections-heading { color:var(--site-gold,#f2b95a); }
+.site-root--course .course-detail-page .course-topic-nav-separator { background:rgb(255 255 255 / .28); }
+.site-root--course .course-detail-page .course-topic-nav button.course-topic-tab,
+.site-root--course .course-detail-page .course-topic-sidebar > button.course-topic-tab { border-radius:8px; color:#fff; }
+.site-root--course .course-detail-page .course-topic-nav button.course-topic-tab:hover,
+.site-root--course .course-detail-page .course-topic-sidebar > button.course-topic-tab:hover { color:#fff; background:rgb(255 255 255 / .12); }
+.site-root--course .course-detail-page .course-topic-nav .course-topic-tab-icon,
+.site-root--course .course-detail-page .course-topic-sidebar > .course-evaluation-topic .course-topic-tab-icon {
+  color:var(--site-gold,#f2b95a);
+  background:rgb(255 255 255 / .12);
+}
+.site-root--course .course-detail-page .course-topic-nav button.course-topic-tab.active,
+.site-root--course .course-detail-page .course-topic-sidebar > button.course-topic-tab.active {
+  color:var(--site-navy,#0a233f);
+  background:var(--site-gold,#f2b95a);
+}
+.site-root--course .course-detail-page .course-topic-nav button.course-topic-tab.active .course-topic-tab-icon,
+.site-root--course .course-detail-page .course-topic-sidebar > .course-evaluation-topic.active .course-topic-tab-icon {
+  color:var(--site-gold,#f2b95a);
+  background:var(--site-navy,#0a233f);
+}
+.site-root--course .course-detail-page .course-topic-nav button.course-topic-tab:focus-visible { outline-color:var(--site-gold,#f2b95a); }
