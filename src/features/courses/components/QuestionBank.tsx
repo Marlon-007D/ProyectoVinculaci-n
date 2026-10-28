@@ -35,6 +35,9 @@ function readProgress(key: string): SavedProgress | null {
     const saved = JSON.parse(value) as SavedProgress
     return {
       ...saved,
+      questionIndex: Number.isInteger(saved.questionIndex)
+        ? Math.min(questionKinds.length - 1, Math.max(0, saved.questionIndex))
+        : 0,
       score: isFiniteScore(saved.score) ? saved.score : undefined,
       history: Array.isArray(saved.history) ? saved.history.map(item => ({
         ...item,

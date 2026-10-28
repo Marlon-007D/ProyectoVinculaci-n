@@ -1154,6 +1154,81 @@
   color:var(--site-navy,#0a233f);
   background:var(--site-surface,#f3f5f7);
 }
+
+/* Keep the active assessment in the same navy, gold and white palette as the portal. */
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-layout { gap:24px; }
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-rail {
+  border:1px solid var(--site-line,#d5dbe1);
+  border-radius:14px;
+  color:var(--site-navy,#0a233f);
+  background:var(--site-paper,#fff);
+}
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-support-card {
+  border:1px solid var(--site-line,#d5dbe1);
+  border-radius:12px;
+  background:var(--site-surface,#f3f5f7);
+}
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .question-encouragement { border:0; color:var(--site-navy,#0a233f); background:transparent; }
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .question-encouragement-copy,
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .question-encouragement-copy > span { color:var(--site-muted,#52606d); }
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .question-encouragement-copy strong { color:var(--site-navy,#0a233f); }
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-timer-label { color:var(--site-navy,#0a233f); }
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-timer-track > span { background:var(--site-navy,#0a233f); }
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-question-list > button.current { color:var(--site-navy,#0a233f); background:var(--site-gold,#f2b95a); }
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-question-list > button.answered:not(.current) { color:var(--site-navy,#0a233f); background:#e8eef5; }
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-question-area .question-card {
+  border:1px solid var(--site-line,#d5dbe1);
+  border-radius:14px;
+  color:var(--site-ink,#1f2933);
+  background:var(--site-paper,#fff);
+}
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-question-area .question-card > h3 {
+  color:var(--site-navy,#0a233f);
+  font:600 20px/1.45 var(--site-font,Arial,sans-serif);
+}
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-question-area .question-options button {
+  border:1px solid var(--site-line,#d5dbe1);
+  border-radius:10px;
+  color:var(--site-ink,#1f2933);
+  background:var(--site-paper,#fff);
+  font-family:var(--site-font,Arial,sans-serif);
+}
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-question-area .question-options button:hover:not(.is-selected),
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-question-area .matching-image-choice:hover,
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-question-area .matching-answer-choice:hover { border-color:var(--site-accent,#1d4e89); background:var(--site-surface,#f3f5f7); }
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-question-area .question-options button.is-selected,
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-question-area .multiple-select-option.is-selected {
+  border-color:var(--site-navy,#0a233f);
+  color:var(--site-navy,#0a233f);
+  background:color-mix(in srgb,var(--site-gold,#f2b95a) 23%,#fff);
+}
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-question-area .question-option-letter,
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-question-area .multiple-select-option .question-option-letter { color:var(--site-navy,#0a233f); background:#e8eef5; }
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-question-area .question-options button.is-selected .question-option-letter { color:var(--site-navy,#0a233f); background:var(--site-gold,#f2b95a); }
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-question-area .multiple-select-option input { accent-color:var(--site-navy,#0a233f); }
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-question-area .matching-image-choice,
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-question-area .matching-answer-choice { border-color:var(--site-line,#d5dbe1); color:var(--site-ink,#1f2933); background:var(--site-surface,#f3f5f7); }
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-question-area .matching-image-choice > span,
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-question-area .matching-answer-choice > span,
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-question-area .matching-answer-choice strong { color:var(--site-navy,#0a233f); }
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-question-area .matching-connection-path { stroke:var(--site-navy,#0a233f); }
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-question-area .word-search-grid button:hover,
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-question-area .word-search-grid button.selected-letter,
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-question-area .word-search-grid button.is-hinted-letter { border-color:var(--site-navy,#0a233f); color:var(--site-navy,#0a233f); background:#e8eef5; }
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-question-area .word-search-grid button.is-correct-letter { border-color:var(--site-navy,#0a233f); color:var(--site-navy,#0a233f); -webkit-text-fill-color:var(--site-navy,#0a233f); background:color-mix(in srgb,var(--site-gold,#f2b95a) 28%,#fff); }
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-question-area .evaluation-question-navigation > .evaluation-next-button,
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-question-area .evaluation-question-navigation > .evaluation-finish-button { border-color:var(--site-navy,#0a233f); color:#fff; background:var(--site-navy,#0a233f); }
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-question-area .evaluation-question-navigation > .evaluation-previous-button { border-color:var(--site-line,#d5dbe1); color:var(--site-navy,#0a233f); background:var(--site-surface,#f3f5f7); }
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-question-area .evaluation-action-row > .evaluation-next-button { border:1px solid var(--site-navy,#0a233f); color:#fff; background:var(--site-navy,#0a233f); }
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-question-area .evaluation-action-row > .evaluation-next-button:hover:not(:disabled) { background:#173f70; }
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-question-area .evaluation-action-row > .evaluation-previous-button,
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-question-area .evaluation-action-row > .evaluation-finish-button { border:1px solid var(--site-line,#d5dbe1); color:var(--site-navy,#0a233f); background:var(--site-surface,#f3f5f7); }
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-question-area .evaluation-action-row > .evaluation-previous-button:hover:not(:disabled),
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-question-area .evaluation-action-row > .evaluation-finish-button:hover:not(:disabled) { background:#e8eef5; }
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-question-area .evaluation-action-row > .evaluation-finish-button::before { background:var(--site-line,#d5dbe1); }
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-question-area .evaluation-question-navigation > button:focus-visible,
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-question-area .evaluation-action-row > button:focus-visible,
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-question-list > button:focus-visible { outline-color:var(--site-navy,#0a233f); }
 .evaluation-time-bar.is-unanswered { background:#b5bec0; }
 .evaluation-time-row > strong { color:#4f5b53; font:500 12px 'Roboto',Arial,sans-serif; text-align:right; }
 .evaluation-topics-card > p { margin:0; color:#5f6368; font:400 14px/1.5 'Roboto',Arial,sans-serif; }

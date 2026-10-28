@@ -267,19 +267,30 @@ function selectQuestion(prompt: string, correctTerms: string[], distractors: str
 
 export function getSchoolQuestionSet(courseId: string, topicTitle: string, course: SchoolSubject): AssessmentQuestionSet {
   const set = schoolQuestionMock[courseId] ?? fallbackSet
-  const topicIndex = Math.max(0, course.units.findIndex(unit => unit.title === topicTitle))
-  const topic = course.units[topicIndex] ?? course.units[0] ?? { title: topicTitle, description: '' }
-  const otherTopicTerms = course.units.filter((_, index) => index !== topicIndex).flatMap(unit => topicWords(unit.title))
+  const units = Array.isArray(course.units) && course.units.length
+    ? course.units
+    : [{ title: topicTitle.trim() || 'Tema actual', description: '' }]
+  const matchedTopicIndex = units.findIndex(unit => unit.title === topicTitle)
+  const topicIndex = matchedTopicIndex >= 0 ? matchedTopicIndex : 0
+  const topic = units[topicIndex] ?? { title: topicTitle.trim() || 'Tema actual', description: '' }
+  const otherTopicTerms = units.filter((_, index) => index !== topicIndex).flatMap(unit => topicWords(unit.title))
   const titleTerms = topicWords(topic.title)
+  if (!titleTerms.length) titleTerms.push(...(topicWords(topicTitle) || ['TEMA']))
+  if (!titleTerms.length) titleTerms.push('TEMA')
   const descriptionTerms = topicWords(topic.description)
+  if (!descriptionTerms.length) descriptionTerms.push(...set.wordSearch.words.slice(0, 4))
   const topicSearchWords = [...new Set([...titleTerms, ...descriptionTerms, ...set.wordSearch.words.map(word => topicWords(word)[0]).filter(Boolean)])].slice(0, 10)
   const completedSearchWords = [...topicSearchWords, ...set.wordSearch.words.filter(word => !topicSearchWords.includes(word))].slice(0, 10)
   const selectImages = set.multipleSelect.optionImages
   const override = topicAssessmentOverrides[`${courseId}:${topicIndex}`]
+  const topicOptions = units.map((unit, index) => unit.title?.trim() || `Tema ${index + 1}`)
+  while (topicOptions.length < 4) topicOptions.push(['Otro tema del curso', 'Una actividad diferente', 'Ninguna de las anteriores'][topicOptions.length - 1] ?? 'Otro concepto')
+  const objectiveOptions = units.map((unit, index) => unit.description?.trim() || `Objetivo de ${topicOptions[index]}`)
+  while (objectiveOptions.length < 4) objectiveOptions.push(['Practicar y repasar conceptos', 'Reconocer ideas principales', 'Aplicar lo aprendido'][objectiveOptions.length - 1] ?? 'Otro objetivo')
   const multipleChoiceVersions = override?.choices ?? [
-    { prompt: `¿Qué tema estás estudiando en ${course.name}?`, options: course.units.map(unit => unit.title), answer: topicIndex },
-    { prompt: `¿Qué objetivo corresponde a «${topic.title}»?`, options: course.units.map(unit => unit.description), answer: topicIndex },
-    { prompt: `¿Cuál de estos temas se relaciona directamente con «${topic.title}»?`, options: [topic.title, ...course.units.filter((_, index) => index !== topicIndex).slice(0, 3).map(unit => unit.title)], answer: 0 },
+    { prompt: `¿Qué tema estás estudiando en ${typeof course.name === 'string' && course.name.trim() ? course.name.trim() : 'este curso'}?`, options: topicOptions, answer: topicIndex },
+    { prompt: `¿Qué objetivo corresponde a «${topic.title}»?`, options: objectiveOptions, answer: topicIndex },
+    { prompt: `¿Cuál de estos temas se relaciona directamente con «${topic.title}»?`, options: [topic.title, ...units.filter((_, index) => index !== topicIndex).slice(0, 3).map(unit => unit.title), 'Otro tema'], answer: 0 },
   ]
   const multipleSelectVersions = override?.selects.map(question => ({ ...question, optionImages: selectImages })) ?? [
     selectQuestion(`Selecciona palabras clave que aparecen en «${topic.title}».`, titleTerms, otherTopicTerms, selectImages),
@@ -297,5 +308,42 @@ export function getSchoolQuestionSet(courseId: string, topicTitle: string, cours
       { ...set.wordSearch, prompt: `Localiza conceptos clave de «${topic.title}». Las palabras pueden aparecer en horizontal, vertical o diagonal.`, words: completedSearchWords, grid: createChallengeGrid(completedSearchWords, `${courseId}-${topic.title}-topic`) },
     ],
   }
-  return getAssessmentOverride(courseId, topicTitle) ?? versions
+  const saved = getAssessmentOverride(courseId, topicTitle)
+  if (!saved) return versions
+
+  // Older saved assessments can contain only a single question of each kind.
+  // Expand those records and fill incomplete entries from the generated set.
+  const savedChoices = Array.isArray(saved.multipleChoiceVersions) && saved.multipleChoiceVersions.length
+    ? saved.multipleChoiceVersions
+    : saved.multipleChoice ? [saved.multipleChoice] : []
+  const savedSelects = Array.isArray(saved.multipleSelectVersions) && saved.multipleSelectVersions.length
+    ? saved.multipleSelectVersions
+    : saved.multipleSelect ? [saved.multipleSelect] : []
+  const savedWordSearches = Array.isArray(saved.wordSearchVersions) && saved.wordSearchVersions.length
+    ? saved.wordSearchVersions
+    : saved.wordSearch ? [saved.wordSearch] : []
+  const complete = <T,>(items: T[], defaults: T[], count: number, isUsable: (item: T) => boolean): T[] =>
+    Array.from({ length: count }, (_, index) => items[index] && isUsable(items[index]) ? items[index] : defaults[index])
+  const choiceOk = (question: MultipleChoiceQuestion) => Boolean(typeof question?.prompt === 'string' && question.prompt.trim() && Array.isArray(question.options) && question.options.length >= 2 && question.options.every(option => typeof option === 'string' && option.trim()) && Number.isInteger(question.answer) && question.answer >= 0 && question.answer < question.options.length)
+  const selectOk = (question: MultipleSelectQuestion) => Boolean(typeof question?.prompt === 'string' && question.prompt.trim() && Array.isArray(question.options) && question.options.length >= 2 && question.options.every(option => typeof option === 'string' && option.trim()) && Array.isArray(question.answers) && question.answers.some(answer => Number.isInteger(answer) && answer >= 0 && answer < question.options.length))
+  const wordSearchOk = (question: WordSearchQuestion) => Boolean(typeof question?.prompt === 'string' && question.prompt.trim() && Array.isArray(question.words) && question.words.length > 0 && Array.isArray(question.grid) && question.grid.length > 0)
+  const matchingOk = (matching: CourseQuestionSet['matching']) => Boolean(typeof matching?.prompt === 'string' && matching.prompt.trim() && Array.isArray(matching.pairs) && matching.pairs.length > 0 && matching.pairs.every(pair => typeof pair?.match === 'string' && pair.match.trim() && typeof pair.imageUrl === 'string' && pair.imageUrl && typeof pair.imageAlt === 'string' && pair.imageAlt.trim()) && Array.isArray(matching.options) && matching.options.length > 0 && matching.options.every(option => typeof option === 'string' && option.trim()))
+  const choices = complete(savedChoices, versions.multipleChoiceVersions, 3, choiceOk)
+  const selects = complete(savedSelects, versions.multipleSelectVersions, 4, selectOk).map(question => ({
+    ...question,
+    optionImages: question.options.map((_, index) => {
+      const image = question.optionImages?.[index]
+      return image && typeof image.imageUrl === 'string' && image.imageUrl && typeof image.imageAlt === 'string'
+        ? image
+        : versions.multipleSelectVersions[0].optionImages[index % versions.multipleSelectVersions[0].optionImages.length]
+    }),
+  }))
+  const wordSearches = complete(savedWordSearches, versions.wordSearchVersions, 2, wordSearchOk)
+  return {
+    ...versions,
+    multipleChoiceVersions: choices,
+    multipleSelectVersions: selects,
+    wordSearchVersions: wordSearches,
+    matching: matchingOk(saved.matching) ? saved.matching : versions.matching,
+  }
 }
