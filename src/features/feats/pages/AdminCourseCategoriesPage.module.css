@@ -1,10 +1,10 @@
 .page {
-  --admin-blue: #1a73e8;
-  --admin-blue-dark: #155fc0;
-  --admin-blue-soft: #e8f1ff;
-  --admin-ink: #24364b;
-  --admin-muted: #627184;
-  --admin-line: #dce3eb;
+  --admin-blue: #164a7c;
+  --admin-blue-dark: #123d68;
+  --admin-blue-soft: #dbe9f8;
+  --admin-ink: #0a233f;
+  --admin-muted: #52657b;
+  --admin-line: #d3dde7;
   min-height: 100vh;
   padding: 46px clamp(18px, 4vw, 64px) 64px;
   background: transparent;
@@ -91,12 +91,12 @@
 
 .secondaryButton {
   padding: 0 17px;
-  background: #e8f1ff;
+  background: #dbe9f8;
   color: #38516e;
 }
 
 .secondaryButton:hover {
-  background: #dceaff;
+  background: #c8ddf3;
 }
 
 .primaryButton:focus-visible,
@@ -148,8 +148,8 @@
   height: 38px;
   place-items: center;
   border-radius: 13px;
-  background: #dceaff;
-  color: #1a73e8;
+  background: #c8ddf3;
+  color: #164a7c;
 }
 
 .iconButton {
@@ -163,7 +163,7 @@
 }
 
 .iconButton:hover {
-  background: #dceaff;
+  background: #c8ddf3;
 }
 
 .form {
@@ -192,21 +192,21 @@
   gap: 7px;
 }
 
-.fieldLabel svg { color: #1a73e8; }
+.fieldLabel svg { color: #164a7c; }
 
 .wideField {
   grid-column: 1 / -1;
 }
 
-.coverRow { display: grid; grid-template-columns: minmax(220px, 1.2fr) minmax(220px, 1fr); align-items: center; gap: 20px; min-height: 146px; padding: 14px; border: 1px solid #dce5ef; border-radius: 16px; background: #f8fafc; }
-.coverPreview,.coverPlaceholder { display: grid; width: 100%; height: 132px; place-items: center; overflow: hidden; border-radius: 12px; background: #edf3f8; color: #65809c; object-fit: cover; }
-.coverPlaceholder { align-content: center; gap: 8px; border: 1px dashed #b9c9d9; font-size: 12px; font-weight: 500; }
+.coverRow { display: grid; grid-template-columns: minmax(220px, 1.2fr) minmax(220px, 1fr); align-items: center; gap: 20px; min-height: 146px; padding: 14px; border: 1px solid #dce5ef; border-radius: 16px; background: #ffffff; }
+.coverPreview,.coverPlaceholder { display: grid; width: 100%; height: 132px; place-items: center; overflow: hidden; border-radius: 12px; background: #edf3f8; color: #52657b; object-fit: cover; }
+.coverPlaceholder { align-content: center; gap: 8px; border: 1px dashed #b8cbe0; font-size: 12px; font-weight: 500; }
 .coverActions { display: grid; justify-items: start; gap: 8px; }
-.uploadButton { display: inline-flex; min-height: 42px; align-items: center; gap: 9px; padding: 0 17px; border: 0; border-radius: 22px; background: #1a73e8; color: #fff; cursor: pointer; font-size: 13px; font-weight: 600; transition: background-color .15s ease; }
-.uploadButton:hover { background: #155fc0; }
-.uploadButton:focus-within { outline: 2px solid #9bc3f5; outline-offset: 2px; }
+.uploadButton { display: inline-flex; min-height: 42px; align-items: center; gap: 9px; padding: 0 17px; border: 0; border-radius: 22px; background: #164a7c; color: #fff; cursor: pointer; font-size: 13px; font-weight: 600; transition: background-color .15s ease; }
+.uploadButton:hover { background: #123d68; }
+.uploadButton:focus-within { outline: 2px solid #aac9e7; outline-offset: 2px; }
 .fileInput { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; clip-path: inset(50%); }
-.coverActions small { color: #627184; font-size: 11px; font-weight: 400; }
+.coverActions small { color: #52657b; font-size: 11px; font-weight: 400; }
 
 .field input,
 .field select,
@@ -219,7 +219,7 @@
   border: 0;
   border-radius: 12px;
   outline: 0;
-  background: #f2f3f3;
+  background: #f3f6f9;
   color: var(--admin-ink);
   font: 400 14px/1.4 Roboto, Arial, sans-serif;
 }
@@ -232,7 +232,7 @@
 .field :is(input, select, textarea):focus-visible,
 .filterSelect select:focus-visible,
 .searchBox:focus-within {
-  outline: 2px solid #9bc3f5;
+  outline: 2px solid #aac9e7;
   outline-offset: 2px;
 }
 
@@ -263,8 +263,8 @@
   gap: 9px;
   padding: 8px 11px;
   border-radius: 12px;
-  background: #f5f8fb;
-  color: #405269;
+  background: #f3f6f9;
+  color: #314d69;
   font-size: 13px;
   cursor: pointer;
 }
@@ -282,7 +282,7 @@
 
 .error {
   margin: -5px 0;
-  color: #155fc0;
+  color: #123d68;
   font-size: 13px;
 }
 
@@ -313,8 +313,8 @@
   gap: 10px;
   padding: 0 14px;
   border-radius: 14px;
-  background: #f1f6f2;
-  color: #627184;
+  background: #f3f6f9;
+  color: #52657b;
 }
 
 .searchBox input {
@@ -347,7 +347,7 @@
 }
 
 .skeletonRow td { height: 82px; }
-.skeleton { display: block; border-radius: 7px; background: linear-gradient(100deg, #edf1f5 25%, #f8fafc 42%, #edf1f5 62%); background-size: 220% 100%; animation: category-skeleton-shimmer 1.4s ease-in-out infinite; }
+.skeleton { display: block; border-radius: 7px; background: linear-gradient(100deg, #edf3f8 25%, #ffffff 42%, #edf3f8 62%); background-size: 220% 100%; animation: category-skeleton-shimmer 1.4s ease-in-out infinite; }
 .skeletonText { width: min(190px, 90%); height: 13px; }
 .skeletonSubtext { width: min(260px, 95%); height: 10px; margin-top: 8px; }
 .skeletonSmall { width: 56px; height: 12px; }
@@ -363,8 +363,8 @@
 
 .table th {
   padding: 13px 12px;
-  background: #f3f7fb;
-  color: #53657a;
+  background: #edf3f8;
+  color: #415c76;
   font-size: 12px;
   font-weight: 600;
 }
@@ -380,8 +380,8 @@
 
 .table td {
   padding: 13px 12px;
-  border-bottom: 1px solid #e7edf3;
-  color: #405269;
+  border-bottom: 1px solid #dfe7ee;
+  color: #314d69;
   font-size: 13px;
   vertical-align: middle;
 }
@@ -436,7 +436,7 @@
 }
 
 .deleteConfirm span {
-  color: #155fc0;
+  color: #123d68;
   font-size: 11px;
 }
 
@@ -444,24 +444,24 @@
   padding: 6px 8px;
   border: 0;
   border-radius: 14px;
-  background: #dceaff;
-  color: #155fc0;
+  background: #c8ddf3;
+  color: #123d68;
   font-size: 11px;
   cursor: pointer;
 }
 
 .deleteConfirm button:last-child {
-  background: #e8f1ff;
-  color: #155fc0;
+  background: #dbe9f8;
+  color: #123d68;
 }
 
 .deleteButton {
-  background: #e8f1ff;
-  color: #155fc0;
+  background: #dbe9f8;
+  color: #123d68;
 }
 
 .deleteButton:hover {
-  background: #dceaff;
+  background: #c8ddf3;
 }
 
 .empty {
@@ -492,7 +492,7 @@
 }
 
 .pageButton:hover:not(:disabled) {
-  background: #dceaff;
+  background: #c8ddf3;
 }
 
 .pageButton:disabled {
