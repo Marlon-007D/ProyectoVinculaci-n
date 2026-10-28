@@ -19,29 +19,32 @@ type CaseMeta = Pick<CaseRow, 'dece_case_id' | 'institution_id' | 'student_id' |
 type StudentRow = { student_id: string; first_name: string; last_name: string; national_id: string | null; grade_level?: string | null }
 type Fields = Pick<CaseRow, 'reason' | 'primary_category' | 'risk_level' | 'confidentiality_level' | 'status'>
 const empty: Fields = { reason: '', primary_category: 'other', risk_level: 'low', confidentiality_level: 'restricted', status: 'registered' }
+const CASE_BLOCK_SIZE = 40
+const CASE_META_SELECT = 'dece_case_id,institution_id,student_id,case_number,primary_category,risk_level,status,updated_at,students(first_name,last_name)'
+type CaseFilters = { status: keyof typeof statuses | null; risk: keyof typeof risks | null; search: string; studentIds: string[]; sort: CaseSortKey; direction: 'asc' | 'desc' }
+type CaseListCache = { key: string; total: number; ids: string[]; metadataBlocks: Set<number>; records: Map<string, CaseRow>; people: Record<string, StudentRow> }
 const label = (value: string, map: Record<string, string>) => map[value] ?? value
 const safeSearch = (value: string) => value.normalize('NFKC').replace(/[^\p{L}\p{N}\s-]/gu, '').trim().replace(/\s+/g, ' ')
-const compareSpanish = new Intl.Collator('es', { sensitivity: 'base', numeric: true }).compare
-function orderCases(rows: CaseMeta[], order: CaseSortKey, direction: 'asc' | 'desc', people: Record<string, StudentRow>) {
-  const riskRank = { low: 0, medium: 1, high: 2, critical: 3 }
-  const statusRank = { registered: 0, in_progress: 1, under_monitoring: 2, closed: 3 }
-  const value = (row: CaseMeta): string | number => {
-    switch (order) {
-      case 'case_number': { const [, year = '', number = ''] = row.case_number.match(/^DECE-(\d{4})-(\d+)$/i) ?? []; return Number(year) * 100000 + Number(number) }
-      case 'student': { const person = people[row.student_id]; return person ? `${person.last_name} ${person.first_name}` : '' }
-      case 'category': return label(row.primary_category, categories)
-      case 'risk_level': return riskRank[row.risk_level]
-      case 'status': return statusRank[row.status]
-      case 'updated_at': return new Date(row.updated_at).getTime()
-    }
+function normalizeCaseFilters(status: string, risk: string, query: string, studentIds: string[], sort: CaseSortKey, direction: 'asc' | 'desc'): CaseFilters {
+  return {
+    status: Object.hasOwn(statuses, status) ? status as keyof typeof statuses : null,
+    risk: Object.hasOwn(risks, risk) ? risk as keyof typeof risks : null,
+    search: safeSearch(query), studentIds, sort, direction,
   }
-  return [...rows].sort((left, right) => {
-    const a = value(left); const b = value(right)
-    const primary = typeof a === 'number' && typeof b === 'number' ? a - b : compareSpanish(String(a), String(b))
-    if (primary) return primary * (direction === 'asc' ? 1 : -1)
-    const updated = new Date(right.updated_at).getTime() - new Date(left.updated_at).getTime()
-    return updated || compareSpanish(left.case_number, right.case_number)
-  })
+}
+
+function buildCaseQuery(client: SupabaseClient, institutionId: string, filters: CaseFilters, withCount = false) {
+  let query = client.from('dece_cases').select(CASE_META_SELECT, withCount ? { count: 'exact' } : undefined).eq('institution_id', institutionId)
+  if (filters.status) query = query.eq('status', filters.status)
+  if (filters.risk) query = query.eq('risk_level', filters.risk)
+  if (filters.search) query = query.or(filters.studentIds.length ? `case_number.ilike.%${filters.search}%,student_id.in.(${filters.studentIds.join(',')})` : `case_number.ilike.%${filters.search}%`)
+  const ascending = filters.direction === 'asc'
+  if (filters.sort === 'student') query = query.order('last_name', { foreignTable: 'students', ascending }).order('first_name', { foreignTable: 'students', ascending })
+  else {
+    const column = filters.sort === 'category' ? 'primary_category' : filters.sort
+    query = query.order(column, { ascending })
+  }
+  return query.order('updated_at', { ascending: false }).order('case_number', { ascending: true })
 }
 function dayAfterGuayaquilDate(isoDate: string) {
   const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Guayaquil', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date(isoDate))
@@ -93,8 +96,9 @@ export default function CasesPage({ initialStudentId = '', onInitialStudentUsed 
   const [view, setView] = useState<'table' | 'cards'>(() => localStorage.getItem('dece.case.view') === 'table' ? 'table' : 'cards')
   const [sort, setSort] = useState<CaseSortKey>('updated_at')
   const [direction, setDirection] = useState<'asc' | 'desc'>('desc')
+  const [urlReady, setUrlReady] = useState(false)
   const requestId = useRef(0)
-  const listCache = useRef<{ key: string; total: number; ids: string[]; metadata: Map<string, CaseMeta>; records: Map<string, CaseRow>; people: Record<string, StudentRow> } | null>(null)
+  const listCache = useRef<CaseListCache | null>(null)
   const slug = integration?.slug ?? ''
   const base = `${slug ? `/${slug}/dece` : '/panel/dece'}/casos`
   const [caseId, setCaseId] = useState(getCaseRouteId)
@@ -107,15 +111,17 @@ export default function CasesPage({ initialStudentId = '', onInitialStudentUsed 
     const nextRisk = params.get('riesgo') ?? ''
     const nextSort = params.get('orden')
     const nextDirection = params.get('dir')
-    if (nextStatus in statuses || nextStatus === '') setStatusFilter(nextStatus)
-    if (nextRisk in risks || nextRisk === '') setRiskFilter(nextRisk)
+    if (Object.hasOwn(statuses, nextStatus) || nextStatus === '') setStatusFilter(nextStatus)
+    if (Object.hasOwn(risks, nextRisk) || nextRisk === '') setRiskFilter(nextRisk)
     if (CASE_SORT_OPTIONS.some(option => option.key === nextSort)) setSort(nextSort as CaseSortKey)
     if (nextDirection === 'asc' || nextDirection === 'desc') setDirection(nextDirection)
     const nextView = params.get('vista')
     if (nextView === 'table' || nextView === 'cards') setView(nextView)
+    setUrlReady(true)
   }, [])
 
   useEffect(() => {
+    if (!urlReady) return
     const params = new URLSearchParams(location.search)
     for (const key of ['estado', 'riesgo', 'orden', 'dir', 'vista', 'pagina', 'tam']) params.delete(key)
     if (statusFilter) params.set('estado', statusFilter)
@@ -124,7 +130,7 @@ export default function CasesPage({ initialStudentId = '', onInitialStudentUsed 
     params.set('pagina', String(page + 1)); params.set('tam', String(pageSize))
     history.replaceState(history.state, '', `${location.pathname}?${params.toString()}`)
     localStorage.setItem('dece.case.size', String(pageSize)); localStorage.setItem('dece.case.view', view)
-  }, [statusFilter, riskFilter, sort, direction, view, page, pageSize])
+  }, [urlReady, statusFilter, riskFilter, sort, direction, view, page, pageSize])
 
   useEffect(() => {
     const syncCaseRoute = () => { listCache.current = null; setListRevision(value => value + 1); setCaseId(getCaseRouteId()) }
@@ -148,71 +154,57 @@ export default function CasesPage({ initialStudentId = '', onInitialStudentUsed 
     if (!integration) return
     const id = ++requestId.current
     try {
-    const key = JSON.stringify([integration.institutionId, statusFilter, riskFilter, safeSearch(query), sort, direction])
+    const filters = normalizeCaseFilters(statusFilter, riskFilter, query, [], sort, direction)
+    let matchingStudentIds: string[] = []
+    if (filters.search) {
+      const { data, error: matchingError } = await integration.client.from('students').select('student_id,first_name,last_name,national_id,grade_level').eq('institution_id', integration.institutionId).or(`first_name.ilike.%${filters.search}%,last_name.ilike.%${filters.search}%`)
+      if (id !== requestId.current) return
+      if (matchingError) throw matchingError
+      const people = (data ?? []) as StudentRow[]
+      matchingStudentIds = people.map(person => person.student_id)
+    }
+    const normalized = { ...filters, studentIds: matchingStudentIds }
+    const key = JSON.stringify([integration.institutionId, normalized.status, normalized.risk, normalized.search, normalized.studentIds, normalized.sort, normalized.direction, pageSize])
     let cache = listCache.current
     if (!cache || cache.key !== key) {
-      cache = { key, total: 0, ids: [], metadata: new Map(), records: new Map(), people: {} }
-      listCache.current = cache
-      let q = integration.client.from('dece_cases').select('dece_case_id,institution_id,student_id,case_number,primary_category,risk_level,status,updated_at', { count: 'exact' }).eq('institution_id', integration.institutionId)
-      if (sort === 'case_number') q = q.order('case_number', { ascending: direction === 'asc' }).order('updated_at', { ascending: false })
-      if (sort === 'updated_at') q = q.order('updated_at', { ascending: direction === 'asc' }).order('case_number', { ascending: direction === 'asc' })
-      let matchingStudentIds: string[] = []
-      if (statusFilter) q = q.eq('status', statusFilter)
-      if (riskFilter) q = q.eq('risk_level', riskFilter)
-      if (query) {
-        const term = safeSearch(query)
-        const { data: matchingStudents, error: matchingError } = await integration.client.from('students').select('student_id,first_name,last_name,national_id,grade_level').eq('institution_id', integration.institutionId).or(`first_name.ilike.%${term}%,last_name.ilike.%${term}%`)
-        if (id !== requestId.current) return
-        if (matchingError) throw matchingError
-        const people = (matchingStudents ?? []) as StudentRow[]
-        const ids = people.map(person => person.student_id)
-        matchingStudentIds = ids
-        cache.people = Object.fromEntries(people.map(person => [person.student_id, person]))
-        q = q.or(ids.length ? `case_number.ilike.%${term}%,student_id.in.(${ids.join(',')})` : `case_number.ilike.%${term}%`)
-      }
-      const { data: metadata, error: queryError, count } = await q.range(0, 999)
+      cache = { key, total: 0, ids: [], metadataBlocks: new Set(), records: new Map(), people: {} }
+      const firstBlock = await buildCaseQuery(integration.client, integration.institutionId, normalized, true).range(0, CASE_BLOCK_SIZE - 1)
       if (id !== requestId.current) return
-      if (queryError) throw queryError
-      cache.total = count ?? 0
-      for (const row of (metadata ?? []) as CaseMeta[]) cache.metadata.set(row.dece_case_id, row)
-      for (let offset = 1000; offset < cache.total; offset += 1000) {
-        let next = integration.client.from('dece_cases').select('dece_case_id,institution_id,student_id,case_number,primary_category,risk_level,status,updated_at').eq('institution_id', integration.institutionId)
-        if (sort === 'case_number') next = next.order('case_number', { ascending: direction === 'asc' }).order('updated_at', { ascending: false })
-        if (sort === 'updated_at') next = next.order('updated_at', { ascending: direction === 'asc' }).order('case_number', { ascending: direction === 'asc' })
-        if (statusFilter) next = next.eq('status', statusFilter)
-        if (riskFilter) next = next.eq('risk_level', riskFilter)
-        if (query) { const term = safeSearch(query); next = next.or(matchingStudentIds.length ? `case_number.ilike.%${term}%,student_id.in.(${matchingStudentIds.join(',')})` : `case_number.ilike.%${term}%`) }
-        const { data: pageMetadata, error: pageError } = await next.range(offset, offset + 999)
-        if (id !== requestId.current) return
-        if (pageError) throw pageError
-        for (const row of (pageMetadata ?? []) as CaseMeta[]) cache.metadata.set(row.dece_case_id, row)
-        if (!pageMetadata?.length) break
-      }
-      const allStudentIds = [...new Set([...cache.metadata.values()].map(row => row.student_id))]
-      if (allStudentIds.length) {
-        const { data: people, error: peopleError } = await integration.client.from('students').select('student_id,first_name,last_name,national_id,grade_level').eq('institution_id', integration.institutionId).in('student_id', allStudentIds)
-        if (id !== requestId.current) return
-        if (peopleError) throw peopleError
-        cache.people = { ...cache.people, ...Object.fromEntries(((people ?? []) as StudentRow[]).map(person => [person.student_id, person])) }
-      }
-      setStudents(current => ({ ...current, ...cache!.people }))
-      cache.ids = orderCases([...cache.metadata.values()], sort, direction, cache.people).map(row => row.dece_case_id)
+      if (firstBlock.error) throw firstBlock.error
+      if (firstBlock.count && !firstBlock.data?.length) throw new Error('No se recibió el primer bloque del listado.')
+      cache.total = firstBlock.count ?? 0
+      cache.ids.length = cache.total
+      ;((firstBlock.data ?? []) as CaseMeta[]).forEach((row, index) => { cache!.ids[index] = row.dece_case_id })
+      cache.metadataBlocks.add(0)
+      listCache.current = cache
     }
-    setTotal(cache.total)
-    const lastPage = Math.max(0, Math.ceil(cache.total / pageSize) - 1)
-    if (page > lastPage) { setPage(lastPage); return }
+    const currentCache = cache
     const firstIndex = page * pageSize
-    const visibleIds = cache.ids.slice(firstIndex, firstIndex + pageSize)
-    const blockIndexes = [...new Set(visibleIds.map((_, index) => Math.floor((firstIndex + index) / 40)))]
-    const blocks = blockIndexes.map(blockIndex => cache!.ids.slice(blockIndex * 40, blockIndex * 40 + 40).filter(caseId => !cache!.records.has(caseId))).filter(block => block.length)
+    const lastIndex = Math.min(currentCache.total - 1, firstIndex + pageSize - 1)
+    const neededBlocks = currentCache.total ? [...new Set(Array.from({ length: Math.max(0, lastIndex - firstIndex + 1) }, (_, index) => Math.floor((firstIndex + index) / CASE_BLOCK_SIZE)))].filter(block => !currentCache.metadataBlocks.has(block)) : []
+    const loaded = await Promise.all(neededBlocks.map(block => buildCaseQuery(integration.client, integration.institutionId, normalized, true).range(block * CASE_BLOCK_SIZE, block * CASE_BLOCK_SIZE + CASE_BLOCK_SIZE - 1)))
+    if (id !== requestId.current) return
+    const failedBlock = loaded.find(result => result.error)
+    if (failedBlock?.error) throw failedBlock.error
+    if (loaded.some((result, index) => (result.count ?? 0) > neededBlocks[index] * CASE_BLOCK_SIZE && !result.data?.length)) throw new Error('No se recibió un bloque del listado.')
+    loaded.forEach((result, index) => {
+      const block = neededBlocks[index]
+      ;((result.data ?? []) as CaseMeta[]).forEach((row, rowIndex) => { currentCache.ids[block * CASE_BLOCK_SIZE + rowIndex] = row.dece_case_id })
+      currentCache.metadataBlocks.add(block)
+    })
+    setTotal(currentCache.total)
+    const lastPage = Math.max(0, Math.ceil(currentCache.total / pageSize) - 1)
+    if (page > lastPage) { setPage(lastPage); return }
+    const visibleIds = currentCache.ids.slice(firstIndex, firstIndex + pageSize).filter((caseId): caseId is string => Boolean(caseId))
+    const blockIndexes = [...new Set(Array.from({ length: visibleIds.length }, (_, index) => Math.floor((firstIndex + index) / CASE_BLOCK_SIZE)))]
+    const blocks = blockIndexes.map(blockIndex => currentCache.ids.slice(blockIndex * CASE_BLOCK_SIZE, blockIndex * CASE_BLOCK_SIZE + CASE_BLOCK_SIZE).filter((caseId): caseId is string => Boolean(caseId) && !currentCache.records.has(caseId))).filter(block => block.length)
     const fetched = await Promise.all(blocks.map(ids => integration.client.from('dece_cases').select('dece_case_id,institution_id,student_id,case_number,reason,primary_category,risk_level,confidentiality_level,status,updated_at').eq('institution_id', integration.institutionId).in('dece_case_id', ids)))
     if (id !== requestId.current) return
     const failed = fetched.find(result => result.error)
     if (failed?.error) throw failed.error
-    fetched.forEach(result => ((result.data ?? []) as CaseRow[]).forEach(row => cache!.records.set(row.dece_case_id, row)))
-    const cases = visibleIds.map(caseId => cache!.records.get(caseId)).filter((row): row is CaseRow => Boolean(row))
+    fetched.forEach(result => ((result.data ?? []) as CaseRow[]).forEach(row => currentCache.records.set(row.dece_case_id, row)))
+    const cases = visibleIds.map(caseId => currentCache.records.get(caseId)).filter((row): row is CaseRow => Boolean(row))
     setRows(cases)
-    if (!cases.length && page === 0 && !query && !statusFilter && !riskFilter) { setError('No hay casos visibles en esta institución. Verifica tu permiso DECE o registra el primer caso.'); return }
     setError('')
     const ids = [...new Set(cases.map(row => row.student_id))]
     if (ids.length) {
@@ -369,7 +361,7 @@ export default function CasesPage({ initialStudentId = '', onInitialStudentUsed 
   const filtered = useMemo(() => rows.filter(row => !query || row.case_number.toLocaleLowerCase().includes(safeSearch(query).toLocaleLowerCase()) || `${students[row.student_id]?.first_name ?? ''} ${students[row.student_id]?.last_name ?? ''}`.toLocaleLowerCase().includes(safeSearch(query).toLocaleLowerCase())), [query, rows, students])
 
   return <div className={`page-content container-fluid ${listStyles.casePage}`}>{selected ? <Breadcrumbs items={[{ label: 'Panel principal', onClick: back }, { label: 'Casos de acompañamiento', onClick: back }, { label: selected.case_number }]} /> : <Breadcrumbs items={[{ label: 'Panel principal', onClick: back }, { label: 'Casos de acompañamiento' }]} />}<div className="eyebrow">GESTIÓN DECE</div><PageHeader title={selected ? `Caso ${selected.case_number}` : 'Casos de acompañamiento'} description="Registro y seguimiento de casos de esta institución." action={!selected ? { label: 'Nuevo caso', onClick: () => { setCreating(true); setError(''); setNotice('') } } : undefined} />{selected && <div className="d-flex flex-wrap gap-2 mb-3"><PdfActionButton className={listStyles.actionButton} label={`Descargar PDF del caso ${selected.case_number}`} generate={async () => { const { createDecePdfService } = await import('../services/pdf-service'); await createDecePdfService(integration!.client).casePdf(integration!.institutionId, selected!.dece_case_id, integration!.profileId) }} /><PdfActionButton className={listStyles.actionButton} label={`Descargar expediente de ${detailStudent?.first_name ?? 'estudiante'}`} generate={async () => { const { createDecePdfService } = await import('../services/pdf-service'); await createDecePdfService(integration!.client).studentFile(integration!.institutionId, selected!.student_id, true, integration!.profileId) }} /><button className={listStyles.actionButton} type="button" onClick={back}>Volver a casos</button></div>}
-    {error && <div className="notice sensitive" role="alert">{error}</div>}<div aria-live="polite" className="visually-hidden">{notice}</div>{notice && <div className="notice" role="status">{notice}</div>}
+    {error && <div className="notice sensitive" role="alert">{error}{!selected && !creating && <button type="button" className="btn btn-link" onClick={() => { setError(''); void load() }}>Reintentar</button>}</div>}<div aria-live="polite" className="visually-hidden">{notice}</div>{notice && <div className="notice" role="status">{notice}</div>}
     {creating && <section className="table-card p-3 mb-4"><h2>Nuevo caso</h2><form noValidate onSubmit={event => void create(event)} className="row g-3"><div className="col-12"><label className="form-label" htmlFor="case-student">Estudiante (obligatorio): buscar por nombre o cédula</label><input id="case-student" className="form-control" aria-required="true" aria-invalid={Boolean(studentSelectionError)} aria-describedby={studentSelectionError ? 'case-student-error' : undefined} value={studentSearch} onChange={event => { setStudentSearch(event.target.value); setSelectedStudent(null); setStudentSelectionError(''); setError('') }} autoComplete="off" />{studentResults.length > 0 && <ul className="list-group mt-2">{studentResults.map(student => <li className="list-group-item" key={student.student_id}><button type="button" className="table-link" onClick={() => { setSelectedStudent(student); setStudentSelectionError(''); setError(''); setStudentSearch(`${student.first_name} ${student.last_name}`); setStudentResults([]) }}>{student.first_name} {student.last_name} · {student.national_id ?? 'Sin cédula'}</button></li>)}</ul>}{selectedStudent && <p role="status">Seleccionado: {selectedStudent.first_name} {selectedStudent.last_name}</p>}{studentSelectionError && <p id="case-student-error" className="text-danger" role="alert">{studentSelectionError}</p>}</div><CaseFields value={form} onChange={setForm} prefix="new" /><div className="col-12"><label className="form-label" htmlFor="new-reason">Motivo (obligatorio)</label><textarea id="new-reason" className="form-control" aria-required="true" required value={form.reason} onChange={event => setForm({ ...form, reason: event.target.value })} /></div><div className="col-12 d-flex gap-2"><button className="btn btn-primary" disabled={busy}>Guardar caso</button><button className="btn btn-outline-secondary" type="button" onClick={() => setCreating(false)}>Cancelar</button></div></form></section>}
     {selected && <><section className="table-card p-3 mb-4"><h2>Datos del caso y del estudiante</h2><p>{detailStudent ? `${detailStudent.first_name} ${detailStudent.last_name}` : 'Estudiante'} · {selected.case_number}</p><form className="row g-3" onSubmit={event => void updateCase(event)}><CaseFields value={{ reason, primary_category: category, risk_level: risk, confidentiality_level: conf, status }} onChange={value => { setReason(value.reason); setCategory(value.primary_category); setRisk(value.risk_level); setConf(value.confidentiality_level); setStatus(value.status) }} prefix="edit" /><div className="col-12"><label className="form-label" htmlFor="edit-reason">Motivo</label><textarea id="edit-reason" className="form-control" required value={reason} onChange={event => setReason(event.target.value)} /></div><div className="col-12"><button className="btn btn-primary" disabled={busy}>Guardar cambios</button></div></form><p className="mt-3">Categoría: {label(selected.primary_category, categories)} · Riesgo: {label(selected.risk_level, risks)} · Estado: {label(selected.status, statuses)} · Confidencialidad: {label(selected.confidentiality_level, confidentiality)}</p></section><CaseTimeline caseRow={selected} /><CaseDocuments caseId={selected.dece_case_id} caseInstitutionId={selected.institution_id} /></>}
     {!selected && !creating && <><div className="toolbar d-flex flex-wrap"><label className="search-box"><span className="visually-hidden">Buscar casos</span><input className="form-control" aria-label="Buscar por número de caso o estudiante" placeholder="Número de caso o estudiante" value={query} onChange={event => { setPage(0); setQuery(event.target.value) }} /></label><label>Estado <select className="form-select" value={statusFilter} onChange={event => { setPage(0); setStatusFilter(event.target.value) }}><option value="">Todos</option>{Object.entries(statuses).map(([value, text]) => <option key={value} value={value}>{text}</option>)}</select></label><label>Riesgo <select className="form-select" value={riskFilter} onChange={event => { setPage(0); setRiskFilter(event.target.value) }}><option value="">Todos</option>{Object.entries(risks).map(([value, text]) => <option key={value} value={value}>{text}</option>)}</select></label><button type="button" className="btn btn-link" onClick={() => { setQuery(''); setStatusFilter(''); setRiskFilter(''); setSort('updated_at'); setDirection('desc'); setPage(0) }}>Limpiar filtros</button><ViewToggle value={view} onChange={next => { setView(next); localStorage.setItem('dece.case.view', next) }} /></div><p className={listStyles.sortLive} aria-live="polite">Ordenado por {CASE_SORT_OPTIONS.find(option => option.key === sort)?.label}, {direction === "asc" ? "ascendente" : "descendente"}</p><div className="table-card table-responsive">{view === "cards" && <><SortBar order={sort} direction={direction} onSort={changeSort} /><RecordGrid label="Casos de acompañamiento">{filtered.map(row => { const person = students[row.student_id]; const summary = actionSummary[row.dece_case_id] ?? { pending: 0, overdue: 0 }; return <li key={row.dece_case_id}><RecordCard><div className={listStyles.cardContent}><h2><a className={listStyles.tableLink} href={`${base}/${row.dece_case_id}${location.search}`} onClick={event => { event.preventDefault(); openCase(row) }}>{row.case_number}</a></h2><p className={listStyles.cardPerson}>{person ? `${person.last_name}, ${person.first_name}` : "Estudiante"} · {person?.grade_level ?? "Sin curso"}</p><dl><div><dt>Categoría</dt><dd>{label(row.primary_category, categories)}</dd></div><div><dt>Riesgo</dt><dd><RiskBadge>{label(row.risk_level, risks)}</RiskBadge></dd></div><div><dt>Estado</dt><dd><StatusBadge>{label(row.status, statuses)}</StatusBadge></dd></div><div><dt>Última actualización</dt><dd>{new Date(row.updated_at).toLocaleString("es-EC", { timeZone: "America/Guayaquil" })}</dd></div></dl><p>Acuerdos pendientes: {summary.pending} · Vencidos: {summary.overdue}</p><div className={listStyles.cardActions}><a className={`${listStyles.actionButton} ${listStyles.primaryAction}`} href={`${base}/${row.dece_case_id}${location.search}`} onClick={event => { event.preventDefault(); openCase(row) }}>Abrir caso</a></div></div></RecordCard></li> })}</RecordGrid></>}{view === "table" && <table className="table"><caption className="visually-hidden">Casos de acompañamiento de la institución</caption><thead><tr><th scope="col" aria-sort={sort === "case_number" ? direction === "asc" ? "ascending" : "descending" : "none"}><SortButton option={CASE_SORT_OPTIONS[0]} active={sort === "case_number"} direction={direction} onClick={() => changeSort("case_number")} /></th><th scope="col" aria-sort={sort === "student" ? direction === "asc" ? "ascending" : "descending" : "none"}><SortButton option={CASE_SORT_OPTIONS[1]} active={sort === "student"} direction={direction} onClick={() => changeSort("student")} /></th><th scope="col" aria-sort={sort === "category" ? direction === "asc" ? "ascending" : "descending" : "none"}><SortButton option={CASE_SORT_OPTIONS[2]} active={sort === "category"} direction={direction} onClick={() => changeSort("category")} /></th><th scope="col" aria-sort={sort === "risk_level" ? direction === "asc" ? "ascending" : "descending" : "none"}><SortButton option={CASE_SORT_OPTIONS[3]} active={sort === "risk_level"} direction={direction} onClick={() => changeSort("risk_level")} /></th><th scope="col" aria-sort={sort === "status" ? direction === "asc" ? "ascending" : "descending" : "none"}><SortButton option={CASE_SORT_OPTIONS[4]} active={sort === "status"} direction={direction} onClick={() => changeSort("status")} /></th><th scope="col" aria-sort={sort === "updated_at" ? direction === "asc" ? "ascending" : "descending" : "none"}><SortButton option={CASE_SORT_OPTIONS[5]} active={sort === "updated_at"} direction={direction} onClick={() => changeSort("updated_at")} /></th><th scope="col">Acciones</th></tr></thead><tbody>{filtered.map(row => <tr key={row.dece_case_id}><td><a className={listStyles.tableLink} href={`${base}/${row.dece_case_id}${location.search}`} onClick={event => { event.preventDefault(); openCase(row) }}>{row.case_number}</a></td><td>{students[row.student_id] ? `${students[row.student_id].first_name} ${students[row.student_id].last_name}` : 'Estudiante'}</td><td>{label(row.primary_category, categories)}</td><td><RiskBadge>{label(row.risk_level, risks)}</RiskBadge></td><td><StatusBadge>{label(row.status, statuses)}</StatusBadge><label className="visually-hidden" htmlFor={`case-status-${row.dece_case_id}`}>Cambiar estado de {row.case_number}</label><select id={`case-status-${row.dece_case_id}`} className="form-select form-select-sm" value={row.status} onChange={event => void quickStatusChange(row, event.target.value as keyof typeof statuses)}>{Object.entries(statuses).map(([key, text]) => <option key={key} value={key}>{text}</option>)}</select></td><td>{new Date(row.updated_at).toLocaleString('es-EC', { timeZone: 'America/Guayaquil' })}</td><td><a className={`${listStyles.actionButton} ${listStyles.primaryAction}`} href={`${base}/${row.dece_case_id}${location.search}`} onClick={event => { event.preventDefault(); openCase(row) }}>Abrir caso</a></td></tr>)}</tbody></table>}{!filtered.length && !error && <><EmptyState>No se encontraron casos.</EmptyState><button className={`${listStyles.actionButton} ${listStyles.primaryAction}`} type="button" onClick={() => setCreating(true)}>Nuevo caso</button></>}<Pagination page={page + 1} size={pageSize} total={total} onPage={next => setPage(next - 1)} onSize={size => { setPageSize(size); setPage(0) }} /></div></>}
