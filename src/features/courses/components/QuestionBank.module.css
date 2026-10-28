@@ -1338,3 +1338,20 @@
 :global(.course-evaluation-page) .evaluation-kpi.is-average { color:var(--site-accent,#1d4e89); }
 :global(.course-evaluation-page) .evaluation-time-track { background:#e8eef5; }
 :global(.course-evaluation-page) .evaluation-time-bar { background:var(--site-navy,#0a233f); }
+
+/* El panel de acompañamiento usa el verde del temario, sin superficie gris. */
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-support-card {
+  border:1px solid var(--site-line,#d5dbe1);
+  background:#fff;
+}
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-support-card > .question-encouragement {
+  --topic-color:#477b2b;
+  background:#fff;
+}
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-support-card .question-encouragement-copy,
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-support-card .question-encouragement-copy > span { color:#52735a; }
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-support-card .question-encouragement-copy strong,
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-support-card .evaluation-timer-label { color:#355d22; }
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-support-card > .evaluation-timer { background:#fff; }
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-support-card .evaluation-timer-track { background:#e5f1e5; }
+:global(.school-courses-page.course-detail-page.course-evaluation-page) .evaluation-support-card .evaluation-timer-track > span { background:#477b2b; }
