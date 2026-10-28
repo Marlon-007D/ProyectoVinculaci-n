@@ -1084,8 +1084,8 @@
   max-width:none;
   margin:0;
   padding:clamp(20px,2.4vw,32px);
-  border:1px solid var(--site-line,#d5dbe1);
-  border-radius:16px;
+  border:0;
+  border-radius:0;
   color:var(--site-ink,#1f2933);
   background:var(--site-paper,#fff);
 }
