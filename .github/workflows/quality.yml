@@ -1,0 +1,100 @@
+name: Quality and security
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    branches: [main, master, develop]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quality-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Typecheck and build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck and build
+        run: npm run build
+
+  sonarqube:
+    name: SonarQube analysis
+    needs: build
+    runs-on: ubuntu-latest
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
+      SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION }}
+    steps:
+      - name: Checkout
+        if: ${{ env.SONAR_TOKEN != '' }}
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        if: ${{ env.SONAR_TOKEN != '' }}
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        if: ${{ env.SONAR_TOKEN != '' }}
+        run: npm ci
+
+      - name: Scan with SonarQube
+        if: ${{ env.SONAR_TOKEN != '' }}
+        uses: SonarSource/sonarqube-scan-action@v8.3.0
+        with:
+          args: >-
+            -Dsonar.organization=${{ env.SONAR_ORGANIZATION }}
+        env:
+          SONAR_TOKEN: ${{ env.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ env.SONAR_HOST_URL }}
+
+      - name: Report missing SonarQube credentials
+        if: ${{ env.SONAR_TOKEN == '' }}
+        run: echo 'SonarQube scan skipped. Configure the SONAR_TOKEN secret to enable it.' >> "$GITHUB_STEP_SUMMARY"
+
+  snyk-code:
+    name: Snyk Code analysis
+    needs: build
+    runs-on: ubuntu-latest
+    env:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+    steps:
+      - name: Checkout
+        if: ${{ env.SNYK_TOKEN != '' }}
+        uses: actions/checkout@v6
+
+      - name: Set up Snyk CLI
+        if: ${{ env.SNYK_TOKEN != '' }}
+        uses: snyk/actions/setup@master
+
+      - name: Scan source code
+        if: ${{ env.SNYK_TOKEN != '' }}
+        run: snyk code test --severity-threshold=high
+        env:
+          SNYK_TOKEN: ${{ env.SNYK_TOKEN }}
+
+      - name: Report missing Snyk credentials
+        if: ${{ env.SNYK_TOKEN == '' }}
+        run: echo 'Snyk Code scan skipped. Configure the SNYK_TOKEN secret to enable it.' >> "$GITHUB_STEP_SUMMARY"
