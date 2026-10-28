@@ -50,7 +50,7 @@
   .site-brand__logo { width: 2.2rem; height: 2.2rem; }
   .site-brand__mark { width: 2.1rem; height: 2.45rem; }
   .site-brand__name { font-size: clamp(.8rem, 3.8vw, 1rem); line-height: 1.1; }
-  .site-mnav__button { min-height: 2.5rem; padding-inline: .65rem; }
+  .site-mnav__button { width: 2.75rem; min-height: 2.75rem; padding: .5rem; }
   .site-footer__inner { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: .65rem 1rem; padding-bottom: .75rem; }
   .site-footer__brand, .site-footer__inner > nav, .site-footer__extras { grid-column: 1 / -1; }
   .site-footer { padding-top: 1rem; }

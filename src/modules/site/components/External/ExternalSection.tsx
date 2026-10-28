@@ -3,6 +3,7 @@ import { useInstitution } from "../../context/InstitutionContext";
 import { useAsync } from "../../hooks/useAsync";
 import { isModuleEnabled, isPublicModuleEnabled, type ExternalModule } from "../../services/moduleSettings";
 import { PortalSimulatorsPage } from "../../../../features/simulators/pages/PortalSimulatorsPage";
+import { LoadingState } from "../states/LoadingState";
 
 export interface ExternalSectionProps {
   institutionId: string;
@@ -28,12 +29,12 @@ function Placeholder(): Renderer {
 }
 
 export const EXTERNAL_SECTIONS: Record<string, { module: ExternalModule; render: Renderer }> = {
-  transparency: { module: "projects", render: ({ institutionSlug, institutionName }) => <Suspense fallback={<p role="status">Cargando transparencia…</p>}><PublicProjects key={institutionSlug} institutionSlug={institutionSlug} institutionName={institutionName} /></Suspense> },
+  transparency: { module: "projects", render: ({ institutionSlug, institutionName }) => <Suspense fallback={<LoadingState label="Cargando transparencia" variant="page" pageKind="content" />}><PublicProjects key={institutionSlug} institutionSlug={institutionSlug} institutionName={institutionName} /></Suspense> },
   simulators: { module: "simuladores", render: Placeholder() },
   dece_info: {
     module: "dece",
     render: ({ institutionId, title, properties }) => (
-      <Suspense fallback={null}>
+      <Suspense fallback={<LoadingState label="Cargando DECE" variant="page" pageKind="content" />}>
         <DecePublicSection institutionId={institutionId} title={title} properties={properties} />
       </Suspense>
     ),
@@ -48,7 +49,7 @@ const PublicProjects = lazy(() => import('../../../projects/PublicProjects').the
 export const EXTERNAL_SECTION_TYPES = Object.keys(EXTERNAL_SECTIONS);
 
 export function ExternalSection({ type, title, properties }: { type: string; title?: string; properties?: Record<string, unknown> }) {
-  if (type === "simulators") return <PortalSimulatorsPage />;
+  if (type === "simulators") return <div className="site-module-frame site-module-frame--simulators"><PortalSimulatorsPage /></div>;
   return <EnabledExternalSection type={type} title={title} properties={properties} />;
 }
 
@@ -78,5 +79,8 @@ function EnabledExternalSection({ type, title, properties }: { type: string; tit
     );
   }
   if (enabled.state.status !== "success" || enabled.state.data !== true) return null;
-  return <>{entry.render({ institutionId, institutionSlug: institution?.slug, institutionName: institution?.name, title, properties })}</>;
+  const frameType = type === "dece_info" ? "dece" : type;
+  return <div className={`site-module-frame site-module-frame--${frameType}`}>
+    {entry.render({ institutionId, institutionSlug: institution?.slug, institutionName: institution?.name, title, properties })}
+  </div>;
 }

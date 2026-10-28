@@ -11,16 +11,17 @@ interface Props {
   height?: number;
   aspectRatio?: string;
   className?: string;
+  bleed?: boolean;
   loading?: "lazy" | "eager";
 }
 
-export function ImageAsset({ asset, path, src, alt, width, height, aspectRatio, className = "", loading = "lazy" }: Props) {
+export function ImageAsset({ asset, path, src, alt, width, height, aspectRatio, className = "", bleed = false, loading = "lazy" }: Props) {
   const url = src ?? (asset ? getPublicMediaUrl(asset) : path ? getPublicUrlFromPath(path) : null);
   const [status, setStatus] = useState<"loading" | "loaded" | "error">(url ? "loading" : "error");
 
   useEffect(() => setStatus(url ? "loading" : "error"), [url]);
 
-  const style = { aspectRatio, maxWidth: "100%" } as const;
+  const style = { aspectRatio, maxWidth: bleed ? "none" : "100%" } as const;
 
   if (!url || status === "error") {
     const decorative = alt === "";

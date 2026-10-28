@@ -9,10 +9,11 @@ import { isSafeExternalUrl, keepInstitution } from "../../utils/url";
 import { EventsSection, HonorsSection, NewsSection, StaffSection } from "../Content/ContentSections";
 import { EXTERNAL_SECTION_TYPES, ExternalSection } from "../External/ExternalSection";
 import { GallerySection, galleryItems } from "../Gallery/GallerySection";
+import { EDUCATION_LEVEL_IMAGES, PUBLIC_PAGE_SAMPLES } from "../../mocks/publicPageSamples";
 import "../../styles/sections.css";
 import templateStyles from './PageSections.module.css';
 
-type Item = { title?: string; description?: string; url?: string };
+type Item = { title?: string; description?: string; url?: string; imageUrl?: string; imageAlt?: string; linkLabel?: string; icon?: string };
 
 const SAFE_IMAGE = /^(https:\/\/[^\s"\'()<>\\]+|\/images\/[A-Za-z0-9_\/.-]+\.(svg|png|jpe?g|webp))$/;
 
@@ -24,6 +25,10 @@ function items(v: unknown): Item[] {
       title: asString(x.title ?? x.label ?? x.name),
       description: asString(x.description ?? x.body ?? x.text),
       url: asString(x.url),
+      imageUrl: asString(x.image_url ?? x.imageUrl),
+      imageAlt: asString(x.image_alt ?? x.imageAlt ?? x.alt),
+      linkLabel: asString(x.link_label ?? x.linkLabel),
+      icon: asString(x.icon),
     }));
 }
 
@@ -48,6 +53,97 @@ function Paragraphs({ text }: { text?: string }) {
 
 function normalizeText(value: unknown): string {
   return (asString(value) ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("es");
+}
+
+function sectionTitle(section: PageSection): string {
+  return normalizeText(section.properties.title);
+}
+
+function sampleLevelImage(title: string | undefined, index: number): string {
+  const normalized = normalizeText(title);
+  if (normalized.includes("preescolar") || normalized.includes("inicial")) return EDUCATION_LEVEL_IMAGES.preschool;
+  if (normalized.includes("bachillerato")) return EDUCATION_LEVEL_IMAGES.highSchool;
+  return index === 0 ? EDUCATION_LEVEL_IMAGES.preschool : EDUCATION_LEVEL_IMAGES.elementary;
+}
+
+function enrichEducationLevels(section: PageSection, fallback: PageSection): PageSection {
+  const existingItems = items(section.properties.items);
+  const fallbackItems = items(fallback.properties.items);
+  const levels = (existingItems.length ? existingItems : fallbackItems).map((item, index) => ({
+    ...item,
+    image_url: item.imageUrl || sampleLevelImage(item.title, index),
+    image_alt: item.imageAlt || `Actividad de aprendizaje para ${item.title ?? "estudiantes"}`,
+    url: item.url || "/?slug=contacto",
+    link_label: item.linkLabel || "Leer más",
+  }));
+  return {
+    ...section,
+    properties: {
+      ...fallback.properties,
+      ...section.properties,
+      layout: "education-levels",
+      title: asString(section.properties.title) || asString(fallback.properties.title),
+      body: asString(section.properties.body ?? section.properties.text) || asString(fallback.properties.body),
+      items: levels,
+    },
+  };
+}
+
+function standardizeInformationalPage(sections: PageSection[], slug: string): PageSection[] {
+  const samples = PUBLIC_PAGE_SAMPLES[slug];
+  if (!samples) return sections;
+  const result = [...sections];
+  const addSample = (id: string) => {
+    const sample = samples.find((section) => section.id === id);
+    if (sample) result.push(sample);
+  };
+
+  if (!result.some((section) => section.type === "banner" || section.type === "hero")) addSample(`sample-${slug === "nosotros" ? "about" : slug === "contacto" ? "contact" : "offer"}-intro`);
+
+  if (slug === "oferta-educativa") {
+    const levelFallback = samples.find((section) => section.id === "sample-offer-levels");
+    const currentIndex = result.findIndex((section) => sectionTitle(section).includes("nivel educativo") || section.properties.layout === "education-levels");
+    if (levelFallback && currentIndex >= 0) result[currentIndex] = enrichEducationLevels(result[currentIndex], levelFallback);
+    else addSample("sample-offer-levels");
+  }
+
+  if (slug === "nosotros") {
+    const storyFallback = samples.find((section) => section.id === "sample-about-story");
+    const storyIndex = result.findIndex((section) => sectionTitle(section).includes("historia") || section.properties.layout === "story");
+    if (storyFallback && storyIndex >= 0) {
+      const current = result[storyIndex];
+      result[storyIndex] = {
+        ...current,
+        properties: {
+          ...storyFallback.properties,
+          ...current.properties,
+          layout: "story",
+          image_url: asString(current.properties.image_url) || storyFallback.properties.image_url,
+          alt: asString(current.properties.alt) || storyFallback.properties.alt,
+        },
+      };
+    } else addSample("sample-about-story");
+
+    if (!result.some((section) => sectionTitle(section).includes("mision") || sectionTitle(section).includes("vision") || sectionTitle(section).includes("valores"))) addSample("sample-about-purpose");
+    const hasGalleryContent = result.some((section) => section.type === "gallery" && (
+      (Array.isArray(section.properties.items) && section.properties.items.length > 0) || asString(section.properties.image_url)
+    ));
+    if (!hasGalleryContent) addSample("sample-about-gallery");
+  }
+
+  if (slug === "contacto") {
+    const contactIndex = result.findIndex((section) => items(section.properties.items).some((item) => /^(mailto:|tel:)/i.test(item.url ?? "")));
+    if (contactIndex >= 0) {
+      const current = result[contactIndex];
+      const contactItems = items(current.properties.items).map((item) => ({
+        ...item,
+        icon: item.icon || (/^mailto:/i.test(item.url ?? "") ? "mail" : /^tel:/i.test(item.url ?? "") ? "call" : /direcci|ubicaci/i.test(item.title ?? "") ? "location_on" : "info"),
+      }));
+      result[contactIndex] = { ...current, properties: { ...current.properties, layout: "contact-grid", items: contactItems } };
+    } else addSample("sample-contact-details");
+  }
+
+  return result.sort((a, b) => a.position - b.position);
 }
 
 function standardHomepageSections(sections: PageSection[], institutionName: string): PageSection[] {
@@ -153,12 +249,21 @@ function Section({ s, social, isHomepage, isPrimaryHomepageHero = false }: { s: 
   if (s.type === "banner" || s.type === "hero") {
     // El hero identifica y presenta el portal desde Inicio. En páginas internas,
     // la sección real ya aporta su propio título y contenido.
-    if (!isHomepage) return null;
     const b1 = asString(p.button_label), u1 = asString(p.button_url);
     const b2 = asString(p.secondary_label), u2 = asString(p.secondary_url);
     const eyebrow = asString(p.eyebrow);
     const image = asString(p.image_url);
     const heroStyle = image && SAFE_IMAGE.test(image) ? ({ "--site-hero-image": `url("${image}")` } as CSSProperties) : undefined;
+    if (!isHomepage) {
+      if (!title && !asString(p.subtitle)) return null;
+      return <section className="site-page-intro" style={heroStyle}>
+        <div className="site-container">
+          {eyebrow && <p className="site-page-intro__eyebrow">{eyebrow}</p>}
+          {title && <h1>{title}</h1>}
+          {asString(p.subtitle) && <p>{asString(p.subtitle)}</p>}
+        </div>
+      </section>;
+    }
     return (
       <section className={`site-hero${p.size === "compact" && !isPrimaryHomepageHero ? " site-hero--compact" : ""}`} style={heroStyle}>
         <div className="site-container">
@@ -195,6 +300,23 @@ function Section({ s, social, isHomepage, isPrimaryHomepageHero = false }: { s: 
   const list = items(p.items);
   const body = asString(p.body ?? p.text ?? p.content);
 
+  if (s.type === "links" && p.layout === "contact-grid") return (
+    <section className="site-section site-block site-block--contact">
+      <div className="site-container">
+        {title && <h2>{title}</h2>}
+        <Paragraphs text={body} />
+        <ul className="site-contact-grid">
+          {list.map((item, index) => <li className="site-contact-card" key={`${item.title ?? "contacto"}-${index}`}>
+            <span className="site-contact-card__icon material-symbols-rounded" aria-hidden="true">{item.icon || "info"}</span>
+            {item.title && <h3>{item.title}</h3>}
+            {item.description && <p>{item.description}</p>}
+            {item.url && <SafeLink url={item.url} className="site-contact-card__link">{item.url.startsWith("mailto:") ? "Enviar correo" : item.url.startsWith("tel:") ? "Llamar" : "Consultar"}</SafeLink>}
+          </li>)}
+        </ul>
+      </div>
+    </section>
+  );
+
   if (s.type === "links")
     return (
       <section className="site-section site-block">
@@ -216,6 +338,60 @@ function Section({ s, social, isHomepage, isPrimaryHomepageHero = false }: { s: 
   const eyebrow = asString(p.eyebrow);
   const image = asString(p.image_url);
   const tone = p.tone === "dark" ? " site-block--dark" : p.tone === "tint" ? " site-block--tint" : "";
+
+  if (p.layout === "story") return (
+    <section className="site-section site-block site-block--story">
+      <div className="site-container">
+        {eyebrow && <p className="site-eyebrow">{eyebrow}</p>}
+        <div className="site-story__grid">
+          <div className="site-story__copy">
+            {title && <h2>{title}</h2>}
+            <Paragraphs text={body} />
+          </div>
+          {image && SAFE_IMAGE.test(image) && <figure className="site-story__image"><img src={image} alt={asString(p.alt) ?? ""} loading="lazy" /></figure>}
+        </div>
+      </div>
+    </section>
+  );
+
+  if (p.layout === "education-levels") return (
+    <section className="site-section site-block site-block--levels">
+      <div className="site-container">
+        {eyebrow && <p className="site-eyebrow">{eyebrow}</p>}
+        {title && <h2>{title}</h2>}
+        <Paragraphs text={body} />
+        <ul className="site-levels__grid">
+          {list.map((item, index) => <li className="site-levels__card" key={`${item.title ?? "nivel"}-${index}`}>
+            {item.imageUrl && SAFE_IMAGE.test(item.imageUrl) && <figure className="site-levels__image"><img src={item.imageUrl} alt={item.imageAlt ?? ""} loading="lazy" /></figure>}
+            <div className="site-levels__body">
+              {item.title && <h3>{item.title}</h3>}
+              {item.description && <p>{item.description}</p>}
+              {item.url && <SafeLink url={item.url} className="site-btn site-levels__link">{item.linkLabel || "Leer más"}</SafeLink>}
+            </div>
+          </li>)}
+        </ul>
+      </div>
+    </section>
+  );
+
+  if (p.layout === "contact-grid") return (
+    <section className={`site-section site-block${tone} site-block--contact`}>
+      <div className="site-container">
+        {eyebrow && <p className="site-eyebrow">{eyebrow}</p>}
+        {title && <h2>{title}</h2>}
+        <Paragraphs text={body} />
+        <ul className="site-contact-grid">
+          {list.map((item, index) => <li className="site-contact-card" key={`${item.title ?? "contacto"}-${index}`}>
+            <span className="site-contact-card__icon material-symbols-rounded" aria-hidden="true">{item.icon || "info"}</span>
+            {item.title && <h3>{item.title}</h3>}
+            {item.description && <p>{item.description}</p>}
+            {item.url && <SafeLink url={item.url} className="site-contact-card__link">{item.url.startsWith("mailto:") ? "Enviar correo" : item.url.startsWith("tel:") ? "Llamar" : "Consultar"}</SafeLink>}
+          </li>)}
+        </ul>
+      </div>
+    </section>
+  );
+
   return (
     <section className={`site-section site-block${tone}`}>
       <div className="site-container">
@@ -255,11 +431,13 @@ export function PageSections({ sections, isHomepage = false, managed = false, te
   const query = new URLSearchParams(location.search);
   const onHomepage = isHomepage || !query.has("slug");
   const isElEsfuerzo = institution?.slug.toLocaleLowerCase("es") === "ue-el-esfuerzo" || normalizeText(institution?.name).includes("el esfuerzo");
-  const visible = !managed && onHomepage && isElEsfuerzo
+  const pageSections = !managed && onHomepage && isElEsfuerzo
     ? standardHomepageSections(sections, institution?.name || "nuestra institución")
     : sections.filter((s) => s.is_visible).sort((a, b) => a.position - b.position);
+  const visible = onHomepage ? pageSections : standardizeInformationalPage(pageSections, query.get("slug") ?? "");
   if (visible.length === 0) return <p className="site-container site-section">Esta página aún no tiene contenido.</p>;
   const primaryHeroId = onHomepage ? visible.find((section) => section.type === "banner" || section.type === "hero")?.id : undefined;
   const content = visible.map((s) => <Section key={s.id} s={s} social={social} isHomepage={onHomepage} isPrimaryHomepageHero={s.id === primaryHeroId} />);
-  return template === 'classic' ? <>{content}</> : <div className={templateStyles[template]}>{content}</div>;
+  const informationalPage = ["nosotros", "oferta-educativa", "contacto"].includes(query.get("slug") ?? "");
+  return template === 'classic' || informationalPage ? <>{content}</> : <div className={templateStyles[template]}>{content}</div>;
 }

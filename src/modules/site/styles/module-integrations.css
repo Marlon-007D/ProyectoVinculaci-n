@@ -1,0 +1,156 @@
+/* Shared public portal shell for modules mounted inside the institution site. */
+.site-module-frame { width: 100%; min-width: 0; }
+
+/* Keep the simulator inside the same institutional shell and content grid. */
+.site-root--simulator .site-main--simulator { min-height: 0; background: var(--site-paper); }
+.site-module-frame--simulators .portal-simulators {
+  --surface: var(--site-paper);
+  --line: var(--site-line);
+  --text: var(--site-ink);
+  --muted: var(--site-muted);
+  --accent: var(--site-accent);
+  --accent-hover: color-mix(in srgb, var(--site-accent) 86%, #000);
+  --accent-soft: color-mix(in srgb, var(--site-accent) 9%, var(--site-paper));
+  --accent-container: color-mix(in srgb, var(--site-accent) 16%, var(--site-paper));
+  --accent-focus: color-mix(in srgb, var(--site-accent) 42%, var(--site-paper));
+  --accent-ink: var(--site-accent-ink);
+  min-height: 0;
+  background: transparent;
+  color: var(--site-ink);
+  font-family: var(--site-font);
+}
+.site-module-frame--simulators .portal-simulators .page-content {
+  width: min(100%, var(--site-max));
+  max-width: var(--site-max);
+  margin-inline: auto;
+  padding-inline: var(--site-content-gutter);
+}
+.site-module-frame--simulators .portal-simulators .simulator-hub-page.page-content {
+  padding-block: var(--site-section-space);
+}
+.site-module-frame--simulators .portal-simulators .simulator-hub-header h1 {
+  color: var(--site-ink);
+  font-family: var(--site-font);
+  font-size: clamp(1.8rem, 3.4vw, 2.5rem);
+  font-weight: 600;
+  letter-spacing: -.02em;
+}
+.site-module-frame--simulators .portal-simulators .simulator-hub-header > span,
+.site-module-frame--simulators .portal-simulators .simulator-hub-card > svg { color: var(--site-accent); }
+.site-module-frame--simulators .portal-simulators .simulator-hub-card {
+  min-height: 8rem;
+  border-color: var(--site-line);
+  border-radius: 14px;
+  background: var(--site-paper);
+  color: var(--site-ink);
+  font-family: var(--site-font);
+  transform: none;
+}
+.site-module-frame--simulators .portal-simulators .simulator-hub-card:hover {
+  border-color: color-mix(in srgb, var(--site-accent) 45%, var(--site-line));
+  background: color-mix(in srgb, var(--site-accent) 5%, var(--site-paper));
+}
+.site-module-frame--simulators .portal-simulators .simulator-hub-icon {
+  border-color: color-mix(in srgb, var(--site-accent) 24%, var(--site-line));
+  border-radius: 12px;
+  color: var(--site-accent);
+  background: color-mix(in srgb, var(--site-accent) 9%, var(--site-paper));
+}
+.site-module-frame--simulators .portal-simulators .simulator-hub-info strong { color: var(--site-ink); }
+.site-module-frame--simulators .portal-simulators .simulator-hub-info > span { color: var(--site-muted); }
+.site-module-frame--simulators .portal-simulators-toolbar {
+  width: min(100%, var(--site-max));
+  margin-inline: auto;
+  padding: var(--site-section-gap) var(--site-content-gutter) 0;
+  justify-content: flex-start;
+}
+
+/* Align the DECE public page headings and section rhythm with site sections. */
+.site-module-frame--dece > [class*="page"] {
+  width: 100%;
+  color: var(--site-ink);
+  font-family: var(--site-font);
+}
+.site-module-frame--dece > [class*="page"] > [class*="hero"] { background-color: var(--site-surface); }
+.site-module-frame--dece [class*="block"] h2 {
+  max-width: 28ch;
+  color: var(--site-ink);
+  font-family: var(--site-font);
+  font-size: clamp(1.8rem, 3.4vw, 2.5rem);
+  font-weight: 600;
+  letter-spacing: -.02em;
+  line-height: 1.12;
+  text-wrap: balance;
+}
+.site-module-frame--dece [class*="block"] h2::after {
+  display: block;
+  width: 2.5rem;
+  height: .2rem;
+  margin-top: .85rem;
+  border-radius: 999px;
+  background: var(--site-accent);
+  content: "";
+}
+.site-module-frame--dece [class*="block"] + [class*="block"] { border-top: 1px solid var(--site-line); }
+
+/* Use the institution's tokens, width, and low-emphasis surfaces in transparency. */
+.site-module-frame--transparency {
+  width: min(100%, var(--site-max));
+  margin-inline: auto;
+  padding-inline: var(--site-content-gutter);
+}
+.site-module-frame--transparency [class*="project-public"] {
+  max-width: none;
+  min-height: 0;
+  margin: 0;
+  padding: var(--site-section-space) 0;
+  background: transparent;
+  color: var(--site-ink);
+  font-family: var(--site-font);
+}
+.site-module-frame--transparency [class*="public-hero"] {
+  border-color: var(--site-line);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--site-accent) 5%, var(--site-surface));
+}
+.site-module-frame--transparency [class*="public-hero"] h1,
+.site-module-frame--transparency [class*="project-section-heading"] h2 {
+  color: var(--site-ink);
+  font-family: var(--site-font);
+}
+.site-module-frame--transparency [class*="project-eyebrow"],
+.site-module-frame--transparency [class*="public-hero-symbol"] { color: var(--site-accent); }
+.site-module-frame--transparency [class*="public-institution-bar"] { border-color: var(--site-line); }
+.site-module-frame--transparency [class*="project-metrics"] > div,
+.site-module-frame--transparency [class*="public-overview"],
+.site-module-frame--transparency [class*="public-filters"],
+.site-module-frame--transparency [class*="project-public-card"],
+.site-module-frame--transparency [class*="public-comparison"] {
+  border-color: var(--site-line);
+  border-radius: 14px;
+  background: var(--site-paper);
+}
+.site-module-frame--transparency [class*="public-explainer"] {
+  border: 1px solid var(--site-line);
+  border-radius: 14px;
+  background: var(--site-surface);
+  color: var(--site-ink);
+}
+.site-module-frame--transparency [class*="public-explainer"] h2 { color: var(--site-ink); }
+.site-module-frame--transparency [class*="project-public"] button {
+  border: 1px solid var(--site-line);
+  border-radius: 999px;
+  background: var(--site-surface);
+  color: var(--site-ink);
+  font-family: var(--site-font);
+}
+.site-module-frame--transparency [class*="project-public"] button[aria-pressed="true"],
+.site-module-frame--transparency [class*="project-public"] button[type="submit"] {
+  border-color: var(--site-accent);
+  background: var(--site-accent);
+  color: var(--site-accent-ink);
+}
+.site-module-frame--transparency [class*="project-public"] :is(button, input, select, a):focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--site-accent) 45%, white);
+  outline-offset: 2px;
+}
