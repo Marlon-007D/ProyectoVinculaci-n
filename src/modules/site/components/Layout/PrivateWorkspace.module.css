@@ -41,3 +41,15 @@
 .subnav a{border-radius:10px}.aside .nav .subnav a[href$="/categorias"] svg,.aside .nav .subnav a[href$="/modulos"] svg,.aside .nav .subnav a[href$="/noticias"] svg,.aside .nav .subnav a[href$="/eventos"] svg,.aside .nav .subnav a[href$="/cuadro-de-honor"] svg{background:#e8eef5;color:var(--site-navy,#0a233f)}
 .subnav a[aria-current="page"]{box-shadow:inset 3px 0 0 var(--site-gold,#f2b95a);background:#e8eef5;color:var(--site-navy,#0a233f)}.aside .nav .subnav a[aria-current="page"] svg{background:var(--site-navy,#0a233f);color:var(--site-gold,#f2b95a)}
 .aside .nav :is(a,button):focus-visible{outline-color:var(--site-navy,#0a233f)}
+
+/* El menú privado conserva la misma tarjeta y escala visual del temario público. */
+@media (min-width:761px){
+.workspace{grid-template-columns:344px minmax(0,1fr);gap:16px;padding:16px;background:var(--site-surface,#f3f5f7)}
+.aside{top:16px;height:calc(100dvh - 32px);margin:0;padding:16px 18px;border:1px solid var(--site-line,#d5dbe1);border-radius:16px}
+.sidebarTop{min-height:58px;margin:0 0 14px;padding:8px;border:1px solid var(--site-line,#d5dbe1);border-radius:12px;background:#f8fafc}
+.sidebarTop .institutionPicker{padding-right:4px}.institutionPicker select{height:42px;background:transparent}
+.sidebarToggle{border-radius:10px;color:var(--site-navy,#0a233f)}.sidebarToggle:hover,.sidebarToggle:focus-visible{background:#e8eef5;color:var(--site-navy,#0a233f)}
+.nav{gap:6px}.nav a{min-height:58px;padding-inline:10px}.navGroup{gap:3px}.groupButton,.groupButtonActive{min-height:58px;padding-inline:10px}.subnav{padding-left:12px}.subnav a{min-height:50px;padding-inline:9px}
+.account{margin-top:14px;padding:14px 4px 0}.content{border-radius:16px;overflow:hidden}
+.workspaceCollapsed{grid-template-columns:108px minmax(0,1fr)}.workspaceCollapsed .aside{padding:16px 10px}.workspaceCollapsed .sidebarTop{padding:8px 0;background:transparent;border-color:transparent}.workspaceCollapsed .content{border-radius:16px}
+}
