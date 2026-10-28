@@ -2,9 +2,9 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { InvitationEmailResult } from './RequestInvitationEmail';
 
 export async function requestInvitationEmailService(client: Pick<SupabaseClient, 'functions'>,
-  email: string, institutionId: string): Promise<InvitationEmailResult> {
+  email: string, institutionId: string, slug?: string): Promise<InvitationEmailResult> {
   const { data, error } = await client.functions.invoke<InvitationEmailResult>('admin-tenant-invite', {
-    body: { action: 'request_invitation_email', email, institutionId },
+    body: { action: 'request_invitation_email', email: email.trim().toLowerCase(), institutionId, ...(slug ? { slug } : {}) },
   });
   if (!error) return data ?? { error: 'El servidor no confirmó la solicitud.' };
   if (error.context instanceof Response) {
