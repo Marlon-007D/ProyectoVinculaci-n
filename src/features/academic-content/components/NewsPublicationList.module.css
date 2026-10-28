@@ -1,6 +1,6 @@
 .newsPage {
-  --news-primary: #b5547d;
-  --news-primary-strong: #8b234e;
+  --news-primary: #164a7c;
+  --news-primary-strong: #123d68;
   padding: 28px clamp(24px, 4vw, 56px) 56px;
 }
 .newsHeading { display: flex; align-items: center; min-height: 48px; margin: 0 0 20px; }
@@ -21,72 +21,72 @@
   background-color: var(--canvas, #f7f7f8);
 }
 .filters { display: flex; flex-wrap: wrap; gap: 8px; }
-.filterChip { display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 12px; border: 0; border-radius: 10px; color: #594751; background: transparent; font: 600 14px Roboto, sans-serif; cursor: pointer; }
-.filterChip:hover { background: #f9eaf0; }
-.filterChipActive { color: #6b1c40; background: #ffd9e6; }
-.filterChip span { display: grid; place-items: center; min-width: 19px; height: 19px; padding: 0 4px; border-radius: 50%; color: inherit; background: #f1eaed; font-size: 11px; }
+.filterChip { display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 12px; border: 0; border-radius: 10px; color: #415c76; background: transparent; font: 600 14px Roboto, sans-serif; cursor: pointer; }
+.filterChip:hover { background: #edf3f8; }
+.filterChipActive { color: #123d68; background: #dbe9f8; }
+.filterChip span { display: grid; place-items: center; min-width: 19px; height: 19px; padding: 0 4px; border-radius: 50%; color: inherit; background: #eef2f6; font-size: 11px; }
 .filterChipActive span { background: rgb(255 255 255 / .68); }
 .newsPage .toolbarActions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; min-width: max-content; }
 .newsPage .toolbarActions > .publicationPagination, .newsPage .toolbarActions > :global(.shared-button) { flex: none; margin: 0; }
 .newsPage .filters { display: none; }
 .newsPage .searchTools { display: flex; flex: 1 1 auto; align-items: center; gap: 8px; min-width: 0; }
 .newsPage .searchToolsOpen { flex: 1 1 0; min-width: 0; }
-.newsPage .searchField { display: flex; flex: 0 0 48px; align-items: center; gap: 8px; width: 48px; min-width: 48px; height: 44px; padding: 0; overflow: hidden; border: 0; border-radius: 12px; color: #806c75; background: #fff; }
+.newsPage .searchField { display: flex; flex: 0 0 48px; align-items: center; gap: 8px; width: 48px; min-width: 48px; height: 44px; padding: 0; overflow: hidden; border: 0; border-radius: 12px; color: #52657b; background: #fff; }
 .newsPage .searchFieldOpen { flex: 1 1 240px; width: auto; min-width: 0; padding: 0 12px; }
 .newsPage .toolbarSearching .filters { display: none; }
 .newsPage .searchField input,
 .newsPage .searchField input:focus,
-.newsPage .searchField input:focus-visible { flex: 1 1 auto; box-sizing: border-box; width: 100%; min-width: 0; height: 100%; margin: 0; padding: 0; border: 0; border-radius: 0; outline: 0; box-shadow: none; color: #362d32; background: transparent; font: 400 14px Roboto, sans-serif; }
+.newsPage .searchField input:focus-visible { flex: 1 1 auto; box-sizing: border-box; width: 100%; min-width: 0; height: 100%; margin: 0; padding: 0; border: 0; border-radius: 0; outline: 0; box-shadow: none; color: #0a233f; background: transparent; font: 400 14px Roboto, sans-serif; }
 .newsPage .searchField:focus-within { outline: 0; box-shadow: none; }
 .newsPage .searchField :global(.material-symbols-rounded) { flex: none; font-family: 'Material Symbols Rounded'; font-size: 20px; font-feature-settings: 'liga'; }
-.newsPage .searchToggle { display: grid; flex: 0 0 46px; place-items: center; width: 46px; height: 42px; padding: 0; border: 0; border-radius: 10px; color: #806c75; background: transparent; cursor: pointer; }
+.newsPage .searchToggle { display: grid; flex: 0 0 46px; place-items: center; width: 46px; height: 42px; padding: 0; border: 0; border-radius: 10px; color: #52657b; background: transparent; cursor: pointer; }
 .newsPage .searchFieldOpen .searchToggle { flex-basis: 24px; width: 24px; }
-.newsPage .searchField input::placeholder { color: #93868c; }
-.newsPage .dateField { position: relative; display: grid; place-items: center; width: 44px; min-width: 44px; height: 44px; padding: 0; overflow: hidden; border: 0; border-radius: 12px; color: #806c75; background: #fff; cursor: pointer; }
+.newsPage .searchField input::placeholder { color: #708299; }
+.newsPage .dateField { position: relative; display: grid; place-items: center; width: 44px; min-width: 44px; height: 44px; padding: 0; overflow: hidden; border: 0; border-radius: 12px; color: #52657b; background: #fff; cursor: pointer; }
 .newsPage .dateField:focus-within { outline: 0; }
-.newsPage .dateField :global(.material-symbols-rounded) { position: absolute; z-index: 1; display: grid; place-items: center; inset: 0; color: #806c75; font-family: 'Material Symbols Rounded'; font-size: 20px; font-feature-settings: 'liga'; pointer-events: none; }
+.newsPage .dateField :global(.material-symbols-rounded) { position: absolute; z-index: 1; display: grid; place-items: center; inset: 0; color: #52657b; font-family: 'Material Symbols Rounded'; font-size: 20px; font-feature-settings: 'liga'; pointer-events: none; }
 .newsPage .dateField input { position: absolute; inset: 0; width: 100%; height: 100%; padding: 0; border: 0; outline: 0; color: transparent; background: transparent; font-size: 0; cursor: pointer; }
 .newsPage .dateField input::-webkit-calendar-picker-indicator { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
-.newsPage .statusSelectField { position: relative; display: grid; flex: 0 0 44px; place-items: center; width: 44px; min-width: 44px; height: 44px; padding: 0; overflow: hidden; border: 0; border-radius: 12px; color: #806c75; background: #fff; }
+.newsPage .statusSelectField { position: relative; display: grid; flex: 0 0 44px; place-items: center; width: 44px; min-width: 44px; height: 44px; padding: 0; overflow: hidden; border: 0; border-radius: 12px; color: #52657b; background: #fff; }
 .newsPage .statusSelectField:focus-within { outline: 0; }
-.newsPage .statusSelectField :global(.material-symbols-rounded) { position: absolute; z-index: 1; inset: 0; display: grid; place-items: center; color: #806c75; font-family: 'Material Symbols Rounded'; font-size: 20px; font-feature-settings: 'liga'; pointer-events: none; }
+.newsPage .statusSelectField :global(.material-symbols-rounded) { position: absolute; z-index: 1; inset: 0; display: grid; place-items: center; color: #52657b; font-family: 'Material Symbols Rounded'; font-size: 20px; font-feature-settings: 'liga'; pointer-events: none; }
 .newsPage .statusSelectField select { position: absolute; inset: 0; width: 100%; height: 100%; padding: 0; border: 0; outline: 0; color: transparent; appearance: none; background: transparent; cursor: pointer; }
-.newsPage .statusSelectField select option { color: #302a30; }
-.newButton { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 16px; border: 0; border-radius: 12px; color: #6b1c40; background: #ffd9e6; font: 700 14px Roboto, sans-serif; white-space: nowrap; }
-.newButton:hover { background: #f8c7d9; }
+.newsPage .statusSelectField select option { color: #0a233f; }
+.newButton { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 16px; border: 0; border-radius: 12px; color: #123d68; background: #dbe9f8; font: 700 14px Roboto, sans-serif; white-space: nowrap; }
+.newButton:hover { background: #c8ddf3; }
 .newButton :global(.material-symbols-rounded), .postAction :global(.material-symbols-rounded), .publicationPagination :global(.material-symbols-rounded) { font-family: 'Material Symbols Rounded'; font-size: 20px; font-weight: 400; font-style: normal; line-height: 1; font-feature-settings: 'liga'; }
 
-.newsPage .publicationPagination { display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; margin: 0; padding: 0; border: 0; color: #594751; font: 600 13px Roboto, sans-serif; }
-.newsPage .publicationPagination button { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; height: 44px; padding: 0 10px; border: 0; border-radius: 12px; color: var(--news-primary-strong); background: #ffedf3; cursor: pointer; font: 600 13px Roboto, sans-serif; }
-.newsPage .publicationPagination button:hover:not(:disabled) { background: #ffd9e6; }
-.newsPage .publicationPagination button:disabled { color: #b7aeb2; background: #f5e9ee; cursor: default; }
-.newsPage .publicationPagination .paginationCount { min-width: 92px; color: #4e3a43; text-align: center; font-variant-numeric: tabular-nums; }
+.newsPage .publicationPagination { display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; margin: 0; padding: 0; border: 0; color: #415c76; font: 600 13px Roboto, sans-serif; }
+.newsPage .publicationPagination button { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; height: 44px; padding: 0 10px; border: 0; border-radius: 12px; color: var(--news-primary-strong); background: #e7f0fb; cursor: pointer; font: 600 13px Roboto, sans-serif; }
+.newsPage .publicationPagination button:hover:not(:disabled) { background: #dbe9f8; }
+.newsPage .publicationPagination button:disabled { color: #7890a8; background: #edf3f8; cursor: default; }
+.newsPage .publicationPagination .paginationCount { min-width: 92px; color: #314d69; text-align: center; font-variant-numeric: tabular-nums; }
 .newsPage .publicationPagination .paginationLabel { display: inline; }
 .paginationTop { grid-column: auto; }
 .paginationBottom { margin-top: 16px; }
 
 .postsGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 288px), 1fr)); align-items: stretch; gap: 18px; margin: 0; }
 .postCard { display: flex; flex-direction: column; height: 316px; min-width: 0; overflow: hidden; border: 0; border-radius: 16px; background: #fff; }
-.newsPage .postMedia { position: relative; flex: 0 0 148px; width: 100%; height: 148px; overflow: hidden; background: #f1eff1; }
+.newsPage .postMedia { position: relative; flex: 0 0 148px; width: 100%; height: 148px; overflow: hidden; background: #eef2f6; }
 .newsPage .postMedia > .postImage { display: block; width: 100%; height: 100%; min-height: 100%; max-height: 100%; object-fit: cover; }
 .newsPage .eventLocation { position: absolute; right: 10px; bottom: 10px; display: inline-flex; align-items: center; gap: 5px; max-width: calc(100% - 20px); padding: 6px 10px; overflow: hidden; border-radius: 999px; color: #fff; background: rgb(35 31 33 / 78%); font: 500 12px/16px Roboto, sans-serif; text-overflow: ellipsis; white-space: nowrap; }
 .newsPage .eventLocation :global(.material-symbols-rounded) { flex: none; font-family: 'Material Symbols Rounded'; font-size: 16px; font-feature-settings: 'liga'; }
 .postBody { display: grid; flex: 1; grid-template-rows: 42px 40px 32px; align-content: start; gap: 8px; min-width: 0; min-height: 0; padding: 12px 16px; }
 .postTitle { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; width: 100%; height: 42px; min-width: 0; }
-.postTitle h3 { display: -webkit-box; flex: 1; min-width: 0; max-height: 42px; overflow: hidden; margin: 0; color: #28232d; font: 700 17px/1.3 Roboto, sans-serif; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
-.statusChip { flex: none; margin-top: 1px; padding: 5px 8px; border: 0; border-radius: 8px; color: #625c66; background: #f1eff2; font: 600 11px/1 Roboto, sans-serif; }
+.postTitle h3 { display: -webkit-box; flex: 1; min-width: 0; max-height: 42px; overflow: hidden; margin: 0; color: #0a233f; font: 700 17px/1.3 Roboto, sans-serif; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.statusChip { flex: none; margin-top: 1px; padding: 5px 8px; border: 0; border-radius: 8px; color: #415c76; background: #eef2f6; font: 600 11px/1 Roboto, sans-serif; }
 .statusChip { display: inline-flex; align-items: center; gap: 4px; }
 .statusChip :global(.material-symbols-rounded) { font-family: 'Material Symbols Rounded'; font-size: 13px; font-feature-settings: 'liga'; }
-.statusPublished { color: #6b1c40; background: #ffedf3; }
-.postBody p { display: -webkit-box; width: 100%; height: 40px; min-height: 40px; max-height: 40px; overflow: hidden; margin: 0; color: #5e5662; font: 400 14px/20px Roboto, sans-serif; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.statusPublished { color: #123d68; background: #e7f0fb; }
+.postBody p { display: -webkit-box; width: 100%; height: 40px; min-height: 40px; max-height: 40px; overflow: hidden; margin: 0; color: #52657b; font: 400 14px/20px Roboto, sans-serif; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .postFooter { display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 8px; width: 100%; min-width: 0; height: 32px; margin: 0; }
-.postFooter small { display: inline-flex; flex: 0 1 auto; align-items: center; gap: 6px; min-width: 0; margin: 0; padding: 6px 9px; border-radius: 999px; color: #6b6870; background: #f2f1f3; font: 500 12px/16px Roboto, sans-serif; }
+.postFooter small { display: inline-flex; flex: 0 1 auto; align-items: center; gap: 6px; min-width: 0; margin: 0; padding: 6px 9px; border-radius: 999px; color: #6b6870; background: #eef2f6; font: 500 12px/16px Roboto, sans-serif; }
 .postFooter small :global(.material-symbols-rounded) { flex: none; color: currentColor; font-family: 'Material Symbols Rounded'; font-size: 16px; font-feature-settings: 'liga'; }
 .postFooter .postActions { flex: none; display: flex; align-items: center; justify-content: flex-end; gap: 8px; width: auto; height: 32px; margin: 0; padding: 0; }
-.postAction { display: grid; flex: 0 0 40px; place-items: center; width: 40px; height: 40px; padding: 0; border: 0; border-radius: 14px; color: var(--news-primary); background: #ffedf3; cursor: pointer; }
-.postAction:hover { color: var(--news-primary-strong); background: #ffd9e6; }
+.postAction { display: grid; flex: 0 0 40px; place-items: center; width: 40px; height: 40px; padding: 0; border: 0; border-radius: 14px; color: var(--news-primary); background: #e7f0fb; cursor: pointer; }
+.postAction:hover { color: var(--news-primary-strong); background: #dbe9f8; }
 .previewAction, .dangerAction { color: var(--news-primary); }
-.dangerAction:hover { color: var(--news-primary-strong); background: #ffedf3; }
+.dangerAction:hover { color: var(--news-primary-strong); background: #e7f0fb; }
 .filterChip:focus-visible, .newButton:focus-visible, .postAction:focus-visible, .publicationPagination button:focus-visible { outline: 2px solid var(--news-primary); outline-offset: 2px; }
 
 @media (max-width: 700px) {
