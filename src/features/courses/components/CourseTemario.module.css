@@ -34,8 +34,15 @@
   padding: 16px;
   border: 1px solid var(--site-line, #d5dbe1);
   border-radius: 12px;
-  background: var(--site-paper, #fff);
+  background: #e8eef5;
 }
+
+/* Pasteles de la paleta institucional: azul marino y dorado del portal. */
+.concept:nth-child(6n + 2) { background: #eff4f8; }
+.concept:nth-child(6n + 3) { background: #fff3dc; }
+.concept:nth-child(6n + 4) { background: #e9eef7; }
+.concept:nth-child(6n + 5) { background: #fff7e8; }
+.concept:nth-child(6n) { background: #f1f4f8; }
 
 
 /* Las tarjetas anchas alternan con las compactas para formar un mosaico. */
@@ -69,7 +76,7 @@
   overflow: hidden;
   border: 1px solid var(--site-line, #d5dbe1);
   border-radius: 10px;
-  background: var(--site-surface, #f3f5f7);
+  background: rgb(255 255 255 / .56);
 }
 
 .conceptIllustrationVector { background: transparent; }
