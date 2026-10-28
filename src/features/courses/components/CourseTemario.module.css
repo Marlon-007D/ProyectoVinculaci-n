@@ -23,7 +23,7 @@
 .concept {
   --concept-title: var(--site-navy, #0a233f);
   --concept-copy: var(--site-muted, #52606d);
-  --concept-accent: var(--site-accent, #1d4e89);
+  --concept-accent: #4d7f1c;
   display: grid;
   grid-template-rows: 104px 1fr;
   align-content: start;
