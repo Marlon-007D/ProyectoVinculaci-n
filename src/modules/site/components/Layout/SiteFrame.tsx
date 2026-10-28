@@ -22,7 +22,7 @@ interface Props {
 export function SiteFrame({ config, menu, homeUrl, header, hideFooter = false, showPublicSidebar = false, preview = false, children }: Props) {
   const [params] = useSearchParams();
   const isStandaloneSimulator = Boolean(params.get("simulator"));
-  const isStandaloneCourse = params.get("courses") === "1";
+  const isStandaloneCourse = params.get("courses") === "1" && Boolean(params.get("course"));
   const hideSiteChrome = isStandaloneCourse;
   return (
     <div className={`site-root${isStandaloneSimulator ? " site-root--simulator" : ""}${isStandaloneCourse ? " site-root--course" : ""}`} style={config.themeVars}>
