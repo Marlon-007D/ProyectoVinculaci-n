@@ -11,6 +11,7 @@ import adminStyles from '../admin/AdminRoutes.module.css';
 import { ProjectsDashboard } from './ProjectsDashboard';
 import { PortalEditor } from '../portal-editor/PortalEditor';
 import { moduleClass as css } from './projectStyles';
+import { useProjectInstitutionSync } from './InstitutionSwitcher';
 
 export function ProjectsWorkspace({ mode = 'projects' }: { mode?: 'projects' | 'portal' }) {
   const auth = useAuth();
@@ -23,8 +24,10 @@ export function ProjectsWorkspace({ mode = 'projects' }: { mode?: 'projects' | '
     return () => window.removeEventListener('projects-institutions-changed', reload);
   }, [tenant.reloadInstitutions]);
 
+  useProjectInstitutionSync(mode === 'projects' && Boolean(auth.user));
+
   if (auth.loading) return <main className={adminStyles.page} role="status">Comprobando acceso institucional…</main>;
-  if (!auth.user) return <Navigate to={'/panel/admin' + location.search} state={{ returnTo: location.pathname + location.search }} replace />;
+  if (!auth.user) return <Navigate to={'/login' + location.search} state={{ returnTo: location.pathname + location.search }} replace />;
   if (auth.mfaRequired || auth.mfaEnrollmentRequired) return <Navigate to={'/panel/admin' + location.search} replace />;
 
   function content() {

@@ -36,7 +36,7 @@ export function PortalRenderer({ snapshot, institutionSlug, institutionId, previ
   return <InstitutionProvider institutionId={institutionId}>
     <div inert={preview || undefined} aria-label={preview ? 'Vista previa del portal institucional' : undefined}>
       <SiteFrame config={config} menu={{ state: { status: 'success', data: menus }, reload: () => {} }} homeUrl={'/?institution=' + encodeURIComponent(institutionSlug)} preview={preview}>
-        <PageSections managed isHomepage={snapshot.is_homepage} sections={normalized.sections} template={normalized.template} social={config.social} />
+        <PageSections sections={normalized.sections} template={normalized.template} social={config.social} />
       </SiteFrame>
     </div>
   </InstitutionProvider>;

@@ -2,6 +2,10 @@ import {moduleClass} from './projectStyles';
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '../../core/supabaseClient';
 import { projectError } from './projectService';
+import { notify } from '../../shared/components/Toaster/notify';
+import { confirmAction } from '../../shared/components/ConfirmDialog/confirm';
+import { FilePicker } from './FilePicker';
+import { plural } from './projectPresentation';
 const receiptBucket = 'project-receipts';
 interface Receipt {
     expense_file_id: string;
@@ -16,7 +20,13 @@ export function ExpenseFiles({ institutionId, expenseId, readOnly = false }: {
     const [files, setFiles] = useState<Receipt[]>([]);
     const [error, setError] = useState('');
     const [busy, setBusy] = useState(false);
+    const [picked, setPicked] = useState('');
     const lock = useRef(false);
+    function fail(title: string, cause: unknown) {
+        const message = projectError(cause);
+        setError(message);
+        notify.error(title, { description: message });
+    }
     useEffect(() => {
         let active = true;
         void (async () => {
@@ -41,8 +51,10 @@ export function ExpenseFiles({ institutionId, expenseId, readOnly = false }: {
     async function upload(file?: File) {
         if (!file || readOnly || lock.current)
             return;
+        setPicked(file.name);
         if (!['application/pdf', 'image/png', 'image/jpeg'].includes(file.type) || file.size > 10485760 || !file.size) {
             setError('Selecciona un PDF, JPG o PNG de hasta 10 MB.');
+            notify.warning('Archivo no admitido', { description: 'Selecciona un PDF, JPG o PNG de hasta 10 MB.' });
             return;
         }
         lock.current = true;
@@ -58,9 +70,10 @@ export function ExpenseFiles({ institutionId, expenseId, readOnly = false }: {
                 throw new Error('El archivo se conservó, pero no pudo vincularse al gasto. Referencia para recuperar el registro: ' + path + '. ' + projectError(metadataError));
             }
             setFiles(previous => [...previous, data]);
+            notify.success('Comprobante adjuntado', { description: data.file_name });
         }
         catch (cause) {
-            setError(projectError(cause));
+            fail('No se pudo adjuntar el comprobante', cause);
         }
         finally {
             lock.current = false;
@@ -68,7 +81,7 @@ export function ExpenseFiles({ institutionId, expenseId, readOnly = false }: {
         }
     }
     async function remove(file: Receipt) {
-        if (readOnly || lock.current || !window.confirm('¿Retirar este respaldo? El archivo se conservará de forma privada.'))
+        if (readOnly || lock.current || !await confirmAction({ title: '¿Retirar este respaldo?', message: `«${file.file_name}» dejará de mostrarse en el gasto. El archivo se conservará de forma privada.`, confirmLabel: 'Retirar respaldo', tone: 'danger' }))
             return;
         lock.current = true;
         setBusy(true);
@@ -78,9 +91,10 @@ export function ExpenseFiles({ institutionId, expenseId, readOnly = false }: {
             if (result.error)
                 throw result.error;
             setFiles(previous => previous.filter(item => item.expense_file_id !== file.expense_file_id));
+            notify.success('Respaldo retirado', { description: 'El archivo se conserva de forma privada.' });
         }
         catch (cause) {
-            setError(projectError(cause));
+            fail('No se pudo retirar el respaldo', cause);
         }
         finally {
             lock.current = false;
@@ -109,20 +123,19 @@ export function ExpenseFiles({ institutionId, expenseId, readOnly = false }: {
             setTimeout(() => URL.revokeObjectURL(url), 1000);
         }
         catch (cause) {
-            setError(projectError(cause));
+            fail('No se pudo descargar el comprobante', cause);
         }
         finally {
             lock.current = false;
             setBusy(false);
         }
     }
-    return <details className={moduleClass("project-receipts")}><summary>{files.length ? `${files.length} comprobantes` : 'Adjuntar comprobante'}</summary><div>
+    return <details className={moduleClass("project-receipts")}><summary>{files.length ? plural(files.length, 'comprobante', 'comprobantes') : 'Adjuntar comprobante'}</summary><div>
     {files.map(file => <div key={file.expense_file_id}><button type="button" className={moduleClass("block underline")} disabled={busy} onClick={() => void download(file)}>{file.file_name}</button><button type="button" disabled={busy || readOnly} onClick={() => void remove(file)} aria-label={`Eliminar respaldo ${file.file_name}`}>Retirar respaldo</button></div>)}
     {!receiptBucket && <p>Respaldos pendientes de conectar al almacenamiento privado existente.</p>}
-    <label className={moduleClass("block")}>Adjuntar respaldo privado (PDF/JPG/PNG, 10 MB)
-      <input aria-label="Adjuntar respaldo privado" type="file" accept="application/pdf,image/png,image/jpeg" disabled={busy || readOnly || !receiptBucket} onChange={event => { void upload(event.target.files?.[0]); event.target.value = ''; }} className={moduleClass("block max-w-48")}/>
-    </label>
+    <FilePicker label="Seleccionar archivo" accept="application/pdf,image/png,image/jpeg" disabled={busy || readOnly || !receiptBucket} fileName={picked} onPick={file => void upload(file)} />
+    <p className={moduleClass("project-field-hint")}>Respaldo privado: PDF, JPG o PNG de hasta 10 MB.</p>
     {busy && <span role="status">Procesando archivo…</span>}
-    {error && <p role="alert" className={moduleClass("text-red-700")}>{error}</p>}
+    {error && <p role="alert" className={moduleClass("project-field-error")}>{error}</p>}
   </div></details>;
 }

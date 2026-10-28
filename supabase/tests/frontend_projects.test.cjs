@@ -5,7 +5,7 @@ const vm=require('node:vm');
 const ts=require('typescript');
 function load(path,imports={}){
  const code=ts.transpileModule(fs.readFileSync(path,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText;
- const exports={};vm.runInNewContext(code,{exports,URL,URLSearchParams,crypto:require('node:crypto').webcrypto,require:name=>{if(name in imports)return imports[name];if(name==='../site/utils/institutionalNavigation')return load('src/modules/site/utils/institutionalNavigation.ts');if(name==='../site/utils/menuTree')return load('src/modules/site/utils/menuTree.ts');if(name==='../site/utils/siteConfig')return load('src/modules/site/utils/siteConfig.ts');if(name==='./portalMenus')return load('src/modules/portal-editor/portalMenus.ts');if(['./projectStyles','./portalStyles'].includes(name))return {moduleClass:value=>value};if(['react','lucide-react'].includes(name))return require(name);throw new Error('Unexpected import '+name);}});return exports;
+ const exports={};vm.runInNewContext(code,{exports,URL,URLSearchParams,structuredClone,crypto:require('node:crypto').webcrypto,require:name=>{if(name in imports)return imports[name];if(name==='../site/utils/institutionalNavigation')return load('src/modules/site/utils/institutionalNavigation.ts');if(name==='../site/utils/menuTree')return load('src/modules/site/utils/menuTree.ts');if(name==='../site/utils/siteConfig')return load('src/modules/site/utils/siteConfig.ts');if(name==='./portalMenus')return load('src/modules/portal-editor/portalMenus.ts');if(['./projectStyles','./portalStyles'].includes(name))return {moduleClass:value=>value};if(['react','lucide-react'].includes(name))return require(name);throw new Error('Unexpected import '+name);}});return exports;
 }
 function client(responses){
  const calls=[];
@@ -25,11 +25,10 @@ test('rutas de integración conservan portada, cursos y navegación existente',(
   './pages/NotFound':{NotFound:marker('EXISTING_NOT_FOUND')},'./pages/SitePreview':{SitePreview:marker('EXISTING_HOME')},
   '../../features/feats/pages/FeatsLoginPage':{FeatsLoginPage:marker('EXISTING_COURSES')},'../../features/feats/services/featsAuth':{localDemoAuthService:{}},'./styles/site.css':{},
  });
- for(const [path,expected] of [['/','EXISTING_HOME'],['/admin-cursos','EXISTING_COURSES'],['/unknown','EXISTING_NOT_FOUND'],['/panel/proyectos','NEW_MODULE'],['/panel/portal','NEW_MODULE'],['/proyectos?transparency=1','NEW_MODULE'],['/portal?institution=school','NEW_MODULE']]){
+ for(const [path,expected] of [['/','EXISTING_HOME'],['/admin-cursos','EXISTING_COURSES'],['/unknown','EXISTING_NOT_FOUND'],['/panel/proyectos','NEW_MODULE'],['/panel/portal','NEW_MODULE'],['/proyectos?transparency=1','NEW_MODULE'],['/portal?institution=school','NEW_MODULE'],['/panel/ruta-inexistente','ERROR_PAGE'],['/panel/cursos','ACADEMIC'],['/panel/simuladores','SIMULATORS']]){
   const {default:App}=load('src/App.tsx',{'react':{...react,lazy:()=>marker('NEW_MODULE')},'react/jsx-runtime':jsx,
    'react-router-dom':{...router,BrowserRouter:({children})=>react.createElement(router.MemoryRouter,{initialEntries:[path]},children)},
 
-   './modules/projects/integration/ProjectSessionHost':{isPrivateProjectsPath:(p,q)=>/^\/(?:panel\/)?proyectos(?:\/|$)/.test(p)&&!new URLSearchParams(q).has('transparency'),ProjectSessionHost:()=>{const l=router.useLocation();return /^\/(?:panel\/)?proyectos(?:\/|$)/.test(l.pathname)&&!new URLSearchParams(l.search).has('transparency')?react.createElement('p',null,'NEW_MODULE'):null;}},
    './core/AuthContext':{AuthProvider:({children})=>children,useAuth:()=>({user:null})},
    './core/TenantContext':{TenantProvider:({children})=>children,useTenant:()=>({activeInstitution:null})},
    './modules/site/components/Layout/InstitutionSessionLayout':{InstitutionSessionLayout:({children})=>children},
@@ -45,8 +44,12 @@ test('rutas de integración conservan portada, cursos y navegación existente',(
    './modules/admin/AdminRoutes':{default:marker('ADMIN')},
    './modules/auth/RegistrationRoute':{RegistrationRoute:marker('REGISTER')},
    './modules/auth/LoginRoute':{LoginRoute:marker('LOGIN')},
-   './app/App':{default:marker('SIMULATORS')},
+   './app/App':{__esModule:true,default:marker('SIMULATORS')},
    './modules/site':{SiteApp},'./modules/projects/integration/ModuleBoundary':{ModuleBoundary:({children})=>children},
+   './modules/projects/integration/ProjectSessionHost':{ProjectSessionHost:()=>null,isPrivateProjectsPath:()=>false},
+   './shared/components/ConfirmDialog/ConfirmHost':{ConfirmHost:()=>null},
+   './shared/components/ErrorPage/ErrorBoundary':{ErrorBoundary:({children})=>children},
+   './shared/components/ErrorPage/ErrorPage':{ErrorPage:marker('ERROR_PAGE')},
   });
   const html=require('react-dom/server').renderToStaticMarkup(react.createElement(App));assert.ok(html.includes(expected),path+' did not preserve its route');
  }
@@ -80,15 +83,52 @@ test('indicadores financieros distinguen falta de datos, presupuesto cero y gast
 });
 test('transparencia renderiza solo el resumen público y no presenta totales durante la carga',()=>{
  const jsx=require('react/jsx-runtime');const react=require('react');
- const visuals=load('src/modules/projects/ProjectVisuals.tsx',{'./projectValidation':money,'./projectPresentation':presentation,'react/jsx-runtime':jsx});
+ const transparency=load('src/modules/projects/publicTransparency.ts',{'./projectPresentation':presentation,'./projectValidation':money});
+ // The adapter keeps only public summary fields, whatever else the server sends.
+ const raw={project_id:'p-a',title:'Huerto público',description:'Objetivo aprobado',is_active:true,total_budget:'1000',spent:'250',balance:'750',participants:'PERSONA PRIVADA',receipt:'COMPROBANTE PRIVADO'};
  function render(pending){
-  const rows=[{project_id:'p-a',title:'Huerto público',description:'Objetivo aprobado',is_active:true,total_budget:1000,spent:250,balance:750,participants:'PERSONA PRIVADA',receipt:'COMPROBANTE PRIVADO'}];
-  const values=[0,0,pending?null:{key:'escuela:0',rows,error:'',checkedAt:'20 oct 2026'},'','all','name','cards',''];let i=0;
-  const {PublicProjects}=load('src/modules/projects/PublicProjects.tsx',{'react':{...react,useEffect:()=>{},useState:()=>[values[i++],()=>{}]},'../../core/supabase/publicClient':{publicSupabase:{}},'../site/services/portalUpdates':{watchPortalUpdates:()=>()=>{}},'./projectValidation':money,'./projectPresentation':presentation,'./ProjectVisuals':visuals,'./projects.css':{},'react/jsx-runtime':jsx});
-  return require('react-dom/server').renderToStaticMarkup(react.createElement(PublicProjects,{institutionSlug:'escuela',institutionName:'Escuela de prueba'}));
+  const page={total:1,rows:[{...raw,total_budget:1000,spent:250,balance:750}],summary:{count:1,budget:1000,spent:250,active:1,closed:0}};
+  const key=JSON.stringify(['escuela','','all','name',1,9,0]);
+  // useState order: slug, institutions, draft, search, status, sort, page, pageSize, view, revision, load.
+  const values=['escuela',{status:'ready',rows:[{name:'Escuela de prueba',slug:'escuela'}]},'','','all','name',1,9,'cards',0,pending?null:{key,state:{status:'ready',data:page,checkedAt:'20 oct 2026'}}];let i=0;
+  const {PublicProjects}=load('src/modules/projects/PublicProjects.tsx',{'react':{...react,useEffect:()=>{},useState:()=>[values[i++],()=>{}]},'../../core/supabase/publicClient':{publicSupabase:{}},'../../shared/components/Toaster/NotifyBridge':{NotifyBridge:()=>null},'./projectValidation':money,'./projectPresentation':presentation,'./publicTransparency':transparency,'./TransparencyReportActions':{TransparencyReportActions:()=>null},'./PublicProjects.module.css':{default:{}},'react/jsx-runtime':jsx,'../../shared/components/Toaster/notify':{notify:{}}});
+  return require('react-dom/server').renderToStaticMarkup(react.createElement(PublicProjects));
  }
- const html=render(false);assert.ok(!html.includes('Selecciona una institución'));assert.ok(html.includes('Huerto público'));assert.ok(html.includes('Escuela de prueba'));assert.ok(!html.includes('PERSONA PRIVADA'));assert.ok(!html.includes('COMPROBANTE PRIVADO'));
- const pending=render(true);assert.ok(pending.includes('Consultando información pública'));assert.ok(!pending.includes('Saldo por ejecutar'));assert.ok(!pending.includes('Huerto público'));
+ const html=render(false);assert.ok(html.includes('Huerto público'));assert.ok(html.includes('Escuela de prueba'));assert.ok(html.includes('Mostrando 1–1 de 1 proyectos'));
+ const pending=render(true);assert.ok(pending.includes('Consultando información pública'));assert.ok(!pending.includes('$1000'));assert.ok(!pending.includes('Huerto público'));
+});
+test('transparencia pagina en el servidor y, sin el SQL nuevo, usa temporalmente el resumen anterior',async()=>{
+ const transparency=load('src/modules/projects/publicTransparency.ts',{'./projectPresentation':presentation,'./projectValidation':money});
+ assert.equal(JSON.stringify(transparency.pageWindow(1,1)),'[1]');
+ assert.equal(JSON.stringify(transparency.pageWindow(5,10)),'[1,"gap",4,5,6,"gap",10]');
+ assert.equal(JSON.stringify(transparency.pageWindow(2,3)),'[1,2,3]');
+ const calls=[];const rows=n=>Array.from({length:n},(_,i)=>({project_id:'p'+i,title:'Proyecto '+i,description:'',is_active:i%2===0,total_budget:100,spent:i,balance:100-i,participants:'PRIVADO'}));
+ const paged=transparency.createTransparencySource({rpc:async(name,args)=>{calls.push(name);return {data:{total:30,rows:rows(9),summary:{count:30,budget:3000,spent:120,active:15,closed:15}},error:null};}});
+ const result=await paged.page({slug:'a',search:'',status:'all',sort:'name',page:2,pageSize:9});
+ assert.equal(JSON.stringify(calls),'["project_public_page"]');assert.equal(result.rows.length,9);assert.equal(result.total,30);
+ assert.ok(!JSON.stringify(result).includes('PRIVADO'));
+ calls.length=0;
+ const legacy=transparency.createTransparencySource({rpc:async name=>{calls.push(name);return name==='project_public_page'?{data:null,error:{code:'PGRST202'}}:{data:rows(20),error:null};}});
+ const second=await legacy.page({slug:'a',search:'',status:'active',sort:'name',page:2,pageSize:4});
+ assert.equal(JSON.stringify(calls),'["project_public_page","project_public_summary"]');
+ assert.equal(second.total,10);assert.equal(second.rows.length,4);assert.equal(second.summary.count,20);assert.equal(second.summary.active,10);
+ // The missing paginated function is remembered: later pages skip the request that returns 404.
+ calls.length=0;await legacy.page({slug:'a',search:'',status:'all',sort:'name',page:1,pageSize:4});
+ assert.equal(JSON.stringify(calls),'["project_public_summary"]');
+ const broken=transparency.createTransparencySource({rpc:async()=>({data:null,error:{code:'42501'}})});
+ await assert.rejects(broken.page({slug:'a',search:'',status:'all',sort:'name',page:1,pageSize:9}));
+});
+test('informe público de transparencia: reúne todas las páginas y solo exporta campos publicados',async()=>{
+ const transparency=load('src/modules/projects/publicTransparency.ts',{'./projectPresentation':presentation,'./projectValidation':money});
+ const all=Array.from({length:120},(_,i)=>({project_id:'p'+i,title:i===0?'=SUMA(A1)':'Proyecto '+i,description:'Objetivo',is_active:i%2===0,total_budget:100,spent:25,balance:75}));
+ const sizes=[];const source={institutions:async()=>[],page:async q=>{sizes.push(q.pageSize);const start=(q.page-1)*q.pageSize;return {total:all.length,rows:all.slice(start,start+q.pageSize).map(r=>({...r,participants:'PRIVADO'})),summary:{count:120,budget:0,spent:0,active:0,closed:0}};}};
+ const rows=await transparency.collectRows(source,{slug:'a',search:'',status:'all',sort:'name'});
+ assert.equal(rows.length,120);assert.equal(JSON.stringify(sizes),'[50,50,50]');
+ const [summary,projects]=transparency.transparencyXlsxSheets('Escuela',rows,'20 oct 2026','2026-10-20');
+ assert.equal(projects.rows.length,122);assert.equal(projects.rows[1][3],'En ejecución');assert.equal(projects.rows[1][4].value,100);
+ assert.equal(projects.rows[121][0].value,'Totales');assert.equal(projects.rows[121][4].value,12000);assert.equal(summary.rows[5][1],120);
+ // A title that looks like a formula stays plain text in the workbook; private fields never reach it.
+ assert.equal(projects.rows[1][0],'=SUMA(A1)');assert.ok(!JSON.stringify([summary,projects]).includes('PRIVADO'));
 });
 const images=load('src/modules/portal-editor/assetValidation.ts');
 test('imágenes públicas: valida firma, tamaño y tipo antes de subir',()=>{
@@ -161,7 +201,7 @@ const row={revision:1,project_id:'p-a',institution_id:'tenant-a',title:'Huerto',
 function service(responses,revision){const c=client(responses);return {...c,service:load('src/modules/projects/projectService.ts',{'../../core/supabaseClient':{supabase:c.fake},'./projectValidation':money}).createProjectService('tenant-a',()=> '2026-10-15',revision)};}
 const ok=data=>({data,error:null});
 const period={academic_period_id:'period-a',name:'Costa 2026-2027',start_date:'2026-05-04',end_date:'2027-03-11'};
-function portal(responses){const c=client(responses);const notifications=[];const originalRpc=c.fake.rpc;c.fake.rpc=(name,args)=>name==='portal_editor_content_version'?Promise.resolve(ok(2)):name==='portal_editor_retention_version'?Promise.resolve(ok(1)):originalRpc(name,args);const module=load('src/modules/portal-editor/portalService.ts',{'../../core/supabaseClient':{supabase:c.fake},'../projects/integration/accessService':{getUserInstitutions:async()=>[{institution_id:'tenant-a',role:'institution_admin',enabled_modules:['portal']}]},'./contract':contract,'../site/utils/snapshot':load('src/modules/site/utils/snapshot.ts'),'../site/services/portalUpdates':{notifyPortalPublished:id=>notifications.push(id)}});return {...c,module,notifications};}
+function portal(responses){const c=client(responses);const originalRpc=c.fake.rpc;c.fake.rpc=(name,args)=>name==='portal_editor_content_version'?Promise.resolve(ok(2)):name==='portal_editor_retention_version'?Promise.resolve(ok(1)):originalRpc(name,args);const module=load('src/modules/portal-editor/portalService.ts',{'../../core/supabaseClient':{supabase:c.fake},'../projects/integration/accessService':{getUserInstitutions:async()=>[{institution_id:'tenant-a',role:'institution_admin',enabled_modules:['portal']}]},'./contract':contract,'../site/utils/snapshot':load('src/modules/site/utils/snapshot.ts')});return {...c,module};}
 
 test('crear proyecto envía institución, fechas e importe a la operación atómica',async()=>{
  const {service:s,calls}=service([ok([period]),ok(row)]);
@@ -201,13 +241,11 @@ test('publicación y estado se confirman mediante el servidor',async()=>{
 test('guardar borrador no escribe en versiones o tablas públicas desde el navegador',async()=>{
  const snapshot=snapshotFixture('Institución');const p=portal([ok({page_id:'page-a',revision:3,status:'published',snapshot})]);
  const saved=await p.module.savePortal('tenant-a','page-a',2,snapshot,false);
- assert.deepEqual(p.notifications,[]);
  assert.equal(saved.revision,3);assert.equal(p.calls.length,1);assert.equal(p.calls[0].name,'portal_editor_save');assert.equal(p.calls[0].publish,false);assert.equal(p.calls[0].expected_revision,2);
 });
 test('publicación atómica conserva el contrato consumido por el portal',async()=>{
  const snapshot=snapshotFixture('Institución');const p=portal([ok({page_id:'page-a',revision:1,status:'published',snapshot})]);
  await p.module.savePortal('tenant-a',null,0,snapshot,true);
- assert.deepEqual(p.notifications,['tenant-a']);
  assert.equal(p.calls.length,1);assert.equal(p.calls[0].publish,true);assert.equal(p.calls[0].snapshot.schema_version,1);assert.equal(p.calls[0].target_institution,'tenant-a');
 });
 
@@ -223,7 +261,7 @@ test('publishing an older page draft cannot replace the shared institutional hea
 });
 test('conflicto de revisión y error de publicación se propagan sin éxito simulado',async()=>{
  for(const failure of [{code:'40001',message:'Versión más reciente'},{code:'42501',message:'Sin permiso'}]){
-  const p=portal([{data:null,error:failure}]);await assert.rejects(()=>p.module.savePortal('tenant-a','page-a',1,snapshotFixture('Colegio'),true),e=>e===failure);assert.equal(p.calls.length,1);assert.deepEqual(p.notifications,[]);
+  const p=portal([{data:null,error:failure}]);await assert.rejects(()=>p.module.savePortal('tenant-a','page-a',1,snapshotFixture('Colegio'),true),e=>e===failure);assert.equal(p.calls.length,1);
  }
 });
 test('menús demasiado largos y logotipo inseguro se rechazan antes de guardar',async()=>{
@@ -491,4 +529,71 @@ test('una denegación en lectura atómica no intenta acceder por una ruta altern
  const c=client([]);const denied={code:'42501',message:'Acceso no autorizado'};c.fake.rpc=async()=>({data:null,error:denied});
  const s=load('src/modules/projects/projectService.ts',{'../../core/supabaseClient':{supabase:c.fake},'./projectValidation':money}).createProjectService('tenant-a');
  await assert.rejects(()=>s.getProjects(),error=>error===denied);assert.equal(c.calls.length,0);
+});
+test('la dirección de una página se genera desde su título sin tildes ni símbolos',()=>{
+ assert.equal(contract.slugify('Oferta Educativa 2026'),'oferta-educativa-2026');
+ assert.equal(contract.slugify('  Misión y Visión ¡Nueva!  '),'mision-y-vision-nueva');
+ assert.equal(contract.slugify('???'),'');
+ assert.ok(contract.slugify('a'.repeat(140)).length<=100);
+});
+test('los destinos de enlaces ofrecen secciones fijas y páginas publicadas sin duplicados',()=>{
+ const {portalDestinations}=load('src/modules/portal-editor/LinkDestination.tsx',{'react/jsx-runtime':require('react/jsx-runtime'),'./contract':contract,'./LinkDestination.module.css':{default:{}}});
+ const list=portalDestinations([{title:'Contacto duplicado',slug:'contacto'},{title:'Becas',slug:'becas'},{title:'',slug:''}]);
+ assert.ok(list.some(item=>item.label==='Transparencia'&&item.url==='/?slug=transparencia'));
+ assert.equal(list.filter(item=>item.url==='/?slug=contacto').length,1);
+ assert.equal(JSON.stringify(list.filter(item=>item.group==='Páginas creadas').map(item=>item.url)),JSON.stringify(['/?slug=becas']));
+ assert.equal(list.filter(item=>item.url==='/').length,1);
+});
+test('la confirmación propia resuelve una sola vez y reemplaza una solicitud pendiente',async()=>{
+ const confirm=load('src/shared/components/ConfirmDialog/confirm.ts');
+ const seen=[];const stop=confirm.subscribeConfirm(request=>seen.push(request?.title??null));
+ const first=confirm.confirmAction({title:'Primera'});
+ const second=confirm.confirmAction({title:'Segunda',tone:'danger'});
+ assert.equal(await first,false);
+ confirm.settleConfirm(true);assert.equal(await second,true);
+ assert.deepEqual(seen,[null,'Primera','Segunda',null]);
+ stop();
+});
+test('la portada guarda de cero a varios botones y conserva los campos antiguos para el portal',()=>{
+ const banner=properties=>contract.normalizeSnapshot({...contract.newSnapshot('Escuela'),sections:[{id:'b',type:'banner',position:0,is_visible:true,properties}]}).sections[0].properties;
+ const none=banner({buttons:[],url:'/?slug=contacto',link_label:'Viejo',secondary_label:'Otro',secondary_url:'/'});
+ assert.equal(none.button_url,undefined);assert.equal(none.secondary_url,undefined);assert.equal(none.url,undefined);
+ const three=banner({buttons:[{id:'1',label:'Oferta',url:'/?slug=oferta-educativa'},{id:'2',label:'Contacto',url:'/?slug=contacto'},{id:'3',label:'Becas',url:'https://becas.example'}]});
+ assert.equal(three.button_label,'Oferta');assert.equal(three.secondary_url,'/?slug=contacto');assert.equal(three.buttons.length,3);
+ const legacy=banner({url:'/?slug=contacto',link_label:'Contáctanos'});
+ assert.equal(legacy.button_url,'/?slug=contacto');assert.equal(legacy.button_label,'Contáctanos');
+ assert.equal(banner({limit:500}).limit,24);assert.equal(banner({limit:'3'}).limit,3);assert.equal(banner({limit:0}).limit,1);
+});
+test('los botones antiguos de la portada se convierten en lista editable',()=>{
+ const {bannerButtons}=load('src/modules/portal-editor/ButtonList.tsx',{'react/jsx-runtime':require('react/jsx-runtime'),'./contract':contract,'./LinkDestination':{LinkDestination:()=>null},'./ButtonList.module.css':{default:{}}});
+ assert.equal(JSON.stringify(bannerButtons({link_label:'Oferta',url:'/?slug=oferta-educativa',secondary_label:'',secondary_url:''}).map(b=>b.label)),'["Oferta"]');
+ assert.equal(bannerButtons({buttons:[]}).length,0);
+ assert.equal(bannerButtons({}).length,0);
+});
+test('las páginas publicadas por el portal se abren en el editor con su contenido real',()=>{
+ const {module}=portal([]);
+ const config=contract.newSnapshot('Unidad Educativa Luz de América');config.settings.contact_email='info@example.test';config.template='cards';
+ // Same shape as the public portal pages: no schema_version, only sections (and sometimes template).
+ const content={sections:[{type:'hero',properties:{title:'Oferta educativa',subtitle:'Bachillerato'}},{type:'text',position:1,properties:{title:'Niveles',body:'Inicial, EGB y BGU'}},{type:'links',properties:{items:[{title:'Matrículas',url:'/?slug=contacto'}]}}]};
+ const page=module.legacyPublishedSnapshot({title:'Oferta educativa',slug:'oferta-educativa',is_homepage:false},content,config);
+ assert.equal(page.title,'Oferta educativa');assert.equal(page.slug,'oferta-educativa');assert.equal(page.publication_state,'published');
+ assert.equal(JSON.stringify(page.sections.map(s=>s.type)),'["banner","text","links"]');
+ assert.equal(page.sections[1].properties.body,'Inicial, EGB y BGU');
+ assert.equal(page.settings.contact_email,'info@example.test');assert.equal(page.template,'classic');
+ page.settings.site_title='Cambio local';assert.equal(config.settings.site_title,'Unidad Educativa Luz de América');
+});
+test('presupuesto escrito en el formulario llega intacto al RPC: «500», «350,20» y «350.20» nunca se guardan como 0',async()=>{
+ const presentationModule=load('src/modules/projects/projectPresentation.ts',{'./projectValidation':money});
+ const forms=load('src/modules/projects/projectForms.ts',{'./projectValidation':money,'./projectPresentation':presentationModule});
+ const data=budget=>{const d=new FormData();for(const [k,v] of Object.entries({name:'Huerto',budget,start:'2026-10-15',end:'2026-11-01',description:'Objetivo'}))d.set(k,v);return d;};
+ for(const [typed,expected] of [['500',500],['350,20',350.2],['350.20',350.2],[' 1000,5 ',1000.5]]){
+  const checked=forms.validateProjectForm(data(typed));assert.equal(checked.ok,true,typed);assert.equal(checked.values.budget_total,expected,typed);
+  const {service:s,calls}=service([ok([period]),ok(row)]);await s.createProject(checked.values);
+  assert.equal(calls[1].operation,'create_project');assert.equal(calls[1].payload.budget_total,expected,'payload de '+typed);
+  const bare={...row,budget_items:[]};const edit=service([ok(bare),ok(bare)]);await edit.service.updateProject('p-a',{...checked.values,budget_total:expected});
+  assert.equal(edit.calls.at(-1).operation,'update_project');assert.equal(edit.calls.at(-1).payload.budget_total,expected,'edición de '+typed);
+ }
+ // The old reader (Number of an empty type=number value) turned an unreadable amount into 0; now it is an error under the field.
+ for(const typed of ['','   ','350,20,1','abc']){const checked=forms.validateProjectForm(data(typed));assert.equal(checked.ok,false,typed);assert.ok(checked.errors.budget,typed);}
+ assert.equal(forms.validateProjectForm(data('0')).values.budget_total,0,'0 explícito sigue permitido');
 });

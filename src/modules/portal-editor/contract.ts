@@ -25,11 +25,29 @@ export function safeUrl(value: unknown): string | undefined {
   return /^https:\/\//i.test(value) || (value==='/'||/^\/[^/]/.test(value)) ? value : undefined;
 }
 export function textValue(value: unknown): string { return typeof value === 'string' ? value : ''; }
+/** Page address from its title: "Oferta Educativa 2026" -> "oferta-educativa-2026". */
+export function slugify(title: string): string {
+  return title.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 100).replace(/-+$/, '');
+}
+/** The public renderer never shows more than this many news, events or honors per section. */
+export const MAX_SECTION_RECORDS = 24;
 /** Aliases understood by Axel's public PageSections, preserving existing properties. */
 export function normalizeSnapshot(snapshot: PortalSnapshot): PortalSnapshot {
   return {...snapshot,sections:snapshot.sections.map((section,position)=>{
     const p={...section.properties};
-    if(section.type==='banner'){
+    // Older pages may carry larger or textual limits; keep them inside what the portal can show.
+    if(p.limit!==undefined&&p.limit!==null&&p.limit!==''&&Number.isFinite(Number(p.limit)))p.limit=Math.min(MAX_SECTION_RECORDS,Math.max(1,Math.floor(Number(p.limit))));
+    if(section.type==='banner'&&Array.isArray(p.buttons)){
+      // The button list replaces the two fixed buttons; mirror the first two for older readers.
+      const buttons=p.buttons.filter((b):b is Record<string,unknown>=>!!b&&typeof b==='object');
+      delete p.url;delete p.link_label;
+      for(const [index,[label,url]] of [['button_label','button_url'],['secondary_label','secondary_url']].entries()){
+        if(buttons[index]){p[label]=textValue(buttons[index].label);p[url]=textValue(buttons[index].url);}
+        else{delete p[label];delete p[url];}
+      }
+    }
+    else if(section.type==='banner'){
       if(typeof p.body==='string')p.subtitle=p.body;
       if(typeof p.url==='string')p.button_url=p.url;
       if(typeof p.link_label==='string')p.button_label=p.link_label;
