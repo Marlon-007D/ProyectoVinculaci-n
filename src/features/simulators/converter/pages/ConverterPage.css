@@ -1,5 +1,5 @@
 .converter-page.page-content { padding-top: 16px; }
-.converter-single-card { display: grid; width: min(100%, 1100px); gap: 0; padding: clamp(22px, 3vw, 34px); border: 1px solid var(--line); border-radius: 20px; background: var(--surface); }
+.converter-single-card { display: grid; width: 100%; gap: 0; margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; }
 .converter-form-content { min-width: 0; padding: 0; border: 0; background: transparent; }
 .converter-form-content h2 { margin: 0 0 20px; color: #342d39; font: 600 23px 'Outfit', sans-serif; }.converter-title { display: flex; align-items: center; gap: 12px; margin-bottom: 21px; }.converter-title h2 { margin: 0; }.simulator-title-icon { display: grid; flex: none; place-items: center; width: 48px; height: 48px; border-radius: 15px; color: #fff; background: var(--accent); }
 .segmented-control { display: inline-flex; padding: 4px; margin: 2px 0 28px; border: 1px solid var(--line); border-radius: 12px; background: var(--accent-soft); }.segmented-control button { display: inline-flex; align-items: center; gap: 7px; min-height: 36px; padding: 0 15px; border: 0; border-radius: 8px; color: #675d6e; background: transparent; font-size: 13px; font-weight: 700; }.segmented-control button.selected { color: var(--accent); background: var(--accent-container); }

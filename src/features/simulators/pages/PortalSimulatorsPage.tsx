@@ -31,12 +31,21 @@ export function PortalSimulatorsPage() {
 
   if (!selected) return <div className="portal-simulators"><SimulatorHubPage onSelect={selectSimulator} /></div>
 
+  const selectedLabel = {
+    invoice: 'Facturación electrónica',
+    converter: 'Conversor de unidades y monedas',
+    interest: 'Calculadora de interés',
+  }[selected]
+
   return (
     <div className="portal-simulators">
       <div className="portal-simulators-toolbar">
-        <button className="portal-simulators-back" type="button" onClick={returnToHub}>
-          <span className="portal-material-icon" aria-hidden="true">home</span> Inicio
-        </button>
+        <nav className="portal-simulator-breadcrumbs" aria-label="Migas de pan">
+          <ol>
+            <li><button type="button" onClick={returnToHub}>Simuladores</button></li>
+            <li><span aria-current="page">{selectedLabel}</span></li>
+          </ol>
+        </nav>
         {selected === 'invoice' && (
           <nav className="portal-invoice-tabs" aria-label="Secciones de facturación" role="tablist">
             <button type="button" role="tab" aria-selected={invoiceSection === 'emission'} onClick={() => setInvoiceSection('emission')}>

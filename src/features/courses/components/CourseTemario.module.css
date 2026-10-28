@@ -1,11 +1,11 @@
 .temario {
-  --temario-ink: #202124;
-  --temario-muted: #5f6368;
+  --temario-ink: var(--site-ink, #1f2933);
+  --temario-muted: var(--site-muted, #52606d);
   display: grid;
   gap: 28px;
   width: 100%;
-  max-width: 1040px;
-  margin: 0 auto;
+  max-width: none;
+  margin: 0;
   padding: clamp(8px, 1.5vw, 20px) 0 36px;
   color: var(--temario-ink);
 }
@@ -21,9 +21,9 @@
 }
 
 .concept {
-  --concept-title: #315d3e;
-  --concept-copy: #4d6b55;
-  --concept-accent: #4d8158;
+  --concept-title: var(--site-navy, #0a233f);
+  --concept-copy: var(--site-muted, #52606d);
+  --concept-accent: var(--site-accent, #1d4e89);
   display: grid;
   grid-template-rows: 104px 1fr;
   align-content: start;
@@ -32,15 +32,11 @@
   min-height: 212px;
   box-sizing: border-box;
   padding: 16px;
-  border-radius: 20px;
-  background: #e8f2e9;
+  border: 1px solid var(--site-line, #d5dbe1);
+  border-radius: 12px;
+  background: var(--site-paper, #fff);
 }
 
-.concept:nth-child(6n + 2) { --concept-title: #315b8c; --concept-copy: #4d6686; --concept-accent: #4d6f9e; background: #e8f0fb; }
-.concept:nth-child(6n + 3) { --concept-title: #895532; --concept-copy: #785c47; --concept-accent: #9c6741; background: #fbefe5; }
-.concept:nth-child(6n + 4) { --concept-title: #684f88; --concept-copy: #665b78; --concept-accent: #755d98; background: #f1ebf8; }
-.concept:nth-child(6n + 5) { --concept-title: #75612d; --concept-copy: #6e6548; --concept-accent: #88763f; background: #f6f1df; }
-.concept:nth-child(6n) { --concept-title: #884e67; --concept-copy: #765666; --concept-accent: #975d74; background: #f8eaf0; }
 
 /* Las tarjetas anchas alternan con las compactas para formar un mosaico. */
 .concept:nth-child(6n + 1),
@@ -71,8 +67,9 @@
   place-items: center;
   min-height: 0;
   overflow: hidden;
-  border-radius: 14px;
-  background: #f4f8f4;
+  border: 1px solid var(--site-line, #d5dbe1);
+  border-radius: 10px;
+  background: var(--site-surface, #f3f5f7);
 }
 
 .conceptIllustrationVector { background: transparent; }
@@ -99,13 +96,13 @@
 .temario .learning .concept h3 {
   margin: 0 0 6px;
   color: var(--concept-title);
-  font: 500 clamp(16px, 1.6vw, 18px)/1.25 'Roboto', Arial, sans-serif;
+  font: 600 clamp(16px, 1.6vw, 18px)/1.25 var(--site-font, Arial, sans-serif);
 }
 
 .concept p {
   margin: 0;
   color: var(--concept-copy);
-  font: 400 13px/1.45 'Roboto', Arial, sans-serif;
+  font: 400 13px/1.45 var(--site-font, Arial, sans-serif);
 }
 
 @media (max-width: 760px) {

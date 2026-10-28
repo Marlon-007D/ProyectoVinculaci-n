@@ -7,7 +7,6 @@ import { Footer } from "../Footer/Footer";
 import { Header } from "../Header/Header";
 import { PublicSidebar } from "../Navigation/PublicSidebar";
 import "../../styles/layout.css";
-import "../../styles/module-integrations.css";
 
 interface Props {
   config: SiteConfig;
@@ -23,7 +22,7 @@ interface Props {
 export function SiteFrame({ config, menu, homeUrl, header, hideFooter = false, showPublicSidebar = false, preview = false, children }: Props) {
   const [params] = useSearchParams();
   const isStandaloneSimulator = Boolean(params.get("simulator"));
-  const isStandaloneCourse = params.get("courses") === "1" && Boolean(params.get("course"));
+  const isStandaloneCourse = params.get("courses") === "1";
   const hideSiteChrome = isStandaloneCourse;
   return (
     <div className={`site-root${isStandaloneSimulator ? " site-root--simulator" : ""}${isStandaloneCourse ? " site-root--course" : ""}`} style={config.themeVars}>
@@ -34,7 +33,7 @@ export function SiteFrame({ config, menu, homeUrl, header, hideFooter = false, s
           {menu.state.status === "success" && <PublicSidebar config={config} tree={menu.state.data} />}
           <div className="site-page-content">
             <main id="contenido" tabIndex={-1} className="site-main">{children}</main>
-            {!hideFooter && <Footer config={config} tree={menu.state.status === "success" ? menu.state.data : []} />}
+            {!hideFooter && !isStandaloneCourse && <Footer config={config} tree={menu.state.status === "success" ? menu.state.data : []} />}
           </div>
         </div>
       ) : (
@@ -42,7 +41,7 @@ export function SiteFrame({ config, menu, homeUrl, header, hideFooter = false, s
           <main id="contenido" tabIndex={-1} className={`site-main${isStandaloneSimulator ? " site-main--simulator" : ""}${isStandaloneCourse ? " site-main--course" : ""}`}>
             {children}
           </main>
-          {!hideSiteChrome && !hideFooter && <Footer config={config} tree={menu.state.status === "success" ? menu.state.data : []} />}
+          {!hideSiteChrome && !hideFooter && !isStandaloneCourse && <Footer config={config} tree={menu.state.status === "success" ? menu.state.data : []} />}
         </>
       )}
     </div>
