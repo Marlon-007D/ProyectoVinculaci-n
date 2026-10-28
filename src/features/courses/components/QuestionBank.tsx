@@ -348,7 +348,6 @@ export function QuestionBank({ courseId, courseName, topicTitle, mode, onEnter =
         <div className={cx('evaluation-welcome-artwork')} aria-hidden="true">
           {[evaluationChecklist, evaluationIllustration, evaluationResults].map(illustration => <span className={cx('evaluation-welcome-illustration')} key={illustration}><img src={illustration} alt="" /></span>)}
         </div>
-        <div className={cx('evaluation-welcome-copy')}><span className={cx('question-bank-icon')}><CircleHelp size={22} aria-hidden="true" /></span><div><h2>Evaluaciones</h2><p>Comprueba lo aprendido en {topicTitle}.</p></div></div>
       </header>
       {!hasActiveAttempt && attempts < MAX_ATTEMPTS && evaluationEntry}
       {(attemptHistory.length > 0 || attempts > 0) && <div className={cx('evaluation-attempt-grid')} aria-label="Historial de intentos">
