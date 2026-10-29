@@ -64,6 +64,194 @@
 @media (max-width: 720px) { .appShell :global(.question-builder) { grid-template-columns: 1fr; } }
 @media (max-width: 720px) { .appShell :global(.student-table-view) { display: none; } .appShell :global(.student-card-view) { display: block; } .appShell :global(.table-card) table { min-width: 0; } }
 
+/* Navegación privada DECE con la misma jerarquía visual del panel institucional. */
+.appShell :global(.sidebar) {
+  box-sizing: border-box;
+  width: 286px;
+  min-width: 0;
+  max-width: 286px;
+  flex: 0 0 286px;
+  padding: 30px 18px 18px;
+  border-right-color: #e3e6ec;
+}
+.appShell :global(.sidebar-heading) {
+  display: flex;
+  align-items: center;
+  min-height: 40px;
+  margin: 0 0 24px;
+}
+.appShell :global(.sidebar-collapse) {
+  display: grid;
+  flex: 0 0 40px;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  color: #536273;
+  background: transparent;
+  cursor: pointer;
+}
+.appShell :global(.sidebar-collapse):hover { color: #174ea6; background: #e4e6eb; }
+.appShell :global(.menu-toggle) { display: none; }
+.appShell :global(.workspace-nav) {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-width: 0;
+}
+.appShell :global(.nav-item) {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+  min-height: 56px;
+  margin: 0;
+  padding: 6px 12px 6px 8px;
+  border: 0;
+  border-radius: 34px;
+  color: #3c4043;
+  background: transparent;
+  font-size: 14px;
+  font-weight: 650;
+  text-align: left;
+  cursor: pointer;
+}
+.appShell :global(.nav-item:hover) { background: #f1f3f4; }
+.appShell :global(.nav-item > svg) {
+  box-sizing: border-box;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  padding: 11px;
+  border-radius: 50%;
+  stroke-width: 2.1;
+}
+.appShell :global(.nav-item[data-tone="home"] > svg) { color: #075985; background: #b9e3ff; }
+.appShell :global(.nav-item[data-tone="students"] > svg) { color: #137333; background: #ccefd8; }
+.appShell :global(.nav-item[data-tone="cases"] > svg) { color: #6d3ba3; background: #e4d7ff; }
+.appShell :global(.nav-item[data-tone="forms"] > svg) { color: #9a6700; background: #ffe4b3; }
+.appShell :global(.nav-item[data-tone="submissions"] > svg) { color: #a61b5b; background: #f8d8e7; }
+.appShell :global(.nav-item.active) { color: #174ea6; background: #e8f0fe; }
+.appShell :global(.nav-item.active > svg) { color: #1967d2; background: #d2e3fc; }
+.appShell :global(.nav-item > span) {
+  width: auto;
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  font-size: 14px;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.appShell :global(.sidebar-footer) {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: auto;
+  padding: 14px 4px 0;
+  border-top: 1px solid #e7eaef;
+}
+.appShell :global(.sidebar-footer .profile) {
+  flex: 1 1 auto;
+  min-width: 0;
+  gap: 10px;
+  padding: 0;
+  border: 0;
+}
+.appShell :global(.sidebar-footer .profile .avatar) {
+  width: 44px;
+  height: 44px;
+  background: #a9adb2;
+  color: #fff;
+  font-size: 15px;
+}
+.appShell :global(.profile-copy) { display: grid; min-width: 0; gap: 4px; }
+.appShell :global(.profile-copy b) { overflow: hidden; color: #30343b; font-size: 12px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+.appShell :global(.profile-copy small) { margin: 0; font-size: 11px; }
+.appShell :global(.sidebar-logout) {
+  display: grid;
+  flex: 0 0 40px;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  color: #64748b;
+  background: transparent;
+  cursor: pointer;
+}
+.appShell :global(.sidebar-logout:hover) { color: #b42318; background: #e4e6eb; }
+.appShell :global(.sidebar button:focus-visible) { outline: 2px solid #1a73e8; outline-offset: 2px; }
+.appShell :global(.sidebar.is-collapsed) {
+  width: 76px;
+  min-width: 76px;
+  max-width: 76px;
+  flex-basis: 76px;
+  align-items: center;
+  padding: 18px 10px;
+}
+.appShell :global(.sidebar.is-collapsed) :global(.sidebar-heading) { justify-content: center; width: 100%; }
+.appShell :global(.sidebar.is-collapsed) :global(.workspace-nav) { width: 100%; }
+.appShell :global(.sidebar.is-collapsed) :global(.nav-item) { justify-content: center; width: 56px; height: 56px; margin-inline: auto; padding: 6px; }
+.appShell :global(.sidebar.is-collapsed) :global(.nav-item > span),
+.appShell :global(.sidebar.is-collapsed) :global(.profile-copy) { display: none; }
+.appShell :global(.sidebar.is-collapsed) :global(.sidebar-footer) { flex-direction: column; width: 100%; padding-inline: 0; }
+.appShell :global(.sidebar.is-collapsed) :global(.sidebar-footer .profile) { justify-content: center; }
+@media (max-width: 900px) {
+  .appShell :global(.sidebar), .appShell :global(.sidebar.is-collapsed) {
+    position: relative;
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+    height: auto;
+    max-height: none;
+    flex-basis: auto;
+    align-items: stretch;
+    padding: 12px 16px;
+    overflow: visible;
+  }
+  .appShell :global(.sidebar-heading), .appShell :global(.sidebar.is-collapsed .sidebar-heading) {
+    justify-content: space-between;
+    gap: 10px;
+    margin: 0;
+  }
+  .appShell :global(.sidebar-collapse) { display: none; }
+  .appShell :global(.menu-toggle) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 44px;
+    padding: 8px 12px;
+    border: 1px solid #e3e6ec;
+    border-radius: 24px;
+    color: #3c4043;
+    background: #fff;
+    font: inherit;
+    cursor: pointer;
+  }
+  .appShell :global(.menu-toggle .is-open) { transform: rotate(90deg); }
+  .appShell :global(.workspace-nav), .appShell :global(.sidebar.is-collapsed .workspace-nav) { display: none; }
+  .appShell :global(.workspace-nav.open), .appShell :global(.sidebar.is-collapsed .workspace-nav.open) { display: grid; padding-top: 12px; }
+  .appShell :global(.sidebar .nav-item), .appShell :global(.sidebar.is-collapsed .nav-item) {
+    display: flex;
+    justify-content: flex-start;
+    width: 100%;
+    min-height: 48px;
+    height: auto;
+    margin: 0;
+    padding: 6px 12px 6px 8px;
+    white-space: normal;
+  }
+  .appShell :global(.sidebar .nav-item > span), .appShell :global(.sidebar.is-collapsed .nav-item > span) { display: initial; }
+  .appShell :global(.sidebar-footer), .appShell :global(.sidebar-note), .appShell :global(.profile) { display: none; }
+}
+
 /* Higher-contrast, consistent controls for the DECE forms. */
 .appShell :global(.form-card) { border-color: #d3d1db; }
 .appShell :global(.form-card-head) { border-bottom-color: #dedce4; }

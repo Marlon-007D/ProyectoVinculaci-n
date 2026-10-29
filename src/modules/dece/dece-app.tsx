@@ -34,6 +34,7 @@ export default function DeceApp() {
   const appShellRef = useRef<HTMLDivElement>(null)
   const integration = useDeceData()
   const [firstName, setFirstName] = useState('')
+  const [accountEmail, setAccountEmail] = useState('')
   const [formSetupError, setFormSetupError] = useState('')
   const [formSetupRetry, setFormSetupRetry] = useState(0)
   const [formSetupLoading, setFormSetupLoading] = useState(true)
@@ -111,6 +112,15 @@ export default function DeceApp() {
     return () => { active = false }
   }, [integration?.client, integration?.profileId])
 
+  useEffect(() => {
+    if (!integration) { setAccountEmail(''); return }
+    let active = true
+    void integration.client.auth.getUser().then(({ data, error }) => {
+      if (active) setAccountEmail(error ? '' : data.user?.email ?? '')
+    })
+    return () => { active = false }
+  }, [integration?.client])
+
   const syncSavedStudent = useCallback((saved: Student) => {
     setSelectedStudent(current => current?.recordId === saved.recordId ? { ...current, ...saved } : current)
     window.dispatchEvent(new Event('dece:dashboard-refresh'))
@@ -154,6 +164,12 @@ export default function DeceApp() {
     else openCustomForm(student, code)
   }
 
+  const signOut = async () => {
+    const { error } = await integration?.client.auth.signOut() ?? { error: null }
+    if (error) return
+    window.location.assign(integration?.slug ? `/${integration.slug}/login` : '/login')
+  }
+
   const formProps = selectedStudent ? {
     student: selectedStudent,
     section,
@@ -175,7 +191,7 @@ export default function DeceApp() {
 
   return (
     <div ref={appShellRef} className={styles.appShell}>
-      <ProvisionalShell screen={screen} onNavigate={routeTo}>
+      <ProvisionalShell screen={screen} onNavigate={routeTo} accountEmail={accountEmail} onSignOut={() => void signOut()}>
         {formSetupLoading && <div className="notice" role="status">Preparando las fichas general y de autorización…</div>}
         {formSetupError && <div className="notice sensitive" role="alert">{formSetupError}<button className="button btn secondary ms-2" type="button" onClick={() => setFormSetupRetry(value => value + 1)}>Reintentar</button></div>}
         {screen === 'home' && (
