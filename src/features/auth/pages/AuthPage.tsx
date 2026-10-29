@@ -1,9 +1,7 @@
-import { adminDestination } from '../../../modules/admin/auth/institutionNavigation';
-import { loginDestination } from '../../../core/auth/loginAccess';
+import { authenticatedDestination } from '../../../modules/admin/auth/authenticatedDestination';
 import { resolveLoginIssue } from '../utils/adminAccess';
 import { useTenant } from '../../../core/TenantContext';
 import { useToast, useToastMessage } from '../../../modules/admin/auth/Toast/Toast';
-import { isSuperAdmin } from '../../../core/auth/superAdmin';
 import { useReducer, useRef, useState, type FormEvent } from 'react';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../core/AuthContext';
@@ -16,14 +14,13 @@ import styles from './AuthPage.module.css';
 import { PasswordField } from '../../../modules/admin/auth/PasswordField';
 import { InvitationLinkBoundary } from '../../../modules/admin/auth/InvitationLinkBoundary';
 import { InstitutionalLogin } from '../../../modules/admin';
-import { workspaceAuthRole } from '../../../modules/admin/auth/workspaceAuthRole';
 
 export function AuthPage({ mode = 'login', requestService }: { mode?: 'login' | 'register'; requestService: AccessRequestService }) {
   return <InvitationLinkBoundary><AuthPageContent mode={mode} requestService={requestService} /></InvitationLinkBoundary>;
 }
 
 function AuthPageContent({ mode, requestService }: { mode: 'login' | 'register'; requestService: AccessRequestService }) {
-  const { login, register, loginWithGoogle, user, role, roleIssue, loading, mfaRequired, mfaEnrollmentRequired, logout, requestPasswordReset } = useAuth();
+  const { login, register, loginWithGoogle, user, role, roleIssue, institutionId: authInstitutionId, loading, mfaRequired, mfaEnrollmentRequired, logout, requestPasswordReset } = useAuth();
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const { activeInstitution, loadingTenant, tenantError } = useTenant();
@@ -112,12 +109,12 @@ function AuthPageContent({ mode, requestService }: { mode: 'login' | 'register';
   }
 
   if (loading) return <main className={styles.page} role="status">Cargando tu acceso…</main>;
-  if (user && isSuperAdmin(role)) return <Navigate to={destination} replace />;
+
   if (user && (mfaRequired || mfaEnrollmentRequired)) return <Navigate to={destination} replace />;
   if (user && loadingTenant) return <main className={styles.page} role="status">Verificando la institución asignada…</main>;
   if (user && activeInstitution && effectiveRole && !blockedAccess && !(registering && busy)) {
-    const target = workspaceAuthRole(effectiveRole) === 'dece_staff' ? '/panel/dece' : loginDestination({ ...activeInstitution, role: effectiveRole });
-    return <Navigate to={adminDestination(target, location.search, { institution: activeInstitution.institution_id, slug: activeInstitution.slug })} replace />;
+    const target = authenticatedDestination(activeInstitution, authInstitutionId, role, location.search);
+    if (target) return <Navigate to={target} replace />;
   }
 
   if (!registering && !user) return <InstitutionalLogin email={loginEmail} password={loginPassword}

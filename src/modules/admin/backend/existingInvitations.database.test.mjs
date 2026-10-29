@@ -38,6 +38,9 @@ test('self-registration requests and approved guests are scoped, atomic and sepa
       assert(!refreshed.requests.some(row => row.profile_id === id(person)));
       const member = refreshed.members.find(row => row.profile_id === id(person));
       assert.equal(member.role_name, 'guest'); assert.equal(member.is_active, true); assert.deepEqual(member.modules, ['inicio']);
+      assert.equal((await db.query('SELECT email FROM profiles WHERE profile_id=$1', [id(person)])).rows[0].email, `person${person}@example.test`);
+      assert.equal((await db.query('SELECT status FROM admin_membership_requests WHERE institution_id=$1 AND profile_id=$2', [id(institution), id(person)])).rows[0].status, 'approved');
+      assert.deepEqual((await db.query('SELECT module_name FROM admin_tenant_member_modules WHERE institution_id=$1 AND profile_id=$2', [id(institution), id(person)])).rows.map(row => row.module_name), ['inicio']);
       const own = (await asUser(person, 'SELECT admin_tenant_own_account($1) data', [id(institution)]))[0].data;
       assert.equal(own, null); // Registration email has not been verified yet.
       await assert.rejects(asUser(3, 'SELECT admin_tenant_approve_registration($1,$2,$3,$4,$5,$6,$7,$8)', args), /pendiente/);
@@ -52,6 +55,7 @@ test('self-registration requests and approved guests are scoped, atomic and sepa
     await asUser(3, 'SELECT admin_tenant_update_access($1,$2,$3,$4,$5,$6,$7)', [id(100), 'person1100@example.test', id(202), 'Registro', 'Unidad', '0991234567', ['simuladores']]);
     const internal = (await asUser(3, 'SELECT admin_tenant_snapshot_v3($1) data', [id(100)]))[0].data.members.find(member => member.profile_id === id(1100));
     assert.equal(internal.role_name, 'student'); assert.deepEqual(internal.modules, ['simuladores']); assert.equal(internal.is_active, true);
+    assert.deepEqual((await db.query('SELECT role_id,is_active FROM memberships WHERE institution_id=$1 AND profile_id=$2', [id(100), id(1100)])).rows, [{ role_id: id(202), is_active: true }]);
   } finally { await db.close(); }
 });
 

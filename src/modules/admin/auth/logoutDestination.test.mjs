@@ -1,0 +1,33 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { logoutDestination, logoutToPublicInstitution } from './logoutDestination.ts';
+
+test('logout returns every school and role to its public root with a clean context', async () => {
+  for (const slug of ['ue-luz-de-america','ue-puerto-limon','ue-la-concordia','ue-el-esfuerzo']) {
+    for (const role of ['super_admin','institution_admin','dece','student','teacher','projects_manager','content_editor','secretary','staff']) {
+      const calls = [];
+      const destination = logoutDestination({ institution: role, slug }, role);
+      await logoutToPublicInstitution(async () => { calls.push('signOut'); return { error: null }; }, destination,
+        () => calls.push('cleanup'), target => calls.push(target));
+      assert.deepEqual(calls, ['signOut','cleanup',`/?institution=${role}`]);
+    }
+  }
+  assert.equal(logoutDestination({}, 'school'), '/?institution=school');
+  assert.equal(logoutDestination({}, null), '/');
+});
+
+test('a rejected signOut never reports logout or navigates to the public page', async () => {
+  const failure = new Error('Connection failed');
+  await assert.rejects(logoutToPublicInstitution(async () => ({ error: failure }), '/',
+    () => assert.fail('Must not clean an active session'), () => assert.fail('Must not redirect')), failure);
+});
+
+test('logout uses the current origin and only the verified institution on localhost and Render', () => {
+  for (const origin of ['http://localhost:5173','https://proyectovinculaci-n.onrender.com']) {
+    for (const id of ['school-a','school-b','school-c','school-d']) {
+      const target = new URL(logoutDestination({ institution: 'stale', slug: 'ue-luz-de-america' }, id), origin);
+      assert.equal(target.href, origin+'/?institution='+id);
+      assert.deepEqual([...target.searchParams.keys()], ['institution']);
+    }
+  }
+});

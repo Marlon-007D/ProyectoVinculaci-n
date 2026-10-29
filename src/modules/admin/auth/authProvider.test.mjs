@@ -4,6 +4,26 @@ import { authProviderHarness } from './mocks/authProviderHarness.mjs';
 
 const session = role => ({ user: { id: 'profile', app_metadata: { role } }, access_token: 'test-token' });
 
+test('logout overrides an awaiting legacy sidebar redirect and then releases public navigation', async t => {
+  const app = authProviderHarness(t, session('admin'));
+  app.scope('?institution=a&slug=school-a');
+  await app.until(value => !value.loading && value.role === 'institution_admin');
+  const logoutStart = app.snapshots.length;
+  await app.value.logout();
+  // The existing sidebar continues after await logout and navigates to a guard.
+  app.navigate('/login?institution=a&slug=school-a');
+  await app.until(() => app.location.pathname === '/');
+  assert.equal(app.location.search, '?institution=a');
+  assert.equal(app.value.user, null);
+  await new Promise(resolve => setTimeout(resolve, 15));
+  const transition = app.snapshots.slice(logoutStart);
+  assert(transition.some(snapshot => snapshot.hidden));
+  assert(!transition.some(snapshot => snapshot.loading && !snapshot.hidden));
+  app.navigate('/login?institution=a&slug=school-a');
+  await new Promise(resolve => setTimeout(resolve, 10));
+  assert.equal(app.location.pathname, '/login');
+});
+
 test('Google sessions expose the DECE workspace role only for a verified active membership in the selected school', async t => {
   const app = authProviderHarness(t);
   await app.until(value => !value.loading);

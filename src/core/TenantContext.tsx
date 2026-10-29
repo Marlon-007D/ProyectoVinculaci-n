@@ -1,5 +1,6 @@
 import { isTenantManager, resolveAssignedAccess, scopeMatches } from '../modules/admin/auth/accessPolicy';
-import { useLocation } from 'react-router-dom';
+import { authenticatedDestination } from '../modules/admin/auth/authenticatedDestination';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { supabase } from './supabaseClient';
 import { useAuth } from './AuthContext';
@@ -46,7 +47,8 @@ interface TenantContextType {
 const TenantContext = createContext<TenantContextType | undefined>(undefined);
 export function TenantProvider({ children }: { children: ReactNode }) {
   const location = useLocation();
-  const { user, role, institutionId: authInstitutionId, loading, mfaRequired } = useAuth();
+  const navigate = useNavigate();
+  const { user, role, institutionId: authInstitutionId, loading, mfaRequired, mfaEnrollmentRequired } = useAuth();
   const activeUserId = useRef(user?.id ?? null);
   const activeRequestKey = useRef<string | null>(null);
   const startedRequestKey = useRef<string | null>(null);
@@ -165,6 +167,13 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   const activeInstitution = requestedInstitutionId || requestedSlug
     ? requestedInstitution ?? null
     : institutions.find(item => item.institution_id === selectedId) ?? institutions.find(item => item.institution_id === authInstitutionId) ?? null;
+  useEffect(() => {
+    if (location.pathname !== '/' || !(requestedInstitutionId || requestedSlug) || location.hash
+      || !user || loading || mfaRequired || mfaEnrollmentRequired || !current || !activeInstitution) return;
+    const destination = authenticatedDestination(activeInstitution, authInstitutionId, role, location.search);
+    if (destination) navigate(destination, { replace: true });
+  }, [location.pathname, location.search, location.hash, requestedInstitutionId, requestedSlug, user, loading,
+    mfaRequired, mfaEnrollmentRequired, current, activeInstitution, authInstitutionId, role, navigate]);
   const hasModuleAccess = (moduleName: InstitutionModuleName) => activeInstitution?.module_permissions[moduleName] === true;
   return <TenantContext.Provider value={{
     institutions, activeInstitution, loadingTenant: loading || mfaRequired || Boolean(user && !current),
