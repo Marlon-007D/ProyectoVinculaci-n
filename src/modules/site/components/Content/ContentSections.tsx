@@ -189,7 +189,30 @@ export function HonorsSection({ title = "Cuadro de honor", limit = 6, className 
   return (
     <>
     <Block title={title} className={className}>
-      <AsyncView state={state} onRetry={reload} loadingVariant="people" emptyMessage="Aún no hay reconocimientos publicados.">
+      <AsyncView state={state} onRetry={reload} loadingVariant="people" emptyMessage="Aún no hay reconocimientos publicados." emptyFallback={className ? (
+        <div className={honorsStyles.officialSlots} aria-label="Cuadro de honor oficial">
+          {OFFICIAL_DISTINCTIONS.map((distinction, index) => {
+            const position = distinction === OFFICIAL_DISTINCTIONS[0] ? honorsStyles.flagBearer
+              : distinction === OFFICIAL_DISTINCTIONS[1] ? honorsStyles.cityBearer
+                : distinction === OFFICIAL_DISTINCTIONS[2] ? honorsStyles.schoolBearer
+                  : distinction === OFFICIAL_DISTINCTIONS[3] ? honorsStyles.nationalFirst
+                    : distinction === OFFICIAL_DISTINCTIONS[4] ? honorsStyles.nationalSecond
+                      : distinction === OFFICIAL_DISTINCTIONS[5] ? honorsStyles.cityFirst
+                        : distinction === OFFICIAL_DISTINCTIONS[6] ? honorsStyles.citySecond
+                          : distinction === OFFICIAL_DISTINCTIONS[7] ? honorsStyles.schoolFirst
+                            : honorsStyles.schoolSecond;
+            return <article key={distinction} className={`${honorsStyles.officialCard} ${position} ${honorsStyles.unassignedCard}`}>
+              <div className={honorsStyles.officialHeader}>
+                <span className={`${honorsStyles.officialAvatar} ${distinction === OFFICIAL_DISTINCTIONS[0] ? honorsStyles.flagPhoto : ""}`} aria-hidden="true">{index + 1}</span>
+                <div className={honorsStyles.officialCopy}>
+                  <strong>{distinction}</strong>
+                  <span>Sin asignar</span>
+                </div>
+              </div>
+            </article>;
+          })}
+        </div>
+      ) : undefined}>
         {(list) => className ? (
           <div className={honorsStyles.officialSlots} aria-label="Cuadro de honor oficial">
             {OFFICIAL_DISTINCTIONS.map((distinction) => {
@@ -205,7 +228,7 @@ export function HonorsSection({ title = "Cuadro de honor", limit = 6, className 
                             : distinction === OFFICIAL_DISTINCTIONS[7] ? honorsStyles.schoolFirst
                               : honorsStyles.schoolSecond;
               return <article key={honor.honor_id} className={`${honorsStyles.officialCard} ${position}`}>
-                <button type="button" className={detailStyles.cardAction} onClick={() => setSearchParams(current => { const next = new URLSearchParams(current); next.set("distincion", honor.honor_id); return next; })} aria-haspopup="dialog" aria-label={`Ver distinción de ${honor.student_name}`}>
+                <div className={honorsStyles.officialCardContent}>
                 <div className={honorsStyles.officialHeader}>
                   {honor.photo_url ? <Photo className={`${honorsStyles.officialPhoto} ${distinction === OFFICIAL_DISTINCTIONS[0] ? honorsStyles.flagPhoto : ""}`} url={honor.photo_url} alt={`Fotografía de ${honor.student_name}`} /> : <span className={honorsStyles.officialAvatar} aria-hidden="true">{initials(honor.student_name)}</span>}
                   <div className={honorsStyles.officialCopy}>
@@ -214,7 +237,7 @@ export function HonorsSection({ title = "Cuadro de honor", limit = 6, className 
                   </div>
                 </div>
                 {(honor.grade_level || honor.schedule) && <div className={honorsStyles.officialMeta}><span>{honor.grade_level && <><i className={honorsStyles.metadataIcon} aria-hidden="true">school</i>{formatGrade(honor.grade_level)}</>}{honor.grade_level && honor.schedule && <b aria-hidden="true" />}{honor.schedule && <><i className={honorsStyles.metadataIcon} aria-hidden="true">schedule</i>{honor.schedule}</>}</span></div>}
-                </button>
+                </div>
               </article>;
             })}
           </div>

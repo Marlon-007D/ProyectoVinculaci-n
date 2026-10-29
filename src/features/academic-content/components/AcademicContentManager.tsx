@@ -22,7 +22,7 @@ import './AcademicContentManager.css'
 interface Props { kind: AcademicContentKind; title: string; singular: string; onPreview?: (entry: AcademicContentEntry) => void }
 
 const emptyEntry = (kind: AcademicContentKind, institutionId: string): AcademicContentEntry => ({
-  id: crypto.randomUUID(), institutionId, kind, title: '', description: '', periodId: '', status: 'draft', date: kind === 'news' || kind === 'event' ? todayISO() : '', time: kind === 'event' ? '' : undefined, location: '',
+  id: crypto.randomUUID(), institutionId, kind, title: '', description: '', periodId: '', status: kind === 'honor' ? 'published' : 'draft', date: kind === 'news' || kind === 'event' ? todayISO() : '', time: kind === 'event' ? '' : undefined, location: '',
   studentName: '', grade: '', distinction: '', honorCategory: kind === 'honor' ? 'institutional' : undefined, startDate: '', endDate: '', isCurrent: false, sourceName: '', sourceUrl: '', updatedAt: new Date().toISOString(),
   author: kind === 'news' || kind === 'event' ? 'Brigitte Rodríguez' : undefined,
 })
@@ -194,7 +194,7 @@ export function AcademicContentManager({ kind, title, singular, onPreview }: Pro
     if (!validateFields(requiredFields)) return
     try {
       setSaving(true)
-      await save(kind === 'honor' ? { ...editing, distinction: category === 'official' ? normalizeOfficialDistinction(editing.distinction) : editing.distinction, honorCategory: category, officialOrder: category === 'official' ? OFFICIAL_DISTINCTIONS.indexOf(normalizeOfficialDistinction(editing.distinction) as typeof OFFICIAL_DISTINCTIONS[number]) + 1 : undefined } : editing)
+      await save(kind === 'honor' ? { ...editing, status: 'published', distinction: category === 'official' ? normalizeOfficialDistinction(editing.distinction) : editing.distinction, honorCategory: category, officialOrder: category === 'official' ? OFFICIAL_DISTINCTIONS.indexOf(normalizeOfficialDistinction(editing.distinction) as typeof OFFICIAL_DISTINCTIONS[number]) + 1 : undefined } : editing)
       setEditing(null)
       setNotice(isPublication ? '' : `${singular} guardado.`)
     } catch (error) {

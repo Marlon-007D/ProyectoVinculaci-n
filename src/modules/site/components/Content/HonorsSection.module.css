@@ -236,6 +236,23 @@
   transition: border-color .2s ease, background-color .2s ease !important;
 }
 
+.unassignedCard {
+  min-height: 7rem !important;
+  align-content: center !important;
+  background: var(--honors-surface-container) !important;
+}
+
+.unassignedCard .officialAvatar {
+  border-radius: .75rem !important;
+  background: #e5dfed !important;
+  color: var(--honors-on-surface-variant) !important;
+  font-size: 1rem !important;
+}
+
+.unassignedCard .officialCopy > span {
+  color: var(--honors-on-surface-variant) !important;
+}
+
 @media (hover: hover) and (pointer: fine) {
   .officialCard:hover {
     border-color: var(--honors-outline-variant) !important;
