@@ -1,5 +1,7 @@
+import { currentAdminScope } from '../modules/admin/auth/institutionNavigation';
+import { logoutDestination, logoutToPublicInstitution } from '../modules/admin/auth/logoutDestination';
 import { readSessionValue, writeSessionValue } from '../modules/admin/auth/sessionStorage';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { accessScopeKey, resolveAssignedAccess } from '../modules/admin/auth/accessPolicy';
 import { workspaceAuthRole } from '../modules/admin/auth/workspaceAuthRole';
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
@@ -35,6 +37,19 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const [publicLogoutTarget, setPublicLogoutTarget] = useState<string | null>(null);
+  const [logoutPending, setLogoutPending] = useState(false);
+  useEffect(() => {
+    if (!publicLogoutTarget) return;
+    if (location.pathname + location.search !== publicLogoutTarget) {
+      navigate(publicLogoutTarget, { replace: true });
+      return;
+    }
+    // Let awaiting sidebar handlers finish before releasing the destination.
+    const timer = window.setTimeout(() => setPublicLogoutTarget(null), 0);
+    return () => window.clearTimeout(timer);
+  }, [publicLogoutTarget, location.pathname, location.search, navigate]);
   const scopeKey = accessScopeKey(institutionContextFromSearch(location.search));
   const resolvedScope = useRef<string | null>(null);
   const roleRevision = useRef(0);
@@ -371,19 +386,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = async () => {
-    await supabase.auth.signOut();
-    writeSessionValue('auth-login-method', null);
-    setMfaRequired(false);
-    setMfaEnrollmentRequired(false);
-    setMfaFactorId(null);
-    setMfaChallengeId(null);
-      mfaChallengeRef.current = null;
+    const destination = new URL(logoutDestination(currentAdminScope(window.location.search), institutionId), window.location.origin).href;
+    setLogoutPending(true);
+    try {
+      await logoutToPublicInstitution(() => supabase.auth.signOut(), destination, () => {
+        writeSessionValue('auth-login-method', null);
+        setMfaRequired(false);
+        setMfaEnrollmentRequired(false);
+        setMfaFactorId(null);
+        setMfaChallengeId(null);
+        mfaChallengeRef.current = null;
+        setSession(null);
+        setUser(null);
+        setRole(null);
+        setInstitutionId(null);
+        setLoading(false);
+      }, target => {
+        const publicUrl = new URL(target);
+        setPublicLogoutTarget(publicUrl.pathname + publicUrl.search);
+      });
+    } finally {
+      setLogoutPending(false);
+    }
   };
 
   const scopePending = Boolean(user && !mfaRequired && !mfaEnrollmentRequired && resolvedScope.current !== scopeKey);
   return (
     <AuthContext.Provider value={{ user, session, role, roleError, roleIssue, institutionId, loading: loading || scopePending, login, loginWithGoogle, requestLoginLink, register, isPasswordRecovery, mfaRequired, mfaEnrollmentRequired, completeMfaEnrollment, mfaChallengeReady: Boolean(mfaChallengeId), verifyMfa, requestPasswordReset, updatePassword, logout }}>
-      {children}
+      {logoutPending || publicLogoutTarget ? null : children}
     </AuthContext.Provider>
   );
 };

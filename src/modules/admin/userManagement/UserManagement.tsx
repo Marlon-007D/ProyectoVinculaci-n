@@ -101,15 +101,8 @@ export function UserManagement({ service }: { service: TenantAdminService }) {
       if (approval) {
         await service.approve({ ...input, profileId: approval.profile_id, requestId: approval.request_id });
         if (activeKey.current !== key) return;
-        setState(current => current.key === key && current.status === 'ready' ? { ...current, data: {
-          ...current.data,
-          requests: current.data.requests.filter(request => request.profile_id !== approval.profile_id),
-          members: [...current.data.members.filter(member => member.profile_id !== approval.profile_id), {
-            profile_id: approval.profile_id, institution_id: institutionId, email: input.email,
-            first_name: input.firstName, last_name: input.lastName, phone: input.phone,
-            role_name: selected.name, is_active: true, modules: input.modules, invitation_pending: false,
-          }],
-        } } : current);
+        await load();
+        if (activeKey.current !== key) return;
         setApproval(null); setForm(emptyForm());
         const delivery = await service.notify({ institutionId, profileId: approval.profile_id, redirect_to: invitationRedirect(window.location.origin, activeInstitution!) });
         if (activeKey.current === key) notify(delivery.notificationSent ? 'Acceso asignado y correo de notificación enviado correctamente.'

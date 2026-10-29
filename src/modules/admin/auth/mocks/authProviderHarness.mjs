@@ -35,7 +35,7 @@ export function authProviderHarness(t, initialSession = null) {
   const sameDeps = (left, right) => left && right && left.length === right.length && left.every((item, index) => Object.is(item, right[index]));
   const react = {
     createContext: () => ({ Provider: 'provider' }),
-    createElement: (type, props) => ({ type, props }),
+    createElement: (type, props, ...children) => ({ type, props: { ...props, children: children.length === 1 ? children[0] : children } }),
     useState(initial) {
       const index = cursor++;
       slots[index] ??= { value: typeof initial === 'function' ? initial() : initial };
@@ -70,8 +70,14 @@ export function authProviderHarness(t, initialSession = null) {
       default: throw new Error(`Unexpected table: ${table}`);
     }
   };
+  const navigate = target => {
+    const next = new URL(target, location.origin);
+    location.pathname = next.pathname; location.search = next.search;
+    schedule();
+  };
   const client = {
     auth: {
+      signOut: async () => { session = null; listener('SIGNED_OUT', null); return { error: null }; },
       signInWithOAuth: async request => { oauthRequests.push(request); return { error: null }; },
       getSession: async () => ({ data: { session }, error: null }),
       getUser: async () => ({ data: { user: session?.user ?? null }, error: null }),
@@ -97,7 +103,7 @@ export function authProviderHarness(t, initialSession = null) {
     const require = createRequire(url);
     new Function('require', 'exports', code)(specifier => {
       if (specifier === 'react') return react;
-      if (specifier === 'react-router-dom') return { useLocation: () => location };
+      if (specifier === 'react-router-dom') return { useLocation: () => location, useNavigate: () => navigate };
       if (specifier.endsWith('supabaseClient')) return { supabase: client };
       if (specifier.endsWith('registerInstitutionalAccount')) return { registerInstitutionalAccount: async () => ({ error: null }) };
       if (specifier.startsWith('.')) return load(new URL(/\.tsx?$/.test(specifier) ? specifier : specifier + '.ts', url));
@@ -109,8 +115,10 @@ export function authProviderHarness(t, initialSession = null) {
   function render() {
     cursor = 0;
     effects = [];
-    value = provider({ children: null }).props.value;
-    snapshots.push({ user: value.user?.id ?? null, role: value.role, loading: value.loading, issue: value.roleIssue });
+    const rendered = provider({ children: 'workspace' });
+    value = rendered.props.value;
+    snapshots.push({ user: value.user?.id ?? null, role: value.role, loading: value.loading, issue: value.roleIssue,
+      hidden: rendered.props.children === null, path: location.pathname });
     const pending = effects;
     effects = [];
     pending.forEach(effect => effect());
@@ -125,7 +133,7 @@ export function authProviderHarness(t, initialSession = null) {
   });
   render();
   return {
-    get value() { return value; }, snapshots, calls, oauthRequests,
+    get value() { return value; }, location, navigate, snapshots, calls, oauthRequests,
     setOrigin(origin) { location.origin = origin; },
     setQuery(next) { query = next; },
     emit(event, nextSession) { session = nextSession; listener(event, nextSession); },
