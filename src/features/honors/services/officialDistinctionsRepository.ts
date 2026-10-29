@@ -100,13 +100,13 @@ export function createOfficialDistinctionsRepository(client: SupabaseClient) {
         official_order: entry.honorCategory === 'official' ? entry.officialOrder ?? null : null,
         modality: entry.honorCategory === 'official' ? entry.modality?.trim() || null : null,
         campus: entry.honorCategory === 'official' ? entry.campus?.trim() || null : null,
-        status: 'published',
+        status: 'published' as const,
         updated_at: new Date().toISOString(),
       }
       const { data, error } = await client.from('honors').upsert(payload, { onConflict: 'honor_id' }).select('honor_id').maybeSingle()
       if (error) throw error
       if (!data) throw new Error('No se guardó la distinción. Verifica el permiso para editar reconocimientos de esta institución.')
-      return { ...entry, institutionId, title: 'Distinción oficial', status: 'published', updatedAt: payload.updated_at }
+      return { ...entry, institutionId, title: 'Distinción oficial', status: 'published' as const, updatedAt: payload.updated_at }
     },
 
     async remove(id: string, institutionId: string) {
