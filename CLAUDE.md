@@ -101,9 +101,14 @@ npm run test:all          # projects + admin + integration
 
 **Hecho (30/10/2026):** layout privado único sin parpadeo, `returnTo`, interruptor `VITE_MFA_ENABLED`, toast único con sonner, barra plana única (DECE, Inicio y Simuladores como ítems), portal público sin redirección al panel, selector de institución que se mantiene (`institutionSwitchSearch`), paginación DECE sin NaN, textos de carga sustituidos por skeletons, estado vacío común (`EmptyState`) en Cuadro de honor.
 
+**Hecho además:** estado de sesión en el portal público (solo «Iniciar sesión» o «Salir»), cierre de sesión en otra pestaña (`remoteSignOutTarget`, ErrorPage de sesión/institución), editor del portal en bloques con imagen por elemento, avisos en línea de publicaciones y cursos a `notify`, colores de Publicaciones en azul, aviso de contenido nuevo del portal (Realtime, sin sondeo).
+
 **Pendiente:**
-1. Unificación visual completa (mismo estilo de proyectos en admin, DECE, publicaciones, cursos, simuladores, Inicio): botones, tarjetas, encabezados, migas y vista tabla/tarjetas compartidos (DECE usa por ahora `dece-buttons.css`); quedan unos 5 textos «Cargando…» inline pequeños (historial de fichas, evidencias, proyectos, registro).
+1. Unificación visual completa (mismo estilo de proyectos en admin, DECE, cursos, Inicio): campos y tarjetas de DECE (hoy solo botones y filtros vía `dece-buttons.css`), botones/tarjetas/encabezados/migas/vista tabla-tarjetas compartidos; quedan unos 5 «Cargando…» pequeños dentro de secciones.
 2. Admin pendiente: persistencia en asignar acceso/aprobar solicitud, `AbortController` en efectos, correos con `trim().toLowerCase()` en `AuthPage.login`.
-3. SQL de MFA sin aplicar: `supabase/proposals/admin/202610300000_mfa_switch.sql` (con el interruptor del frontend en `false` la BD aún exige `aal2` en proyectos/portal).
+3. SQL sin aplicar (todos en `supabase/proposals/`): MFA (`admin/202610300000_mfa_switch.sql`), Cuadro de honor por membresía (`honors/202610300300_honors_membership_rls.sql`, causa: `get_current_institution_id()` permite una sola institución), diagnóstico y publicación de distinciones (`honors/202610300200_*`), activación de simuladores por institución (`simulators/202610300100_*`). Pendiente de revisar también las políticas de `events`, `site_settings`, `themes`, `media_assets` y `staff`, que pueden depender de la misma función.
 4. Migrar sweetalert2 a `notify`/`confirmAction` y quitar la dependencia.
-5. Error 1 (`/panel/admin` con «Algo salió mal») no reproducido; si reaparece, pedir la línea roja de la consola.
+5. Acceso al panel desde el portal público: el encabezado público solo ofrece «Salir» con sesión; definir si debe haber un enlace al panel. El login con Google aún aterriza en `/panel/admin`.
+6. Gestión de simuladores por el admin: no existe en ninguna rama (los tres simuladores son fijos y se controlan con el módulo `simuladores`); `/panel/simuladores` redirige a `/panel`, y `PanelSimulator` y `AppRouter` con sus páginas quedan sin uso.
+7. El aviso de contenido nuevo necesita aplicar `ACTIVAR_AVISOS_PUBLICACION.sql` (tabla `portal_publication_revisions`).
+8. Error 1 (`/panel/admin` con «Algo salió mal») no reproducido; si reaparece, pedir la línea roja de la consola.
