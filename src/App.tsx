@@ -24,6 +24,8 @@ import { membershipRequestService } from './modules/admin/userManagement/members
 import { RegistrationRoute } from './modules/auth/RegistrationRoute';
 import { ErrorBoundary } from './shared/components/ErrorPage/ErrorBoundary';
 import { ErrorPage } from './shared/components/ErrorPage/ErrorPage';
+import { AppToaster } from './shared/components/Toaster/AppToaster';
+import { ConfirmHost } from './shared/components/ConfirmDialog/ConfirmHost';
 
 const ModuleRoutes = lazy(() => import('./modules/projects/integration/ModuleRoutes'));
 const modulePage = <ModuleBoundary><Suspense fallback={<p role="status">Cargando módulo…</p>}><ModuleRoutes /></Suspense></ModuleBoundary>;
@@ -130,5 +132,7 @@ function RoutesWithAuth() {
 export default function App() {
   return <ErrorBoundary fallback={() => <ErrorPage kind="unexpected" onRetry={() => window.location.reload()} />}>
     <BrowserRouter><AuthProvider><TenantProvider><RoutesWithAuth /></TenantProvider></AuthProvider></BrowserRouter>
+    <AppToaster />
+    <ConfirmHost />
   </ErrorBoundary>;
 }

@@ -63,10 +63,9 @@ test('los tipos distintos no se afectan entre sí', () => {
   toaster.unmount(); confirm.unmount();
 });
 
-test('ConfirmHost usa la guarda y ModuleBoundary monta el puente de avisos y la confirmación', () => {
+test('ConfirmHost usa la guarda y ModuleBoundary monta la confirmación', () => {
   assert.ok(fs.readFileSync('src/shared/components/ConfirmDialog/ConfirmHost.tsx', 'utf8').includes("useSingleInstance('confirm-host')"));
   const boundary = fs.readFileSync('src/modules/projects/integration/ModuleBoundary.tsx', 'utf8');
-  assert.ok(boundary.includes('<NotifyBridge/>'));
   assert.ok(boundary.includes('<ConfirmHost/>'));
-  assert.ok(!/sonner|AppToaster/.test(boundary));
+  assert.ok(!/AppToaster/.test(boundary));
 });

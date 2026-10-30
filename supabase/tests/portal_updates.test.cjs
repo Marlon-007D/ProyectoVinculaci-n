@@ -46,7 +46,6 @@ test('transparency keeps filters and makes new requests only on search or explic
   './projectValidation':money,'./projectPresentation':presentation,'./publicTransparency':transparency,
   '../../shared/components/Toaster/notify':{notify:{success(){},warning(){}}},
   './TransparencyReportActions':{TransparencyReportActions:()=>null},
-  '../../shared/components/Toaster/NotifyBridge':{NotifyBridge:()=>null},
   './PublicProjects.module.css':{__esModule:true,default:{}},
  });
  const source={
@@ -59,7 +58,7 @@ test('transparency keeps filters and makes new requests only on search or explic
   for(const child of [node.props?.children].flat(Infinity)){const match=find(child,predicate);if(match)return match;}
  }
  // PublicProjects only adds the toast bridge; render the view it wraps.
- const view=()=>{const outer=PublicProjects({institutionSlug:'school-a',institutionName:'Colegio',source});const inner=[outer.props.children].flat()[0];return inner.type(inner.props);};
+ const view=()=>{const outer=PublicProjects({institutionSlug:'school-a',institutionName:'Colegio',source});return outer.type(outer.props);};
  const input=tree=>find(tree,node=>node.type==='input'&&node.props.type==='search');
  h.render(view);let tree=await h.flush();assert.equal(calls.length,1);assert.equal(calls[0].slug,'school-a');
  input(tree).props.onChange({target:{value:'  Huerto '}});tree=h.render();assert.equal(calls.length,1,'typing does not query');

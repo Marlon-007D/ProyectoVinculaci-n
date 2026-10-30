@@ -50,7 +50,7 @@ test('rutas de integración conservan portada, cursos y navegación existente',(
    './app/App':{__esModule:true,default:marker('SIMULATORS')},
    './modules/site':{SiteApp},'./modules/projects/integration/ModuleBoundary':{ModuleBoundary:({children})=>children},
    './modules/projects/integration/ProjectSessionHost':{ProjectSessionHost:()=>null,isPrivateProjectsPath:()=>false},
-   './shared/components/ConfirmDialog/ConfirmHost':{ConfirmHost:()=>null},
+   './shared/components/ConfirmDialog/ConfirmHost':{ConfirmHost:()=>null},'./shared/components/Toaster/AppToaster':{AppToaster:()=>null},
    './shared/components/ErrorPage/ErrorBoundary':{ErrorBoundary:({children})=>children},
    './shared/components/ErrorPage/ErrorPage':{ErrorPage:marker('ERROR_PAGE')},
   });

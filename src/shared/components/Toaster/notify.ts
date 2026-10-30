@@ -1,45 +1,38 @@
 import type { FormEvent } from 'react';
+import { toast } from 'sonner';
 
 export type NotifyKind = 'success' | 'error' | 'warning' | 'info';
 export interface NotifyOptions {
   description?: string;
-  /** Accepted for compatibility; the shared toast ignores it. */
+  /** Stable id: repeated notifications replace the visible one instead of stacking. */
   id?: string;
-  /** Accepted for compatibility; the shared toast ignores it. */
+  /** Stays visible until the person closes it or uses its action. */
   persistent?: boolean;
   action?: { label: string; onClick: () => void };
 }
 export type Notifier = Record<NotifyKind, (title: string, options?: NotifyOptions) => void> & { dismiss: (id?: string) => void };
 
-type Sink = (message: string, kind: 'error' | 'success') => void;
-const sinks: Sink[] = [];
-
-/** NotifyBridge registers the shared toast (a hook) here so modules can notify outside render. */
-export function connectNotifier(sink: Sink) {
-  sinks.push(sink);
-  return () => { const index = sinks.lastIndexOf(sink); if (index >= 0) sinks.splice(index, 1); };
-}
-
-// The shared toast only knows 'error' and 'success'.
-const toastKind: Record<NotifyKind, 'error' | 'success'> = { success: 'success', info: 'success', warning: 'error', error: 'error' };
-
-function message(title: string, description?: string) {
-  if (!description) return title;
-  return /[.:;!?]$/.test(title) ? title + ' ' + description : title + '. ' + description;
-}
+const durations: Record<NotifyKind, number> = { success: 4000, info: 5000, warning: 6500, error: 8000 };
 
 function show(kind: NotifyKind) {
-  // id, persistent and action are accepted for API compatibility; the shared toast shows one timed message.
-  return (title: string, { description }: NotifyOptions = {}) => { sinks.at(-1)?.(message(title, description), toastKind[kind]); };
+  return (title: string, { description, id, persistent, action }: NotifyOptions = {}) => {
+    // Timed toasts expose their duration to CSS, which draws the remaining-time bar.
+    toast[kind](title, {
+      description, id, action,
+      duration: persistent ? Infinity : durations[kind],
+      className: persistent ? undefined : 'toast-timed',
+      style: persistent ? undefined : { ['--toast-duration' as string]: `${durations[kind]}ms` },
+    });
+  };
 }
 
-/** Modules depend on this contract, not on the toast implementation. */
+/** Modules depend on this contract, not on the toast library. */
 export const notify: Notifier = {
   success: show('success'),
   error: show('error'),
   warning: show('warning'),
   info: show('info'),
-  dismiss: () => undefined,
+  dismiss: id => { toast.dismiss(id); },
 };
 
 type Field = HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;

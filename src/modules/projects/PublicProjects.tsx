@@ -6,7 +6,6 @@ import { formatMoney, formatPercent, plural } from './projectPresentation';
 import { createTransparencySource, isOverdue, pageWindow, projectPeriod, type PublicInstitution, type PublicProjectRow, type TransparencyPage, type TransparencySort, type TransparencySource, type TransparencyStatus } from './publicTransparency';
 import { notify } from '../../shared/components/Toaster/notify';
 import { TransparencyReportActions } from './TransparencyReportActions';
-import { NotifyBridge } from '../../shared/components/Toaster/NotifyBridge';
 import styles from './PublicProjects.module.css';
 
 const defaultSource = createTransparencySource(publicSupabase);
@@ -240,5 +239,5 @@ function PublicProjectsView({ institutionSlug, institutionName, heading = false,
 
 // The public portal mounts this outside ModuleBoundary; it connects notify() to the shared toast.
 export function PublicProjects(props: Parameters<typeof PublicProjectsView>[0] = {}) {
-  return <><PublicProjectsView {...props} /><NotifyBridge /></>;
+  return <PublicProjectsView {...props} />;
 }
