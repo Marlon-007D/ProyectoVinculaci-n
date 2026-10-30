@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useId, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent, type ReactNode } from 'react';
-import { Award, BookOpenText, Building2, Calculator, CalendarDays, ChevronDown, FileText, FolderKanban, HeartHandshake, Home, Inbox, Layers3, LogOut, Menu, Newspaper, PanelLeftClose, PanelLeftOpen, PanelTop, ShieldCheck, Users } from 'lucide-react';
+import { ArrowLeftRight, Award, BookOpenText, Building2, Calculator, CalendarDays, ChevronDown, FileText, FolderKanban, HeartHandshake, Home, Inbox, Layers3, LogOut, Menu, Newspaper, PanelLeftClose, PanelLeftOpen, PanelTop, ReceiptText, ShieldCheck, Users } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../../core/AuthContext';
 import { useTenant, type InstitutionModuleName } from '../../../../core/TenantContext';
@@ -118,6 +118,11 @@ export function PrivateWorkspace({ children }: { children: ReactNode }) {
     if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
     else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
   }
+  const simulatorLinks = [
+    { label: 'Facturación electrónica', path: '/panel/simuladores/facturacion', icon: ReceiptText },
+    { label: 'Unidades y monedas', path: '/panel/simuladores/conversor', icon: ArrowLeftRight },
+    { label: 'Interés financiero', path: '/panel/simuladores/interes', icon: Calculator },
+  ];
   const deceSections = [
     { label: 'Inicio DECE', path: '/panel/dece', icon: Home, tone: 'dece-home' },
     { label: 'Estudiantes', path: '/panel/dece/estudiantes', icon: Users, tone: 'dece-students' },
@@ -172,7 +177,7 @@ export function PrivateWorkspace({ children }: { children: ReactNode }) {
               <Link title="Categorías: clasifica la oferta de cursos" to={scopedPath("/panel/cursos/categorias")} aria-current={pathname === '/panel/cursos/categorias' ? 'page' : undefined}><FolderKanban size={18} aria-hidden="true" /><span>Categorías</span></Link>
               <Link title="Módulos: administra los contenidos de los cursos" to={scopedPath("/panel/cursos/modulos")} aria-current={pathname === '/panel/cursos/modulos' ? 'page' : undefined}><Layers3 size={18} aria-hidden="true" /><span>Módulos</span></Link>
               </>}
-              {simulatorsAccess && <Link title="Simuladores: facturación, conversor de unidades y monedas, interés" to={scopedPath("/panel/simuladores")} aria-current={pathname.startsWith('/panel/simuladores') ? 'page' : undefined}><Calculator size={18} aria-hidden="true" /><span>Simuladores</span></Link>}
+              {simulatorsAccess && simulatorLinks.map(({ label, path, icon: Icon }) => <Link key={path} title={label} to={scopedPath(path)} aria-current={pathname === path ? 'page' : undefined}><Icon size={18} aria-hidden="true" /><span>{label}</span></Link>)}
             </div>
           </section>
           {canManageAcademicContent && <section className={`${styles.navGroup} ${openGroup === 'publications' ? '' : styles.collapsed}`}>
