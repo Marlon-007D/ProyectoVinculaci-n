@@ -51,7 +51,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const timer = window.setTimeout(() => setPublicLogoutTarget(null), 0);
     return () => window.clearTimeout(timer);
   }, [publicLogoutTarget, location.pathname, location.search, navigate]);
-  const scopeKey = accessScopeKey(institutionContextFromSearch(location.search));
+  const scope = institutionContextFromSearch(location.search);
+  const scopeKey = accessScopeKey(scope);
   const resolvedScope = useRef<string | null>(null);
   // Once a session has resolved, a scope change revalidates access in the background
   // instead of raising `loading`, which would blank the private area.
@@ -202,16 +203,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   if (!loading) sessionResolvedRef.current = true;
+  // Adding the already-resolved institution to the URL revalidates quietly; naming another one must wait for its role.
+  const sameInstitution = (!scope.institution && !scope.slug)
+    || Boolean(scope.institution && institutionId && scope.institution.toLowerCase() === institutionId.toLowerCase());
 
   useEffect(() => {
     if (!user || loading || mfaRequired || mfaEnrollmentRequired || resolvedScope.current === scopeKey) return;
-    const background = sessionResolvedRef.current;
+    const background = sessionResolvedRef.current && sameInstitution;
     if (!background) setLoading(true);
     const revision = roleRevision.current + 1;
     void fetchUserRoleAndTenant(user.id).finally(() => {
       if (!background && roleRevision.current === revision) setLoading(false);
     });
-  }, [scopeKey, user, role, loading, mfaRequired, mfaEnrollmentRequired, fetchUserRoleAndTenant]);
+  }, [scopeKey, user, role, loading, mfaRequired, mfaEnrollmentRequired, fetchUserRoleAndTenant, sameInstitution]);
 
   useEffect(() => {
     let active = true;
@@ -419,7 +423,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const scopePending = Boolean(!sessionResolvedRef.current && user && !mfaRequired && !mfaEnrollmentRequired && resolvedScope.current !== scopeKey);
+  const scopePending = Boolean((!sessionResolvedRef.current || !sameInstitution) && user && !mfaRequired && !mfaEnrollmentRequired && resolvedScope.current !== scopeKey);
   return (
     <AuthContext.Provider value={{ user, session, role, roleError, roleIssue, institutionId, loading: loading || scopePending, login, loginWithGoogle, requestLoginLink, register, isPasswordRecovery, mfaRequired: MFA_ENABLED && mfaRequired, mfaEnrollmentRequired: MFA_ENABLED && mfaEnrollmentRequired, completeMfaEnrollment, mfaChallengeReady: Boolean(mfaChallengeId), verifyMfa, requestPasswordReset, updatePassword, logout }}>
       {logoutPending || publicLogoutTarget ? null : children}

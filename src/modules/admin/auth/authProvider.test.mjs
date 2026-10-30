@@ -143,3 +143,39 @@ test('with MFA switched on, a password sign-in keeps skipping the second factor'
   assert.equal(app.value.mfaRequired, false);
   assert.equal(app.value.mfaEnrollmentRequired, false);
 });
+
+const twoSchools = async table => {
+  if (table === 'memberships') return [{ institution_id: 'a', role_id: 'admin' }, { institution_id: 'b', role_id: 'admin' }];
+  if (table === 'roles') return [{ role_id: 'admin', name: 'institution_admin' }];
+  if (table === 'institutions') return [{ institution_id: 'a', slug: 'school-a', is_active: true }, { institution_id: 'b', slug: 'school-b', is_active: true }];
+  throw new Error(`Unexpected table: ${table}`);
+};
+
+test('choosing another institution waits for its own access and the choice is kept', async t => {
+  const app = authProviderHarness(t, session('admin'));
+  app.setQuery(twoSchools);
+  app.scope('?institution=a&slug=school-a');
+  await app.until(value => !value.loading && value.institutionId === 'a');
+  const before = app.snapshots.length;
+  app.scope('?institution=b&slug=school-b');
+  await app.until(value => !value.loading && value.institutionId === 'b');
+  assert(app.snapshots.slice(before).some(snapshot => snapshot.loading), 'the page must not show institution A data as B');
+  await new Promise(resolve => setTimeout(resolve, 30));
+  assert.equal(app.value.institutionId, 'b');
+  assert.equal(app.value.role, 'institution_admin');
+  app.scope('?institution=a&slug=school-a');
+  await app.until(value => !value.loading && value.institutionId === 'a');
+  assert.equal(app.value.institutionId, 'a');
+});
+
+test('adding the already-resolved institution to the URL does not raise loading', async t => {
+  const app = authProviderHarness(t, session('admin'));
+  app.setQuery(twoSchools);
+  app.scope('');
+  await app.until(value => !value.loading && value.institutionId === 'a');
+  const before = app.snapshots.length;
+  app.scope('?institution=a&slug=school-a');
+  await new Promise(resolve => setTimeout(resolve, 40));
+  assert(app.snapshots.slice(before).every(snapshot => !snapshot.loading));
+  assert.equal(app.value.institutionId, 'a');
+});

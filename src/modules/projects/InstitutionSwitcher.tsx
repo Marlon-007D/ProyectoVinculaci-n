@@ -7,6 +7,7 @@ import { canonicalRole } from '../../core/auth/institutionalRoles';
 import { confirmAction } from '../../shared/components/ConfirmDialog/confirm';
 import { moduleClass } from './projectStyles';
 import { Field } from './FormField';
+import { institutionSwitchSearch } from '../admin/auth/institutionSwitch';
 
 // One remembered choice per account: another user on the same tab never inherits it.
 const storageKey = (userId: string) => `projects:institution:${userId}`;
@@ -59,9 +60,7 @@ export function InstitutionSwitcher({ confirmLeave = false, showName = false }: 
     if (confirmLeave && !await confirmAction({ title: '¿Cambiar de institución?', message: 'Tienes un formulario abierto con cambios sin guardar. Si continúas, se descartarán.', confirmLabel: 'Descartar y cambiar', tone: 'danger' })) return;
     if (userId) writeStored(userId, next.institution_id);
     setActiveInstitution(next);
-    const params = new URLSearchParams(location.search);
-    params.set('institution', next.slug);
-    navigate({ pathname: location.pathname, search: `?${params.toString()}` }, { replace: true });
+    navigate({ pathname: location.pathname, search: institutionSwitchSearch(location.search, next) }, { replace: true });
   }
 
   return <div className={moduleClass('project-institution')}>

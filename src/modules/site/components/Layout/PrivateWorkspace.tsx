@@ -144,7 +144,7 @@ export function PrivateWorkspace({ children }: { children: ReactNode }) {
         <button className={styles.sidebarToggle} type="button" onClick={() => { window.clearTimeout(hoverTimer.current); setSidebar(current => current === 'open' ? 'collapsed' : 'open'); setOpenGroup(null); }} aria-expanded={sidebar === 'open'} aria-label={sidebar === 'open' ? 'Contraer menú' : 'Fijar menú abierto'} title={sidebar === 'open' ? 'Contraer menú' : 'Fijar menú abierto'}>
           {sidebar === 'open' ? <PanelLeftClose size={20} aria-hidden="true" /> : <PanelLeftOpen size={20} aria-hidden="true" />}
         </button>
-        {!sidebarCollapsed && role === 'super_admin' && institutions.length > 1 && <label className={styles.institutionPicker}>
+        {!sidebarCollapsed && (role === 'super_admin' || role === 'institution_admin') && institutions.length > 1 && <label className={styles.institutionPicker}>
         <span className={styles.selectControl}><Building2 size={17} aria-hidden="true" /><select value={activeInstitution?.institution_id ?? ''} onChange={event => {
           const selected = institutions.find(item => item.institution_id === event.target.value);
           if (selected) {
