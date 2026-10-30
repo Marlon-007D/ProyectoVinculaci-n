@@ -4,7 +4,7 @@ import { getEventEntry, getEvents, getHonors, getNews, getNewsEntry, getStaff } 
 
 export function useNews(limit?: number) {
   const { institutionId } = useInstitution();
-  return useAsync(() => getNews(institutionId, limit), [institutionId, limit]);
+  return useAsync(() => getNews(institutionId, limit), [institutionId, limit], undefined, { keepPrevious: true });
 }
 
 export function useNewsArticle(newsId: string | null) {
@@ -17,17 +17,17 @@ export function useNewsArticle(newsId: string | null) {
 
 export function useStaff(position?: string) {
   const { institutionId } = useInstitution();
-  return useAsync(() => getStaff(institutionId, position), [institutionId, position]);
+  return useAsync(() => getStaff(institutionId, position), [institutionId, position], undefined, { keepPrevious: true });
 }
 
 export function useHonors(limit?: number) {
   const { institutionId } = useInstitution();
-  return useAsync(() => getHonors(institutionId, limit), [institutionId, limit]);
+  return useAsync(() => getHonors(institutionId, limit), [institutionId, limit], undefined, { keepPrevious: true });
 }
 
 export function useEvents(limit?: number) {
   const { institutionId } = useInstitution();
-  return useAsync(() => getEvents(institutionId, limit), [institutionId, limit]);
+  return useAsync(() => getEvents(institutionId, limit), [institutionId, limit], undefined, { keepPrevious: true });
 }
 
 export function useEventArticle(eventId: string | null) {

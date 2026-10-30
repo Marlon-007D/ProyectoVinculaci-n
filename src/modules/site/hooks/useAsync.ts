@@ -7,11 +7,15 @@ export function useAsync<T>(
   load: () => Promise<T>,
   deps: readonly unknown[],
   isEmpty: (data: T) => boolean = defaultIsEmpty,
+  /** When the inputs change (not on reload), keep showing the last loaded data instead of going back to "loading". */
+  options: { keepPrevious?: boolean } = {},
 ): { state: AsyncState<NonNullable<T>>; reload: () => void; refresh: () => void } {
   const [state, setState] = useState<AsyncState<NonNullable<T>>>({ status: "loading" });
   const [tick, setTick] = useState(0);
   const [refreshTick, setRefreshTick] = useState(0);
   const [stateKey, setStateKey] = useState<{ deps: readonly unknown[]; tick: number } | null>(null);
+  // Mutable memory of the last success; it lives in state so it survives re-renders without extra hooks.
+  const [memory] = useState<{ last: { state: AsyncState<NonNullable<T>>; tick: number } | null }>(() => ({ last: null }));
   const stateMatchesRequest = stateKey?.tick === tick
     && stateKey.deps.length === deps.length
     && stateKey.deps.every((value, index) => Object.is(value, deps[index]));
@@ -41,5 +45,8 @@ export function useAsync<T>(
 
   const reload = useCallback(() => setTick((t) => t + 1), []);
   const refresh = useCallback(() => setRefreshTick((t) => t + 1), []);
-  return { state: stateMatchesRequest ? state : { status: "loading" }, reload, refresh };
+  const current: AsyncState<NonNullable<T>> = stateMatchesRequest ? state : { status: "loading" };
+  if (current.status === "success") memory.last = { state: current, tick };
+  const keep = options.keepPrevious && current.status === "loading" && memory.last?.tick === tick;
+  return { state: keep && memory.last ? memory.last.state : current, reload, refresh };
 }

@@ -1,0 +1,33 @@
+/* Static placeholders: no looping animation, so nothing can flicker. Each variant mirrors the content it replaces. */
+.skeleton { display: block; width: 100%; }
+.block { display: block; border-radius: .5rem; background: color-mix(in srgb, var(--site-muted, #6b7280) 16%, transparent); }
+.srOnly { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+.hero { display: grid; gap: .9rem; padding: clamp(2rem, 6vw, 4rem) 0; }
+.heroEyebrow { width: 8rem; height: .8rem; }
+.heroTitle { width: min(34rem, 90%); height: 2.4rem; }
+.heroTitleShort { width: min(22rem, 60%); height: 2.4rem; }
+.heroLead { width: min(40rem, 95%); height: 1rem; }
+.heroActions { display: flex; gap: .75rem; margin-top: .5rem; }
+.heroAction { width: clamp(7.5rem, 18vw, 10rem); height: 2.75rem; border-radius: 999px; }
+
+.newsCards { display: grid; grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr)); gap: 1.25rem; }
+.newsCard { display: grid; gap: .6rem; }
+.newsImage { aspect-ratio: 4 / 3; border-radius: .75rem; }
+.newsDate { width: 6rem; height: .75rem; }
+.newsTitle { width: 90%; height: 1.1rem; }
+.newsTitleShort { width: 60%; height: 1.1rem; }
+
+.sectionList { display: grid; gap: 1rem; }
+.sectionRow { display: grid; grid-template-columns: 3.5rem 1fr; gap: 1rem; align-items: center; }
+.sectionAvatar { width: 3.5rem; height: 3.5rem; border-radius: 50%; }
+.sectionLines { display: grid; gap: .5rem; }
+.sectionLine { width: 70%; height: 1rem; }
+.sectionLineShort { width: 45%; height: .8rem; }
+
+.article { display: grid; gap: .8rem; max-width: 46rem; }
+.articleImage { aspect-ratio: 16 / 9; border-radius: .75rem; }
+.articleLine { width: 100%; height: .9rem; }
+.articleLineShort { width: 60%; height: .9rem; }
+
+.line { width: 100%; height: .85rem; border-radius: 999px; }

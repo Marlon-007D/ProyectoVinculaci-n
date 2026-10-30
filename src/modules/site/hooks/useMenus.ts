@@ -4,5 +4,5 @@ import { getMenuTree } from "../services/menus";
 
 export function useMenus() {
   const { institutionId } = useInstitution();
-  return useAsync(() => getMenuTree(institutionId), [institutionId]);
+  return useAsync(() => getMenuTree(institutionId), [institutionId], undefined, { keepPrevious: true });
 }

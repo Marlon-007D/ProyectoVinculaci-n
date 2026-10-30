@@ -179,3 +179,24 @@ test('background refresh keeps published content and cancels stale institution r
  requests[4].resolve('updated-b');await flush();assert.equal(output.state.data,'updated-b');
  slots.forEach(slot=>slot?.cleanup?.());
 });
+
+test('after the first load a re-render, a publication notice or a dependency change never bring the skeleton back; reload still does',async()=>{
+ const h=portalHookHarness();let tenant='school-a';const calls=[];
+ const services={getNews:async institution=>{calls.push(institution);return [{institution}];},getEvents:async()=>[],getHonors:async()=>[],getStaff:async()=>[]};
+ const asyncHooks=h.load('src/modules/site/hooks/useAsync.ts');
+ const hooks=h.load('src/modules/site/hooks/useContent.ts',{'./useAsync':asyncHooks,'../context/InstitutionContext':{useInstitution:()=>({institutionId:tenant})},'../services/content':services});
+ h.render(()=>hooks.useNews());
+ assert.equal(h.render().state.status,'loading','the very first load shows the skeleton');
+ let result=await h.flush();assert.equal(result.state.status,'success');
+ const loaded=result.state;
+ assert.equal(h.render().state,loaded,'a plain re-render keeps the same content');
+ h.idle();assert.equal((await h.flush()).state,loaded,'idle, focus or a publication notice do not refetch or flash');
+ assert.equal(calls.length,1);
+ tenant='school-b';
+ const during=h.render();
+ assert.equal(during.state.status,'success','changing the inputs keeps the previous content on screen');
+ assert.equal(during.state.data[0].institution,'school-a');
+ result=await h.flush();assert.equal(result.state.data[0].institution,'school-b');assert.equal(calls.length,2);
+ result.reload();assert.equal(h.render().state.status,'loading','an explicit reload still shows the loading state');
+ h.stop();
+});

@@ -8,7 +8,7 @@ import { buildThemeVars } from "../utils/theme";
 
 export function useSite() {
   const { institutionId, institution } = useInstitution();
-  const settings = useAsync(() => getSiteSettings(institutionId), [institutionId]);
+  const settings = useAsync(() => getSiteSettings(institutionId), [institutionId], undefined, { keepPrevious: true });
   const row = settings.state.status === "success" ? settings.state.data : null;
   const themeId = row?.theme_id ?? null;
   const theme = useAsync(() => getTheme(themeId), [themeId]);
