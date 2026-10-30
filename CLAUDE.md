@@ -57,11 +57,11 @@ npm run test:all          # projects + admin + integration
   - `src/core/TenantContext.tsx`: institución activa y `hasModuleAccess`.
   - `src/modules/admin/auth/authenticatedDestination.ts`: destino según el rol de un usuario con sesión que entra a `/login`.
 - **Barra lateral del panel:**
-  - `src/modules/site/components/Layout/PrivateWorkspace.tsx` es la base acordada para unificar.
-  - DECE usa todavía la suya (`src/modules/dece/components/provisional-shell`), y simuladores la de `src/shared/components/Sidebar`.
+  - `src/modules/site/components/Layout/PrivateWorkspace.tsx` es la única barra: riel de 76 px que se ensancha sobre el contenido con overlay, cajón móvil accesible, DECE/Cursos/Publicaciones como subnavegación. `PrivateLayout` (`src/App.tsx`) la monta una vez para todas las rutas `/panel/*` salvo proyectos/portal/simuladores.
+  - Pendiente: simuladores (`src/shared/components/Sidebar`) y el editor del portal aún muestran una segunda barra.
 - **Avisos y confirmaciones:**
-  - Toast compartido en `src/shared/components/Toast`, con `notify` + `NotifyBridge` (`src/shared/components/Toaster`) y `confirmAction` + `ConfirmHost` (`src/shared/components/ConfirmDialog`).
-  - Pendiente de unificar: el Toast propio de admin (`src/modules/admin/auth/Toast`) y sweetalert2 (solo en DECE).
+  - Único sistema de avisos: sonner con `notify` (`src/shared/components/Toaster`); `AppToaster` y `ConfirmHost` se montan una vez en `App.tsx`. `useToast` (compartido y de admin) son adaptadores sobre `notify`.
+  - Confirmaciones con `confirmAction`. Pendiente: migrar sweetalert2 (solo en DECE y AuthPage).
 - **BD real:**
   - Tablas: `profiles`, `memberships`, `roles`, `institutions`, `module_settings` (por institución), `admin_tenant_member_modules` (por usuario), `admin_tenant_invitations` y `admin_membership_requests`.
   - El SQL de admin está en `src/modules/admin/backend/0NN_*.sql`.
@@ -97,10 +97,11 @@ npm run test:all          # projects + admin + integration
 - `strict` activado.
 - Scripts de pruebas y cobertura.
 
-**Pendiente**, en este orden:
-1. Bloque 3.1 y 3.2: parpadeo del skeleton y redirecciones. `returnTo` de `ProjectsWorkspace` no lo usa nadie.
-2. Bloque 2.1 a 2.3: barra única, avisos y confirmaciones.
-3. Bloque 4: DECE.
-4. Bloque 2.4 a 2.6: primitivas, encabezado y migas de pan.
+**Hecho (30/10/2026):** layout privado único sin parpadeo, `returnTo`, interruptor `VITE_MFA_ENABLED`, toast único con sonner, barra única con DECE e Inicio dentro.
 
-El plan completo está en la sesión del 29/10/2026.
+**Pendiente:**
+1. Unificación visual completa (mismo estilo de proyectos en admin, DECE, publicaciones, cursos, simuladores, Inicio): botones, tarjetas, encabezados, migas y vista tabla/tarjetas compartidos; un solo skeleton en toda la carga privada.
+2. Admin pendiente: persistencia en asignar acceso/aprobar solicitud, `AbortController` en efectos, correos con `trim().toLowerCase()` en `AuthPage.login`.
+3. SQL de MFA sin aplicar: `supabase/proposals/admin/202610300000_mfa_switch.sql` (con el interruptor del frontend en `false` la BD aún exige `aal2` en proyectos/portal).
+4. Migrar sweetalert2 a `notify`/`confirmAction` y quitar la dependencia.
+5. Error 1 (`/panel/admin` con «Algo salió mal») no reproducido; si reaparece, pedir la línea roja de la consola.
