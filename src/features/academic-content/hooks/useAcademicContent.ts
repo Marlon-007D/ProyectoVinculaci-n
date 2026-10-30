@@ -5,6 +5,7 @@ import { deleteAcademicContent, getAcademicContent, saveAcademicContent } from '
 import { createOfficialDistinctionsRepository, type HonorStudentOption } from '../../honors/services/officialDistinctionsRepository'
 import { createNewsRepository } from '../services/newsRepository'
 import { createEventRepository } from '../services/eventRepository'
+import { notify } from '../../../shared/components/Toaster/notify'
 
 const officialDistinctions = createOfficialDistinctionsRepository(supabase)
 const newsRepository = createNewsRepository(supabase)
@@ -41,6 +42,13 @@ export function useAcademicContent(kind: AcademicContentKind, institutionId: str
     }
     void officialDistinctions.list(institutionId).then(result => {
       if (!active) return
+      const { diagnostics } = result
+      if (diagnostics.errors.length) notify.error('No se pudo leer el Cuadro de honor', { description: diagnostics.errors.join(' · ') })
+      else if (result.entries.length === 0 && result.periods.length === 0) {
+        const detail = `institución ${diagnostics.institutionId}: honors=${diagnostics.honors}, public_honors=${diagnostics.publicHonors}, períodos=${diagnostics.periods}`
+        console.warn('[cuadro de honor] sin datos para esta sesión', diagnostics)
+        notify.warning('El Cuadro de honor no recibió datos', { description: detail + '. Si existen en la base, revisa las políticas RLS.' })
+      }
       setEntries([...result.periods, ...result.entries])
       setStudents(result.students)
       setLoading(false)

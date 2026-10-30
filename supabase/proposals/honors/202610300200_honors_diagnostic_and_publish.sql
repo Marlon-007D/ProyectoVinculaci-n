@@ -62,3 +62,29 @@ SELECT policyname, roles, cmd, qual FROM pg_policies WHERE schemaname = 'public'
 -- COMMIT;
 --
 -- Reversión de C: DELETE de las filas creadas (identificables por honor_id recién generado o por el período '2026-2027').
+
+-- ============================== D. RLS DEL ADMIN INSTITUCIONAL (solo si el panel devuelve 0 filas) ==============================
+-- El panel lee honors, academic_periods y students con la sesión del admin. Si las políticas existentes no cubren
+-- al institution_admin, PostgREST responde 200 con lista vacía (no error). Estas políticas son aditivas y por institución.
+-- D1. Verificación previa (ejecuta como el admin: pega su UUID en profile y corre; si devuelve 0 con datos existentes, falta política).
+--   SELECT set_config('request.jwt.claims', json_build_object('sub', '<UUID-DEL-ADMIN>', 'role', 'authenticated')::text, true);
+--   SET LOCAL ROLE authenticated;
+--   SELECT (SELECT count(*) FROM public.honors WHERE institution_id = '816d15bb-3f56-43a7-be71-0caaf8c6a9c1') AS honors,
+--          (SELECT count(*) FROM public.academic_periods WHERE institution_id = '816d15bb-3f56-43a7-be71-0caaf8c6a9c1') AS periodos,
+--          (SELECT count(*) FROM public.students WHERE institution_id = '816d15bb-3f56-43a7-be71-0caaf8c6a9c1') AS estudiantes;
+--   RESET ROLE;
+-- D2. Políticas (no aplicadas):
+-- CREATE POLICY honors_institution_admin ON public.honors FOR ALL TO authenticated
+--   USING (EXISTS (SELECT 1 FROM public.memberships m JOIN public.roles r ON r.role_id = m.role_id
+--                   WHERE m.profile_id = auth.uid() AND m.is_active AND m.institution_id = honors.institution_id AND r.name IN ('institution_admin','super_admin')))
+--   WITH CHECK (EXISTS (SELECT 1 FROM public.memberships m JOIN public.roles r ON r.role_id = m.role_id
+--                   WHERE m.profile_id = auth.uid() AND m.is_active AND m.institution_id = honors.institution_id AND r.name IN ('institution_admin','super_admin')));
+-- CREATE POLICY academic_periods_institution_admin ON public.academic_periods FOR ALL TO authenticated
+--   USING (EXISTS (SELECT 1 FROM public.memberships m JOIN public.roles r ON r.role_id = m.role_id
+--                   WHERE m.profile_id = auth.uid() AND m.is_active AND m.institution_id = academic_periods.institution_id AND r.name IN ('institution_admin','super_admin')))
+--   WITH CHECK (EXISTS (SELECT 1 FROM public.memberships m JOIN public.roles r ON r.role_id = m.role_id
+--                   WHERE m.profile_id = auth.uid() AND m.is_active AND m.institution_id = academic_periods.institution_id AND r.name IN ('institution_admin','super_admin')));
+-- CREATE POLICY students_institution_admin_read ON public.students FOR SELECT TO authenticated
+--   USING (EXISTS (SELECT 1 FROM public.memberships m JOIN public.roles r ON r.role_id = m.role_id
+--                   WHERE m.profile_id = auth.uid() AND m.is_active AND m.institution_id = students.institution_id AND r.name IN ('institution_admin','super_admin')));
+-- Reversión: DROP POLICY honors_institution_admin ON public.honors; DROP POLICY academic_periods_institution_admin ON public.academic_periods; DROP POLICY students_institution_admin_read ON public.students;

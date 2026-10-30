@@ -67,6 +67,10 @@ export function createOfficialDistinctionsRepository(client: SupabaseClient) {
       ])
       if (periodsResult.error) throw periodsResult.error
       if (studentsResult.error) throw studentsResult.error
+      // A failed query must never look like an empty board: log the real message and report it to the caller.
+      const errors = ([['honors', honorsResult.error], ['public_honors', publicHonorsResult.error]] as const)
+        .flatMap(([source, error]) => error ? [`${source}: ${error.message}`] : [])
+      errors.forEach(message => console.error('[cuadro de honor]', message))
       if (honorsResult.error && publicHonorsResult.error) throw honorsResult.error
 
       const students = (studentsResult.data ?? []) as StudentRow[]
@@ -81,6 +85,7 @@ export function createOfficialDistinctionsRepository(client: SupabaseClient) {
         entries: honorEntries,
         periods: periods.map(row => toPeriodEntry(row, institutionId)),
         students: students.map(toStudentOption),
+        diagnostics: { institutionId, honors: honors.length, publicHonors: publicHonors.length, periods: periods.length, students: students.length, errors },
       }
     },
 
