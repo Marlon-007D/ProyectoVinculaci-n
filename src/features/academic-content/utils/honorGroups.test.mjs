@@ -29,3 +29,16 @@ test('entries without a known period are grouped under "Año sin período"', () 
   const groups = buildHonorGroups([official('a', '', 'Abanderado del Pabellón Nacional')], [], undefined);
   assert.equal(groups[0].year, 'Año sin período');
 });
+
+test('institutional recognitions are listed too, so a board with only those is not blank', () => {
+  const institutional = { id: 'i1', kind: 'honor', honorCategory: 'institutional', periodId: 'p1', distinction: 'Mejor promedio', studentName: 'Ana' };
+  const groups = buildHonorGroups([institutional], [period('p1', '2026')], undefined);
+  assert.equal(groups.length, 1);
+  assert.deepEqual({ category: groups[0].category, year: groups[0].year, people: groups[0].people.map(item => item.id) }, { category: 'institutional', year: '2026', people: ['i1'] });
+});
+
+test('honors are shown even when no period is marked as current', () => {
+  const groups = buildHonorGroups([official('a', 'p1', 'Abanderado del Pabellón Nacional')], [period('p1', '2025')], undefined);
+  assert.equal(groups.length, 1);
+  assert.equal(groups[0].people.length, 1);
+});

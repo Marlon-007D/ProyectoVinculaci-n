@@ -14,7 +14,7 @@ export const HONOR_EMPTY_MESSAGE = 'No hay un período académico vigente ni rec
 /** Groups the official distinctions by period; the current period always appears so its slots can be filled. */
 export function buildHonorGroups(visibleEntries: readonly AcademicContentEntry[], periods: readonly AcademicContentEntry[], currentPeriod: AcademicContentEntry | undefined): HonorGroup[] {
   const groups = new Map<string, AcademicContentEntry[]>();
-  visibleEntries.filter(entry => getHonorCategory(entry) === 'official').forEach(entry => {
+  visibleEntries.filter(entry => entry.kind === 'honor').forEach(entry => {
     const key = `${entry.periodId || 'no-period'}:${getHonorCategory(entry)}`;
     groups.set(key, [...(groups.get(key) ?? []), entry]);
   });
