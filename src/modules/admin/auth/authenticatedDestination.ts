@@ -1,4 +1,4 @@
-import { canonicalTenantRole, scopeMatches } from './accessPolicy.ts';
+import { canonicalTenantRole, isTenantSuperAdmin, scopeMatches } from './accessPolicy.ts';
 import { canonicalSlug } from './canonicalSlug.ts';
 
 interface VerifiedInstitution {
@@ -18,6 +18,7 @@ export function authenticatedDestination(institution: VerifiedInstitution, authI
     content_editor: ['portal', '/panel/portal'], student: ['simuladores', '/panel/simuladores'],
   };
   const preferred = modules[canonicalTenantRole(role)];
-  const path = preferred && institution.module_permissions[preferred[0]] ? preferred[1] : '/panel/admin';
+  // Module roles open their module; administrators open the panel home, which lists only their modules.
+  const path = preferred && institution.module_permissions[preferred[0]] ? preferred[1] : isTenantSuperAdmin(role) ? '/panel/admin' : '/panel';
   return path + '?' + new URLSearchParams({ institution: institution.institution_id, slug: canonicalSlug(institution.slug) }).toString();
 }
