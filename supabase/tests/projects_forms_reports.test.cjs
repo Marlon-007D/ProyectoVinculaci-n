@@ -182,6 +182,7 @@ test('informe interno en Excel: datos del encabezado, resumen por rubro y movimi
 function switcher(institutions, activeId) {
   const active = institutions.find(item => item.institution_id === activeId) ?? institutions[0];
   const module = load('src/modules/projects/InstitutionSwitcher.tsx', {
+    '../admin/auth/institutionSwitch': { institutionSwitchSearch: (search, next) => '?' + new URLSearchParams({ institution: next.institution_id, slug: next.slug }) },
     'react-router-dom': { useLocation: () => ({ pathname: '/panel/proyectos', search: '' }), useNavigate: () => () => {} },
     'lucide-react': { Building2: () => null },
     '../../core/TenantContext': {},
@@ -197,6 +198,7 @@ const school = (id, role) => ({ institution_id: id, slug: id, name: 'Colegio ' +
 function render(institutions, activeId, props = {}) {
   const { active } = switcher(institutions, activeId);
   const Component = load('src/modules/projects/InstitutionSwitcher.tsx', {
+    '../admin/auth/institutionSwitch': { institutionSwitchSearch: (search, next) => '?' + new URLSearchParams({ institution: next.institution_id, slug: next.slug }) },
     'react-router-dom': { useLocation: () => ({ pathname: '/panel/proyectos', search: '' }), useNavigate: () => () => {} },
     'lucide-react': { Building2: () => null },
     '../../core/TenantContext': { useTenant: () => ({ institutions, activeInstitution: active, setActiveInstitution: () => {}, loadingTenant: false }) },

@@ -16,7 +16,7 @@ const roles=load('src/core/auth/institutionalRoles.ts');
 const style=new Proxy({},{get:(_,key)=>String(key)});
 function workspace({user=true,role='projects_manager',enabled=true,mode='projects',error=null,mfa=false,tenantLoading=false}={}) {
   const institution={institution_id:'tenant-a',slug:'el-esfuerzo',name:'El Esfuerzo',role};
-  const {ProjectsWorkspace}=load('src/modules/projects/ProjectsWorkspace.tsx',{
+  const {ProjectsWorkspace}=load('src/modules/projects/ProjectsWorkspace.tsx',{'../site/components/Layout/PrivateContentSkeleton':{PrivateContentSkeleton:()=>null},
     'react-router-dom':{useLocation:()=>({pathname:'/panel/'+(mode==='portal'?'portal':'proyectos'),search:'?institution=tenant-a'}),Navigate:props=>React.createElement('p',null,'REDIRECT '+props.to+' RETURN '+JSON.stringify(props.state))},
     '../../core/AuthContext':{useAuth:()=>({user:user?{id:'verified-user'}:null,role,loading:false,mfaRequired:mfa,logout:async()=>{}})},
     '../../core/TenantContext':{useTenant:()=>({activeInstitution:institution,institutions:[institution],loadingTenant:tenantLoading,tenantError:error,hasModuleAccess:()=>enabled,reloadInstitutions:()=>{}})},

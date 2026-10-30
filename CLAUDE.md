@@ -58,7 +58,8 @@ npm run test:all          # projects + admin + integration
   - `src/modules/admin/auth/authenticatedDestination.ts`: destino según el rol de un usuario con sesión que entra a `/login`.
 - **Barra lateral del panel:**
   - `src/modules/site/components/Layout/PrivateWorkspace.tsx` es la única barra: riel de 76 px que se ensancha sobre el contenido con overlay, cajón móvil accesible, DECE/Cursos/Publicaciones como subnavegación. `PrivateLayout` (`src/App.tsx`) la monta una vez para todas las rutas `/panel/*` salvo proyectos/portal/simuladores.
-  - Pendiente: simuladores (`src/shared/components/Sidebar`) y el editor del portal aún muestran una segunda barra.
+  - Simuladores va dentro de `PrivateLayout` y su navegación son pestañas superiores (`.simulator-tabs`). `src/shared/components/Sidebar` quedó sin uso. El editor del portal solo tiene un panel de vista previa, no otra barra.
+  - DECE: submenú siempre visible y solo para `dece_staff` (`roleCanOpenModule`). Tras el login cada rol entra a su inicio (`authenticatedDestination`): admin institucional a `/panel`, DECE a `/panel/dece`.
 - **Avisos y confirmaciones:**
   - Único sistema de avisos: sonner con `notify` (`src/shared/components/Toaster`); `AppToaster` y `ConfirmHost` se montan una vez en `App.tsx`. `useToast` (compartido y de admin) son adaptadores sobre `notify`.
   - Confirmaciones con `confirmAction`. Pendiente: migrar sweetalert2 (solo en DECE y AuthPage).
@@ -97,10 +98,10 @@ npm run test:all          # projects + admin + integration
 - `strict` activado.
 - Scripts de pruebas y cobertura.
 
-**Hecho (30/10/2026):** layout privado único sin parpadeo, `returnTo`, interruptor `VITE_MFA_ENABLED`, toast único con sonner, barra única con DECE e Inicio dentro.
+**Hecho (30/10/2026):** layout privado único sin parpadeo, `returnTo`, interruptor `VITE_MFA_ENABLED`, toast único con sonner, barra única (DECE, Inicio y Simuladores dentro), selector de institución que se mantiene (`institutionSwitchSearch`), paginación DECE sin NaN, textos de carga sustituidos por skeletons, estado vacío común (`EmptyState`) en Cuadro de honor.
 
 **Pendiente:**
-1. Unificación visual completa (mismo estilo de proyectos en admin, DECE, publicaciones, cursos, simuladores, Inicio): botones, tarjetas, encabezados, migas y vista tabla/tarjetas compartidos; un solo skeleton en toda la carga privada.
+1. Unificación visual completa (mismo estilo de proyectos en admin, DECE, publicaciones, cursos, simuladores, Inicio): botones, tarjetas, encabezados, migas y vista tabla/tarjetas compartidos (DECE usa por ahora `dece-buttons.css`); quedan unos 5 textos «Cargando…» inline pequeños (historial de fichas, evidencias, proyectos, registro).
 2. Admin pendiente: persistencia en asignar acceso/aprobar solicitud, `AbortController` en efectos, correos con `trim().toLowerCase()` en `AuthPage.login`.
 3. SQL de MFA sin aplicar: `supabase/proposals/admin/202610300000_mfa_switch.sql` (con el interruptor del frontend en `false` la BD aún exige `aal2` en proyectos/portal).
 4. Migrar sweetalert2 a `notify`/`confirmAction` y quitar la dependencia.
