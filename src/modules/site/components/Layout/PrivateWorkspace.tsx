@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useId, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent, type ReactNode } from 'react';
-import { ArrowLeftRight, Award, BookOpenText, Building2, Calculator, CalendarDays, ChevronDown, FileText, FolderKanban, HeartHandshake, Home, Inbox, Layers3, LogOut, Menu, Newspaper, PanelLeftClose, PanelLeftOpen, PanelTop, ReceiptText, ShieldCheck, Users } from 'lucide-react';
+import { Award, BookOpenText, Building2, Calculator, CalendarDays, ChevronDown, FileText, FolderKanban, HeartHandshake, Home, Inbox, Layers3, LogOut, Menu, Newspaper, PanelLeftClose, PanelLeftOpen, PanelTop, ShieldCheck, Users } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../../core/AuthContext';
 import { useTenant, type InstitutionModuleName } from '../../../../core/TenantContext';
@@ -16,6 +16,7 @@ const workspaceLinks: LinkItem[] = [
   { label: 'Inicio', path: '/panel', icon: Home },
   { label: 'Proyectos', path: '/panel/proyectos', icon: FolderKanban, module: 'projects' },
   { label: 'DECE', path: '/panel/dece', icon: HeartHandshake, module: 'dece' },
+  { label: 'Simuladores', path: '/panel/simuladores', icon: Calculator, module: 'simuladores' },
   { label: 'Portal Web', path: '/panel/portal', icon: PanelTop, module: 'portal' },
 ];
 
@@ -37,8 +38,7 @@ export function PrivateWorkspace({ children }: { children: ReactNode }) {
     return hasModuleAccess(item.module) && roleCanOpenModule(role, item.module);
   });
   const canManageAcademicContent = role === 'super_admin' || role === 'institution_admin';
-  const simulatorsAccess = !isDeceStaff && role !== 'super_admin' && hasModuleAccess('simuladores') && roleCanOpenModule(role, 'simuladores');
-  const coursesActive = pathname.startsWith('/panel/cursos') || pathname.startsWith('/panel/simuladores');
+  const coursesActive = pathname.startsWith('/panel/cursos');
   // DECE pages navigate with history.pushState, which the router does not see.
   const browserPath = useBrowserPathname();
   const publicationsActive = pathname.startsWith('/panel/publicaciones');
@@ -118,11 +118,6 @@ export function PrivateWorkspace({ children }: { children: ReactNode }) {
     if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
     else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
   }
-  const simulatorLinks = [
-    { label: 'Facturación electrónica', path: '/panel/simuladores/facturacion', icon: ReceiptText },
-    { label: 'Unidades y monedas', path: '/panel/simuladores/conversor', icon: ArrowLeftRight },
-    { label: 'Interés financiero', path: '/panel/simuladores/interes', icon: Calculator },
-  ];
   const deceSections = [
     { label: 'Inicio DECE', path: '/panel/dece', icon: Home, tone: 'dece-home' },
     { label: 'Estudiantes', path: '/panel/dece/estudiantes', icon: Users, tone: 'dece-students' },
@@ -169,7 +164,7 @@ export function PrivateWorkspace({ children }: { children: ReactNode }) {
           {links.map(item => { if (item.module === 'dece') return deceLinks(item); const Icon = item.icon; const descriptions: Record<string, string> = { Inicio: 'Resumen del panel institucional', Proyectos: 'Gestiona proyectos de vinculación', DECE: 'Atención y acompañamiento estudiantil', Simuladores: 'Herramientas académicas de cálculo', 'Portal Web': 'Administra el contenido del sitio institucional' }; return <Link data-tone={toneFor(item.path)} key={item.path} to={scopedPath(item.path)} title={`${item.label}: ${descriptions[item.label]}`} aria-current={pathname === item.path || pathname.startsWith(`${item.path}/`) ? 'page' : undefined}><Icon size={20} aria-hidden="true" /><span>{item.label}</span></Link>; })}
           {!isDeceStaff && <Link data-tone="admin" to={scopedPath("/panel/admin")} title="Administración: consulta cuentas, accesos y permisos" aria-current={pathname === '/panel/admin' ? 'page' : undefined}><ShieldCheck size={20} aria-hidden="true" /><span>Administración</span></Link>}
         </>}
-        {(canManageAcademicContent || simulatorsAccess) && <>
+        {canManageAcademicContent && <>
           <section className={`${styles.navGroup} ${openGroup === 'courses' ? '' : styles.collapsed}`}>
             <button type="button" title="Cursos: organiza categorías y módulos académicos" className={coursesActive ? styles.groupButtonActive : styles.groupButton} aria-expanded={openGroup === 'courses'} onClick={() => { if (sidebarCollapsed) setSidebar('open'); setOpenGroup(value => value === 'courses' && !sidebarCollapsed ? null : 'courses'); }}><BookOpenText size={20} aria-hidden="true" /><span>Cursos</span><ChevronDown size={18} aria-hidden="true" /></button>
             <div className={styles.subnav}>
@@ -177,7 +172,6 @@ export function PrivateWorkspace({ children }: { children: ReactNode }) {
               <Link title="Categorías: clasifica la oferta de cursos" to={scopedPath("/panel/cursos/categorias")} aria-current={pathname === '/panel/cursos/categorias' ? 'page' : undefined}><FolderKanban size={18} aria-hidden="true" /><span>Categorías</span></Link>
               <Link title="Módulos: administra los contenidos de los cursos" to={scopedPath("/panel/cursos/modulos")} aria-current={pathname === '/panel/cursos/modulos' ? 'page' : undefined}><Layers3 size={18} aria-hidden="true" /><span>Módulos</span></Link>
               </>}
-              {simulatorsAccess && simulatorLinks.map(({ label, path, icon: Icon }) => <Link key={path} title={label} to={scopedPath(path)} aria-current={pathname === path ? 'page' : undefined}><Icon size={18} aria-hidden="true" /><span>{label}</span></Link>)}
             </div>
           </section>
           {canManageAcademicContent && <section className={`${styles.navGroup} ${openGroup === 'publications' ? '' : styles.collapsed}`}>
