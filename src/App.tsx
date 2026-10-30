@@ -50,16 +50,14 @@ function PublicDeceRoute() {
 function PrivateLayout() {
   const { user, loading } = useAuth();
   const { activeInstitution, loadingTenant } = useTenant();
-  const { pathname } = useLocation();
   const resolvedFor = useRef<string | null>(null);
   if (!loading && !loadingTenant) resolvedFor.current = user?.id ?? null;
   // Children decide redirects from `user`, which is null until the session resolves.
   const resolving = loading || (Boolean(user) && resolvedFor.current !== user?.id);
   const shell = <PrivateWorkspace><PrivateContentSkeleton /></PrivateWorkspace>;
   if (resolving) return shell;
-  const bare = pathname === '/panel';
   const outlet = <Outlet />;
-  const content = user && !bare ? <PrivateWorkspace>{outlet}</PrivateWorkspace> : outlet;
+  const content = user ? <PrivateWorkspace>{outlet}</PrivateWorkspace> : outlet;
   if (!activeInstitution) return <><InstitutionalHeader />{content}</>;
   return <InstitutionProvider institutionId={activeInstitution.institution_id} loadingFallback={shell}><InstitutionSessionLayout>{content}</InstitutionSessionLayout></InstitutionProvider>;
 }

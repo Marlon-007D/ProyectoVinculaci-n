@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import styles from './dece.module.css'
 import { ProvisionalShell } from './components/provisional-shell'
 import { AuthorizationFormPage } from './pages/authorization-form'
@@ -34,7 +35,9 @@ export default function DeceApp() {
   const appShellRef = useRef<HTMLDivElement>(null)
   const integration = useDeceData()
   const [firstName, setFirstName] = useState('')
-  const [accountEmail, setAccountEmail] = useState('')
+  const navigate = useNavigate()
+  const { pathname } = useLocation()
+  const selfNavigation = useRef('')
   const [formSetupError, setFormSetupError] = useState('')
   const [formSetupRetry, setFormSetupRetry] = useState(0)
   const [formSetupLoading, setFormSetupLoading] = useState(true)
@@ -95,6 +98,12 @@ export default function DeceApp() {
     return () => window.removeEventListener('popstate', syncRoute)
   }, [])
 
+  // The shared sidebar navigates through the router; sections opened by this component set the screen themselves.
+  useEffect(() => {
+    if (selfNavigation.current === pathname) { selfNavigation.current = ''; return }
+    setScreen(screenForRoute(getDeceRouteSection()))
+  }, [pathname])
+
   useEffect(() => {
     if (!integration || (screen !== 'home' && screen !== 'students' && screen !== 'cases')) return
     let current = true
@@ -112,15 +121,6 @@ export default function DeceApp() {
     return () => { active = false }
   }, [integration?.client, integration?.profileId])
 
-  useEffect(() => {
-    if (!integration) { setAccountEmail(''); return }
-    let active = true
-    void integration.client.auth.getUser().then(({ data, error }) => {
-      if (active) setAccountEmail(error ? '' : data.user?.email ?? '')
-    })
-    return () => { active = false }
-  }, [integration?.client])
-
   const syncSavedStudent = useCallback((saved: Student) => {
     setSelectedStudent(current => current?.recordId === saved.recordId ? { ...current, ...saved } : current)
     window.dispatchEvent(new Event('dece:dashboard-refresh'))
@@ -137,7 +137,8 @@ export default function DeceApp() {
       : target === 'forms' ? `${basePath}/plantillas`
       : target === 'submissions' ? `${basePath}/envios`
       : basePath
-    history.pushState(null, '', `${targetPath}${intent === 'create' ? '?crear=1' : ''}`)
+    selfNavigation.current = targetPath
+    navigate(`${targetPath}${intent === 'create' ? '?crear=1' : ''}`)
     setScreen(target)
   }
 
@@ -164,12 +165,6 @@ export default function DeceApp() {
     else openCustomForm(student, code)
   }
 
-  const signOut = async () => {
-    const { error } = await integration?.client.auth.signOut() ?? { error: null }
-    if (error) return
-    window.location.assign(integration?.slug ? `/${integration.slug}/login` : '/login')
-  }
-
   const formProps = selectedStudent ? {
     student: selectedStudent,
     section,
@@ -191,7 +186,7 @@ export default function DeceApp() {
 
   return (
     <div ref={appShellRef} className={styles.appShell}>
-      <ProvisionalShell screen={screen} onNavigate={routeTo} accountEmail={accountEmail} onSignOut={() => void signOut()}>
+      <ProvisionalShell>
         {formSetupLoading && <div className="notice" role="status">Preparando las fichas general y de autorización…</div>}
         {formSetupError && <div className="notice sensitive" role="alert">{formSetupError}<button className="button btn secondary ms-2" type="button" onClick={() => setFormSetupRetry(value => value + 1)}>Reintentar</button></div>}
         {screen === 'home' && (
