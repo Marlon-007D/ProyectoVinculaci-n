@@ -22,10 +22,9 @@
     "portable": "node server.mjs",
     "lint": "tsc -p tsconfig.app.json --noEmit && tsc -p tsconfig.node.json --noEmit",
     "test:projects": "node --test --test-isolation=none supabase/tests/frontend_projects.test.cjs supabase/tests/xlsx_writer.test.cjs supabase/tests/projects_forms_reports.test.cjs supabase/tests/single_instance.test.cjs supabase/tests/notify_adapter.test.cjs supabase/tests/portal_updates.test.cjs supabase/tests/shared_integration.test.cjs",
-    "test:admin": "node --disable-warning=ExperimentalWarning --experimental-strip-types --test \"src/**/!(*.database).test.mjs\"",
+    "test:admin": "node scripts/run-admin-tests.mjs",
     "test:integration": "node --disable-warning=ExperimentalWarning --experimental-strip-types --test \"tests/security/*.test.mjs\" supabase/tests/public_client.test.mjs supabase/tests/invite_institution_user.test.mjs",
-    "pretest:coverage": "node -e \"require('node:fs').mkdirSync('coverage', { recursive: true })\"",
-    "test:coverage": "node --disable-warning=ExperimentalWarning --experimental-strip-types --test --experimental-test-coverage \"--test-coverage-include=src/**\" \"--test-coverage-exclude=**/*.test.mjs\" \"--test-coverage-exclude=**/mocks/**\" --test-reporter=lcov --test-reporter-destination=coverage/lcov.info --test-reporter=dot --test-reporter-destination=stdout \"src/**/!(*.database).test.mjs\"",
+    "test:coverage": "node scripts/run-admin-tests.mjs --coverage",
     "test:all": "npm run test:projects && npm run test:admin && npm run test:integration"
   },
   "dependencies": {
