@@ -57,9 +57,10 @@ npm run test:all          # projects + admin + integration
   - `src/core/TenantContext.tsx`: institución activa y `hasModuleAccess`.
   - `src/modules/admin/auth/authenticatedDestination.ts`: destino según el rol de un usuario con sesión que entra a `/login`.
 - **Barra lateral del panel:**
-  - `src/modules/site/components/Layout/PrivateWorkspace.tsx` es la única barra: riel de 76 px que se ensancha sobre el contenido con overlay, cajón móvil accesible, DECE/Cursos/Publicaciones como subnavegación. `PrivateLayout` (`src/App.tsx`) la monta una vez para todas las rutas `/panel/*` salvo proyectos/portal/simuladores.
-  - Simuladores va dentro de `PrivateLayout` y su navegación son pestañas superiores (`.simulator-tabs`). `src/shared/components/Sidebar` quedó sin uso. El editor del portal solo tiene un panel de vista previa, no otra barra.
-  - DECE: submenú siempre visible y solo para `dece_staff` (`roleCanOpenModule`). Tras el login cada rol entra a su inicio (`authenticatedDestination`): admin institucional a `/panel`, DECE a `/panel/dece`.
+  - `PrivateWorkspace.tsx` es la única barra: riel de 76 px que se ensancha con overlay, cajón móvil accesible. Todos los ítems son pastillas de primer nivel (sin grupos ni submenús); el catálogo y el filtro por rol/módulo están en `navItems.ts` (`visibleNavItems`, con prueba). DECE (5 ítems) solo para `dece_staff`; Cursos y Publicaciones solo para administradores; Simuladores (3 ítems) según el módulo.
+  - El estado activo sigue también a `history.pushState` (`useBrowserPathname`), porque DECE navega por su cuenta.
+  - Simuladores: `/panel/simuladores/{facturacion,conversor,interes}` en `PanelSimulator`; las rutas viejas redirigen. La app vieja (`src/app/App.tsx`) y `shared/components/Sidebar` se eliminaron. **Quedan sin uso** `src/app/router/AppRouter.tsx` y sus páginas de cursos/noticias/eventos/honores: confirmar con el equipo antes de borrarlas (las páginas de cursos del estudiante solo vivían ahí).
+- **Portal público con sesión:** `TenantContext` redirige `/?institution=` al panel solo en la portada; las páginas públicas (`?honores=1`, `?noticia=`, `?evento=`, `?simulator=`…) se quedan (`isPublicPortalSearch`).
 - **Avisos y confirmaciones:**
   - Único sistema de avisos: sonner con `notify` (`src/shared/components/Toaster`); `AppToaster` y `ConfirmHost` se montan una vez en `App.tsx`. `useToast` (compartido y de admin) son adaptadores sobre `notify`.
   - Confirmaciones con `confirmAction`. Pendiente: migrar sweetalert2 (solo en DECE y AuthPage).
@@ -98,7 +99,7 @@ npm run test:all          # projects + admin + integration
 - `strict` activado.
 - Scripts de pruebas y cobertura.
 
-**Hecho (30/10/2026):** layout privado único sin parpadeo, `returnTo`, interruptor `VITE_MFA_ENABLED`, toast único con sonner, barra única (DECE, Inicio y Simuladores dentro), selector de institución que se mantiene (`institutionSwitchSearch`), paginación DECE sin NaN, textos de carga sustituidos por skeletons, estado vacío común (`EmptyState`) en Cuadro de honor.
+**Hecho (30/10/2026):** layout privado único sin parpadeo, `returnTo`, interruptor `VITE_MFA_ENABLED`, toast único con sonner, barra plana única (DECE, Inicio y Simuladores como ítems), portal público sin redirección al panel, selector de institución que se mantiene (`institutionSwitchSearch`), paginación DECE sin NaN, textos de carga sustituidos por skeletons, estado vacío común (`EmptyState`) en Cuadro de honor.
 
 **Pendiente:**
 1. Unificación visual completa (mismo estilo de proyectos en admin, DECE, publicaciones, cursos, simuladores, Inicio): botones, tarjetas, encabezados, migas y vista tabla/tarjetas compartidos (DECE usa por ahora `dece-buttons.css`); quedan unos 5 textos «Cargando…» inline pequeños (historial de fichas, evidencias, proyectos, registro).

@@ -3,6 +3,7 @@ import { authenticatedDestination } from '../modules/admin/auth/authenticatedDes
 import { useLocation, useNavigate } from 'react-router-dom';
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { supabase } from './supabaseClient';
+import { isPublicPortalSearch } from './publicPortalSearch';
 import { useAuth } from './AuthContext';
 import { institutionContextFromSearch } from '../features/auth/utils/googleOAuth';
 
@@ -168,7 +169,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
     ? requestedInstitution ?? null
     : institutions.find(item => item.institution_id === selectedId) ?? institutions.find(item => item.institution_id === authInstitutionId) ?? null;
   useEffect(() => {
-    if (location.pathname !== '/' || !(requestedInstitutionId || requestedSlug) || location.hash
+    if (location.pathname !== '/' || !(requestedInstitutionId || requestedSlug) || location.hash || isPublicPortalSearch(location.search)
       || !user || loading || mfaRequired || mfaEnrollmentRequired || !current || !activeInstitution) return;
     const destination = authenticatedDestination(activeInstitution, authInstitutionId, role, location.search);
     if (destination) navigate(destination, { replace: true });
