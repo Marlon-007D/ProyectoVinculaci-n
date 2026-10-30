@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { notify } from '../../../shared/components/Toaster/notify'
 import { PrivateContentSkeleton } from '../../../modules/site/components/Layout/PrivateContentSkeleton'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { ArrowLeft, BookOpenText, ChevronLeft, ChevronRight, ClipboardList, Clock3, FileText, FolderKanban, ImagePlus, Layers3, Plus, Save, Search, Trash2, Upload } from 'lucide-react'
@@ -105,6 +106,7 @@ export function AdminCoursesPage() {
   const [questionSets, setQuestionSets] = useState<Record<number, AssessmentQuestionSet>>({})
   const [settings, setSettings] = useState<AssessmentSettings>({ durationMinutes: 10, totalPoints: 20 })
   const [editorError, setEditorError] = useState('')
+  useEffect(() => { if (editorError) notify.error('No se pudo guardar el curso', { id: 'course-editor', description: editorError }) }, [editorError])
   const [pendingDelete, setPendingDelete] = useState<string | null>(null)
   const [coverUploading, setCoverUploading] = useState(false)
   const isNewCoursePage = pathname === '/panel/cursos/modulos/nuevo'
@@ -403,7 +405,6 @@ export function AdminCoursesPage() {
             </article>)}
           </section>
         </section>}
-        {editorError && <p className={styles.editorError} role="alert">{editorError}</p>}
         <footer className={styles.editorFooter}><button className={styles.primaryButton} type="submit"><Save size={17} />Guardar cambios</button></footer>
       </form>
     </main>

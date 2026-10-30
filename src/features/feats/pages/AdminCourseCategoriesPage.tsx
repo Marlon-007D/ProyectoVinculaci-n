@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { notify } from '../../../shared/components/Toaster/notify'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, FolderKanban, Image, ImagePlus, Pencil, Plus, Save, Search, Tag, Trash2, Upload, X } from 'lucide-react'
 import type { SchoolModule, SchoolSubject } from '../../courses/types/courseCatalog.types'
@@ -44,6 +45,8 @@ export function AdminCourseCategoriesPage() {
   const [formError, setFormError] = useState('')
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
   const [deleteError, setDeleteError] = useState('')
+  useEffect(() => { if (formError) notify.error('No se pudo guardar la categoría', { id: 'category-form', description: formError }) }, [formError])
+  useEffect(() => { if (deleteError) notify.error('No se pudo eliminar la categoría', { id: 'category-delete', description: deleteError }) }, [deleteError])
   const [coverUploading, setCoverUploading] = useState(false)
   const isNewCategoryPage = pathname === '/panel/cursos/categorias/nueva'
   const isCategoryEditorPage = isNewCategoryPage || /^\/panel\/cursos\/categorias\/[^/]+\/editar$/.test(pathname)
@@ -217,7 +220,6 @@ export function AdminCourseCategoriesPage() {
             </label>)}
           </div>
         </fieldset>
-        {formError && <p className={styles.error} role="alert">{formError}</p>}
         <div className={styles.formActions}>
           <button className={styles.secondaryButton} type="button" onClick={() => navigate('/panel/cursos/categorias')}>Cancelar</button>
           <button className={styles.primaryButton} type="submit"><Save size={17} />Guardar categoría</button>
@@ -226,7 +228,6 @@ export function AdminCourseCategoriesPage() {
     </section>}
 
     {!isCategoryEditorPage && <section className={styles.listCard} aria-labelledby="category-list-title">
-      {deleteError && <p className={styles.error} role="alert">{deleteError}</p>}
       <div className={styles.listHeading}>
         <div>
           <h2 id="category-list-title">Categorías de cursos</h2>

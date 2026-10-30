@@ -13,6 +13,7 @@ import { useTenant } from '../../../core/TenantContext'
 import { getHonorCategory, getOfficialFlagKind, normalizeOfficialDistinction, OFFICIAL_DISTINCTIONS } from '../../honors/utils/honorRules'
 import { getStudentAvatar, getStudentInitials } from '../../honors/utils/studentAvatar'
 import { OfficialFlag } from '../../honors/components/OfficialFlag'
+import { notify } from '../../../shared/components/Toaster/notify'
 import { EmptyState } from '../../../shared/components/EmptyState/EmptyState'
 import { buildHonorGroups, HONOR_EMPTY_MESSAGE } from '../utils/honorGroups'
 import { AcademicPostPreviewPage } from '../pages/AcademicPostPreviewPage'
@@ -71,7 +72,6 @@ export function AcademicContentManager({ kind, title, singular, onPreview }: Pro
   const institutionId = activeInstitution?.institution_id ?? (kind === 'honor' ? null : tenantInstitution.id)
   const { entries, students, loading, error, reload, save, remove } = useAcademicContent(kind, institutionId)
   const [editing, setEditing] = useState<AcademicContentEntry | null>(null)
-  const [notice, setNotice] = useState('')
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [formStep, setFormStep] = useState<1 | 2>(1)
   const [page, setPage] = useState(1)
@@ -145,14 +145,14 @@ export function AcademicContentManager({ kind, title, singular, onPreview }: Pro
   const fieldError = (field: keyof AcademicContentEntry): ReactNode => fieldErrors[field] && <span className="academic-field-error" id={`academic-error-${field}`} role="alert">{fieldErrors[field]}</span>
   const fieldProps = (field: keyof AcademicContentEntry) => ({ 'aria-invalid': Boolean(fieldErrors[field]), 'aria-describedby': fieldErrors[field] ? `academic-error-${field}` : undefined })
   const beginCreate = (officialDistinction?: typeof OFFICIAL_DISTINCTIONS[number], periodId = currentPeriod?.id ?? '') => {
-    setNotice(''); setFieldErrors({}); setFormStep(1)
+    setFieldErrors({}); setFormStep(1)
     const entry = emptyEntry(kind, institutionId ?? tenantInstitution.id)
     const publicationEntry = kind === 'news' || kind === 'event'
       ? { ...entry, periodId: defaultPublicationPeriodId }
       : entry
     setEditing(officialDistinction ? { ...entry, honorCategory: 'official', grade: 'Tercero de Bachillerato', distinction: officialDistinction, periodId } : publicationEntry)
   }
-  const beginEdit = (entry: AcademicContentEntry) => { setNotice(''); setFieldErrors({}); setFormStep(1); setEditing({ ...entry, author: 'Brigitte Rodríguez', distinction: kind === 'honor' && getHonorCategory(entry) === 'official' ? normalizeOfficialDistinction(entry.distinction) : entry.distinction }) }
+  const beginEdit = (entry: AcademicContentEntry) => { setFieldErrors({}); setFormStep(1); setEditing({ ...entry, author: 'Brigitte Rodríguez', distinction: kind === 'honor' && getHonorCategory(entry) === 'official' ? normalizeOfficialDistinction(entry.distinction) : entry.distinction }) }
   const validateFields = (requiredFields: (keyof AcademicContentEntry)[]) => {
     if (!editing) return false
     const nextErrors: Record<string, string> = Object.fromEntries(requiredFields
@@ -177,17 +177,17 @@ export function AcademicContentManager({ kind, title, singular, onPreview }: Pro
       setSaving(true)
       await save(kind === 'honor' ? { ...editing, status: 'published', distinction: category === 'official' ? normalizeOfficialDistinction(editing.distinction) : editing.distinction, honorCategory: category, officialOrder: category === 'official' ? OFFICIAL_DISTINCTIONS.indexOf(normalizeOfficialDistinction(editing.distinction) as typeof OFFICIAL_DISTINCTIONS[number]) + 1 : undefined } : editing)
       setEditing(null)
-      setNotice(isPublication ? '' : `${singular} guardado.`)
+      notify.success(`${singular} guardado`, { id: 'academic-content-save', description: 'Los cambios ya están registrados.' })
     } catch (error) {
-      setNotice(errorMessage(error, 'No se pudo guardar el registro.'))
+      notify.error('No se pudo guardar el registro', { id: 'academic-content-save', description: errorMessage(error, 'Intenta nuevamente.') })
     } finally {
       setSaving(false)
     }
   }
   const deleteEntry = async (entry: AcademicContentEntry) => {
     if (!window.confirm(`¿Eliminar ${entry.title || entry.studentName}?`)) return
-    try { await remove(entry.id); setNotice(isPublication ? '' : `${singular} eliminado.`) }
-    catch (error) { setNotice(errorMessage(error, 'No se pudo eliminar el registro.')) }
+    try { await remove(entry.id); notify.success(`${singular} eliminado`, { id: 'academic-content-delete' }) }
+    catch (error) { notify.error('No se pudo eliminar el registro', { id: 'academic-content-delete', description: errorMessage(error, 'Intenta nuevamente.') }) }
   }
   const renderPagination = (position: 'top' | 'bottom') => pageCount > 1 && <nav className={isPublication ? `${styles.publicationPagination} ${position === 'top' ? styles.paginationTop : styles.paginationBottom}` : `academic-pagination is-${position}`} aria-label={`Paginación de ${title}`}><button type="button" onClick={() => setPage(current => Math.max(1, current - 1))} disabled={page === 1} aria-label="Página anterior"><span className="material-symbols-rounded" aria-hidden="true">arrow_back</span></button><span className={isPublication ? styles.paginationCount : ''}>{isPublication ? `Pág. ${page}/${pageCount}` : `Página ${page} de ${pageCount}`}</span><button type="button" onClick={() => setPage(current => Math.min(pageCount, current + 1))} disabled={page === pageCount} aria-label="Página siguiente"><span className="material-symbols-rounded" aria-hidden="true">arrow_forward</span></button></nav>
 
@@ -196,9 +196,9 @@ export function AcademicContentManager({ kind, title, singular, onPreview }: Pro
       setSaving(true)
       await save({ ...entry, date: editing?.date || todayISO(), author: 'Brigitte Rodríguez' })
       setEditing(null)
-      setNotice('')
+      notify.success('Publicación guardada', { id: 'academic-content-save' })
     } catch (error) {
-      setNotice(errorMessage(error, 'No se pudo guardar la publicación.'))
+      notify.error('No se pudo guardar la publicación', { id: 'academic-content-save', description: errorMessage(error, 'Intenta nuevamente.') })
     } finally {
       setSaving(false)
     }
@@ -210,7 +210,6 @@ export function AcademicContentManager({ kind, title, singular, onPreview }: Pro
     isNew={!visibleEntries.some(entry => entry.id === editing.id)}
     periods={publicationPeriods.map(period => ({ id: period.id, title: period.title }))}
     isSaving={saving}
-    saveError={notice}
     onChange={setEditing}
     onUploadImage={file => publicationImageUploader.upload({ institutionId: editing.institutionId, publicationId: editing.id, file })}
     onSave={saveEditedPublication}
@@ -220,7 +219,6 @@ export function AcademicContentManager({ kind, title, singular, onPreview }: Pro
   return <section className={`page-content academic-content-page${kind === 'honor' ? ' is-honor-page' : ''}${isPublication ? ` ${styles.newsPage}` : ''}`}>
     {kind !== 'honor' && !isPublication && <header className="academic-page-heading"><div><h1>{title}</h1></div>
     </header>}
-    {notice && !isPublication && <p className="academic-notice" role="status">{notice}</p>}
     {kind === 'period' && <section className="current-period-card" aria-label="Período académico vigente">
       <div className="current-period-icon"><CalendarDays size={20} /></div><div><span>PERÍODO VIGENTE</span><strong>{currentPeriod?.title ?? 'No hay un período vigente'}</strong>{currentPeriod && <small>{dateLabel(currentPeriod.startDate)} – {dateLabel(currentPeriod.endDate)}</small>}</div>
     </section>}
