@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import styles from './dece.module.css'
+import './dece-buttons.css'
 import { ProvisionalShell } from './components/provisional-shell'
 import { AuthorizationFormPage } from './pages/authorization-form'
 import { DashboardPage } from './pages/dashboard'
@@ -185,7 +186,7 @@ export default function DeceApp() {
   if (!integration) return <div className="container py-5" role="alert">No hay una institución activa en la sesión.</div>
 
   return (
-    <div ref={appShellRef} className={styles.appShell}>
+    <div ref={appShellRef} className={styles.appShell} data-dece-shell>
       <ProvisionalShell>
         {formSetupLoading && <div className="notice" role="status">Preparando las fichas general y de autorización…</div>}
         {formSetupError && <div className="notice sensitive" role="alert">{formSetupError}<button className="button btn secondary ms-2" type="button" onClick={() => setFormSetupRetry(value => value + 1)}>Reintentar</button></div>}

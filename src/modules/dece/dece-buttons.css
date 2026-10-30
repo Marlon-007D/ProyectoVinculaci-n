@@ -1,0 +1,12 @@
+/* DECE buttons use the same pill shape, size and colors as the projects module instead of Bootstrap's. */
+[data-dece-shell] .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 42px; padding: 0 17px; border: 0; border-radius: 22px; font: 600 13px Roboto, Arial, sans-serif; text-decoration: none; cursor: pointer; }
+[data-dece-shell] .btn-sm { min-height: 36px; padding: 0 14px; }
+[data-dece-shell] .btn-primary { background: #1a73e8; color: #fff; }
+[data-dece-shell] .btn-primary:hover:not(:disabled) { background: #185abc; color: #fff; }
+[data-dece-shell] .btn-outline-secondary, [data-dece-shell] .btn-outline-primary, [data-dece-shell] .btn-light, [data-dece-shell] .btn-secondary { background: #e8f1ff; color: #38516e; }
+[data-dece-shell] .btn-outline-secondary:hover:not(:disabled), [data-dece-shell] .btn-outline-primary:hover:not(:disabled) { background: #dceaff; color: #38516e; }
+[data-dece-shell] .btn-outline-danger, [data-dece-shell] .btn-danger { background: #fce8e6; color: #b3261e; }
+[data-dece-shell] .btn:disabled { opacity: .5; cursor: default; }
+[data-dece-shell] .btn:focus-visible { outline: 2px solid #1a73e8; outline-offset: 2px; }
+[data-dece-shell] .form-control, [data-dece-shell] .form-select { min-height: 42px; border: 1px solid #dadce0; border-radius: 12px; font: 400 14px Roboto, Arial, sans-serif; }
+[data-dece-shell] .form-control:focus, [data-dece-shell] .form-select:focus { border-color: #1a73e8; outline: 2px solid #d2e3fc; box-shadow: none; }

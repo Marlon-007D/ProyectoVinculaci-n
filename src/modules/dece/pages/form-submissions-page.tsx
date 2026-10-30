@@ -3,6 +3,7 @@ import type { Student } from '../types'
 import { useDeceData } from '../services/dece-data-context'
 import { createDeceFormService } from '../services/form-service'
 import styles from './form-submissions-page.module.css'
+import { pageWindow } from '../utils/pagination'
 
 type Status = 'draft' | 'submitted' | 'reviewed'
 type Row = { id: string; student: Student; form: { id: string; code: string; name: string; version: number }; status: Status; updatedAt: string; reviewedAt: string | null; disabled: boolean; previous: boolean }
@@ -142,11 +143,12 @@ export default function FormSubmissionsPage({ onOpen }: { onOpen: (student: Stud
     else result = a.updatedAt.localeCompare(b.updatedAt)
     return query.direction === 'asc' ? result : -result
   }), [filtered, query.order, query.direction])
-  const pageCount = Math.max(1, Math.ceil(sorted.length / query.size))
-  const page = Math.min(query.page, pageCount)
-  const pageRows = sorted.slice((page - 1) * query.size, page * query.size)
-  const from = sorted.length ? (page - 1) * query.size + 1 : 0
-  const to = Math.min(page * query.size, sorted.length)
+  const window_ = pageWindow(sorted.length, query.page - 1, query.size)
+  const pageCount = window_.pageCount
+  const page = window_.page + 1
+  const pageRows = sorted.slice(window_.start, window_.end)
+  const from = window_.first
+  const to = window_.last
   const grouped = useMemo(() => {
     if (query.group === 'none') return [{ label: '', rows: pageRows }]
     const map = new Map<string, Row[]>()

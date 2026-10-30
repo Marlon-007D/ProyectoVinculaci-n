@@ -19,6 +19,8 @@ type StudentRecord = {
 }
 type StudentFields = { national_id: string; first_name: string; last_name: string; grade_level: string; enrollment_number: string }
 type Template = { code: string; name: string }
+import { pageWindow } from '../utils/pagination'
+
 const PAGE_SIZES = [10, 20, 30, 40]
 const PREFERENCES_KEY = 'dece.students.preferences'
 type StudentSort = 'last_name' | 'first_name' | 'national_id' | 'grade_level' | 'enrollment_number'
@@ -267,10 +269,11 @@ export default function StudentManagementPage({ onOpenForm, onStudentSaved, onOp
         return leftValue.localeCompare(rightValue, 'es', { numeric: true }) * (direction === 'asc' ? 1 : -1)
       })
   }, [course, debouncedSearch, direction, records, sort])
-  const pageCount = Math.max(1, Math.ceil(visibleRecords.length / pageSize))
-  const pageRecords = visibleRecords.slice(page * pageSize, (page + 1) * pageSize)
-  const firstRecord = visibleRecords.length ? page * pageSize + 1 : 0
-  const lastRecord = Math.min(visibleRecords.length, (page + 1) * pageSize)
+  const window_ = pageWindow(visibleRecords.length, page, pageSize)
+  const pageCount = window_.pageCount
+  const pageRecords = visibleRecords.slice(window_.start, window_.end)
+  const firstRecord = window_.first
+  const lastRecord = window_.last
   const displayedName = record ? `${record.first_name} ${record.last_name}` : ''
 
   return <div className="page-content container-fluid">
