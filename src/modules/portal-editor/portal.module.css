@@ -70,3 +70,12 @@
 .portal-editor .editor-identity-note{display:flex;flex:1;align-items:center;gap:10px;color:var(--editor-ink);font-size:13px}.editor-identity-note svg{flex:none;color:var(--editor-brand)}
 .editor-section.is-managed{border-style:dashed;background:#f6f8fb}
 @media(max-width:640px){.editor-tabs{grid-template-columns:1fr}}
+
+/* Section blocks: one card per purpose, collapsible, same look as the project cards. */
+.editor-block { margin: 12px 0; border: 1px solid #e3e6ec; border-radius: 12px; background: #fff; overflow: hidden; }
+.editor-block > summary { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; padding: 12px 16px; color: #202124; font: 600 14px Roboto, Arial, sans-serif; list-style: none; cursor: pointer; }
+.editor-block > summary::-webkit-details-marker { display: none; }
+.editor-block > summary small { color: #5f6368; font: 400 12px Roboto, Arial, sans-serif; }
+.editor-block[open] > summary { border-bottom: 1px solid #e3e6ec; background: #f8f9fa; }
+.editor-block > summary:focus-visible { outline: 2px solid #1a73e8; outline-offset: -2px; }
+.editor-block-body { display: grid; gap: 14px; padding: 16px; }

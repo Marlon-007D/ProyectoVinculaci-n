@@ -1,4 +1,5 @@
 import { menuIdentity, validateMenuHierarchy } from './portalMenus';
+import {orderPortalPages} from './pageOrder';
 import { institutionalMenuEntries } from '../site/utils/institutionalNavigation';
 import { supabase } from '../../core/supabaseClient';
 import { getUserInstitutions } from '../projects/integration/accessService';
@@ -83,7 +84,7 @@ export async function listPortalPages(institutionId:string):Promise<PortalDraft[
     const current=withCurrentIdentity(value,config);
     return {...current,menus:menuIdentity(current.menus)};
   };
-  return Promise.all((data??[]).map(async page=>{
+  return orderPortalPages(await Promise.all((data??[]).map(async page=>{
     const [latest,draft]=await Promise.all([latestVersion(page.page_id),supabase.from('portal_editor_drafts').select('revision,snapshot').eq('page_id',page.page_id).maybeSingle()]);
     if(draft.error)throw draft.error;
     const published_slug=page.status==='published'?page.slug:undefined;
@@ -91,7 +92,7 @@ export async function listPortalPages(institutionId:string):Promise<PortalDraft[
     if(latest)return {page_id:page.page_id,status:page.status,revision:latest.version_number,
       snapshot:complete(latest.content_snapshot?.schema_version===1?latest.content_snapshot:legacyPublishedSnapshot(page,latest.content_snapshot,config)),published_slug};
     return {page_id:page.page_id,status:page.status,revision:0,snapshot:complete(await existingSnapshot(page,config)),published_slug};
-  }));
+  })));
 }
 function validate(snapshot:PortalSnapshot){
   validateMenuHierarchy(snapshot.menus);

@@ -3,6 +3,7 @@ import type { PageSection } from '../site/types/page';
 import { MAX_SECTION_RECORDS, textValue } from './contract';
 import { LinkDestination, type PortalDestination } from './LinkDestination';
 import { ButtonList, bannerButtons } from './ButtonList';
+import { PortalImageInput } from './PortalImageInput';
 import type { PublicRecordCounts } from './portalService';
 import styles from './SectionDetails.module.css';
 
@@ -13,7 +14,7 @@ const recordNames: Record<keyof PublicRecordCounts, [string, string, string]> = 
   honors: ['reconocimiento', 'reconocimientos', 'públicos'],
 };
 
-interface Props { section: PageSection; onChange: (properties: Record<string, unknown>) => void; destinations: PortalDestination[]; recordCounts: PublicRecordCounts | null }
+interface Props { section: PageSection; onChange: (properties: Record<string, unknown>) => void; destinations: PortalDestination[]; recordCounts: PublicRecordCounts | null; institutionId: string; onBusyChange: (busy: boolean) => void }
 
 function RecordLimit({ type, value, available, onChange }: { type: keyof PublicRecordCounts; value: unknown; available: number | undefined; onChange: (limit: number) => void }) {
   const [one, many, state] = recordNames[type];
@@ -30,7 +31,7 @@ function RecordLimit({ type, value, available, onChange }: { type: keyof PublicR
   </label>;
 }
 
-export function SectionDetails({ section, onChange, destinations, recordCounts }: Props) {
+export function SectionDetails({ section, onChange, destinations, recordCounts, institutionId, onBusyChange }: Props) {
   const p = section.properties;
   const set = (key: string, value: unknown) => onChange({ ...p, [key]: value });
   const banner = section.type === 'banner';
@@ -38,9 +39,12 @@ export function SectionDetails({ section, onChange, destinations, recordCounts }
   const counted = section.type in recordNames ? section.type as keyof PublicRecordCounts : null;
   const list = Array.isArray(p.items) ? p.items.filter((item): item is Record<string, unknown> => !!item && typeof item === 'object') : section.type === 'links' && p.url ? [{title:p.link_label || p.title,description:p.body,url:p.url}] : [];
   const field = (key: string, label: string, maxLength: number, placeholder?: string) => <label key={key}>{label}<input maxLength={maxLength} placeholder={placeholder} value={textValue(p[key])} onChange={event => set(key, event.target.value)} /></label>;
+  // Items with a picture (gallery, levels of a text section, manual staff) upload it with a mandatory description.
+  const withImage = ['text', 'gallery', 'staff'].includes(section.type);
   const itemFields: Array<[string, string, number]> = section.type === 'gallery'
-    ? [['image_url', 'Dirección HTTPS de la imagen', 2048], ['alt', 'Descripción de la imagen', 200], ['caption', 'Pie de imagen', 200]]
+    ? [['alt', 'Descripción de la imagen (obligatoria)', 200], ['caption', 'Pie de imagen', 200]]
     : [['title', 'Título', 120], ['description', 'Descripción', 500]];
+  const updateItem = (index: number, key: string, value: string) => set('items', list.map((row, i) => i === index ? { ...row, [key]: value } : row));
   return <div className={styles.fields}>
     {!connected && field('eyebrow', 'Texto pequeño sobre el título (opcional)', 80, 'Por ejemplo: Bienvenidos')}
     {banner && <>
@@ -56,7 +60,9 @@ export function SectionDetails({ section, onChange, destinations, recordCounts }
     {(['text', 'links', 'gallery'].includes(section.type) || (section.type === 'staff' && p.source === 'manual')) && <fieldset className={styles.list}>
       <legend>{section.type === 'gallery' ? 'Imágenes de la galería' : 'Elementos de la sección'}</legend>
       {list.map((item, index) => <div className={styles.item} key={index}>
-        {itemFields.map(([key, label, maxLength]) => <label key={key}>{label}<input maxLength={maxLength} value={textValue(item[key])} onChange={event => set('items', list.map((row, i) => i === index ? { ...row, [key]: event.target.value } : row))} /></label>)}
+        {withImage && <PortalImageInput institutionId={institutionId} value={textValue(item.image_url)} onChange={url => updateItem(index, 'image_url', url)} onBusyChange={onBusyChange} label={`Imagen del elemento ${index + 1}`} />}
+        {itemFields.map(([key, label, maxLength]) => <label key={key}>{label}<input maxLength={maxLength} required={key === 'alt' && Boolean(item.image_url)} value={textValue(item[key])} onChange={event => updateItem(index, key, event.target.value)} /></label>)}
+        {withImage && section.type !== 'gallery' && Boolean(item.image_url) && <label>Descripción de la imagen (obligatoria)<input required maxLength={200} placeholder="Describe la imagen para quien no pueda verla" value={textValue(item.image_alt)} onChange={event => updateItem(index, 'image_alt', event.target.value)} /></label>}
         {section.type === 'links' && <LinkDestination label="¿A dónde lleva este elemento?" value={textValue(item.url)} onChange={url => set('items', list.map((row, i) => i === index ? { ...row, url } : row))} destinations={destinations} />}
         <button type="button" onClick={() => set('items', list.filter((_, i) => i !== index))}><Trash2 size={16} />Quitar elemento {index + 1}</button>
       </div>)}
