@@ -10,9 +10,10 @@ import type { AcademicContentEntry, AcademicContentKind, AcademicPublicationStat
 import { tenantInstitution } from '../../../core/config/tenant'
 import { supabase } from '../../../core/supabaseClient'
 import { useTenant } from '../../../core/TenantContext'
-import { getHonorCategory, getOfficialFlagKind, normalizeOfficialDistinction, OFFICIAL_DISTINCTIONS, sortOfficialDistinctions } from '../../honors/utils/honorRules'
+import { getHonorCategory, getOfficialFlagKind, normalizeOfficialDistinction, OFFICIAL_DISTINCTIONS } from '../../honors/utils/honorRules'
 import { getStudentAvatar, getStudentInitials } from '../../honors/utils/studentAvatar'
 import { OfficialFlag } from '../../honors/components/OfficialFlag'
+import { buildHonorGroups, HONOR_EMPTY_MESSAGE } from '../utils/honorGroups'
 import { AcademicPostPreviewPage } from '../pages/AcademicPostPreviewPage'
 import { createAcademicContentImageUploader } from '../services/academicContentImageService'
 import { createAcademicPeriodRepository, type AcademicPeriodOption } from '../services/academicPeriodRepository'
@@ -97,28 +98,7 @@ export function AcademicContentManager({ kind, title, singular, onPreview }: Pro
       return matchesStatus && matchesSearch && matchesDate
     })
   }, [kind, publicationDate, publicationSearch, statusFilter, visibleEntries])
-  const honorGroups = useMemo(() => {
-    if (kind !== 'honor') return []
-    const groups = new Map<string, AcademicContentEntry[]>()
-    visibleEntries.filter(entry => getHonorCategory(entry) === 'official').forEach(entry => {
-      const category = getHonorCategory(entry)
-      const key = `${entry.periodId || 'no-period'}:${category}`
-      groups.set(key, [...(groups.get(key) ?? []), entry])
-    })
-    const result = [...groups.entries()].map(([key, people]) => {
-      const [periodId, category] = key.split(':')
-      return {
-      key,
-      periodId,
-      category: category as 'official' | 'institutional',
-      people: category === 'official' ? sortOfficialDistinctions(people) : people,
-      year: periods.find(period => period.id === periodId)?.title ?? 'Año sin período',
-    }})
-    if (currentPeriod && !groups.has(`${currentPeriod.id}:official`)) {
-      result.push({ key: `${currentPeriod.id}:official`, periodId: currentPeriod.id, category: 'official', people: [], year: currentPeriod.title })
-    }
-    return result.sort((a, b) => b.year.localeCompare(a.year) || (a.category === 'official' ? -1 : 1))
-  }, [kind, visibleEntries, periods, currentPeriod])
+  const honorGroups = useMemo(() => kind === 'honor' ? buildHonorGroups(visibleEntries, periods, currentPeriod) : [], [kind, visibleEntries, periods, currentPeriod])
   const listCount = kind === 'honor' ? visibleEntries.length : filteredEntries.length
   const isPublication = kind === 'news' || kind === 'event'
   const paginationCount = kind === 'honor' ? honorGroups.length : listCount
@@ -252,7 +232,7 @@ export function AcademicContentManager({ kind, title, singular, onPreview }: Pro
           { value: 'draft', label: 'Borradores', count: visibleEntries.filter(entry => entry.status === 'draft').length },
         ] as const).map(option => <button key={option.value} type="button" className={isPublication ? `${styles.filterChip}${statusFilter === option.value ? ` ${styles.filterChipActive}` : ''}` : statusFilter === option.value ? 'is-active' : ''} aria-pressed={statusFilter === option.value} onClick={() => setStatusFilter(option.value)}>{option.label}<span>{option.count}</span></button>)}
       </div>{isPublication && <div className={`${styles.searchTools}${publicationSearchOpen ? ` ${styles.searchToolsOpen}` : ''}`}><label className={`${styles.searchField}${publicationSearchOpen ? ` ${styles.searchFieldOpen}` : ''}`}><button type="button" className={styles.searchToggle} aria-label={publicationSearchOpen ? 'Cerrar búsqueda' : 'Buscar publicaciones'} aria-expanded={publicationSearchOpen} onClick={() => setPublicationSearchOpen(open => !open)}><span className="material-symbols-rounded" aria-hidden="true">search</span></button>{publicationSearchOpen && <input autoFocus type="search" value={publicationSearch} onChange={event => setPublicationSearch(event.target.value)} placeholder={`Buscar ${kind === 'news' ? 'noticias' : 'eventos'}`} aria-label={`Buscar ${kind === 'news' ? 'noticias' : 'eventos'} por texto`} />}</label><label className={`${styles.statusSelectField} ${statusFilter === 'all' ? styles.statusAll : statusFilter === 'published' ? styles.statusPublishedFilter : styles.statusDraftFilter}`}><span className="material-symbols-rounded" aria-hidden="true">{statusFilter === 'all' ? 'filter_list' : statusFilter === 'published' ? 'check_circle' : 'edit_note'}</span><select value={statusFilter} onChange={event => setStatusFilter(event.target.value as 'all' | AcademicPublicationStatus)} aria-label="Filtrar por estado"><option value="all">Todas</option><option value="published">Publicadas</option><option value="draft">Borradores</option></select></label><label className={styles.dateField}><span className="material-symbols-rounded" aria-hidden="true">calendar_month</span><input type="date" value={publicationDate} onChange={event => setPublicationDate(event.target.value)} aria-label="Filtrar publicaciones por fecha" title="Filtrar por fecha" /></label></div>}<div className={isPublication ? styles.toolbarActions : ''}>{renderPagination('top')}<Button variant="primary" className={isPublication ? styles.newButton : ''} onClick={() => beginCreate()}>{isPublication ? <span className="material-symbols-rounded" aria-hidden="true">add</span> : <CirclePlus size={18} />}{kind === 'news' ? 'Nueva noticia' : 'Nuevo evento'}</Button></div></div>}
-      {listCount === 0 && kind !== 'honor' ? <p className="academic-empty">No hay registros para esta institución.</p> : kind === 'honor' ? <div className="academic-entry-list honor-period-list">{pageHonorGroups.map(group => {
+      {listCount === 0 && kind !== 'honor' ? <p className="academic-empty">No hay registros para esta institución.</p> : kind === 'honor' && honorGroups.length === 0 ? <p className="academic-empty" role="status">{HONOR_EMPTY_MESSAGE}</p> : kind === 'honor' ? <div className="academic-entry-list honor-period-list">{pageHonorGroups.map(group => {
         const groupKey = group.key
         const expanded = expandedHonorPeriod === groupKey
         return <article className="academic-honor-group" key={groupKey}>

@@ -4,6 +4,7 @@ import { useAuth } from '../../../core/AuthContext';
 import { supabase } from '../../../core/supabaseClient';
 import { canonicalTenantSearch, resolveTenantIdentity, type TenantIdentity } from './tenantUrl';
 import { currentAdminScope } from './institutionNavigation';
+import { PrivateContentSkeleton } from '../../site/components/Layout/PrivateContentSkeleton';
 import styles from './TenantUrlBoundary.module.css';
 
 interface MembershipIdentity { institutions: (TenantIdentity & { is_active: boolean }) | null }
@@ -58,7 +59,7 @@ export function TenantUrlBoundary({ children }: { children: ReactNode }) {
     return () => { document.title = previous; };
   }, [tenant]);
   if (!user) return children;
-  if (resolution?.key !== key) return <p role="status">Verificando unidad educativa…</p>;
+  if (resolution?.key !== key) return <PrivateContentSkeleton label="Verificando la unidad educativa" />;
   if (resolution.status === 'error') return <section role="alert"><p>No se pudo verificar la unidad educativa.</p><button type="button" onClick={() => { setResolution(null); setRevision(value => value + 1); }}>Reintentar</button></section>;
   return <>{tenant && <header className={styles.identity}><h1>{tenant.name}</h1></header>}{children}{tenant && <footer className={styles.identity}>{tenant.name}</footer>}</>;
 }

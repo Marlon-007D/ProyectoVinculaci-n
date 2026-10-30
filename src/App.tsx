@@ -8,6 +8,7 @@ import { ModuleBoundary } from './modules/projects/integration/ModuleBoundary';
 import { InstitutionProvider, useInstitution } from './modules/site/context/InstitutionContext';
 import { InstitutionSessionLayout } from './modules/site/components/Layout/InstitutionSessionLayout';
 import { PrivateWorkspace } from './modules/site/components/Layout/PrivateWorkspace';
+import { PrivateContentSkeleton } from './modules/site/components/Layout/PrivateContentSkeleton';
 import { InstitutionalHeader } from './modules/site/components/Header/InstitutionalHeader';
 import { InstitutionalPanel } from './pages/InstitutionalPanel';
 import { DecePublicSection } from './modules/dece/public';
@@ -50,14 +51,15 @@ function PrivateLayout() {
   const { pathname } = useLocation();
   const resolvedFor = useRef<string | null>(null);
   if (!loading && !loadingTenant) resolvedFor.current = user?.id ?? null;
-  const resolving = Boolean(user) && resolvedFor.current !== user?.id;
+  // Children decide redirects from `user`, which is null until the session resolves.
+  const resolving = loading || (Boolean(user) && resolvedFor.current !== user?.id);
+  const shell = <PrivateWorkspace><PrivateContentSkeleton /></PrivateWorkspace>;
+  if (resolving) return shell;
   const bare = pathname === '/panel';
-  const outlet = resolving
-    ? <div role="status" aria-busy="true" aria-label="Cargando tu espacio de trabajo" />
-    : <Outlet />;
+  const outlet = <Outlet />;
   const content = user && !bare ? <PrivateWorkspace>{outlet}</PrivateWorkspace> : outlet;
   if (!activeInstitution) return <><InstitutionalHeader />{content}</>;
-  return <InstitutionProvider institutionId={activeInstitution.institution_id}><InstitutionSessionLayout>{content}</InstitutionSessionLayout></InstitutionProvider>;
+  return <InstitutionProvider institutionId={activeInstitution.institution_id} loadingFallback={shell}><InstitutionSessionLayout>{content}</InstitutionSessionLayout></InstitutionProvider>;
 }
 
 function DeceWorkspaceRoute() {

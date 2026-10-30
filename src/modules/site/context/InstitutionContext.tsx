@@ -18,10 +18,12 @@ const Ctx = createContext<InstitutionValue | null>(null);
 
 interface Props {
   institutionId?: string;
+  /** Private areas pass their own skeleton so no generic loader flashes. */
+  loadingFallback?: ReactNode;
   children: ReactNode;
 }
 
-export function InstitutionProvider({ institutionId, children }: Props) {
+export function InstitutionProvider({ institutionId, loadingFallback, children }: Props) {
   const { slug } = useParams();
   const { pathname, search } = useLocation();
   const basePath = useBasePath();
@@ -63,7 +65,7 @@ export function InstitutionProvider({ institutionId, children }: Props) {
         />
       </>
     );
-  if (found.state.status === "loading") return <LoadingState label="Cargando institución…" />;
+  if (found.state.status === "loading") return loadingFallback ?? <LoadingState label="Cargando institución…" />;
   if (found.state.status === "error")
     return (
       <>

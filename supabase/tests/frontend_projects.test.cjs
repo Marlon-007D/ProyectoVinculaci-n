@@ -25,14 +25,15 @@ test('rutas de integración conservan portada, cursos y navegación existente',(
   './pages/NotFound':{NotFound:marker('EXISTING_NOT_FOUND')},'./pages/SitePreview':{SitePreview:marker('EXISTING_HOME')},
   '../../features/feats/pages/FeatsLoginPage':{FeatsLoginPage:marker('EXISTING_COURSES')},'../../features/feats/services/featsAuth':{localDemoAuthService:{}},'./styles/site.css':{},
  });
- for(const [path,expected] of [['/','EXISTING_HOME'],['/admin-cursos','EXISTING_COURSES'],['/unknown','EXISTING_NOT_FOUND'],['/panel/proyectos','NEW_MODULE'],['/panel/portal','NEW_MODULE'],['/proyectos?transparency=1','NEW_MODULE'],['/portal?institution=school','NEW_MODULE'],['/panel/ruta-inexistente','ERROR_PAGE'],['/panel/cursos','ACADEMIC'],['/panel/simuladores','SIMULATORS']]){
+ let authState={user:null},tenantState={activeInstitution:null};
+ function renderApp(path){
   const {default:App}=load('src/App.tsx',{'react':{...react,lazy:()=>marker('NEW_MODULE')},'react/jsx-runtime':jsx,
    'react-router-dom':{...router,BrowserRouter:({children})=>react.createElement(router.MemoryRouter,{initialEntries:[path]},children)},
 
-   './core/AuthContext':{AuthProvider:({children})=>children,useAuth:()=>({user:null})},'./modules/admin/auth/returnTo':{returnToFromLocation:()=>null},
-   './core/TenantContext':{TenantProvider:({children})=>children,useTenant:()=>({activeInstitution:null})},
+   './core/AuthContext':{AuthProvider:({children})=>children,useAuth:()=>authState},'./modules/admin/auth/returnTo':{returnToFromLocation:()=>null},
+   './core/TenantContext':{TenantProvider:({children})=>children,useTenant:()=>tenantState},
    './modules/site/components/Layout/InstitutionSessionLayout':{InstitutionSessionLayout:({children})=>children},
-   './modules/site/components/Layout/PrivateWorkspace':{PrivateWorkspace:({children})=>children},
+   './modules/site/components/Layout/PrivateWorkspace':{PrivateWorkspace:({children})=>children},'./modules/site/components/Layout/PrivateContentSkeleton':{PrivateContentSkeleton:marker('PRIVATE_SKELETON')},
    './modules/site/components/Header/InstitutionalHeader':{InstitutionalHeader:marker('SHARED HEADER')},
    './pages/InstitutionalPanel':{InstitutionalPanel:marker('PANEL')},
    './modules/dece':{DeceApp:marker('DECE'),DeceDataProvider:({children})=>children},
@@ -53,9 +54,26 @@ test('rutas de integración conservan portada, cursos y navegación existente',(
    './shared/components/ErrorPage/ErrorBoundary':{ErrorBoundary:({children})=>children},
    './shared/components/ErrorPage/ErrorPage':{ErrorPage:marker('ERROR_PAGE')},
   });
-  const html=require('react-dom/server').renderToStaticMarkup(react.createElement(App));assert.ok(html.includes(expected),path+' did not preserve its route');
+  return require('react-dom/server').renderToStaticMarkup(react.createElement(App));
  }
+ for(const [path,expected] of [['/','EXISTING_HOME'],['/admin-cursos','EXISTING_COURSES'],['/unknown','EXISTING_NOT_FOUND'],['/panel/proyectos','NEW_MODULE'],['/panel/portal','NEW_MODULE'],['/proyectos?transparency=1','NEW_MODULE'],['/portal?institution=school','NEW_MODULE'],['/panel/ruta-inexistente','ERROR_PAGE'],['/panel/cursos','ACADEMIC'],['/panel/simuladores','SIMULATORS']]){
+  assert.ok(renderApp(path).includes(expected),path+' did not preserve its route');
+ }
+ // Reloading a private page: children redirect from `user`, which is null until the session resolves.
+ for(const path of ['/panel/publicaciones/cuadro-de-honor','/panel/cursos/categorias','/panel/dece','/panel/admin']){
+  authState={user:null,loading:true};tenantState={activeInstitution:null,loadingTenant:true};
+  const loading=renderApp(path);
+  assert.equal(loading.split('PRIVATE_SKELETON').length-1,1,path+' must show exactly one private skeleton while the session loads');
+  for(const page of ['ACADEMIC','ADMIN','DECE'])assert.ok(!loading.includes(page),path+' rendered '+page+' before the session resolved');
+ }
+ authState={user:{id:'u1'},loading:false};tenantState={activeInstitution:null,loadingTenant:false};
+ const ready=renderApp('/panel/publicaciones/cuadro-de-honor');
+ assert.ok(ready.includes('ACADEMIC')&&!ready.includes('PRIVATE_SKELETON'),'the page replaces the skeleton once the session resolves');
+ authState={user:{id:'u1'},loading:false};tenantState={activeInstitution:null,loadingTenant:true};
+ assert.ok(renderApp('/panel/admin').includes('PRIVATE_SKELETON'),'a signed-in user waits for the tenant before the page mounts');
+ authState={user:null};tenantState={activeInstitution:null};
 });
+
 const presentation=load('src/modules/projects/projectPresentation.ts',{'./projectValidation':money});
 test('búsqueda de proyectos combina acentos, estado y visibilidad sin alterar el origen',()=>{
  const rows=[{name:'Educación ambiental',description:'Huerto',active:true,budget:150,spent:25,public:true},{name:'Educacion vial',description:'Seguridad',active:false,budget:300,spent:50,public:true},{name:'Huerto privado',description:'Educación',active:true,budget:50,spent:0,public:false}];
