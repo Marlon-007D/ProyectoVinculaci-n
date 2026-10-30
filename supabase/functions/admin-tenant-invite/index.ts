@@ -48,7 +48,7 @@ export function canDeleteTenantMember(actor: { profileId: string; institutionId:
 
 export function canonicalSlug(value: string): string {
   return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-    .trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    .trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 }
 
 
@@ -84,6 +84,14 @@ export function extractRequestEmail(value: string): string {
   if (isValidAdminEmail(normalized)) return normalized;
   const match = /^([^\s@]+@(?:[a-z0-9-]+\.)+[a-z]{2,63})[0-9]+$/i.exec(normalized);
   return match && isValidAdminEmail(match[1]) ? match[1] : normalized;
+}
+
+/** Linear-time form of /^[^\s@]+@[^\s@]+\.[^\s@]+$/, which backtracks on long inputs. */
+export function hasEmailShape(value: string): boolean {
+  const at = value.indexOf('@');
+  if (at < 1 || /\s/.test(value)) return false;
+  const domain = value.slice(at + 1);
+  return !domain.includes('@') && domain.slice(1, -1).includes('.');
 }
 
 
@@ -204,7 +212,7 @@ export async function requestInvitationEmail(request: Request, env: EmailEnviron
   const accepted = () => ({ status: 200, body: { accepted: true, retryAfter: 60 } });
   try {
     const input: unknown = await request.json();
-    if (!isRecord(input) || typeof input.email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email)
+    if (!isRecord(input) || typeof input.email !== 'string' || !hasEmailShape(input.email)
       || typeof input.institutionId !== 'string' || !input.institutionId || input.email.length > 254) {
       return { status: 400, body: { error: 'Ingresa un correo válido y selecciona la institución.' } };
     }

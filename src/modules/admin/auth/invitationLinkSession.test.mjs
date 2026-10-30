@@ -3,10 +3,10 @@ import assert from 'node:assert/strict';
 import { captureInvitationSession } from './invitationLinkSession.ts';
 
 test('an automatically established callback session is reused without consuming the link again',async()=>{
-  await captureInvitationSession({kind:'tokens',accessToken:'access',refreshToken:'refresh'}, {
+  await assert.doesNotReject(captureInvitationSession({kind:'tokens',accessToken:'access',refreshToken:'refresh'}, {
     getSession:async()=>({data:{session:{access_token:'access'}},error:null}),
     setSession:async()=>{throw new Error('Already handled by the SDK');},verifyOtp:async()=>{throw new Error('Must not verify twice');},
-  });
+  }));
 });
 
 test('a new callback restores its tokens and rejects incomplete sessions',async()=>{

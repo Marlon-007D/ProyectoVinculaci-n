@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { extractRequestEmail, isValidAdminEmail, normalizeContact, validateAdminContact } from './contactValidation.ts';
+import { extractRequestEmail, hasEmailShape, isValidAdminEmail, normalizeContact, validateAdminContact } from './contactValidation.ts';
 
 test('contact normalization removes only formatting, preserving identity and accented personal names', () => {
   const row = normalizeContact({ email: ' \u200BANA@ESPE.EDU.EC ', first_name: '  Ana\tMaría ', last_name: '  Pérez   Vera ' });
@@ -21,4 +21,12 @@ test('request extraction removes trailing numeric contamination and leaves ambig
     assert.equal(extractRequestEmail(value), value);
   }
   assert.deepEqual(normalizeContact({ email: 'ana@example.test', first_name: null, last_name: null }), { email: 'ana@example.test', first_name: '', last_name: '' });
+});
+
+test('hasEmailShape equals the previous regex without its backtracking cost', () => {
+  const previous = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const samples = ['a@b.c', 'ana@espe.edu.ec', 'a@b..c', 'a@.b', 'a@b.', 'a@.', 'a@..', '@b.c', 'a@@b.c', 'a@b@c.d', 'a b@c.d', 'a@b .c',
+    'a@b.c\n', 'a@bc', '', '@', 'a@', 'a@b.c.d', 'ñ@é.ü'];
+  for (const sample of samples) assert.equal(hasEmailShape(sample), previous.test(sample), JSON.stringify(sample));
+  assert.equal(hasEmailShape('a@' + 'b'.repeat(100000) + '!'), false);
 });

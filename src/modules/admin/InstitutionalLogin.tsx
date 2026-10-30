@@ -1,6 +1,7 @@
 import { AdminForm } from './auth/AdminForm';
 import { InvitationLinkBoundary } from './auth/InvitationLinkBoundary';
 import { adminDestination } from './auth/institutionNavigation';
+import { hasEmailShape } from './auth/contactValidation';
 import { ToastBoundary, useToast, useToastMessage } from './auth/Toast/Toast';
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
@@ -38,7 +39,7 @@ function InstitutionalLoginContent({ email, password, error, busy, onEmailChange
   async function recover(form: HTMLFormElement) {
     if (recovery.status === 'sending' || busy) return;
     const emailInput = form.elements.namedItem('email') as HTMLInputElement;
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailInput.value)) { notify('Por favor, ingresa un correo electrónico válido.', 'warning'); emailInput.focus(); return; }
+    if (!hasEmailShape(emailInput.value)) { notify('Por favor, ingresa un correo electrónico válido.', 'warning'); emailInput.focus(); return; }
     setRecovery({ status: 'sending' });
     try {
       const result = await requestPasswordReset(email.trim());

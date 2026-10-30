@@ -41,7 +41,7 @@ function InvitationLinkContent({ children }: { children: ReactNode }) {
         if (!active) return;
         if (recovered) {
           setLink({ kind: 'none' });
-          navigate(invitationLanding(location.search), { replace: true });
+          void navigate(invitationLanding(location.search), { replace: true });
         } else setFailure(link.message);
         return;
       }
@@ -54,14 +54,14 @@ function InvitationLinkContent({ children }: { children: ReactNode }) {
         // PendingInvitationGate still checks the database for pending magic-link users.
         const passwordRequired = link.type ? link.type === 'invite' || link.type === 'recovery'
           : link.kind !== 'tokens' || link.invitation === true;
-        navigate(invitationLanding(location.search, passwordRequired), { replace: true });
+        void navigate(invitationLanding(location.search, passwordRequired), { replace: true });
       } catch (error: unknown) {
         if (!active) return;
         const recovered = await recoverInvitationSession(supabase, location.search);
         if (!active) return;
         if (recovered) {
           setLink({ kind: 'none' });
-          navigate(invitationLanding(location.search), { replace: true });
+          void navigate(invitationLanding(location.search), { replace: true });
           return;
         }
         const expired = error && typeof error === 'object' && 'code' in error && error.code === 'otp_expired';
@@ -81,7 +81,7 @@ function InvitationLinkContent({ children }: { children: ReactNode }) {
         if (!institution) return;
         const { data, error } = await supabase.rpc('admin_tenant_own_invitation', { target_institution_id: institution });
         const pending: unknown = data;
-        if (active && (onboarding || (!error && pending && typeof pending === 'object' && 'pending' in pending && pending.pending === true))) navigate(destination, { replace: true });
+        if (active && (onboarding || (!error && pending && typeof pending === 'object' && 'pending' in pending && pending.pending === true))) void navigate(destination, { replace: true });
       } catch { /* The normal login remains available when no invitation can be verified. */ }
       finally { if (active) setSessionChecked(sessionKey); }
     }
@@ -91,7 +91,7 @@ function InvitationLinkContent({ children }: { children: ReactNode }) {
   if (message) return <section className={styles.card} role="alert"><h1>Enlace de acceso</h1><p>{message}</p><button type="button" className={styles.submit} onClick={() => {
     setFailure(null); setLink({ kind: 'none' });
     const destination = new URL(invitationLanding(location.search), window.location.origin);
-    navigate({ pathname: '/login', search: destination.search, hash: '' }, { replace: true });
+    void navigate({ pathname: '/login', search: destination.search, hash: '' }, { replace: true });
   }}>Volver al inicio de sesión</button>
     <RequestInvitationEmail key={location.search} institutionId={new URLSearchParams(location.search).get('institution') ?? new URLSearchParams(location.search).get('institution_id') ?? ''}
       requestEmail={(email, institutionId) => requestInvitationEmailService(supabase, email, institutionId, new URLSearchParams(location.search).get('slug') ?? undefined)} />

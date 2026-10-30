@@ -1,4 +1,5 @@
 import { canonicalSlug } from '../auth/canonicalSlug.ts';
+import { hasEmailShape } from '../auth/contactValidation.ts';
 
 interface EmailEnvironment { supabaseUrl: string; serviceRoleKey: string }
 const requests = new Map<string, number>();
@@ -10,7 +11,7 @@ export async function requestInvitationEmail(request: Request, env: EmailEnviron
   const accepted = () => ({ status: 200, body: { accepted: true, retryAfter: 60 } });
   try {
     const input: unknown = await request.json();
-    if (!isRecord(input) || typeof input.email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email)
+    if (!isRecord(input) || typeof input.email !== 'string' || !hasEmailShape(input.email)
       || typeof input.institutionId !== 'string' || !input.institutionId || input.email.length > 254) {
       return { status: 400, body: { error: 'Ingresa un correo válido y selecciona la institución.' } };
     }

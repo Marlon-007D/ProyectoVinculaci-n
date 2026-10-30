@@ -53,7 +53,7 @@ function AdminRoutesContent({ superadminOnly = false }: { superadminOnly?: boole
     const selected = institutions.find(item => item.institution_id === selectedId);
     if (!destination || !selected) return;
     setActiveInstitution(selected);
-    navigate(destination);
+    void navigate(destination);
     notify(`Unidad educativa seleccionada: ${selected.name}.`, 'success');
   }
 
@@ -88,11 +88,11 @@ function AdminRoutesContent({ superadminOnly = false }: { superadminOnly?: boole
     }
     if (isTenantAdmin(role)) {
       if (location.pathname === '/panel/superadmin' || location.pathname === '/system-admin')
-        navigate(adminDestination('/panel/admin', location.search), { replace: true });
+        void navigate(adminDestination('/panel/admin', location.search), { replace: true });
       return;
     }
     if (!activeInstitution) return;
-    if (location.pathname !== '/panel/admin') navigate(adminDestination('/panel/admin', location.search), { replace: true });
+    if (location.pathname !== '/panel/admin') void navigate(adminDestination('/panel/admin', location.search), { replace: true });
   }, [activeInstitution, loading, loadingTenant, mfaEnrollmentRequired, mfaRequired, role, location.pathname, location.search, navigate, user]);
 
   const access = resolveAdminAccess({ loading, hasUser: Boolean(user), role, roleIssue,

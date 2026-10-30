@@ -31,3 +31,11 @@ export function extractRequestEmail(value: string): string {
   const match = /^([^\s@]+@(?:[a-z0-9-]+\.)+[a-z]{2,63})[0-9]+$/i.exec(normalized);
   return match && isValidAdminEmail(match[1]) ? match[1] : normalized;
 }
+
+/** Linear-time form of /^[^\s@]+@[^\s@]+\.[^\s@]+$/, which backtracks on long inputs. */
+export function hasEmailShape(value: string): boolean {
+  const at = value.indexOf('@');
+  if (at < 1 || /\s/.test(value)) return false;
+  const domain = value.slice(at + 1);
+  return !domain.includes('@') && domain.slice(1, -1).includes('.');
+}

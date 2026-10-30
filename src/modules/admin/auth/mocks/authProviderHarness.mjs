@@ -18,6 +18,7 @@ export function authProviderHarness(t, initialSession = null) {
   const oauthRequests = [];
   const location = { pathname: '/panel/admin', search: '', origin: 'http://localhost:5173' };
   const stored = new Map([['auth-login-method', 'password']]);
+  const hadWindow = Object.hasOwn(globalThis, 'window');
   const previousWindow = globalThis.window;
   const previousStorage = Object.getOwnPropertyDescriptor(globalThis, 'sessionStorage');
   globalThis.window = { location, setTimeout, clearTimeout };
@@ -87,7 +88,8 @@ export function authProviderHarness(t, initialSession = null) {
     from(table) {
       const chain = {
         select() { return chain; }, eq() { return chain; }, in() { return chain; },
-        then(resolve, reject) { calls.push(table); return query(table).then(data => ({ data, error: null })).then(resolve, reject); },
+        // Thenable on purpose: AuthContext awaits the query builder itself, like supabase-js does.
+        then(resolve, reject) { calls.push(table); return query(table).then(data => ({ data, error: null })).then(resolve, reject); }, // NOSONAR
       };
       return chain;
     },
@@ -126,8 +128,8 @@ export function authProviderHarness(t, initialSession = null) {
   t.after(() => {
     mounted = false;
     slots.forEach(slot => slot?.cleanup?.());
-    if (previousWindow === undefined) delete globalThis.window;
-    else globalThis.window = previousWindow;
+    if (hadWindow) globalThis.window = previousWindow;
+    else delete globalThis.window;
     if (previousStorage) Object.defineProperty(globalThis, 'sessionStorage', previousStorage);
     else delete globalThis.sessionStorage;
   });

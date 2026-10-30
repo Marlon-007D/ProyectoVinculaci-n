@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { AdminForm } from './AdminForm';
+import { hasEmailShape } from './contactValidation';
 import { useToast } from './Toast/Toast';
 import styles from './CompleteInvitation.module.css';
 
@@ -26,7 +27,7 @@ export function RequestInvitationEmail({ institutionId, requestEmail }: {
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (inFlight.current || state.status !== 'idle') return;
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) { notify('Por favor, ingresa un correo electrónico válido.', 'warning'); return; }
+    if (!hasEmailShape(email.trim())) { notify('Por favor, ingresa un correo electrónico válido.', 'warning'); return; }
     inFlight.current = true;
     setState({ status: 'sending' });
     try {

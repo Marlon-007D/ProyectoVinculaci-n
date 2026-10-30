@@ -37,7 +37,7 @@ export function TenantUrlBoundary({ children }: { children: ReactNode }) {
         if (tenant) {
           const normalized = canonicalTenantSearch(location.search, tenant);
           if (normalized !== location.search) {
-            navigate({ pathname: location.pathname, search: normalized, hash: location.hash }, { replace: true });
+            void navigate({ pathname: location.pathname, search: normalized, hash: location.hash }, { replace: true });
             return;
           }
           currentAdminScope(normalized);

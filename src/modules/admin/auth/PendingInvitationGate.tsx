@@ -44,7 +44,7 @@ export function PendingInvitationGate({ children }: { children: ReactNode }) {
           if (!active) return;
           reloadInstitutions();
           const destination = replaceInvitationHistory(window.history, institutionId, slug);
-          navigate(destination, { replace: true });
+          void navigate(destination, { replace: true });
           notify('Acceso activado correctamente.', 'success');
           pending = false;
         }
@@ -81,7 +81,7 @@ export function PendingInvitationGate({ children }: { children: ReactNode }) {
     if (!synchronized) notify('El acceso está activado, pero no se pudo actualizar la sesión. Vuelve a iniciar sesión.', 'warning');
     const destination = replaceInvitationHistory(window.history, institutionId, details.slug);
     if (synchronized) markInvitationSession(user.id, institutionId);
-    navigate(destination, { replace: true });
+    void navigate(destination, { replace: true });
     setCompleted(key);
   }} />;
 }
