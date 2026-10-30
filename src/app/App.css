@@ -5,3 +5,11 @@
 main.main { grid-column: 2; grid-row: 2; min-width: 0; min-height: calc(100vh - 60px); }
 @media (max-width: 960px) { .app-shell { grid-template-columns: 250px minmax(0, 1fr); }.app-shell.is-collapsed { grid-template-columns: 88px minmax(0, 1fr); } }
 @media (max-width: 620px) { html, body, #root { width: 100%; max-width: 100%; overflow-x: hidden; }.app-shell, .app-shell.is-collapsed { width: 100%; max-width: 100%; grid-template-columns: minmax(0, 1fr); grid-template-rows: 52px minmax(calc(100vh - 52px), 1fr); }.topbar { grid-column: 1; min-height: 52px; }main.main { grid-column: 1; width: 100%; max-width: 100%; min-height: calc(100vh - 52px); overflow-x: clip; } }
+
+/* Simulators live inside the shared private workspace: no sidebar of their own, sections are top tabs. */
+.app-shell, .app-shell.is-collapsed { grid-template-columns: minmax(0, 1fr); }
+.simulator-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 20px; }
+.simulator-tab { display: inline-flex; align-items: center; gap: 8px; min-height: 42px; padding: 0 17px; border: 0; border-radius: 22px; background: #e8f1ff; color: #38516e; font: 600 13px Roboto, Arial, sans-serif; cursor: pointer; }
+.simulator-tab:hover { background: #dceaff; }
+.simulator-tab[aria-current="page"] { background: #1a73e8; color: #fff; }
+.simulator-tab:focus-visible { outline: 2px solid #1a73e8; outline-offset: 2px; }

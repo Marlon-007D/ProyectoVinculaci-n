@@ -106,11 +106,11 @@ function RoutesWithAuth() {
       <Route path="/panel/cursos" element={<AcademicManagementRoutes />} />
       <Route path="/panel/cursos/*" element={<AcademicManagementRoutes />} />
       <Route path="/panel/publicaciones/*" element={<AcademicManagementRoutes />} />
+      <Route path="/panel/simuladores/*" element={<SimulatorApp />} />
       <Route path="/panel/dece" element={<DeceWorkspaceRoute />} />
       <Route path="/panel/dece/*" element={<DeceWorkspaceRoute />} />
     </Route>
     <Route path="/system-admin" element={<Navigate to="/panel/superadmin" replace />} />
-    <Route path="/panel/simuladores/*" element={<SimulatorApp />} />
     <Route path="/simuladores/*" element={<SimulatorApp />} />
     <Route path="/dece/:slug/*" element={<InstitutionProvider><PublicDeceRoute /></InstitutionProvider>} />
     <Route path="/:slug/login" element={<SlugSessionRoute />} />

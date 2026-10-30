@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ElementType, ReactNode } from 'react'
 import { FileText, FolderOpen } from 'lucide-react'
-import { Sidebar } from '../../shared/components/Sidebar/Sidebar'
+import { ArrowLeftRight, BookOpen, Calculator, Home, ReceiptText } from 'lucide-react'
 import { AppHeader } from '../../shared/components/AppHeader/AppHeader'
 import { InvoiceSimulatorPage } from '../../features/simulators/invoice/pages/InvoiceSimulatorPage'
 import { ConverterPage } from '../../features/simulators/converter/pages/ConverterPage'
@@ -59,7 +59,15 @@ const routeSkeletons: Record<AppRoute, () => ReactNode> = {
   'academic-periods': () => <AcademicContentSkeleton kind="period" title="Período académico" />,
 }
 
-export function AppRouter({ collapsed, theme, onThemeChange, onToggleSidebar }: Props) {
+const simulatorTabs: { id: AppRoute; label: string; Icon: typeof Home }[] = [
+  { id: 'home', label: 'Inicio', Icon: Home },
+  { id: 'school-courses', label: 'Cursos', Icon: BookOpen },
+  { id: 'invoice', label: 'Facturación electrónica', Icon: ReceiptText },
+  { id: 'converter', label: 'Unidades y monedas', Icon: ArrowLeftRight },
+  { id: 'interest', label: 'Interés financiero', Icon: Calculator },
+]
+
+export function AppRouter({ theme, onThemeChange }: Props) {
   const { courses: schoolCourses } = useSchoolCourses()
   const { categories: schoolModules } = useCourseCategories()
   const [route, setRoute] = useState<AppRoute>('home')
@@ -126,8 +134,10 @@ export function AppRouter({ collapsed, theme, onThemeChange, onToggleSidebar }: 
   </nav> : undefined
   return <>
     <AppHeader breadcrumbs={breadcrumbs} navigation={invoiceNavigation} theme={theme} onThemeChange={onThemeChange} />
-    <Sidebar active={displayedRoute} activeModuleId={selectedModuleId} collapsed={collapsed} onSelect={nextRoute => nextRoute === 'school-courses' ? openCourses() : navigateTo(nextRoute)} onSelectModule={selectModule} onToggle={onToggleSidebar} />
     <main className="main">
+      <nav className="simulator-tabs" aria-label="Secciones de simuladores y cursos">
+        {simulatorTabs.map(({ id, label, Icon }) => <button key={id} type="button" className="simulator-tab" aria-current={displayedRoute === id ? 'page' : undefined} onClick={() => id === 'school-courses' ? openCourses() : navigateTo(id)}><Icon size={18} aria-hidden="true" />{label}</button>)}
+      </nav>
       {loadingRoute === 'school-courses' && selectedModuleId && !selectedCourseId ? <SchoolModuleSkeleton courseCount={selectedModule?.courseIds.length ?? 1} /> : loadingRoute ? <Skeleton /> : previewEntry ? <AcademicPostPreviewPage entry={previewEntry} /> : displayedRoute === 'home' ? <HomePage onSelect={navigateTo} /> : displayedRoute === 'school-courses' ? <SchoolCoursesPage selectedModuleId={selectedModuleId} selectedCourseId={selectedCourseId} evaluationActive={evaluationActive} onSelectModule={selectModule} onSelectCourse={selectCourse} onBackToModules={openCourses} onBackToModule={() => { setSelectedCourseId(null); setEvaluationActive(false); setCourseTopicName(null); navigateTo('school-courses') }} onTopicChange={setCourseTopicName} onEvaluationChange={setEvaluationActive} /> : displayedRoute === 'simulator-hub' ? <SimulatorHubPage onSelect={navigateTo} /> : displayedRoute === 'reports-hub' ? <ReportsHubPage onSelect={navigateTo} /> : displayedRoute === 'invoice' ? <InvoiceSimulatorPage activeSection={invoiceSection} onSectionChange={setInvoiceSection} onInvoiceCountChange={setInvoiceCount} /> : <Component onPreview={showPostPreview} />}
     </main>
   </>
