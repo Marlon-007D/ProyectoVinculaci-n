@@ -17,7 +17,11 @@ Deno.serve(request => handleTenantInvitation(request, {
 `;
 }
 
+// Dashboard copy and CLI entry point (`supabase functions deploy admin-tenant-invite`) must stay identical.
+export const ADMIN_EDGE_BUNDLE_TARGETS = ['./admin-tenant-invite.deploy.txt', '../../../../supabase/functions/admin-tenant-invite/index.ts'];
+
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  await writeFile(new URL('./admin-tenant-invite.deploy.txt', import.meta.url), await createAdminEdgeBundle(), 'utf8');
-  process.stdout.write('Paquete local actualizado: src/modules/admin/backend/admin-tenant-invite.deploy.txt\n');
+  const bundle = await createAdminEdgeBundle();
+  await Promise.all(ADMIN_EDGE_BUNDLE_TARGETS.map(path => writeFile(new URL(path, import.meta.url), bundle, 'utf8')));
+  process.stdout.write('Paquete local actualizado: src/modules/admin/backend/admin-tenant-invite.deploy.txt y supabase/functions/admin-tenant-invite/index.ts\n');
 }

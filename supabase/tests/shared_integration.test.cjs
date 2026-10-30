@@ -28,11 +28,12 @@ function workspace({user=true,role='projects_manager',enabled=true,mode='project
     './ProjectsDashboard':{ProjectsDashboard:({institution})=>React.createElement('p',null,'PROJECTS '+institution.institution_id)},
     '../portal-editor/PortalEditor':{PortalEditor:()=>React.createElement('p',null,'SHARED TENANT EDITOR')},
     './projectStyles':{moduleClass:value=>value},
+    './InstitutionSwitcher':{useProjectInstitutionSync:()=>{}},
   });
   return renderToStaticMarkup(React.createElement(ProjectsWorkspace,{mode}));
 }
 test('anonymous project and editor entries return to the shared login, never a second form',()=>{
-  for(const mode of ['projects','portal']) {const html=workspace({user:false,mode});assert.match(html,/REDIRECT \/panel\/admin\?institution=tenant-a/);assert.match(html,/returnTo/);assert.ok(!html.includes('<form'));}
+  for(const mode of ['projects','portal']) {const html=workspace({user:false,mode});assert.match(html,/REDIRECT \/login\?institution=tenant-a/);assert.match(html,/returnTo/);assert.ok(!html.includes('<form'));}
 });
 test('shared password session reaches projects without a second MFA challenge',()=>{
   const html=workspace();assert.match(html,/SHARED FRAME/);assert.match(html,/SHARED SIDEBAR/);assert.match(html,/PROJECTS tenant-a/);assert.doesNotMatch(html,/Código de verificación|one-time-code|<form/);

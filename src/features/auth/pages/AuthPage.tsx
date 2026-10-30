@@ -15,6 +15,11 @@ import { PasswordField } from '../../../modules/admin/auth/PasswordField';
 import { InvitationLinkBoundary } from '../../../modules/admin/auth/InvitationLinkBoundary';
 import { InstitutionalLogin } from '../../../modules/admin';
 
+// Same limits as the register-institution-user Edge Function.
+const REGISTRATION_PASSWORD_MIN = 12;
+const REGISTRATION_PASSWORD_MAX = 128;
+const SIGN_IN_PASSWORD_MIN = 6;
+
 export function AuthPage({ mode = 'login', requestService }: { mode?: 'login' | 'register'; requestService: AccessRequestService }) {
   return <InvitationLinkBoundary><AuthPageContent mode={mode} requestService={requestService} /></InvitationLinkBoundary>;
 }
@@ -96,8 +101,11 @@ function AuthPageContent({ mode, requestService }: { mode: 'login' | 'register';
       form.querySelector<HTMLInputElement>('#auth-email')?.focus();
       return;
     }
-    if (!password.trim() || password.length < (registering ? 8 : 6)) {
-      notify(`Ingresa una contraseña de al menos ${registering ? 8 : 6} caracteres.`);
+    const minimumPassword = registering ? REGISTRATION_PASSWORD_MIN : SIGN_IN_PASSWORD_MIN;
+    if (!password.trim() || password.length < minimumPassword || (registering && password.length > REGISTRATION_PASSWORD_MAX)) {
+      notify(registering
+        ? `Usa una contraseña de ${REGISTRATION_PASSWORD_MIN} a ${REGISTRATION_PASSWORD_MAX} caracteres.`
+        : `Ingresa una contraseña de al menos ${SIGN_IN_PASSWORD_MIN} caracteres.`);
       form.querySelector<HTMLInputElement>('#auth-password')?.focus();
       return;
     }
@@ -152,7 +160,7 @@ function AuthPageContent({ mode, requestService }: { mode: 'login' | 'register';
                 <label htmlFor="auth-last-name">Apellidos</label><input id="auth-last-name" name="lastName" autoComplete="family-name" required />
               </>}
               <label htmlFor="auth-email">Correo electrónico</label><input id="auth-email" name="email" type="email" autoComplete="username" required />
-              <PasswordField label="Contraseña" id="auth-password" name="password" autoComplete={registering ? 'new-password' : 'current-password'} minLength={registering ? 8 : undefined} disabled={busy} required />
+              <PasswordField label="Contraseña" id="auth-password" name="password" autoComplete={registering ? 'new-password' : 'current-password'} minLength={registering ? REGISTRATION_PASSWORD_MIN : undefined} maxLength={registering ? REGISTRATION_PASSWORD_MAX : undefined} disabled={busy} required />
               <button className={styles.submit} type="submit">{busy ? 'Procesando…' : registering ? 'Crear cuenta' : 'Iniciar sesión'}</button>
             </fieldset>
           </form>

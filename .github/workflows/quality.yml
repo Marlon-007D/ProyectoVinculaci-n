@@ -17,6 +17,9 @@ jobs:
   build:
     name: Typecheck and build
     runs-on: ubuntu-latest
+    env:
+      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -63,6 +66,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Test coverage
+        run: npm run test:coverage
 
       - name: Scan with SonarQube
         uses: SonarSource/sonarqube-scan-action@v8.3.0

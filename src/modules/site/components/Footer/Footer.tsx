@@ -39,7 +39,7 @@ export function Footer({ config, tree = [] }: { config: SiteConfig; tree?: MenuN
                 <h2 className="site-footer__heading">Redes</h2>
                 <ul className="site-footer__links" aria-label="Redes sociales">
                   {config.social.map((s) => (
-                    <li key={s.url}>
+                    <li key={`${s.label}|${s.url}`}>
                       <a href={s.url} target="_blank" rel="noopener noreferrer">
                         {s.label}<span className="site-sr-only"> (se abre en una pestaña nueva)</span>
                       </a>

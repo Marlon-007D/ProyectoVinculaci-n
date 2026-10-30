@@ -20,6 +20,8 @@ import { AcademicManagementRoutes } from './features/feats/pages/AcademicManagem
 import { AuthPage } from './features/auth/pages/AuthPage';
 import { membershipRequestService } from './modules/admin/userManagement/membershipRequestService';
 import { RegistrationRoute } from './modules/auth/RegistrationRoute';
+import { ErrorBoundary } from './shared/components/ErrorPage/ErrorBoundary';
+import { ErrorPage } from './shared/components/ErrorPage/ErrorPage';
 
 const ModuleRoutes = lazy(() => import('./modules/projects/integration/ModuleRoutes'));
 const modulePage = <ModuleBoundary><Suspense fallback={<p role="status">Cargando módulo…</p>}><ModuleRoutes /></Suspense></ModuleBoundary>;
@@ -100,7 +102,7 @@ function RoutesWithAuth() {
     || (location.pathname.startsWith('/proyectos') && !new URLSearchParams(location.search).has('transparency'));
   if (user && (mfaRequired || mfaEnrollmentRequired) && protectedRoute && !mfaScreen)
     return <Navigate to={'/panel/admin' + location.search} replace />;
-  return <><ProjectSessionHost /><Routes>
+  return <ErrorBoundary resetKey={location.pathname}><ProjectSessionHost /><Routes>
     <Route path="/login" element={<AuthPage requestService={membershipRequestService} />} />
     <Route path="/register" element={<RegistrationRoute />} />
     <Route path="/panel" element={<InstitutionalPanelWithChrome />} />
@@ -127,10 +129,13 @@ function RoutesWithAuth() {
     <Route path="/panel/proyectos/*" element={isPrivateProjectsPath(location.pathname, location.search) ? null : modulePage} />
     <Route path="/panel/portal/*" element={modulePage} />
     <Route path="/portal/*" element={modulePage} />
+    <Route path="/panel/*" element={<ErrorPage kind="not-found" homeHref="/panel" />} />
     <Route path="/*" element={<SiteApp />} />
-  </Routes></>;
+  </Routes></ErrorBoundary>;
 }
 
 export default function App() {
-  return <BrowserRouter><AuthProvider><TenantProvider><RoutesWithAuth /></TenantProvider></AuthProvider></BrowserRouter>;
+  return <ErrorBoundary fallback={() => <ErrorPage kind="unexpected" onRetry={() => window.location.reload()} />}>
+    <BrowserRouter><AuthProvider><TenantProvider><RoutesWithAuth /></TenantProvider></AuthProvider></BrowserRouter>
+  </ErrorBoundary>;
 }

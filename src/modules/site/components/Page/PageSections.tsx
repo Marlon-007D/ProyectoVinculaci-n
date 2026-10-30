@@ -229,7 +229,7 @@ function SocialSection({ title = "Síguenos", social }: { title?: string; social
         <h2>{title}</h2>
         <ul className="site-chips">
           {links.map((s) => (
-            <li key={s.url}>
+            <li key={`${s.label}|${s.url}`}>
               <a className="site-btn" href={s.url} target="_blank" rel="noopener noreferrer">
                 {s.label}<span className="site-sr-only"> (se abre en una pestaña nueva)</span>
               </a>
