@@ -2,7 +2,7 @@ import { authenticatedDestination } from '../../../modules/admin/auth/authentica
 import { resolveLoginIssue } from '../utils/adminAccess';
 import { useTenant } from '../../../core/TenantContext';
 import { useToast, useToastMessage } from '../../../modules/admin/auth/Toast/Toast';
-import { useReducer, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useReducer, useRef, useState, type FormEvent } from 'react';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../core/AuthContext';
 import { GoogleButton } from '../components/GoogleButton';
@@ -14,11 +14,14 @@ import styles from './AuthPage.module.css';
 import { PasswordField } from '../../../modules/admin/auth/PasswordField';
 import { InvitationLinkBoundary } from '../../../modules/admin/auth/InvitationLinkBoundary';
 import { InstitutionalLogin } from '../../../modules/admin';
+import { resolveReturnTo, safeReturnTo } from '../../../modules/admin/auth/returnTo';
+import { readSessionValue, writeSessionValue } from '../../../modules/admin/auth/sessionStorage';
 
 // Same limits as the register-institution-user Edge Function.
 const REGISTRATION_PASSWORD_MIN = 12;
 const REGISTRATION_PASSWORD_MAX = 128;
 const SIGN_IN_PASSWORD_MIN = 6;
+const RETURN_TO_KEY = 'auth-return-to';
 
 export function AuthPage({ mode = 'login', requestService }: { mode?: 'login' | 'register'; requestService: AccessRequestService }) {
   return <InvitationLinkBoundary><AuthPageContent mode={mode} requestService={requestService} /></InvitationLinkBoundary>;
@@ -41,6 +44,10 @@ function AuthPageContent({ mode, requestService }: { mode: 'login' | 'register';
   if (context.slug) portalParams.set('slug', context.slug);
   const portalSearch = portalParams.size ? '?' + portalParams.toString() : '';
   const effectiveRole = role && activeInstitution ? activeInstitution.role : role;
+  // authenticate() clears the router state, so the requested page is kept in session storage meanwhile.
+  const stateReturnTo = safeReturnTo((location.state as { returnTo?: unknown } | null)?.returnTo);
+  const returnTo = stateReturnTo ?? safeReturnTo(readSessionValue(RETURN_TO_KEY));
+  useEffect(() => { writeSessionValue(RETURN_TO_KEY, stateReturnTo); }, []);
   const busy = state.status === 'pending';
   const registering = mode === 'register';
   const destination = '/panel/admin' + institutionSearch(location.search);
@@ -122,8 +129,18 @@ function AuthPageContent({ mode, requestService }: { mode: 'login' | 'register';
   if (user && loadingTenant) return <main className={styles.page} role="status">Verificando la institución asignada…</main>;
   if (user && activeInstitution && effectiveRole && !blockedAccess && !(registering && busy)) {
     const target = authenticatedDestination(activeInstitution, authInstitutionId, role, location.search);
-    if (target) return <Navigate to={target} replace />;
+    if (target) return <Navigate to={resolveReturnTo(returnTo, target)} replace />;
   }
+  if (user && !registering && !blockedAccess) return <main className={styles.page}>
+    <div className={styles.layout}>
+      <section className={styles.content} aria-labelledby="auth-title">
+        <h1 id="auth-title">Ya iniciaste sesión</h1>
+        <p className={styles.help} role="status">No pudimos determinar a qué módulo llevarte con esta cuenta. Puedes ir al panel o cerrar sesión para usar otra cuenta.</p>
+        <Link className={styles.submit} to={{ pathname: '/panel', search: portalSearch }}>Ir al panel</Link>
+        <button type="button" className={styles.submit} disabled={busy} onClick={() => void logout()}>Cerrar sesión</button>
+      </section>
+    </div>
+  </main>;
 
   if (!registering && !user) return <InstitutionalLogin email={loginEmail} password={loginPassword}
     onEmailChange={setLoginEmail} onPasswordChange={setLoginPassword} busy={busy}

@@ -29,7 +29,7 @@ test('rutas de integración conservan portada, cursos y navegación existente',(
   const {default:App}=load('src/App.tsx',{'react':{...react,lazy:()=>marker('NEW_MODULE')},'react/jsx-runtime':jsx,
    'react-router-dom':{...router,BrowserRouter:({children})=>react.createElement(router.MemoryRouter,{initialEntries:[path]},children)},
 
-   './core/AuthContext':{AuthProvider:({children})=>children,useAuth:()=>({user:null})},
+   './core/AuthContext':{AuthProvider:({children})=>children,useAuth:()=>({user:null})},'./modules/admin/auth/returnTo':{returnToFromLocation:()=>null},
    './core/TenantContext':{TenantProvider:({children})=>children,useTenant:()=>({activeInstitution:null})},
    './modules/site/components/Layout/InstitutionSessionLayout':{InstitutionSessionLayout:({children})=>children},
    './modules/site/components/Layout/PrivateWorkspace':{PrivateWorkspace:({children})=>children},

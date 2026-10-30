@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../../../../core/AuthContext";
 import { useTenant, type InstitutionModuleName } from "../../../../core/TenantContext";
 import styles from "./InstitutionalHeader.module.css";
@@ -15,7 +15,6 @@ const moduleLinks: { label: string; path: string; module: InstitutionModuleName;
 export function InstitutionalHeader() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
-  const navigate = useNavigate();
   const { user, role, logout } = useAuth();
   const { activeInstitution, hasModuleAccess } = useTenant();
   const showNavigation = !location.pathname.startsWith('/panel');
@@ -26,8 +25,8 @@ export function InstitutionalHeader() {
   if (location.pathname.startsWith('/panel') && user) return null;
 
   async function signOut() {
+    // AuthContext.logout owns the destination.
     await logout();
-    navigate("/panel/admin", { replace: true });
   }
 
   return (

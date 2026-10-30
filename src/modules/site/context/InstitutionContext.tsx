@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo, type ReactNode } from "react";
+import { createContext, useContext, useMemo, useRef, type ReactNode } from "react";
 import { Navigate, useLocation, useParams } from "react-router-dom";
 import { useAsync } from "../hooks/useAsync";
 import { useBasePath } from "../hooks/useBasePath";
@@ -44,11 +44,16 @@ export function InstitutionProvider({ institutionId, children }: Props) {
     return null;
   }, [found.state, basePath]);
 
+  // A resolved institution stays on screen while another one loads, so switching scope never blanks the page.
+  const lastValue = useRef<InstitutionValue | null>(null);
+  if (value) lastValue.current = value;
+  const shown = value ?? (found.state.status === "loading" ? lastValue.current : null);
+
   if (!ref.id && !ref.slug && (pathname === "/" || pathname === "/panel")) {
     return <Navigate to="/panel/admin" replace />;
   }
 
-  if (value) return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
+  if (shown) return <Ctx.Provider value={shown}>{children}</Ctx.Provider>;
   if (!ref.id && !ref.slug)
     return (
       <>

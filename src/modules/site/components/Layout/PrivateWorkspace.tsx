@@ -4,6 +4,7 @@ import { Award, BookOpenText, Building2, Calculator, CalendarDays, ChevronDown, 
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../../core/AuthContext';
 import { useTenant, type InstitutionModuleName } from '../../../../core/TenantContext';
+import { notify } from '../../../../shared/components/Toaster/notify';
 import styles from './PrivateWorkspace.module.css';
 
 type LinkItem = { label: string; path: string; icon: typeof Home; module?: InstitutionModuleName };
@@ -75,8 +76,8 @@ export function PrivateWorkspace({ children }: { children: ReactNode }) {
   }
   async function signOut() {
     if (!allowLeave()) return;
-    await logout();
-    navigate(scopedPath('/panel/admin'), { replace: true });
+    // AuthContext.logout owns the destination; navigating here would race with it.
+    try { await logout(); } catch { notify.error('No se pudo cerrar la sesión. Revisa tu conexión e intenta nuevamente.'); }
   }
 
   return <div className={`${styles.workspace} ${sidebarCollapsed ? styles.workspaceCollapsed : ''}`}>

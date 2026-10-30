@@ -1,6 +1,6 @@
 import { LogOut } from 'lucide-react';
 import type { MouseEvent } from 'react';
-import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../core/AuthContext';
 import { useTenant } from '../core/TenantContext';
 import styles from './PrivateInstitutionLayout.module.css';
@@ -11,7 +11,6 @@ export function PrivateInstitutionLayout() {
   const { user, role: authRole, institutionId: authInstitutionId, logout } = useAuth();
   const { activeInstitution, institutions } = useTenant();
   const location = useLocation();
-  const navigate = useNavigate();
   const firstSegment = location.pathname.split('/').filter(Boolean)[0] ?? '';
   const routeSlug = firstSegment && firstSegment !== 'panel' && firstSegment !== 'system-admin'
     ? firstSegment
@@ -70,7 +69,6 @@ export function PrivateInstitutionLayout() {
   async function signOut() {
     if (!confirmLeave()) return;
     await logout();
-    navigate(publicUrl, { replace: true });
   }
 
   return (

@@ -19,6 +19,7 @@ import styles from './AdminRoutes.module.css';
 import { resolveAdminAccess } from './auth/adminAccess';
 import { AssignedModulesPanel } from './auth/AssignedModulesPanel';
 import { TenantUrlBoundary } from './auth/TenantUrlBoundary';
+import { returnToFromLocation } from './auth/returnTo';
 
 
 import { AdminSessionPolicy } from './auth/AdminSessionPolicy';
@@ -100,7 +101,7 @@ function AdminRoutesContent({ superadminOnly = false }: { superadminOnly?: boole
   const showSkeleton = useInitialPrivateLoad(user ? `${user.id}:${user.last_sign_in_at ?? ''}` : undefined, 'panel', access.status === 'loading', Boolean(user && role && location.pathname.startsWith('/panel/') && !mfaRequired && !mfaEnrollmentRequired), loading);
   switch (access.status) {
     case 'loading': return <main className={styles.page} role="status" aria-live="polite" aria-busy="true">{showSkeleton ? (isTenantAdmin(role) || isSuperAdmin(role) ? <AdminSkeleton /> : <AssignedModulesSkeleton />) : access.message}</main>;
-    case 'login': return <Navigate to={{ pathname: '/login', search: scopedSearch, hash: location.hash }} state={{ accessIssue: access.issue }} replace />;
+    case 'login': return <Navigate to={{ pathname: '/login', search: scopedSearch, hash: location.hash }} state={{ accessIssue: access.issue, returnTo: returnToFromLocation(location) }} replace />;
     case 'mfa':
     case 'authorized': break;
     default: { const exhaustive: never = access; return exhaustive; }

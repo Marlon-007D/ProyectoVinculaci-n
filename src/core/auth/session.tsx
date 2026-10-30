@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
+import { useAuth } from '../AuthContext'
 import { DeceApp, DeceDataProvider } from '../../modules/dece'
 import ConfigurableForm from '../../modules/dece/pages/student-form/configurable-form'
 import type { Student } from '../../modules/dece/types/student'
@@ -62,6 +63,7 @@ export function useActiveSession() {
 
 export function SessionProvider() {
   const navigate = useNavigate()
+  const { logout } = useAuth()
   const [session, setSession] = useState<ActiveSession | null>(null)
   const [ready, setReady] = useState(false)
   const [error, setError] = useState('')
@@ -105,7 +107,7 @@ export function SessionProvider() {
     return () => { live = false; listener.subscription.unsubscribe() }
   }, [navigate])
 
-  async function signOut() { await supabase.auth.signOut(); setSession(null); setChoices([]); navigate('/panel', { replace: true }) }
+  async function signOut() { setSession(null); setChoices([]); await logout() }
   const value = useMemo(() => ({ session, signOut }), [session])
   if (!ready) return <main className="container py-5" role="status">Cargando sesión…</main>
   if (choices.length && !session) return <main className="container py-5"><h1>Selecciona tu institución</h1>{choices.map(item => <button className="btn btn-primary me-2" key={item.institutionId} onClick={() => { setSession(item); navigate(routeFor(item), { replace: true }); setChoices([]) }}>{item.institutionName}</button>)}</main>

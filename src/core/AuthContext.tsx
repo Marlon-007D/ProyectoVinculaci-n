@@ -52,6 +52,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [publicLogoutTarget, location.pathname, location.search, navigate]);
   const scopeKey = accessScopeKey(institutionContextFromSearch(location.search));
   const resolvedScope = useRef<string | null>(null);
+  // Once a session has resolved, a scope change revalidates access in the background
+  // instead of raising `loading`, which would blank the private area.
+  const sessionResolvedRef = useRef(false);
   const roleRevision = useRef(0);
   const sessionUserId = useRef<string | null>(null);
   const sessionRevision = useRef(0);
@@ -196,12 +199,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
+  if (!loading) sessionResolvedRef.current = true;
+
   useEffect(() => {
     if (!user || loading || mfaRequired || mfaEnrollmentRequired || resolvedScope.current === scopeKey) return;
-    setLoading(true);
+    const background = sessionResolvedRef.current;
+    if (!background) setLoading(true);
     const revision = roleRevision.current + 1;
     void fetchUserRoleAndTenant(user.id).finally(() => {
-      if (roleRevision.current === revision) setLoading(false);
+      if (!background && roleRevision.current === revision) setLoading(false);
     });
   }, [scopeKey, user, role, loading, mfaRequired, mfaEnrollmentRequired, fetchUserRoleAndTenant]);
 
@@ -282,6 +288,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       sessionUserId.current = nextSession?.user.id ?? null;
       currentSessionUserId = nextSession?.user.id ?? null;
       if (!backgroundRefresh) {
+        sessionResolvedRef.current = false;
         roleRevision.current++;
         setLoading(true);
         setRole(null);
@@ -410,7 +417,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const scopePending = Boolean(user && !mfaRequired && !mfaEnrollmentRequired && resolvedScope.current !== scopeKey);
+  const scopePending = Boolean(!sessionResolvedRef.current && user && !mfaRequired && !mfaEnrollmentRequired && resolvedScope.current !== scopeKey);
   return (
     <AuthContext.Provider value={{ user, session, role, roleError, roleIssue, institutionId, loading: loading || scopePending, login, loginWithGoogle, requestLoginLink, register, isPasswordRecovery, mfaRequired, mfaEnrollmentRequired, completeMfaEnrollment, mfaChallengeReady: Boolean(mfaChallengeId), verifyMfa, requestPasswordReset, updatePassword, logout }}>
       {logoutPending || publicLogoutTarget ? null : children}
