@@ -1,5 +1,4 @@
-import { useCallback, useState } from "react";
-import { usePortalUpdates } from "../hooks/usePortalUpdates";
+import { useState } from "react";
 import { useLocation, useSearchParams } from "react-router-dom";
 import { AsyncView } from "../components/states/AsyncView";
 import { PageSections } from "../components/Page/PageSections";
@@ -29,8 +28,6 @@ export function SitePreview() {
   const eventArticle = useEventArticle(eventId);
   const pageId = page.state.status === "success" ? page.state.data.page_id : null;
   const current = usePageVersion(pageId, undefined);
-  const refresh = useCallback(() => { page.refresh(); current.refresh(); }, [page.refresh, current.refresh]);
-  usePortalUpdates(refresh);
   if (params.get("simulator")) return <div className="site-module-frame site-module-frame--simulators"><PortalSimulatorsPage /></div>;
   if (params.get("honores") === "1") return <main className={`site-honors-page ${honorsStyles.page}`}>
     <HonorsSection title="Distinciones oficiales" limit={100} className={honorsStyles.section} />

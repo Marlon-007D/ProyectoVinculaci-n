@@ -21,7 +21,7 @@
     "preview": "vite preview",
     "portable": "node server.mjs",
     "lint": "tsc -p tsconfig.app.json --noEmit && tsc -p tsconfig.node.json --noEmit",
-    "test:projects": "node --test --test-isolation=none supabase/tests/frontend_projects.test.cjs supabase/tests/xlsx_writer.test.cjs supabase/tests/projects_forms_reports.test.cjs supabase/tests/single_instance.test.cjs supabase/tests/notify_adapter.test.cjs supabase/tests/portal_updates.test.cjs supabase/tests/shared_integration.test.cjs",
+    "test:projects": "node --test --test-isolation=none supabase/tests/frontend_projects.test.cjs supabase/tests/xlsx_writer.test.cjs supabase/tests/projects_forms_reports.test.cjs supabase/tests/single_instance.test.cjs supabase/tests/notify_adapter.test.cjs supabase/tests/portal_updates.test.cjs supabase/tests/publication_updates.test.cjs supabase/tests/shared_integration.test.cjs",
     "test:admin": "node scripts/run-admin-tests.mjs",
     "test:integration": "node --disable-warning=ExperimentalWarning --experimental-strip-types --test \"tests/security/*.test.mjs\" supabase/tests/public_client.test.mjs supabase/tests/invite_institution_user.test.mjs",
     "test:coverage": "node scripts/run-admin-tests.mjs --coverage",

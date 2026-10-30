@@ -3,72 +3,69 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
 const ts=require('typescript');
+
 const {portalHookHarness}=require('./fixtures/portalHookHarness.cjs');
 
-test('public content refreshes in the background without flashing; other institutions are ignored; retry and navigation still load',async()=>{
+test('public content stays stable on idle, focus, storage and publication; manual retry and navigation still load',async()=>{
  const h=portalHookHarness();let tenant='school-a',revision=1,fail=false;const calls=[];
  const services=Object.fromEntries(['getNews','getEvents','getHonors','getStaff'].map(name=>[name,async institution=>{
   calls.push({name,institution});if(fail)throw new Error('offline');return [{institution,revision}];
  }]));
- const institution={useInstitution:()=>({institutionId:tenant})};
  const asyncHooks=h.load('src/modules/site/hooks/useAsync.ts');
- const updates=h.load('src/modules/site/hooks/usePortalUpdates.ts',{
-  '../context/InstitutionContext':institution,'../services/portalUpdates':h.load('src/modules/site/services/portalUpdates.ts'),
- });
  const hooks=h.load('src/modules/site/hooks/useContent.ts',{
-  './useAsync':asyncHooks,'./usePortalUpdates':updates,'../context/InstitutionContext':institution,'../services/content':services,
+  './useAsync':asyncHooks,'../context/InstitutionContext':{useInstitution:()=>({institutionId:tenant})},'../services/content':services,
  });
  h.render(()=>[hooks.useNews(),hooks.useEvents(),hooks.useHonors(),hooks.useStaff()]);
- const initial=await h.flush();assert.equal(calls.length,4);assert.equal(h.timers.size,4);
+ const initial=await h.flush();assert.equal(calls.length,4);
  assert.ok(initial.every(item=>item.state.status==='success'&&item.state.data[0].revision===1));
- // Periodic refresh keeps the published content on screen until the new data arrives.
- revision=2;for(const timer of h.timers.values())timer();
- assert.ok(h.render().every(item=>item.state.status==='success'&&item.state.data[0].revision===1));
- let result=await h.flush();assert.equal(calls.length,8);assert.ok(result.every(item=>item.state.data[0].revision===2));
- for(const channel of h.channels)channel.onmessage?.({data:{institutionId:'school-z'}});
- await h.flush();assert.equal(calls.length,8);
- fail=true;for(const timer of h.timers.values())timer();result=await h.flush();
- assert.ok(result.every(item=>item.state.status==='success'),'a failed background refresh keeps the previous content');
- result[0].reload();assert.equal(h.render()[0].state.status,'loading');result=await h.flush();assert.equal(result[0].state.status,'error');
+ revision=2;h.idle();const unchanged=await h.flush();
+ assert.equal(h.timers.size,0);assert.equal(h.channels.length,0);assert.equal(calls.length,4);
+ unchanged.forEach((item,i)=>assert.equal(item.state,initial[i].state));
+ unchanged[0].reload();assert.equal(h.render()[0].state.status,'loading');
+ let result=await h.flush();assert.equal(calls.length,5);assert.equal(result[0].state.data[0].revision,2);
+ fail=true;result[0].reload();h.render();result=await h.flush();assert.equal(result[0].state.status,'error');
+ const beforeIdle=calls.length;h.idle();await h.flush();assert.equal(calls.length,beforeIdle);
  fail=false;result[0].reload();h.render();result=await h.flush();assert.equal(result[0].state.status,'success');
  tenant='school-b';h.render();result=await h.flush();
- assert.ok(result.every(item=>item.state.data[0].institution==='school-b'));
- h.stop();assert.equal(h.timers.size,0);assert.ok(h.channels.every(channel=>channel.closed));
+ assert.ok(result.every(item=>item.state.data[0].institution==='school-b'));h.stop();
 });
 
-test('transparency keeps filters and makes new requests only on search or explicit refresh',async()=>{
+test('transparency requests only the visible page; typing, idling and timers never query',async()=>{
  const h=portalHookHarness();const calls=[];
  const money=h.load('src/modules/projects/projectValidation.ts');
  const presentation=h.load('src/modules/projects/projectPresentation.ts',{'./projectValidation':money});
  const transparency=h.load('src/modules/projects/publicTransparency.ts',{'./projectPresentation':presentation,'./projectValidation':money});
  const {PublicProjects}=h.load('src/modules/projects/PublicProjects.tsx',{
-  '../../core/supabase/publicClient':{publicSupabase:{rpc:async()=>{throw new Error('the injected source must be used');}}},
+  '../../core/supabase/publicClient':{publicSupabase:{}},
   './projectValidation':money,'./projectPresentation':presentation,'./publicTransparency':transparency,
-  '../../shared/components/Toaster/notify':{notify:{success(){},warning(){}}},
+  './PublicProjects.module.css':{default:{}},
   './TransparencyReportActions':{TransparencyReportActions:()=>null},
-  './PublicProjects.module.css':{__esModule:true,default:{}},
+  '../../shared/components/Toaster/notify':{notify:{}},
  });
- const source={
-  institutions:async()=>[],
-  page:async query=>{calls.push(query);return {total:1,rows:[{project_id:'garden',title:'Huerto escolar',description:'Materiales para el huerto',is_active:true,total_budget:120,spent:30,balance:90,start_date:null,end_date:null}],summary:{count:1,budget:120,spent:30,active:1,closed:0}};},
- };
+ const row={project_id:'garden',title:'Huerto escolar',description:'Materiales',is_active:true,total_budget:120,spent:30,balance:90};
+ const source={institutions:async()=>[],page:async query=>{calls.push(query);return {total:12,rows:[row],summary:{count:12,budget:1200,spent:300,active:8,closed:4}};}};
  function find(node,predicate){
   if(!node||typeof node!=='object')return undefined;
   if(predicate(node))return node;
   for(const child of [node.props?.children].flat(Infinity)){const match=find(child,predicate);if(match)return match;}
  }
- // PublicProjects only adds the toast bridge; render the view it wraps.
- const view=()=>{const outer=PublicProjects({institutionSlug:'school-a',institutionName:'Colegio',source});return outer.type(outer.props);};
- const input=tree=>find(tree,node=>node.type==='input'&&node.props.type==='search');
- h.render(view);let tree=await h.flush();assert.equal(calls.length,1);assert.equal(calls[0].slug,'school-a');
- input(tree).props.onChange({target:{value:'  Huerto '}});tree=h.render();assert.equal(calls.length,1,'typing does not query');
+ const text=node=>[node.props.children].flat(Infinity).filter(item=>typeof item==='string').join('');
+ const button=(tree,label)=>find(tree,node=>node.type==='button'&&(node.props['aria-label']===label||text(node).includes(label)));
+ h.render(()=>PublicProjects({institutionSlug:'school-a',institutionName:'Colegio',source}));
+ let tree=await h.flush();
+ assert.equal(calls.length,1);assert.equal(JSON.stringify(calls[0]),JSON.stringify({slug:'school-a',search:'',status:'all',sort:'name',page:1,pageSize:9}));
+ find(tree,node=>node.type==='input'&&node.props.type==='search').props.onChange({target:{value:'Huerto'}});tree=h.render();
+ h.idle();tree=await h.flush();assert.equal(calls.length,1);assert.equal(h.timers.size,0);assert.equal(h.channels.length,0);
  find(tree,node=>node.type==='form').props.onSubmit({preventDefault(){}});h.render();tree=await h.flush();
- assert.equal(calls.length,2);assert.equal(calls[1].search,'Huerto');assert.equal(calls[1].page,1);
- h.idle();tree=await h.flush();assert.equal(calls.length,2);assert.equal(h.timers.size,0);assert.equal(h.channels.length,0);
- assert.equal(input(tree).props.value,'  Huerto ');
- const button=find(tree,node=>node.type==='button'&&[node.props.children].flat().includes('Actualizar'));
- assert.ok(button);button.props.onClick();h.render();tree=await h.flush();
- assert.equal(calls.length,3);assert.equal(calls[2].search,'Huerto');assert.equal(input(tree).props.value,'  Huerto ');h.stop();
+ assert.equal(calls.length,2);assert.equal(calls[1].search,'Huerto');
+ button(tree,'Página siguiente').props.onClick();h.render();tree=await h.flush();
+ assert.equal(calls.length,3);assert.equal(calls[2].page,2);
+ button(tree,'Cerrados').props.onClick();h.render();tree=await h.flush();
+ assert.equal(calls.length,4);assert.equal(calls[3].status,'closed');assert.equal(calls[3].page,1);
+ button(tree,'Actualizar').props.onClick();h.render();tree=await h.flush();
+ assert.equal(calls.length,5);assert.equal(JSON.stringify({...calls[4]}),JSON.stringify({...calls[3]}));
+ assert.equal(find(tree,node=>node.type==='input'&&node.props.type==='search').props.value,'Huerto');
+ h.stop();
 });
 
 test('all four institutions share the same immutable header routes and hierarchy',()=>{

@@ -54,7 +54,7 @@ function ProjectCard({ row }: { row: PublicProjectRow }) {
  * Public transparency. Inside a portal page the page banner already names the section,
  * so the heading is only rendered for the standalone routes (`heading`, or no institution given).
  */
-function PublicProjectsView({ institutionSlug, institutionName, heading = false, source = defaultSource }: { institutionSlug?: string; institutionName?: string; heading?: boolean; source?: TransparencySource } = {}) {
+export function PublicProjects({ institutionSlug, institutionName, heading = false, source = defaultSource }: { institutionSlug?: string; institutionName?: string; heading?: boolean; source?: TransparencySource } = {}) {
   const [slug, setSlug] = useState(() => institutionSlug ?? new URLSearchParams(location.search).get('institution') ?? '');
   const [institutions, setInstitutions] = useState<InstitutionState>({ status: 'loading' });
   const [draftSearch, setDraftSearch] = useState('');
@@ -235,9 +235,4 @@ function PublicProjectsView({ institutionSlug, institutionName, heading = false,
       </>}
     </div>
   </section>;
-}
-
-// The public portal mounts this outside ModuleBoundary; it connects notify() to the shared toast.
-export function PublicProjects(props: Parameters<typeof PublicProjectsView>[0] = {}) {
-  return <PublicProjectsView {...props} />;
 }

@@ -1,18 +1,21 @@
-import { useCallback, useLayoutEffect } from "react";
-import { usePortalUpdates } from "../../hooks/usePortalUpdates";
+import { useLayoutEffect } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { useInstitution } from "../../context/InstitutionContext";
 import { useMenus } from "../../hooks/useMenus";
 import { useSite } from "../../hooks/useSite";
 import { standardizePublicMenu } from "../../utils/menuTree";
+import { publicSupabase } from "../../../../core/supabase/publicClient";
+import { createPublicationUpdates } from "../../services/publicationUpdates";
+import { PublicationNotice } from "../PublicationNotice/PublicationNotice";
+
+// One Realtime subscription announces new publications; nothing refreshes the page by itself.
+const publicationUpdates = createPublicationUpdates(publicSupabase);
 import { SiteFrame } from "./SiteFrame";
 
 export function SiteLayout() {
   const menu = useMenus();
-  const { config, refresh: refreshSite } = useSite();
-  const refresh = useCallback(() => { refreshSite(); menu.refresh(); }, [refreshSite, menu.refresh]);
-  usePortalUpdates(refresh);
-  const { basePath } = useInstitution();
+  const { config } = useSite();
+  const { basePath, institutionId } = useInstitution();
   const { pathname, search } = useLocation();
   const searchParams = new URLSearchParams(search);
   const institutionSlug = searchParams.get("institution");
@@ -34,6 +37,7 @@ export function SiteLayout() {
 
   return (
     <SiteFrame config={config} menu={publicMenu} homeUrl={homeUrl}>
+      <PublicationNotice institutionId={institutionId} updates={publicationUpdates} />
       <Outlet />
     </SiteFrame>
   );

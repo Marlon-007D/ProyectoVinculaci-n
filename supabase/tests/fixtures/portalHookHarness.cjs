@@ -62,7 +62,7 @@ exports.portalHookHarness = function () {
     return output;
   }
   return {
-    load, render, timers, channels,
+    load, render, timers, channels, window,
     async flush() { await new Promise(resolve => setImmediate(resolve)); return render(); },
     idle() {
       for (let cycle = 0; cycle < 120; cycle++) {
