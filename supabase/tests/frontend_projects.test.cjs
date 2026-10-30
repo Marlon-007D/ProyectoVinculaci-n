@@ -25,7 +25,7 @@ test('rutas de integración conservan portada, cursos y navegación existente',(
   './pages/NotFound':{NotFound:marker('EXISTING_NOT_FOUND')},'./pages/SitePreview':{SitePreview:marker('EXISTING_HOME')},
   '../../features/feats/pages/FeatsLoginPage':{FeatsLoginPage:marker('EXISTING_COURSES')},'../../features/feats/services/featsAuth':{localDemoAuthService:{}},'./styles/site.css':{},
  });
- let authState={user:null},tenantState={activeInstitution:null};
+ let authState={user:null},tenantState={activeInstitution:null,hasModuleAccess:()=>true,loadingTenant:false};
  function renderApp(path){
   const {default:App}=load('src/App.tsx',{'react':{...react,lazy:()=>marker('NEW_MODULE')},'react/jsx-runtime':jsx,
    'react-router-dom':{...router,BrowserRouter:({children})=>react.createElement(router.MemoryRouter,{initialEntries:[path]},children)},
@@ -47,7 +47,7 @@ test('rutas de integración conservan portada, cursos y navegación existente',(
    './modules/auth/LoginRoute':{LoginRoute:marker('LOGIN')},
    './features/auth/pages/AuthPage':{AuthPage:marker('LOGIN')},
    './modules/admin/userManagement/membershipRequestService':{membershipRequestService:{}},
-   './app/App':{__esModule:true,default:marker('SIMULATORS')},
+   './features/simulators/pages/PanelSimulator':{PanelSimulator:marker('SIMULATORS')},'./shared/components/EmptyState/EmptyState':{EmptyState:marker('EMPTY')},'lucide-react':{Calculator:()=>null},
    './modules/site':{SiteApp},'./modules/projects/integration/ModuleBoundary':{ModuleBoundary:({children})=>children},
    './modules/projects/integration/ProjectSessionHost':{ProjectSessionHost:()=>null,isPrivateProjectsPath:()=>false},
    './shared/components/ConfirmDialog/ConfirmHost':{ConfirmHost:()=>null},'./shared/components/Toaster/AppToaster':{AppToaster:()=>null},
@@ -56,7 +56,7 @@ test('rutas de integración conservan portada, cursos y navegación existente',(
   });
   return require('react-dom/server').renderToStaticMarkup(react.createElement(App));
  }
- for(const [path,expected] of [['/','EXISTING_HOME'],['/admin-cursos','EXISTING_COURSES'],['/unknown','EXISTING_NOT_FOUND'],['/panel/proyectos','NEW_MODULE'],['/panel/portal','NEW_MODULE'],['/proyectos?transparency=1','NEW_MODULE'],['/portal?institution=school','NEW_MODULE'],['/panel/ruta-inexistente','ERROR_PAGE'],['/panel/cursos','ACADEMIC'],['/panel/simuladores','SIMULATORS']]){
+ for(const [path,expected] of [['/','EXISTING_HOME'],['/admin-cursos','EXISTING_COURSES'],['/unknown','EXISTING_NOT_FOUND'],['/panel/proyectos','NEW_MODULE'],['/panel/portal','NEW_MODULE'],['/proyectos?transparency=1','NEW_MODULE'],['/portal?institution=school','NEW_MODULE'],['/panel/ruta-inexistente','ERROR_PAGE'],['/panel/cursos','ACADEMIC'],['/panel/simuladores/facturacion','SIMULATORS'],['/panel/simuladores/interes','SIMULATORS']]){
   assert.ok(renderApp(path).includes(expected),path+' did not preserve its route');
  }
  // Reloading a private page: children redirect from `user`, which is null until the session resolves.
@@ -71,7 +71,7 @@ test('rutas de integración conservan portada, cursos y navegación existente',(
  assert.ok(ready.includes('ACADEMIC')&&!ready.includes('PRIVATE_SKELETON'),'the page replaces the skeleton once the session resolves');
  authState={user:{id:'u1'},loading:false};tenantState={activeInstitution:null,loadingTenant:true};
  assert.ok(renderApp('/panel/admin').includes('PRIVATE_SKELETON'),'a signed-in user waits for the tenant before the page mounts');
- authState={user:null};tenantState={activeInstitution:null};
+ authState={user:null};tenantState={activeInstitution:null,hasModuleAccess:()=>true,loadingTenant:false};
 });
 
 const presentation=load('src/modules/projects/projectPresentation.ts',{'./projectValidation':money});

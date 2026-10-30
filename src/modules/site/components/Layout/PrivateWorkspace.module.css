@@ -57,14 +57,21 @@
 .aside{white-space:nowrap}
 .workspaceCollapsed .navGroup .subnav{display:grid;max-height:0;padding-top:0;padding-bottom:0;opacity:0;pointer-events:none}
 
-/* DECE sub-navigation tones (same palette as the other groups). */
-.aside .nav .subnav a[href*="/panel/dece"] svg{background:#b7e8c5;color:#137333}
-.aside .nav .subnav a[href*="/dece/estudiantes"] svg{background:#c6dcff;color:#1558c0}
-.aside .nav .subnav a[href*="/dece/casos"] svg{background:#ffc8c4;color:#bd1e18}
-.aside .nav .subnav a[href*="/dece/plantillas"] svg{background:#ffefb5;color:#806000}
-.aside .nav .subnav a[href*="/dece/envios"] svg{background:#e5d2ff;color:#7334ba}
-.aside .nav .navGroup:nth-of-type(3) .groupButton>svg:first-child,.aside .nav .navGroup:nth-of-type(3) .groupButtonActive>svg:first-child{background:#b7e8c5;color:#137333}
-.aside .nav .navGroup .groupButtonActive>svg:first-child{background:#c6dcff;color:#1558c0}
+/* Tones of the first-level items (same pill as Inicio). */
+.aside .nav a[data-tone="dece-home"] svg{background:#b7e8c5;color:#137333}
+.aside .nav a[data-tone="dece-students"] svg{background:#c6dcff;color:#1558c0}
+.aside .nav a[data-tone="dece-cases"] svg{background:#ffc8c4;color:#bd1e18}
+.aside .nav a[data-tone="dece-forms"] svg{background:#ffefb5;color:#806000}
+.aside .nav a[data-tone="dece-reviews"] svg{background:#e5d2ff;color:#7334ba}
+.aside .nav a[data-tone="categories"] svg{background:#ffefb5;color:#806000}
+.aside .nav a[data-tone="modules"] svg{background:#c8efd3;color:#137333}
+.aside .nav a[data-tone="news"] svg{background:#c6dcff;color:#1558c0}
+.aside .nav a[data-tone="events"] svg{background:#e5d2ff;color:#7334ba}
+.aside .nav a[data-tone="honor"] svg{background:#ffc8c4;color:#bd1e18}
+.aside .nav a[data-tone="invoice"] svg{background:#ffdda0;color:#946200}
+.aside .nav a[data-tone="converter"] svg{background:#b7e8c5;color:#137333}
+.aside .nav a[data-tone="interest"] svg{background:#f4c4d9;color:#b01655}
+.aside .nav a[aria-current="page"] svg{background:#c6dcff;color:#1558c0}
 
 /* Mobile drawer: the rail becomes an off-canvas menu opened from a button. */
 .mobileMenu{display:none}
@@ -78,12 +85,3 @@
   .workspaceCollapsed .nav>a>span,.workspaceCollapsed .groupButton>span,.workspaceCollapsed .groupButtonActive>span{opacity:1}
 }
 @media(max-width:760px) and (prefers-reduced-motion:reduce){.workspaceCollapsed .aside,.workspaceExpanded .aside{transition:none}}
-
-/* DECE sub-navigation is always visible (no toggle), even in the collapsed rail. */
-.groupLabel{display:flex;align-items:center;gap:12px;min-height:44px;padding:4px 12px 4px 6px;color:#3c4043;font-size:14px;font-weight:650}
-.groupLabel>svg{width:44px;height:44px;flex:none;padding:12px;border-radius:50%;background:#b7e8c5;color:#137333}
-.groupLabel>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;transition:opacity .16s ease .06s}
-.workspaceCollapsed .groupLabel>span{opacity:0;transition-delay:0s}
-.alwaysOpen .subnav,.workspaceCollapsed .alwaysOpen .subnav{display:grid;max-height:none;opacity:1;pointer-events:auto;padding-top:0;padding-bottom:0;transform:none}
-.workspaceCollapsed .alwaysOpen .subnav{padding-left:0}
-.workspaceCollapsed .alwaysOpen .subnav a{padding-left:6px}

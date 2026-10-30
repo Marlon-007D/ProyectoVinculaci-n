@@ -16,7 +16,9 @@ import { DeceApp, DeceDataProvider } from './modules/dece';
 import { supabase } from './core/supabaseClient';
 import { SessionProvider } from './core/auth/session';
 import AdminRoutes from './modules/admin/AdminRoutes';
-import SimulatorApp from './app/App';
+import { PanelSimulator, type PanelSimulatorKind } from './features/simulators/pages/PanelSimulator';
+import { EmptyState } from './shared/components/EmptyState/EmptyState';
+import { Calculator } from 'lucide-react';
 import { AcademicManagementRoutes } from './features/feats/pages/AcademicManagementRoutes';
 import { returnToFromLocation } from './modules/admin/auth/returnTo';
 import { AuthPage } from './features/auth/pages/AuthPage';
@@ -38,6 +40,18 @@ function SlugSessionRoute() {
   if (location.pathname.endsWith('/login'))
     return <Navigate to={'/login?' + new URLSearchParams({ ...Object.fromEntries(new URLSearchParams(location.search)), slug }).toString()} state={location.state} replace />;
   return <InstitutionProvider><InstitutionSessionLayout><SessionProvider /></InstitutionSessionLayout></InstitutionProvider>;
+}
+
+function SimulatorsRedirect() {
+  const { search } = useLocation();
+  return <Navigate to={{ pathname: '/panel/simuladores/facturacion', search }} replace />;
+}
+
+function SimulatorRoute({ kind }: { kind: PanelSimulatorKind }) {
+  const { hasModuleAccess, loadingTenant } = useTenant();
+  if (loadingTenant) return <PrivateContentSkeleton />;
+  if (!hasModuleAccess('simuladores')) return <EmptyState icon={Calculator} title="Simuladores no habilitados">Este módulo no está habilitado para tu institución o tu rol.</EmptyState>;
+  return <PanelSimulator kind={kind} />;
 }
 
 function PublicDeceRoute() {
@@ -106,12 +120,15 @@ function RoutesWithAuth() {
       <Route path="/panel/cursos" element={<AcademicManagementRoutes />} />
       <Route path="/panel/cursos/*" element={<AcademicManagementRoutes />} />
       <Route path="/panel/publicaciones/*" element={<AcademicManagementRoutes />} />
-      <Route path="/panel/simuladores/*" element={<SimulatorApp />} />
+      <Route path="/panel/simuladores/facturacion" element={<SimulatorRoute kind="invoice" />} />
+      <Route path="/panel/simuladores/conversor" element={<SimulatorRoute kind="converter" />} />
+      <Route path="/panel/simuladores/interes" element={<SimulatorRoute kind="interest" />} />
+      <Route path="/panel/simuladores/*" element={<SimulatorsRedirect />} />
       <Route path="/panel/dece" element={<DeceWorkspaceRoute />} />
       <Route path="/panel/dece/*" element={<DeceWorkspaceRoute />} />
     </Route>
     <Route path="/system-admin" element={<Navigate to="/panel/superadmin" replace />} />
-    <Route path="/simuladores/*" element={<SimulatorApp />} />
+    <Route path="/simuladores/*" element={<SimulatorsRedirect />} />
     <Route path="/dece/:slug/*" element={<InstitutionProvider><PublicDeceRoute /></InstitutionProvider>} />
     <Route path="/:slug/login" element={<SlugSessionRoute />} />
     <Route path="/:slug/dece/*" element={<SlugSessionRoute />} />
