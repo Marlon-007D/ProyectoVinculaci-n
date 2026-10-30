@@ -70,6 +70,12 @@ npm run test:all          # projects + admin + integration
   - `adminEdgeBundle.test.mjs` falla si alguno de los dos queda desfasado.
 - **Dos clientes de Supabase:** `src/core/supabaseClient.ts` (general) y `src/core/supabase/` (simuladores y lecturas públicas).
 
+## MFA (segundo factor)
+
+- **Interruptor:** `VITE_MFA_ENABLED` (por defecto `false`, modo demo), leído solo en `src/core/mfaConfig.ts`. Con `false`, `AuthContext` nunca desafía ni exige enrolamiento por ningún método de acceso (contraseña, Google, enlace por correo, otra pestaña); `TenantContext`, `AdminSessionPolicy`, `AdminRoutes` y `MfaEnrollment` lo heredan porque leen `mfaRequired`/`mfaEnrollmentRequired` de `useAuth`.
+- **Reactivar:** `VITE_MFA_ENABLED=true` en `.env.local` o en el entorno de Vercel/Netlify **antes del build**. El código de MFA no se borra (HU-02).
+- **Base de datos:** la exigencia `aal2` del lado servidor es aparte; ver `supabase/proposals/admin/`. Con el interruptor en `false` pero la BD exigiendo `aal2`, las RPC que lo exigen seguirán rechazando.
+
 ## CI y SonarQube
 
 - **Workflow** `quality.yml`: jobs `build`, `sonarqube` y `snyk-code`, los dos últimos con `needs: build`.

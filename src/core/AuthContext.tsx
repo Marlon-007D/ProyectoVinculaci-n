@@ -8,6 +8,7 @@ import React, { createContext, useCallback, useContext, useEffect, useRef, useSt
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from './supabaseClient';
 import { registerInstitutionalAccount } from './auth/registerInstitutionalAccount';
+import { MFA_ENABLED } from './mfaConfig';
 import { googleOAuthRequest, institutionContextFromSearch } from '../features/auth/utils/googleOAuth';
 
 interface AuthContextType {
@@ -73,7 +74,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const mfaChallengeRef = useRef<{ factorId: string; challengeId: string } | null>(null);
 
   const checkMfaSession = async (nextSession: Session | null): Promise<boolean> => {
-    if (!nextSession) {
+    // With MFA switched off no sign-in method is challenged, whatever the account's stored factors.
+    if (!nextSession || !MFA_ENABLED) {
       setMfaRequired(false);
       setMfaFactorId(null);
       setMfaChallengeId(null);
@@ -186,7 +188,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           break;
         default: { const exhaustive: never = assigned; return exhaustive; }
       }
-      if (readSessionValue('auth-login-method') === 'password') {
+      if (!MFA_ENABLED || readSessionValue('auth-login-method') === 'password') {
         setMfaEnrollmentRequired(false);
         return;
       }
@@ -419,7 +421,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const scopePending = Boolean(!sessionResolvedRef.current && user && !mfaRequired && !mfaEnrollmentRequired && resolvedScope.current !== scopeKey);
   return (
-    <AuthContext.Provider value={{ user, session, role, roleError, roleIssue, institutionId, loading: loading || scopePending, login, loginWithGoogle, requestLoginLink, register, isPasswordRecovery, mfaRequired, mfaEnrollmentRequired, completeMfaEnrollment, mfaChallengeReady: Boolean(mfaChallengeId), verifyMfa, requestPasswordReset, updatePassword, logout }}>
+    <AuthContext.Provider value={{ user, session, role, roleError, roleIssue, institutionId, loading: loading || scopePending, login, loginWithGoogle, requestLoginLink, register, isPasswordRecovery, mfaRequired: MFA_ENABLED && mfaRequired, mfaEnrollmentRequired: MFA_ENABLED && mfaEnrollmentRequired, completeMfaEnrollment, mfaChallengeReady: Boolean(mfaChallengeId), verifyMfa, requestPasswordReset, updatePassword, logout }}>
       {logoutPending || publicLogoutTarget ? null : children}
     </AuthContext.Provider>
   );

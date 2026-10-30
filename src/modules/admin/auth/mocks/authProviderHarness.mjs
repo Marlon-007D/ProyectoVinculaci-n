@@ -3,7 +3,9 @@ import { createRequire } from 'node:module';
 import ts from 'typescript';
 
 // Exercise the actual provider and its asynchronous callbacks without a DOM or live accounts.
-export function authProviderHarness(t, initialSession = null) {
+// options.mfaEnabled mirrors VITE_MFA_ENABLED; accountHasMfa/enrollmentRequired describe the stored account state;
+// loginMethod is the value written by the sign-in method ('password', null for Google or another tab).
+export function authProviderHarness(t, initialSession = null, { mfaEnabled = true, accountHasMfa = false, enrollmentRequired = false, loginMethod = 'password' } = {}) {
   const slots = [];
   let cursor = 0;
   let effects = [];
@@ -17,7 +19,7 @@ export function authProviderHarness(t, initialSession = null) {
   const calls = [];
   const oauthRequests = [];
   const location = { pathname: '/panel/admin', search: '', origin: 'http://localhost:5173' };
-  const stored = new Map([['auth-login-method', 'password']]);
+  const stored = new Map(loginMethod ? [['auth-login-method', loginMethod]] : []);
   const hadWindow = Object.hasOwn(globalThis, 'window');
   const previousWindow = globalThis.window;
   const previousStorage = Object.getOwnPropertyDescriptor(globalThis, 'sessionStorage');
@@ -78,13 +80,19 @@ export function authProviderHarness(t, initialSession = null) {
   };
   const client = {
     auth: {
+      mfa: {
+        getAuthenticatorAssuranceLevel: async () => ({ data: { currentLevel: 'aal1', nextLevel: 'aal2' }, error: null }),
+        listFactors: async () => ({ data: { totp: [{ id: 'factor', status: 'verified' }] }, error: null }),
+        challenge: async () => ({ data: { id: 'challenge' }, error: null }),
+        verify: async () => ({ error: null }),
+      },
       signOut: async () => { session = null; listener('SIGNED_OUT', null); return { error: null }; },
       signInWithOAuth: async request => { oauthRequests.push(request); return { error: null }; },
       getSession: async () => ({ data: { session }, error: null }),
       getUser: async () => ({ data: { user: session?.user ?? null }, error: null }),
       onAuthStateChange(callback) { listener = callback; return { data: { subscription: { unsubscribe() {} } } }; },
     },
-    rpc: async () => ({ data: false, error: null }),
+    rpc: async name => ({ data: name === 'own_mfa_enabled_for_assigned_user' ? accountHasMfa : name === 'own_mfa_enrollment_required' ? enrollmentRequired : false, error: null }),
     from(table) {
       const chain = {
         select() { return chain; }, eq() { return chain; }, in() { return chain; },
@@ -106,6 +114,7 @@ export function authProviderHarness(t, initialSession = null) {
     new Function('require', 'exports', code)(specifier => {
       if (specifier === 'react') return react;
       if (specifier === 'react-router-dom') return { useLocation: () => location, useNavigate: () => navigate };
+      if (specifier.endsWith('mfaConfig')) return { MFA_ENABLED: mfaEnabled };
       if (specifier.endsWith('supabaseClient')) return { supabase: client };
       if (specifier.endsWith('registerInstitutionalAccount')) return { registerInstitutionalAccount: async () => ({ error: null }) };
       if (specifier.startsWith('.')) return load(new URL(/\.tsx?$/.test(specifier) ? specifier : specifier + '.ts', url));

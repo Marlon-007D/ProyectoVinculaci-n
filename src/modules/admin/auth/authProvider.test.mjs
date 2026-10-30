@@ -114,3 +114,32 @@ test('token refresh preserves access and a late response cannot regrant access a
   assert.equal(app.value.role, null);
   assert.equal(app.value.roleIssue, null);
 });
+
+const mfaAccount = { accountHasMfa: true, enrollmentRequired: true };
+const signInMethods = [['password', 'password'], ['Google', null], ['enlace por correo', 'email_totp'], ['otra pestaña', null]];
+
+for (const [name, loginMethod] of signInMethods) {
+  test(`with MFA switched off, ${name} sign-in never asks for a code or enrollment`, async t => {
+    const app = authProviderHarness(t, session('admin'), { ...mfaAccount, mfaEnabled: false, loginMethod });
+    await app.until(value => !value.loading && value.role === 'institution_admin');
+    assert.equal(app.value.mfaRequired, false);
+    assert.equal(app.value.mfaEnrollmentRequired, false);
+    assert.equal(app.value.mfaChallengeReady, false);
+  });
+}
+
+test('with MFA switched on, non-password sign-ins still ask for the code and the enrollment', async t => {
+  const challenged = authProviderHarness(t, session('admin'), { accountHasMfa: true, loginMethod: null });
+  await challenged.until(value => value.mfaRequired);
+  assert.equal(challenged.value.mfaChallengeReady, true);
+  const enrolling = authProviderHarness(t, session('admin'), { enrollmentRequired: true, loginMethod: 'email_totp' });
+  await enrolling.until(value => !value.loading && value.mfaEnrollmentRequired);
+  assert.equal(enrolling.value.mfaRequired, false);
+});
+
+test('with MFA switched on, a password sign-in keeps skipping the second factor', async t => {
+  const app = authProviderHarness(t, session('admin'), { ...mfaAccount, loginMethod: 'password' });
+  await app.until(value => !value.loading && value.role === 'institution_admin');
+  assert.equal(app.value.mfaRequired, false);
+  assert.equal(app.value.mfaEnrollmentRequired, false);
+});
