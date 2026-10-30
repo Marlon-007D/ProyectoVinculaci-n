@@ -63,6 +63,14 @@ SELECT policyname, roles, cmd, qual FROM pg_policies WHERE schemaname = 'public'
 --
 -- Reversión de C: DELETE de las filas creadas (identificables por honor_id recién generado o por el período '2026-2027').
 
+-- CAUSA MÁS PROBABLE (drizzle/0012): honors y academic_periods solo permiten is_super_admin() o
+-- institution_id = get_current_institution_id() (UNA sola institución por perfil). Un institution_admin con membresía
+-- en las 4 unidades solo "ve" la actual: para las demás PostgREST responde 200 con lista vacía, sin error.
+-- E1. Verificación como visitante (anon): debe devolver filas; si da 0 o error, faltan las políticas/permisos de drizzle/0010.
+--   SET LOCAL ROLE anon; SELECT institution_id, count(*) FROM public.public_honors GROUP BY 1; RESET ROLE;
+-- E2. Qué devuelve la función que usan las políticas actuales para el admin (pega su UUID):
+--   SELECT set_config('request.jwt.claims', json_build_object('sub', '<UUID-DEL-ADMIN>', 'role', 'authenticated')::text, true);
+--   SET LOCAL ROLE authenticated; SELECT public.get_current_institution_id(); RESET ROLE;
 -- ============================== D. RLS DEL ADMIN INSTITUCIONAL (solo si el panel devuelve 0 filas) ==============================
 -- El panel lee honors, academic_periods y students con la sesión del admin. Si las políticas existentes no cubren
 -- al institution_admin, PostgREST responde 200 con lista vacía (no error). Estas políticas son aditivas y por institución.
