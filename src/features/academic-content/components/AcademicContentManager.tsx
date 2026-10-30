@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import type { ReactNode } from 'react'
-import { ArrowRight, CalendarDays, Check, CirclePlus, Clock3, Eye, GraduationCap, ImagePlus, Pencil, Trash2 } from 'lucide-react'
+import { ArrowRight, Award, CalendarDays, Check, CirclePlus, Clock3, Eye, GraduationCap, ImagePlus, Pencil, Trash2 } from 'lucide-react'
 import { Button } from '../../../shared/components/Button/Button'
 import { Modal } from '../../../shared/components/Modal/Modal'
 import { useAcademicContent } from '../hooks/useAcademicContent'
@@ -13,6 +13,7 @@ import { useTenant } from '../../../core/TenantContext'
 import { getHonorCategory, getOfficialFlagKind, normalizeOfficialDistinction, OFFICIAL_DISTINCTIONS } from '../../honors/utils/honorRules'
 import { getStudentAvatar, getStudentInitials } from '../../honors/utils/studentAvatar'
 import { OfficialFlag } from '../../honors/components/OfficialFlag'
+import { EmptyState } from '../../../shared/components/EmptyState/EmptyState'
 import { buildHonorGroups, HONOR_EMPTY_MESSAGE } from '../utils/honorGroups'
 import { AcademicPostPreviewPage } from '../pages/AcademicPostPreviewPage'
 import { createAcademicContentImageUploader } from '../services/academicContentImageService'
@@ -232,7 +233,7 @@ export function AcademicContentManager({ kind, title, singular, onPreview }: Pro
           { value: 'draft', label: 'Borradores', count: visibleEntries.filter(entry => entry.status === 'draft').length },
         ] as const).map(option => <button key={option.value} type="button" className={isPublication ? `${styles.filterChip}${statusFilter === option.value ? ` ${styles.filterChipActive}` : ''}` : statusFilter === option.value ? 'is-active' : ''} aria-pressed={statusFilter === option.value} onClick={() => setStatusFilter(option.value)}>{option.label}<span>{option.count}</span></button>)}
       </div>{isPublication && <div className={`${styles.searchTools}${publicationSearchOpen ? ` ${styles.searchToolsOpen}` : ''}`}><label className={`${styles.searchField}${publicationSearchOpen ? ` ${styles.searchFieldOpen}` : ''}`}><button type="button" className={styles.searchToggle} aria-label={publicationSearchOpen ? 'Cerrar búsqueda' : 'Buscar publicaciones'} aria-expanded={publicationSearchOpen} onClick={() => setPublicationSearchOpen(open => !open)}><span className="material-symbols-rounded" aria-hidden="true">search</span></button>{publicationSearchOpen && <input autoFocus type="search" value={publicationSearch} onChange={event => setPublicationSearch(event.target.value)} placeholder={`Buscar ${kind === 'news' ? 'noticias' : 'eventos'}`} aria-label={`Buscar ${kind === 'news' ? 'noticias' : 'eventos'} por texto`} />}</label><label className={`${styles.statusSelectField} ${statusFilter === 'all' ? styles.statusAll : statusFilter === 'published' ? styles.statusPublishedFilter : styles.statusDraftFilter}`}><span className="material-symbols-rounded" aria-hidden="true">{statusFilter === 'all' ? 'filter_list' : statusFilter === 'published' ? 'check_circle' : 'edit_note'}</span><select value={statusFilter} onChange={event => setStatusFilter(event.target.value as 'all' | AcademicPublicationStatus)} aria-label="Filtrar por estado"><option value="all">Todas</option><option value="published">Publicadas</option><option value="draft">Borradores</option></select></label><label className={styles.dateField}><span className="material-symbols-rounded" aria-hidden="true">calendar_month</span><input type="date" value={publicationDate} onChange={event => setPublicationDate(event.target.value)} aria-label="Filtrar publicaciones por fecha" title="Filtrar por fecha" /></label></div>}<div className={isPublication ? styles.toolbarActions : ''}>{renderPagination('top')}<Button variant="primary" className={isPublication ? styles.newButton : ''} onClick={() => beginCreate()}>{isPublication ? <span className="material-symbols-rounded" aria-hidden="true">add</span> : <CirclePlus size={18} />}{kind === 'news' ? 'Nueva noticia' : 'Nuevo evento'}</Button></div></div>}
-      {listCount === 0 && kind !== 'honor' ? <p className="academic-empty">No hay registros para esta institución.</p> : kind === 'honor' && honorGroups.length === 0 ? <p className="academic-empty" role="status">{HONOR_EMPTY_MESSAGE}</p> : kind === 'honor' ? <div className="academic-entry-list honor-period-list">{pageHonorGroups.map(group => {
+      {listCount === 0 && kind !== 'honor' ? <p className="academic-empty">No hay registros para esta institución.</p> : kind === 'honor' && honorGroups.length === 0 ? <EmptyState icon={Award} title="Aún no hay distinciones">{HONOR_EMPTY_MESSAGE}</EmptyState> : kind === 'honor' ? <div className="academic-entry-list honor-period-list">{pageHonorGroups.map(group => {
         const groupKey = group.key
         const expanded = expandedHonorPeriod === groupKey
         return <article className="academic-honor-group" key={groupKey}>

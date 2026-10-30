@@ -1,0 +1,4 @@
+.empty { display: grid; justify-items: center; gap: 10px; max-width: 560px; margin: 32px auto; padding: 32px 24px; border: 1px solid #e3e6ec; border-radius: 16px; background: #fff; color: #3c4043; text-align: center; font-family: Roboto, Arial, sans-serif; }
+.icon { width: 52px; height: 52px; display: grid; place-items: center; border-radius: 50%; background: #e8f0fe; color: #1967d2; }
+.title { margin: 0; font-size: 16px; font-weight: 650; color: #202124; }
+.text { margin: 0; font-size: 14px; line-height: 1.5; color: #5f6368; }

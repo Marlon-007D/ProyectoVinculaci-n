@@ -9,7 +9,7 @@ export interface HonorGroup {
   year: string;
 }
 
-export const HONOR_EMPTY_MESSAGE = 'No hay un período académico vigente ni distinciones registradas para esta institución.';
+export const HONOR_EMPTY_MESSAGE = 'No hay un período académico vigente ni reconocimientos registrados para esta institución. Cuando se active un período podrás asignar aquí las distinciones oficiales.';
 
 /** Groups the official distinctions by period; the current period always appears so its slots can be filled. */
 export function buildHonorGroups(visibleEntries: readonly AcademicContentEntry[], periods: readonly AcademicContentEntry[], currentPeriod: AcademicContentEntry | undefined): HonorGroup[] {
