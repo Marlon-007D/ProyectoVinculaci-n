@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
+import { LoadingState } from '../../site/components/states/LoadingState';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../core/AuthContext';
 import { supabase } from '../../../core/supabaseClient';
@@ -96,7 +97,7 @@ function InvitationLinkContent({ children }: { children: ReactNode }) {
     <RequestInvitationEmail key={location.search} institutionId={new URLSearchParams(location.search).get('institution') ?? new URLSearchParams(location.search).get('institution_id') ?? ''}
       requestEmail={(email, institutionId) => requestInvitationEmailService(supabase, email, institutionId, new URLSearchParams(location.search).get('slug') ?? undefined)} />
   </section>;
-  if (link.kind !== 'none') return <p className={styles.card} role="status" aria-busy="true">Verificando el enlace de acceso…</p>;
-  if (userId && !location.pathname.startsWith('/panel/') && sessionChecked !== sessionKey) return <p className={styles.card} role="status">Verificando tu acceso institucional…</p>;
+  if (link.kind !== 'none') return <div className={styles.card}><LoadingState variant="page" pageKind="content" label="Preparando la página" /></div>;
+  if (userId && !location.pathname.startsWith('/panel/') && sessionChecked !== sessionKey) return <div className={styles.card}><LoadingState variant="page" pageKind="content" label="Preparando tu acceso" /></div>;
   return children;
 }

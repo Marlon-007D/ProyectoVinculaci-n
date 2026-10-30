@@ -29,7 +29,7 @@ export function AssignedModulesSkeleton() {
 /** Presentation only: mounted exclusively by the existing loading branches. */
 export function AdminSkeleton() {
   return <section className={layout.container} aria-busy="true" aria-label="Cargando administración institucional">
-    <p role="status">Cargando los datos de tu institución…</p>
+    <p role="status" className="visually-hidden">Cargando los datos de tu institución</p>
     <section className={layout.assignmentCard}>
       <h3>Asignar acceso</h3>
       <div className={layout.form}>

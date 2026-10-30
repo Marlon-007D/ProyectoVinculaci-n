@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
+import { PrivateContentSkeleton } from '../../site/components/Layout/PrivateContentSkeleton';
 import { useAuth } from '../../../core/AuthContext';
 import { supabase } from '../../../core/supabaseClient';
 import { resumePasswordSession } from './temporaryPasswordSession';
@@ -25,5 +26,5 @@ export function AdminSessionPolicy({ children }: { children: ReactNode }) {
   }, [pending, loading, user?.id, attempt]);
   if (!pending) return children;
   if (failure) return <section role="alert"><p>{failure}</p><button type="button" onClick={() => { setFailure(null); setAttempt(value => value + 1); }}>Reintentar</button></section>;
-  return <p role="status" aria-live="polite">Actualizando la sesión administrativa…</p>;
+  return <PrivateContentSkeleton label="Actualizando la sesión administrativa" />;
 }

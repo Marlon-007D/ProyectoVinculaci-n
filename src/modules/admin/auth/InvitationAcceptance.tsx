@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { LoadingState } from '../../site/components/states/LoadingState';
 import type { InvitationAccountService, InvitationDetails } from './invitationAccount';
 import { CompleteInvitation } from './CompleteInvitation';
 import { useToastMessage } from './Toast/Toast';
@@ -27,7 +28,7 @@ export function InvitationAcceptance({ userId, institutionId, slug, institutionN
     void load();
     return () => { active = false; };
   }, [userId, institutionId, slug, key, service, revision]);
-  if (state?.key !== key) return <p className={styles.card} role="status">Verificando los datos de tu invitación…</p>;
+  if (state?.key !== key) return <div className={styles.card}><LoadingState variant="page" pageKind="content" label="Preparando la página" /></div>;
   if (state.status === 'error') return <section className={styles.card}><p>{state.message}</p><button type="button" className={styles.submit} onClick={() => { setState(null); setRevision(value => value + 1); }}>Reintentar</button></section>;
   return <CompleteInvitation key={key} details={state.details} institutionName={state.details.institutionName ?? institutionName} complete={complete} />;
 }

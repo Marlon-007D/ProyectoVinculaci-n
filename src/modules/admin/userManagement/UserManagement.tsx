@@ -1,4 +1,5 @@
 import { useInitialPrivateLoad } from './useInitialPrivateLoad';
+import { PrivateContentSkeleton } from '../../site/components/Layout/PrivateContentSkeleton';
 import { AdminSkeleton } from './AdminSkeleton';
 import { AdminForm } from '../auth/AdminForm';
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
@@ -64,7 +65,7 @@ export function UserManagement({ service }: { service: TenantAdminService }) {
   }, [load, loadingAuth, loadingTenant]);
   const pending = loadingAuth || loadingTenant || state.key !== key || state.status === 'loading';
   const showSkeleton = useInitialPrivateLoad(user ? `${user.id}:${user.last_sign_in_at ?? ''}` : undefined, 'members', pending, authorized, loadingAuth);
-  if (pending) return showSkeleton ? <AdminSkeleton /> : <p role="status" aria-busy="true">Verificando el acceso institucional?</p>;
+  if (pending) return showSkeleton ? <AdminSkeleton /> : <PrivateContentSkeleton />;
   if (state.status === 'error') return <section className={styles.container}><p>{state.message}</p><button type="button" className={styles.btnSubmit} onClick={() => void load()}>Volver a verificar</button></section>;
   const snapshot = state.data;
   const superAdmin = isTenantSuperAdmin(actorRole);

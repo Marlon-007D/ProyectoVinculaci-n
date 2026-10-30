@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { PrivateContentSkeleton } from '../../../modules/site/components/Layout/PrivateContentSkeleton'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { ArrowLeft, BookOpenText, ChevronLeft, ChevronRight, ClipboardList, Clock3, FileText, FolderKanban, ImagePlus, Layers3, Plus, Save, Search, Trash2, Upload } from 'lucide-react'
 import type { AssessmentQuestionSet } from '../../courses/mocks/schoolQuestionMock'
@@ -253,7 +254,7 @@ export function AdminCoursesPage() {
   }
 
   if (isCourseEditorPage && (!draft || !currentLesson || !currentQuestions)) {
-    return <main className={styles.page}><section className={styles.editorCard} role="status">Cargando editor del curso…</section></main>
+    return <main className={styles.page}><section className={styles.editorCard}><PrivateContentSkeleton label="Cargando editor del curso" /></section></main>
   }
 
   if (isCourseEditorPage && draft && currentLesson && currentQuestions) {

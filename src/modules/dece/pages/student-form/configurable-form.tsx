@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { PrivateContentSkeleton } from '../../../site/components/Layout/PrivateContentSkeleton';
 import { createDeceFormService, getQuestionValidation, validateFormAnswers, type FormAnswerValue, type FormQuestion, type FormRuntime, type QuestionType, type QuestionValidation } from '../../services/form-service'
 import type { DeceDataIntegration } from '../../services/dece-data-context'
 import type { Student } from '../../types/student'
@@ -168,7 +169,7 @@ export default function ConfigurableForm({ integration, student, code, section, 
   useEffect(() => { onSectionsChange(sections) }, [onSectionsChange, sections])
 
   if (error) return <div className="notice sensitive" role="alert">{error}</div>
-  if (!runtime) return <p className="helper" role="status">Cargando ficha…</p>
+  if (!runtime) return <PrivateContentSkeleton label="Cargando ficha" />
 
   const currentSection = sections[section] ?? sections[0]
   const locked = readOnly || runtime.submission?.status === 'submitted' || runtime.submission?.status === 'reviewed'

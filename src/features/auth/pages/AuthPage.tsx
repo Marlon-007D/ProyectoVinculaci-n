@@ -1,4 +1,5 @@
 import { authenticatedDestination } from '../../../modules/admin/auth/authenticatedDestination';
+import { LoadingState } from '../../../modules/site/components/states/LoadingState';
 import { resolveLoginIssue } from '../utils/adminAccess';
 import { useTenant } from '../../../core/TenantContext';
 import { useToast, useToastMessage } from '../../../modules/admin/auth/Toast/Toast';
@@ -123,10 +124,9 @@ function AuthPageContent({ mode, requestService }: { mode: 'login' | 'register';
     void authenticate('credentials', form);
   }
 
-  if (loading) return <main className={styles.page} role="status">Cargando tu acceso…</main>;
+  if (loading || (user && loadingTenant)) return <main className={styles.page}><LoadingState variant="page" pageKind="content" label="Preparando la página" /></main>;
 
   if (user && (mfaRequired || mfaEnrollmentRequired)) return <Navigate to={destination} replace />;
-  if (user && loadingTenant) return <main className={styles.page} role="status">Verificando la institución asignada…</main>;
   if (user && activeInstitution && effectiveRole && !blockedAccess && !(registering && busy)) {
     const target = authenticatedDestination(activeInstitution, authInstitutionId, role, location.search);
     if (target) return <Navigate to={resolveReturnTo(returnTo, target)} replace />;

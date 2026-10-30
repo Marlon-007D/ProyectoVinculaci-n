@@ -1,4 +1,5 @@
 import { Activity, lazy, Suspense, useEffect, useState } from 'react';
+import { PrivateContentSkeleton } from '../../site/components/Layout/PrivateContentSkeleton';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../../../core/AuthContext';
 import { useTenant } from '../../../core/TenantContext';
@@ -26,5 +27,5 @@ function Session({ active, retain }: { active: boolean; retain: boolean }) {
   const [visited, setVisited] = useState(false);
   useEffect(() => { setVisited(old => retain && (old || active)); }, [active, retain]);
   if (!active && !(retain && visited)) return null;
-  return <Activity mode={active ? 'visible' : 'hidden'}><ModuleBoundary><Suspense fallback={<p role="status">Cargando proyectos…</p>}><Workspace /></Suspense></ModuleBoundary></Activity>;
+  return <Activity mode={active ? 'visible' : 'hidden'}><ModuleBoundary><Suspense fallback={<PrivateContentSkeleton />}><Workspace /></Suspense></ModuleBoundary></Activity>;
 }

@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { PrivateContentSkeleton } from '../../../site/components/Layout/PrivateContentSkeleton';
 import { Plus } from 'lucide-react'
 import Swal from 'sweetalert2'
 import { Button } from '../../../../shared/components/Button/Button'
@@ -21,7 +22,7 @@ export function ViewToggle({ value, onChange }: { value: 'table' | 'cards'; onCh
 export function StatusBadge({ children }: { children: ReactNode }) { return <span className={styles.badge}>{children}</span> }
 export function RiskBadge({ children }: { children: ReactNode }) { return <span className={`${styles.badge} ${styles.risk}`}>{children}</span> }
 export function EmptyState({ children }: { children: ReactNode }) { return <p className={styles.empty}>{children}</p> }
-export function LoadingState() { return <p role="status" aria-live="polite">Cargando…</p> }
+export function LoadingState() { return <PrivateContentSkeleton label="Cargando contenido" /> }
 export function FormGrid({ children }: { children: ReactNode }) { return <div className={styles.formGrid}>{children}</div> }
 export function FormField({ label, required, help, error, children }: { label: string; required?: boolean; help?: string; error?: string; children: ReactNode }) { return <div className={styles.field}><label>{label}{required && <> <span aria-hidden="true">*</span> <small>obligatorio</small></>}</label>{children}{help && <small>{help}</small>}{error && <small role="alert">{error}</small>}</div> }
 export async function confirmDialog(title: string, text: string) { const result = await Swal.fire({ title, text, icon: 'warning', showCancelButton: true, confirmButtonText: 'Confirmar', cancelButtonText: 'Cancelar', focusCancel: true }); return result.isConfirmed }

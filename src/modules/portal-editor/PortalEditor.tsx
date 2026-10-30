@@ -1,4 +1,5 @@
 import { SectionDetails } from './SectionDetails';
+import { PrivateContentSkeleton } from '../site/components/Layout/PrivateContentSkeleton';
 import {moduleClass} from './portalStyles';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -263,7 +264,7 @@ function Editor({ institutionId, name, slug, role, onDirtyChange, onBusyChange }
       {selected?.status === 'published' && selected.published_slug && <a className={moduleClass("editor-public-link")} href={`/?institution=${encodeURIComponent(slug)}&slug=${encodeURIComponent(selected.published_slug)}`} target="_blank" rel="noreferrer">Abrir portal<ExternalLink size={15} aria-hidden="true"/></a>}
     </div>
     {error && <p role="alert" className={moduleClass("editor-error")}>{error}</p>}
-    {loading && <p role="status" className={moduleClass("editor-loading")}>Cargando páginas e identidad institucional…</p>}
+    {loading && <PrivateContentSkeleton label="Cargando páginas e identidad institucional" />}
     {preview && <button type="button" className={moduleClass('editor-preview-expand')} aria-pressed={widePreview} onClick={() => setWidePreview(value => !value)}>{widePreview ? 'Volver a la vista dividida' : 'Ampliar vista previa'}</button>}
     <div className={moduleClass(`editor-layout ${preview ? 'with-preview' : ''} ${preview && widePreview ? 'preview-expanded' : ''}`)}>
       <form className={moduleClass("editor-form")} onInvalidCapture={notifyInvalidForm} onSubmit={event => { event.preventDefault(); void save(false); }}>

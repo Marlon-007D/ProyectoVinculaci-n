@@ -1,4 +1,5 @@
 import { isSuperAdmin } from '../../core/auth/superAdmin';
+import { LoadingState } from '../site/components/states/LoadingState';
 import { institutionSearch } from '../../features/auth/utils/googleOAuth';
 import { useState, type FormEvent } from 'react';
 import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom';
@@ -35,7 +36,7 @@ export function LoginRoute() {
     finally { setBusy(false); }
   }
 
-  if (loading) return <main className={styles.page} role="status">Verificando tu acceso…</main>;
+  if (loading) return <main className={styles.page}><LoadingState variant="page" pageKind="content" label="Preparando la página" /></main>;
   if (!user) return <InstitutionalLogin email={email} password={password} error={error} busy={busy} onEmailChange={setEmail} onPasswordChange={setPassword} onSubmit={submit} requestPasswordReset={requestPasswordReset} />;
   if (mfaRequired || mfaEnrollmentRequired || isSuperAdmin(role) || roleError || !role)
     return <Navigate to={adminPath} replace />;

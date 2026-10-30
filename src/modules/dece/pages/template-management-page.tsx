@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
+import { PrivateContentSkeleton } from '../../site/components/Layout/PrivateContentSkeleton'
 import Swal from 'sweetalert2'
 import 'sweetalert2/dist/sweetalert2.min.css'
 import { useDeceData } from '../services/dece-data-context'
@@ -248,7 +249,7 @@ export default function TemplateManagementPage() {
   return <TemplateDetail template={selected!} search={search} activeSection={currentSection} visibleSections={visibleSections} resultCount={filtered.length} questions={pagedQuestions} page={page} pageCount={pageCount} busy={busy} error={error} notice={notice} pdfUrl={pdfUrl} pdfBusy={pdfBusy} pdfMessage={pdfMessage} onBack={() => updateRoute({ id: '' })} onTemplate={() => updateRoute({ section: '', page: 1 })} onSection={value => updateRoute({ section: value, page: 1 })} onSearch={value => updateRoute({ q: value, page: 1 }, true)} onPage={value => updateRoute({ page: value })} onQuestion={() => { dialogReturn.current = document.activeElement as HTMLElement }} onChangeQuestion={question => void changeQuestion(question)} onPreview={() => void generatePdf(selected!, true)} onClosePdf={() => { URL.revokeObjectURL(pdfUrl); setPdfUrl(''); setPdfMessage('') }} onReload={() => void load(true)} onSaved={() => setNotice('Pregunta guardada correctamente.')} />
 }
 
-function LoadingState() { return <div className="page-content container-fluid" role="status" aria-live="polite">Cargando…</div> }
+function LoadingState() { return <PrivateContentSkeleton label="Cargando plantillas" /> }
 
 function Breadcrumbs({ name, section, onList, onTemplate }: { name?: string; section?: string; onList?: () => void; onTemplate?: () => void }) {
   const base = location.pathname.replace(/\/plantillas(?:\/[^/]+)?\/?$/, '')

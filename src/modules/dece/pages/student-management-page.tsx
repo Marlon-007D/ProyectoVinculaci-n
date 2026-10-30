@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { PrivateContentSkeleton } from '../../site/components/Layout/PrivateContentSkeleton';
 import Swal from 'sweetalert2'
 import 'sweetalert2/dist/sweetalert2.min.css'
 import { useDeceData } from '../services/dece-data-context'
@@ -310,7 +311,7 @@ export default function StudentManagementPage({ onOpenForm, onStudentSaved, onOp
       </tbody></table></div> : <RecordGrid label="Estudiantes" className={styles.studentCards}>{pageRecords.map(item => <li key={item.student_id}><RecordCard ref={item.student_id === highlightId ? rowRef : undefined} tabIndex={item.student_id === highlightId ? -1 : undefined} onFocus={() => setHighlightId('')} className={item.student_id === highlightId ? styles.highlight : undefined}><div className={styles.person}><span aria-hidden="true">{`${item.first_name} ${item.last_name}`.split(/\s+/).slice(0, 2).map(part => part[0]).join('').toUpperCase()}</span><div><h2>{item.last_name}, {item.first_name}</h2><p>{item.grade_level ?? 'Sin curso'}</p></div></div><dl><div><dt>Cédula</dt><dd>{item.national_id}</dd></div><div><dt>Matrícula</dt><dd>{item.enrollment_number ?? '—'}</dd></div></dl><button type="button" className={`btn btn-outline-primary ${styles.viewButton}`} onClick={() => { history.pushState(null, '', `${basePath}/${item.student_id}`); setRouteStudentId(item.student_id) }}>Ver y editar</button></RecordCard></li>)}</RecordGrid>}
       {visibleRecords.length > 0 && <div className={styles.pagination}><label>Mostrar <select className="form-select" value={pageSize} onChange={event => setPageSize(Number(event.target.value))}>{PAGE_SIZES.map(size => <option key={size} value={size}>{size}</option>)}</select> por página</label><span>Mostrando {firstRecord} a {lastRecord} de {visibleRecords.length}</span><nav aria-label="Paginación de estudiantes"><button className="btn btn-outline-secondary btn-sm" type="button" disabled={page === 0 || loading} onClick={() => setPage(value => Math.max(0, value - 1))}>Anterior</button>{Array.from({ length: pageCount }, (_, index) => <button className="btn btn-sm" type="button" key={index} aria-current={page === index ? 'page' : undefined} onClick={() => setPage(index)}>{index + 1}</button>)}<button className="btn btn-outline-secondary btn-sm" type="button" disabled={page + 1 >= pageCount || loading} onClick={() => setPage(value => value + 1)}>Siguiente</button></nav></div>}
     </>}
-    {loading && <p role="status">Cargando estudiantes…</p>}
+    {loading && <PrivateContentSkeleton label="Cargando estudiantes" />}
   </div>
 }
 

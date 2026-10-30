@@ -65,7 +65,7 @@ export function InstitutionProvider({ institutionId, loadingFallback, children }
         />
       </>
     );
-  if (found.state.status === "loading") return loadingFallback ?? <LoadingState label="Cargando institución…" />;
+  if (found.state.status === "loading") return loadingFallback ?? <LoadingState variant="page" pageKind="content" label="Preparando la institución" />;
   if (found.state.status === "error")
     return (
       <>

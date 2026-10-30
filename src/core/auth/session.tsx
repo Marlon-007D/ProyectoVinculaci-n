@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type FormEvent } from 'react'
+import { LoadingState } from '../../modules/site/components/states/LoadingState';
 import { Navigate, useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import { useAuth } from '../AuthContext'
@@ -109,7 +110,7 @@ export function SessionProvider() {
 
   async function signOut() { setSession(null); setChoices([]); await logout() }
   const value = useMemo(() => ({ session, signOut }), [session])
-  if (!ready) return <main className="container py-5" role="status">Cargando sesión…</main>
+  if (!ready) return <main className="container py-5"><LoadingState variant="page" pageKind="content" label="Preparando la página" /></main>
   if (choices.length && !session) return <main className="container py-5"><h1>Selecciona tu institución</h1>{choices.map(item => <button className="btn btn-primary me-2" key={item.institutionId} onClick={() => { setSession(item); navigate(routeFor(item), { replace: true }); setChoices([]) }}>{item.institutionName}</button>)}</main>
   return <SessionContext.Provider value={value}><LoginOrRoute session={session} onAuthenticated={async (userId, email, slug) => {
     try {
@@ -289,7 +290,7 @@ function StudentFicha({ session }: { session: ActiveSession }) {
 
   return <div className="studentPortal"><DeceDataProvider value={integration}><main className="container studentPortal__main py-4">
     <header className="studentPortal__header"><div><span className="studentPortal__eyebrow">ESPACIO DEL ESTUDIANTE</span><h1>Mis fichas</h1><p>Completa tus formularios y consulta tus envíos.</p></div><button className="btn btn-outline-secondary" onClick={() => void signOut()}>Cerrar sesión</button></header>
-    {loading ? <p role="status">Cargando ficha…</p> : error ? <p role="alert" className="studentPortal__message">{error}</p> : student && <>
+    {loading ? <LoadingState variant="page" pageKind="content" label="Preparando tu ficha" /> : error ? <p role="alert" className="studentPortal__message">{error}</p> : student && <>
       <nav className="studentPortal__tabs" aria-label="Fichas, historial y casos"><button type="button" className={activeTab === 'forms' ? 'active' : ''} onClick={() => setActiveTab('forms')}>Completar fichas</button><button type="button" className={activeTab === 'history' ? 'active' : ''} onClick={() => { setActiveTab('history'); setHistoryRefresh(value => value + 1); setSelectedHistory(null) }}>Historial de fichas</button><button type="button" className={activeTab === 'cases' ? 'active' : ''} onClick={() => setActiveTab('cases')}>Mis casos de acompañamiento</button></nav>
       {activeTab === 'forms' ? <>
         <nav className="studentPortal__formTabs" aria-label="Formularios">{availableForms.map(form => <button type="button" key={form.code} className={formCode === form.code ? 'active' : ''} onClick={() => { setFormCode(form.code); setSection(0) }}>{form.name}</button>)}</nav>

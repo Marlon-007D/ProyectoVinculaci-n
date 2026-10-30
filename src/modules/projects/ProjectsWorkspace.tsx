@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { PrivateContentSkeleton } from '../site/components/Layout/PrivateContentSkeleton';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../core/AuthContext';
 import { useTenant } from '../../core/TenantContext';
@@ -32,7 +33,7 @@ export function ProjectsWorkspace({ mode = 'projects' }: { mode?: 'projects' | '
 
   function content() {
     if (auth.roleError) return <p role="alert">{auth.roleError}</p>;
-    if (tenant.loadingTenant) return <p role="status">Cargando institución…</p>;
+    if (tenant.loadingTenant) return <PrivateContentSkeleton />;
     const error = tenant.tenantError || tenant.modulePermissionError;
     if (error) return <section className={css('project-card')}><p role="alert">{error}</p><button onClick={tenant.reloadInstitutions}>Reintentar</button></section>;
     if (!institution) return <p>No tienes una institución activa asignada.</p>;

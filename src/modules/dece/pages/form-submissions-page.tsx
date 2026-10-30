@@ -1,4 +1,5 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
+import { PrivateContentSkeleton } from '../../site/components/Layout/PrivateContentSkeleton';
 import type { Student } from '../types'
 import { useDeceData } from '../services/dece-data-context'
 import { createDeceFormService } from '../services/form-service'
@@ -182,7 +183,7 @@ export default function FormSubmissionsPage({ onOpen }: { onOpen: (student: Stud
   return <main className={`page-content container-fluid ${styles.page}`}>
     <div className="eyebrow">GESTIÓN DECE</div><div className="welcome-row list-title"><div><h1>Revisión de fichas</h1><p className="subheading">Consulta respuestas, revisa su estado y gestiona la edición.</p></div><div className="record-total"><b>{filtered.length}</b> envíos</div></div>
     <p className="visually-hidden" role="status" aria-live="polite">{announcement || `Mostrando ${from} a ${to} de ${sorted.length}`}</p>
-    {loading && <p role="status" aria-live="polite">Cargando…</p>}{error && <div className="notice sensitive" role="alert">{error}</div>}
+    {loading && <PrivateContentSkeleton label="Cargando fichas" />}{error && <div className="notice sensitive" role="alert">{error}</div>}
     {!loading && !error && <>
       <section className={styles.filters} aria-label="Filtros de fichas">
         <label>Tipo de ficha<select className="form-select" value={query.form} onChange={event => updateQuery({ form: event.target.value }, true)}><option value="all">Todas las fichas</option>{forms.map(form => <option key={form.id} value={form.id}>{form.name}</option>)}</select></label>

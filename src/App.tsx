@@ -28,7 +28,7 @@ import { AppToaster } from './shared/components/Toaster/AppToaster';
 import { ConfirmHost } from './shared/components/ConfirmDialog/ConfirmHost';
 
 const ModuleRoutes = lazy(() => import('./modules/projects/integration/ModuleRoutes'));
-const modulePage = <ModuleBoundary><Suspense fallback={<p role="status">Cargando módulo…</p>}><ModuleRoutes /></Suspense></ModuleBoundary>;
+const modulePage = <ModuleBoundary><Suspense fallback={<PrivateContentSkeleton />}><ModuleRoutes /></Suspense></ModuleBoundary>;
 const RESERVED_SLUGS = new Set(['admin', 'panel', 'inicio', 'proyectos', 'dece', 'simuladores', 'portal', 'system-admin']);
 
 function SlugSessionRoute() {
@@ -74,9 +74,9 @@ function DeceWorkspaceRoute() {
     getStudentId: (student: { recordId?: string }) => student.recordId ?? null,
   } : null, [activeInstitution, user?.id]);
 
-  if (loading) return <main role="status">Cargando el espacio DECE…</main>;
+  if (loading) return <PrivateContentSkeleton />;
   if (!user) return <Navigate to={'/login' + location.search} state={{ returnTo: returnToFromLocation(location) }} replace />;
-  if (loadingTenant) return <main role="status">Cargando el espacio DECE…</main>;
+  if (loadingTenant) return <PrivateContentSkeleton />;
   if (!activeInstitution || !integration) return <main role="alert">No hay una institución activa disponible para esta cuenta.</main>;
   if (role !== 'dece_staff') return <main role="alert">El módulo DECE está disponible únicamente para el personal DECE.</main>;
   if (modulePermissionError) return <main role="alert">{modulePermissionError}</main>;
