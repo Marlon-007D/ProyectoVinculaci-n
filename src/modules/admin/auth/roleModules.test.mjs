@@ -21,3 +21,10 @@ test('student receives enabled learning modules without enabling disabled or adm
  assert.deepEqual(assignedRoleModules('student', [], ['inicio','projects','simuladores','dece','portal']), ['inicio','projects','simuladores']);
  assert.deepEqual(assignedRoleModules('student', [], ['inicio']), ['inicio']);
 });
+
+test('DECE only opens for the DECE role, even when the institution enables the module', async () => {
+  const { roleCanOpenModule } = await import('./roleModules.ts');
+  assert.equal(roleCanOpenModule('dece_staff', 'dece'), true);
+  for (const role of ['institution_admin', 'super_admin', 'projects_manager', 'content_editor', 'student', null]) assert.equal(roleCanOpenModule(role, 'dece'), false, String(role));
+  for (const module of ['projects', 'portal', 'simuladores']) assert.equal(roleCanOpenModule('institution_admin', module), true);
+});

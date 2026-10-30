@@ -4,6 +4,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../../core/AuthContext';
 import { useTenant, type InstitutionModuleName } from '../../../../core/TenantContext';
 import { institutionSearch } from '../../../../features/auth/utils/googleOAuth';
+import { roleCanOpenModule } from '../../../../modules/admin/auth/roleModules';
 import { notify } from '../../../../shared/components/Toaster/notify';
 import { confirmAction } from '../../../../shared/components/ConfirmDialog/confirm';
 import styles from './PrivateWorkspace.module.css';
@@ -33,13 +34,12 @@ export function PrivateWorkspace({ children }: { children: ReactNode }) {
   const links = role === 'super_admin' ? [] : workspaceLinks.filter(item => {
     if (!item.module) return true;
     if (isDeceStaff) return item.module === 'dece' && hasModuleAccess(item.module);
-    return hasModuleAccess(item.module);
+    return hasModuleAccess(item.module) && roleCanOpenModule(role, item.module);
   });
-  const deceActive = pathname.startsWith('/panel/dece');
   const canManageAcademicContent = role === 'super_admin' || role === 'institution_admin';
   const coursesActive = pathname.startsWith('/panel/cursos');
   const publicationsActive = pathname.startsWith('/panel/publicaciones');
-  const [openGroup, setOpenGroup] = useState<'courses' | 'publications' | 'dece' | null>(null);
+  const [openGroup, setOpenGroup] = useState<'courses' | 'publications' | null>(null);
   // collapsed: icon rail. peek: widened while the pointer rests on it. open: pinned with the toggle.
   // Both expanded states dim the page behind. The rail always starts collapsed.
   const [sidebar, setSidebar] = useState<'collapsed' | 'peek' | 'open'>('collapsed');
@@ -59,8 +59,7 @@ export function PrivateWorkspace({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (coursesActive) setOpenGroup('courses');
     if (publicationsActive) setOpenGroup('publications');
-    if (deceActive) setOpenGroup('dece');
-  }, [coursesActive, publicationsActive, deceActive]);
+  }, [coursesActive, publicationsActive]);
 
   useEffect(() => { setSidebar('collapsed'); }, [pathname]);
 
@@ -124,10 +123,10 @@ export function PrivateWorkspace({ children }: { children: ReactNode }) {
     { label: 'Revisión de fichas', path: '/panel/dece/envios', icon: Inbox },
   ];
   function deceGroup(item: LinkItem) {
-    return <section className={`${styles.navGroup} ${openGroup === 'dece' ? '' : styles.collapsed}`} key={item.path}>
-      <button type="button" title="DECE: atención y acompañamiento estudiantil" className={deceActive ? styles.groupButtonActive : styles.groupButton} aria-expanded={openGroup === 'dece'} onClick={() => { if (sidebarCollapsed) setSidebar('open'); setOpenGroup(value => value === 'dece' && !sidebarCollapsed ? null : 'dece'); }}><HeartHandshake size={20} aria-hidden="true" /><span>DECE</span><ChevronDown size={18} aria-hidden="true" /></button>
+    return <section className={`${styles.navGroup} ${styles.alwaysOpen}`} key={item.path} aria-label="DECE">
+      <div className={styles.groupLabel} title="DECE: atención y acompañamiento estudiantil"><HeartHandshake size={20} aria-hidden="true" /><span>DECE</span></div>
       <div className={styles.subnav}>
-        {deceSections.map(({ label, path, icon: Icon }) => <Link key={path} title={label} to={scopedPath(path)} aria-current={pathname === path ? 'page' : undefined}><Icon size={18} aria-hidden="true" /><span>{label}</span></Link>)}
+        {deceSections.map(({ label, path, icon: Icon }) => <Link key={path} title={label} to={scopedPath(path)} aria-current={pathname === path || (path !== '/panel/dece' && pathname.startsWith(path + '/')) ? 'page' : undefined}><Icon size={18} aria-hidden="true" /><span>{label}</span></Link>)}
       </div>
     </section>;
   }

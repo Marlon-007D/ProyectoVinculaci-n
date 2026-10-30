@@ -6,6 +6,11 @@ export function defaultRoleModule(role: string): string | undefined {
   return roleDefaults[canonicalTenantRole(role)];
 }
 
+/** DECE holds confidential student records: only the DECE role opens it, whatever the institution enables. */
+export function roleCanOpenModule(role: string | null, module: string): boolean {
+  return module !== 'dece' || (role !== null && canonicalTenantRole(role) === 'dece');
+}
+
 export function assignedRoleModules(role: string, selected: readonly string[], enabled: readonly string[]): string[] {
   const required = defaultRoleModule(role);
   if (required && !enabled.includes(required)) throw new Error(`El módulo ${required} debe estar habilitado en esta institución para asignar este rol.`);

@@ -1,5 +1,7 @@
 import { ArrowUpRight, BriefcaseBusiness, Calculator, HeartHandshake, PanelsTopLeft, ShieldCheck, type LucideIcon } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../core/AuthContext';
+import { roleCanOpenModule } from '../modules/admin/auth/roleModules';
 import { useTenant, type InstitutionModuleName } from '../core/TenantContext';
 import styles from './InstitutionalPanel.module.css';
 
@@ -23,9 +25,10 @@ const modules: ModuleItem[] = [
 
 export function InstitutionalPanel() {
   const { activeInstitution, hasModuleAccess } = useTenant();
+  const { role } = useAuth();
   const availableModules = modules.filter(module => module.id === 'admin'
     ? Boolean(activeInstitution)
-    : Boolean(module.permission && hasModuleAccess(module.permission)));
+    : Boolean(module.permission && hasModuleAccess(module.permission) && roleCanOpenModule(role, module.permission)));
 
   return (
     <div className={styles.workspace}>
