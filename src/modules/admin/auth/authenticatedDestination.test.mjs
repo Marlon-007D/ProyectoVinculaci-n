@@ -4,7 +4,7 @@ import { authenticatedDestination } from './authenticatedDestination.ts';
 
 test('verified sessions use private destinations with a clean tenant pair in four schools', () => {
   for (const institution_id of ['a','b','c','d']) {
-    for (const [role, module, path] of [['super_admin',null,'admin'],['institution_admin',null,''],['dece','dece','dece'],['projects_manager','projects','proyectos'],['content_editor','portal','portal'],['student','simuladores','simuladores'],['teacher',null,''],['secretary',null,''],['staff',null,'']]) {
+    for (const [role, module, path] of [['super_admin',null,'admin'],['institution_admin',null,''],['dece','dece','dece'],['projects_manager','projects','proyectos'],['content_editor','portal','portal'],['student','simuladores',''],['teacher',null,''],['secretary',null,''],['staff',null,'']]) {
       const institution = { institution_id, slug: 'school-'+institution_id, role, is_active: true, module_permissions: module ? { [module]: true } : {} };
       const destination = authenticatedDestination(institution, institution_id, role, `?institution=${institution_id}&slug=school-${institution_id}&accept_invitation=1&error=stale`);
       assert.equal(destination, `/panel${path ? '/' + path : ''}?institution=${institution_id}&slug=school-${institution_id}`);

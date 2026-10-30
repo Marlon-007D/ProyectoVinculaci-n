@@ -15,7 +15,7 @@ export function authenticatedDestination(institution: VerifiedInstitution, authI
       { institutionId: institution.institution_id, slug: institution.slug, role, active: true })) return null;
   const modules: Readonly<Record<string, readonly [string, string]>> = {
     dece: ['dece', '/panel/dece'], projects_manager: ['projects', '/panel/proyectos'],
-    content_editor: ['portal', '/panel/portal'], student: ['simuladores', '/panel/simuladores'],
+    content_editor: ['portal', '/panel/portal'],
   };
   const preferred = modules[canonicalTenantRole(role)];
   // Module roles open their module; administrators open the panel home, which lists only their modules.

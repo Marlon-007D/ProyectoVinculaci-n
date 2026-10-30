@@ -1,4 +1,4 @@
-import { ArrowUpRight, BriefcaseBusiness, Calculator, HeartHandshake, PanelsTopLeft, ShieldCheck, type LucideIcon } from 'lucide-react';
+import { ArrowUpRight, BriefcaseBusiness, HeartHandshake, PanelsTopLeft, ShieldCheck, type LucideIcon } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../core/AuthContext';
 import { roleCanOpenModule } from '../modules/admin/auth/roleModules';
@@ -18,7 +18,6 @@ type ModuleItem = {
 const modules: ModuleItem[] = [
   { id: 'projects', permission: 'projects', title: 'Proyectos de Vinculación', path: '/panel/proyectos', description: 'Organiza proyectos comunitarios, equipos de trabajo y actividades institucionales.', group: 'Comunidad', icon: BriefcaseBusiness },
   { id: 'dece', permission: 'dece', title: 'Departamento DECE', path: '/panel/dece', description: 'Gestiona fichas, estudiantes y casos de acompañamiento.', group: 'Comunidad', icon: HeartHandshake },
-  { id: 'simuladores', permission: 'simuladores', title: 'Simuladores Académicos', path: '/panel/simuladores', description: 'Practica con herramientas académicas de cálculo y conversión.', group: 'Herramientas', icon: Calculator },
   { id: 'portal', permission: 'portal', title: 'Portal Web', path: '/panel/portal', description: 'Administra los contenidos y publicaciones del portal educativo.', group: 'Herramientas', icon: PanelsTopLeft },
   { id: 'admin', title: 'Administración y Seguridad', path: '/panel/admin', description: 'Consulta los accesos y permisos disponibles para tu cuenta.', group: 'Administración', icon: ShieldCheck },
 ];

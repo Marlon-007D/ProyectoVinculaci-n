@@ -96,6 +96,11 @@
 .aside .nav a[data-tone="dece-reviews"] svg{background:#e5d2ff;color:#7334ba}
 .aside .nav a[aria-current="page"] svg{background:#c6dcff;color:#1558c0}
 
-
-
+/* Fixed footer: the account block stays at the bottom; only the navigation list scrolls. */
+.aside{display:flex;flex-direction:column;height:100dvh;overflow:hidden}
+.sidebarTop{flex:0 0 auto}
+.nav{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#c4cad2 transparent}
+.nav::-webkit-scrollbar{width:6px}
+.nav::-webkit-scrollbar-thumb{background:#c4cad2;border-radius:6px}
+.account{flex:0 0 auto;margin-top:0;background:#fff}
 

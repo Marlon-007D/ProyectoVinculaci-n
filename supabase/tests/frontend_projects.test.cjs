@@ -56,7 +56,7 @@ test('rutas de integración conservan portada, cursos y navegación existente',(
   });
   return require('react-dom/server').renderToStaticMarkup(react.createElement(App));
  }
- for(const [path,expected] of [['/','EXISTING_HOME'],['/admin-cursos','EXISTING_COURSES'],['/unknown','EXISTING_NOT_FOUND'],['/panel/proyectos','NEW_MODULE'],['/panel/portal','NEW_MODULE'],['/proyectos?transparency=1','NEW_MODULE'],['/portal?institution=school','NEW_MODULE'],['/panel/ruta-inexistente','ERROR_PAGE'],['/panel/cursos','ACADEMIC'],['/panel/simuladores/facturacion','SIMULATORS'],['/panel/simuladores/interes','SIMULATORS']]){
+ for(const [path,expected] of [['/','EXISTING_HOME'],['/admin-cursos','EXISTING_COURSES'],['/unknown','EXISTING_NOT_FOUND'],['/panel/proyectos','NEW_MODULE'],['/panel/portal','NEW_MODULE'],['/proyectos?transparency=1','NEW_MODULE'],['/portal?institution=school','NEW_MODULE'],['/panel/ruta-inexistente','ERROR_PAGE'],['/panel/cursos','ACADEMIC']]){
   assert.ok(renderApp(path).includes(expected),path+' did not preserve its route');
  }
  // Reloading a private page: children redirect from `user`, which is null until the session resolves.

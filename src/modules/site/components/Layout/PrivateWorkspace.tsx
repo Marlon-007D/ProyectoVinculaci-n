@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useId, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent, type ReactNode } from 'react';
-import { Award, BookOpenText, Building2, Calculator, CalendarDays, ChevronDown, FileText, FolderKanban, HeartHandshake, Home, Inbox, Layers3, LogOut, Menu, Newspaper, PanelLeftClose, PanelLeftOpen, PanelTop, ShieldCheck, Users } from 'lucide-react';
+import { Award, BookOpenText, Building2, CalendarDays, ChevronDown, FileText, FolderKanban, HeartHandshake, Home, Inbox, Layers3, LogOut, Menu, Newspaper, PanelLeftClose, PanelLeftOpen, PanelTop, ShieldCheck, Users } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../../core/AuthContext';
 import { useTenant, type InstitutionModuleName } from '../../../../core/TenantContext';
@@ -16,7 +16,6 @@ const workspaceLinks: LinkItem[] = [
   { label: 'Inicio', path: '/panel', icon: Home },
   { label: 'Proyectos', path: '/panel/proyectos', icon: FolderKanban, module: 'projects' },
   { label: 'DECE', path: '/panel/dece', icon: HeartHandshake, module: 'dece' },
-  { label: 'Simuladores', path: '/panel/simuladores', icon: Calculator, module: 'simuladores' },
   { label: 'Portal Web', path: '/panel/portal', icon: PanelTop, module: 'portal' },
 ];
 
