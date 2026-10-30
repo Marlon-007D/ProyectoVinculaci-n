@@ -139,5 +139,5 @@
   .site-a11y__trigger { width: 4rem; height: 4rem; }
   .site-a11y__step, .site-a11y__close, .site-a11y__tabs button { min-height: 44px; }
 }
-.site-session-button { border: 0; background: transparent; color: inherit; font: inherit; cursor: pointer; }
+.site-session-button { display: inline-flex; align-items: center; border: 0; background: transparent; color: inherit; cursor: pointer; white-space: nowrap; }
 .site-session-button:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
