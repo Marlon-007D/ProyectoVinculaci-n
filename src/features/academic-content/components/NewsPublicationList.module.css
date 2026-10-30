@@ -1,6 +1,10 @@
 .newsPage {
-  --news-primary: #b5547d;
-  --news-primary-strong: #8b234e;
+  --news-primary: #1a73e8;
+  --news-primary-strong: #155fc0;
+  --news-soft: #e8f1ff;
+  --news-soft-hover: #dceaff;
+  --news-danger: #b3261e;
+  --news-danger-soft: #fce8e6;
   padding: 28px clamp(24px, 4vw, 56px) 56px;
 }
 .newsHeading { display: flex; align-items: center; min-height: 48px; margin: 0 0 20px; }
@@ -23,7 +27,7 @@
 .filters { display: flex; flex-wrap: wrap; gap: 8px; }
 .filterChip { display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 12px; border: 0; border-radius: 10px; color: #594751; background: transparent; font: 600 14px Roboto, sans-serif; cursor: pointer; }
 .filterChip:hover { background: #f9eaf0; }
-.filterChipActive { color: #6b1c40; background: #ffd9e6; }
+.filterChipActive { color: var(--news-primary-strong); background: var(--news-soft); }
 .filterChip span { display: grid; place-items: center; min-width: 19px; height: 19px; padding: 0 4px; border-radius: 50%; color: inherit; background: #f1eaed; font-size: 11px; }
 .filterChipActive span { background: rgb(255 255 255 / .68); }
 .newsPage .toolbarActions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; min-width: max-content; }
@@ -52,13 +56,13 @@
 .newsPage .statusSelectField :global(.material-symbols-rounded) { position: absolute; z-index: 1; inset: 0; display: grid; place-items: center; color: #806c75; font-family: 'Material Symbols Rounded'; font-size: 20px; font-feature-settings: 'liga'; pointer-events: none; }
 .newsPage .statusSelectField select { position: absolute; inset: 0; width: 100%; height: 100%; padding: 0; border: 0; outline: 0; color: transparent; appearance: none; background: transparent; cursor: pointer; }
 .newsPage .statusSelectField select option { color: #302a30; }
-.newButton { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 16px; border: 0; border-radius: 12px; color: #6b1c40; background: #ffd9e6; font: 700 14px Roboto, sans-serif; white-space: nowrap; }
-.newButton:hover { background: #f8c7d9; }
+.newButton { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 16px; border: 0; border-radius: 12px; color: #fff; background: var(--news-primary); font: 700 14px Roboto, sans-serif; white-space: nowrap; }
+.newButton:hover { background: var(--news-primary-strong); }
 .newButton :global(.material-symbols-rounded), .postAction :global(.material-symbols-rounded), .publicationPagination :global(.material-symbols-rounded) { font-family: 'Material Symbols Rounded'; font-size: 20px; font-weight: 400; font-style: normal; line-height: 1; font-feature-settings: 'liga'; }
 
 .newsPage .publicationPagination { display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; margin: 0; padding: 0; border: 0; color: #594751; font: 600 13px Roboto, sans-serif; }
-.newsPage .publicationPagination button { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; height: 44px; padding: 0 10px; border: 0; border-radius: 12px; color: var(--news-primary-strong); background: #ffedf3; cursor: pointer; font: 600 13px Roboto, sans-serif; }
-.newsPage .publicationPagination button:hover:not(:disabled) { background: #ffd9e6; }
+.newsPage .publicationPagination button { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; height: 44px; padding: 0 10px; border: 0; border-radius: 12px; color: var(--news-primary-strong); background: var(--news-soft); cursor: pointer; font: 600 13px Roboto, sans-serif; }
+.newsPage .publicationPagination button:hover:not(:disabled) { background: var(--news-soft-hover); }
 .newsPage .publicationPagination button:disabled { color: #b7aeb2; background: #f5e9ee; cursor: default; }
 .newsPage .publicationPagination .paginationCount { min-width: 92px; color: #4e3a43; text-align: center; font-variant-numeric: tabular-nums; }
 .newsPage .publicationPagination .paginationLabel { display: inline; }
@@ -77,16 +81,17 @@
 .statusChip { flex: none; margin-top: 1px; padding: 5px 8px; border: 0; border-radius: 8px; color: #625c66; background: #f1eff2; font: 600 11px/1 Roboto, sans-serif; }
 .statusChip { display: inline-flex; align-items: center; gap: 4px; }
 .statusChip :global(.material-symbols-rounded) { font-family: 'Material Symbols Rounded'; font-size: 13px; font-feature-settings: 'liga'; }
-.statusPublished { color: #6b1c40; background: #ffedf3; }
+.statusPublished { color: var(--news-primary-strong); background: var(--news-soft); }
 .postBody p { display: -webkit-box; width: 100%; height: 40px; min-height: 40px; max-height: 40px; overflow: hidden; margin: 0; color: #5e5662; font: 400 14px/20px Roboto, sans-serif; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .postFooter { display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 8px; width: 100%; min-width: 0; height: 32px; margin: 0; }
 .postFooter small { display: inline-flex; flex: 0 1 auto; align-items: center; gap: 6px; min-width: 0; margin: 0; padding: 6px 9px; border-radius: 999px; color: #6b6870; background: #f2f1f3; font: 500 12px/16px Roboto, sans-serif; }
 .postFooter small :global(.material-symbols-rounded) { flex: none; color: currentColor; font-family: 'Material Symbols Rounded'; font-size: 16px; font-feature-settings: 'liga'; }
 .postFooter .postActions { flex: none; display: flex; align-items: center; justify-content: flex-end; gap: 8px; width: auto; height: 32px; margin: 0; padding: 0; }
-.postAction { display: grid; flex: 0 0 40px; place-items: center; width: 40px; height: 40px; padding: 0; border: 0; border-radius: 14px; color: var(--news-primary); background: #ffedf3; cursor: pointer; }
-.postAction:hover { color: var(--news-primary-strong); background: #ffd9e6; }
-.previewAction, .dangerAction { color: var(--news-primary); }
-.dangerAction:hover { color: var(--news-primary-strong); background: #ffedf3; }
+.postAction { display: grid; flex: 0 0 40px; place-items: center; width: 40px; height: 40px; padding: 0; border: 0; border-radius: 14px; color: var(--news-primary); background: var(--news-soft); cursor: pointer; }
+.postAction:hover { color: var(--news-primary-strong); background: var(--news-soft-hover); }
+.previewAction { color: var(--news-primary); }
+.dangerAction { color: var(--news-danger); }
+.dangerAction:hover { color: var(--news-danger); background: var(--news-danger-soft); }
 .filterChip:focus-visible, .newButton:focus-visible, .postAction:focus-visible, .publicationPagination button:focus-visible { outline: 2px solid var(--news-primary); outline-offset: 2px; }
 
 @media (max-width: 700px) {

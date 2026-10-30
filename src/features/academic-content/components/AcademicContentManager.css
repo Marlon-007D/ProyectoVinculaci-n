@@ -1,5 +1,6 @@
+.academic-content-page { --accent: #1a73e8; --accent-hover: #155fc0; --accent-soft: #e8f1ff; --accent-container: #d2e3fc; --accent-focus: #a8c7fa; }
 .academic-content-page.page-content { padding-top: 22px; }
-.academic-content-page.is-honor-page { --accent: #426b4a; --accent-hover: #34593b; --accent-soft: #eaf4ec; --accent-container: #d9efdd; --accent-focus: #bfdcc4; padding-inline: clamp(24px,4vw,48px); padding-bottom: 56px; }
+.academic-content-page.is-honor-page { padding-inline: clamp(24px,4vw,48px); padding-bottom: 56px; }
 .academic-page-heading { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-bottom: 22px; }
 .academic-page-heading h1 { margin: 0; color: #302a34; font: 600 30px/1.15 'Outfit',sans-serif; }
 .academic-page-heading p { margin: 7px 0 0; color: var(--muted); font-size: 14px; }
