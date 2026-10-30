@@ -1,8 +1,9 @@
 import { useEffect, useId, useRef, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import type { MenuNode } from "../../types/menu";
 import { MenuLink, MenuLinkContent } from "./MenuLink";
 import { NavigationIcon } from "./NavigationIcon";
+import { SessionActions } from "./SessionActions";
 import { withSimulatorChoices } from "./Navigation";
 
 function MobileItem({ node, close }: { node: MenuNode; close: () => void }) {
@@ -32,7 +33,7 @@ function MobileItem({ node, close }: { node: MenuNode; close: () => void }) {
   );
 }
 
-export function MobileNavigation({ tree, loginUrl }: { tree: MenuNode[]; loginUrl?: string }) {
+export function MobileNavigation({ tree }: { tree: MenuNode[] }) {
   const [open, setOpen] = useState(false);
   const panelId = useId();
   const btnRef = useRef<HTMLButtonElement>(null);
@@ -63,11 +64,7 @@ export function MobileNavigation({ tree, loginUrl }: { tree: MenuNode[]; loginUr
             const node = withSimulatorChoices(item);
             return <MobileItem key={node.menu_id} node={node} close={() => setOpen(false)} />;
           })}
-          {loginUrl && <li>
-            <Link to={loginUrl} className="site-mnav__link" onClick={() => setOpen(false)}>
-              <MenuLinkContent><NavigationIcon label="Iniciar sesión" /><span>Iniciar sesión</span></MenuLinkContent>
-            </Link>
-          </li>}
+          <SessionActions variant="mobile" onNavigate={() => setOpen(false)} />
         </ul>
       </nav>
     </div>

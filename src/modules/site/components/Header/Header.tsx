@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import type { AsyncState } from "../../types/common";
 import type { MenuNode } from "../../types/menu";
@@ -34,9 +34,6 @@ export function Header({ config, homeUrl = "/", preview = false }: Props) {
   const letter = config.name.trim().charAt(0).toUpperCase() || "I";
   const { institution } = useInstitution();
   const tree = institutionalNavigation(institution?.institution_id);
-  const loginUrl = institution
-    ? `/${institution.slug}/login?institution=${encodeURIComponent(institution.institution_id)}`
-    : undefined;
 
   return (
     <header className={`site-header ${styles.fixedHeader}`}>
@@ -49,8 +46,8 @@ export function Header({ config, homeUrl = "/", preview = false }: Props) {
           )}
           <span className="site-brand__name" title={config.name}>{config.name}</span>
         </Link>
-              <div className="site-header__desktop"><Navigation tree={tree} loginUrl={loginUrl} /></div>
-              <div className="site-header__mobile"><MobileNavigation tree={tree} loginUrl={loginUrl} /></div>
+              <div className="site-header__desktop"><Navigation tree={tree} /></div>
+              <div className="site-header__mobile"><MobileNavigation tree={tree} /></div>
         {!preview && <AccessibilityControls />}
       </div>
     </header>

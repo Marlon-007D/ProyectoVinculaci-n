@@ -346,6 +346,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const requestLoginLink = async (email: string) => {
     writeSessionValue('auth-login-method', 'email_totp');
+    writeSessionValue('auth-landing-redirect', '1');
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: { shouldCreateUser: false, emailRedirectTo: window.location.origin },

@@ -4,9 +4,11 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { supabase } from './supabaseClient';
 import { isPublicPortalSearch } from './publicPortalSearch';
+import { readSessionValue, writeSessionValue } from '../modules/admin/auth/sessionStorage';
 import { useAuth } from './AuthContext';
 import { institutionContextFromSearch } from '../features/auth/utils/googleOAuth';
 
+export const LANDING_REDIRECT_KEY = 'auth-landing-redirect';
 export const INSTITUTION_MODULE_NAMES = ['inicio', 'projects', 'dece', 'simuladores', 'portal'] as const;
 export type InstitutionModuleName = (typeof INSTITUTION_MODULE_NAMES)[number];
 export type InstitutionModulePermissions = Record<InstitutionModuleName, boolean>;
@@ -169,10 +171,12 @@ export function TenantProvider({ children }: { children: ReactNode }) {
     ? requestedInstitution ?? null
     : institutions.find(item => item.institution_id === selectedId) ?? institutions.find(item => item.institution_id === authInstitutionId) ?? null;
   useEffect(() => {
+    // The public portal stays reachable while signed in; only the return from an email sign-in link lands on the panel.
+    if (readSessionValue(LANDING_REDIRECT_KEY) !== '1') return;
     if (location.pathname !== '/' || !(requestedInstitutionId || requestedSlug) || location.hash || isPublicPortalSearch(location.search)
       || !user || loading || mfaRequired || mfaEnrollmentRequired || !current || !activeInstitution) return;
     const destination = authenticatedDestination(activeInstitution, authInstitutionId, role, location.search);
-    if (destination) navigate(destination, { replace: true });
+    if (destination) { writeSessionValue(LANDING_REDIRECT_KEY, null); navigate(destination, { replace: true }); }
   }, [location.pathname, location.search, location.hash, requestedInstitutionId, requestedSlug, user, loading,
     mfaRequired, mfaEnrollmentRequired, current, activeInstitution, authInstitutionId, role, navigate]);
   const hasModuleAccess = (moduleName: InstitutionModuleName) => activeInstitution?.module_permissions[moduleName] === true;
