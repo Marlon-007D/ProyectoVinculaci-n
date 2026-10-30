@@ -1,5 +1,5 @@
 import { currentAdminScope } from '../modules/admin/auth/institutionNavigation';
-import { logoutDestination, logoutToPublicInstitution } from '../modules/admin/auth/logoutDestination';
+import { logoutDestination, logoutToPublicInstitution, remoteSignOutTarget } from '../modules/admin/auth/logoutDestination';
 import { readSessionValue, writeSessionValue } from '../modules/admin/auth/sessionStorage';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { accessScopeKey, resolveAssignedAccess } from '../modules/admin/auth/accessPolicy';
@@ -57,6 +57,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Once a session has resolved, a scope change revalidates access in the background
   // instead of raising `loading`, which would blank the private area.
   const sessionResolvedRef = useRef(false);
+  // The institution in use survives the sign-out so a tab closed from elsewhere can return to its public portal.
+  const knownInstitution = useRef<string | null>(null);
+  const ownLogout = useRef(false);
   const roleRevision = useRef(0);
   const sessionUserId = useRef<string | null>(null);
   const sessionRevision = useRef(0);
@@ -203,6 +206,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   if (!loading) sessionResolvedRef.current = true;
+  knownInstitution.current = institutionId ?? scope.institution ?? scope.slug ?? knownInstitution.current;
   // Adding the already-resolved institution to the URL revalidates quietly; naming another one must wait for its role.
   const sameInstitution = (!scope.institution && !scope.slug)
     || Boolean(scope.institution && institutionId && scope.institution.toLowerCase() === institutionId.toLowerCase());
@@ -228,6 +232,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     let currentSessionUserId: string | null = null;
+    // Another tab ended the session: leave the private area in one step instead of painting an empty panel.
+    const leaveAfterRemoteSignOut = () => {
+      if (ownLogout.current) return;
+      const target = remoteSignOutTarget(window.location.origin, window.location.pathname, knownInstitution.current);
+      if (target) window.location.replace(target);
+    };
+    const onStorage = (event: StorageEvent) => {
+      if (event.key?.startsWith('sb-') && event.key.endsWith('-auth-token') && event.newValue === null) leaveAfterRemoteSignOut();
+    };
+    const browser = window;
+    browser.addEventListener('storage', onStorage);
     const applySession = async (nextSession: Session | null) => {
       const revision = ++sessionRevision.current;
       sessionUserId.current = nextSession?.user.id ?? null;
@@ -285,6 +300,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         window.setTimeout(() => { if (active) void initializeSession(nextSession); }, 0);
         return;
       }
+      if (event === 'SIGNED_OUT') leaveAfterRemoteSignOut();
       sessionObserved = true;
       const revision = ++sessionRevision.current;
       if (event === 'PASSWORD_RECOVERY') setIsPasswordRecovery(true);
@@ -332,6 +348,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     return () => {
       active = false;
+      browser.removeEventListener('storage', onStorage);
       roleRevision.current++;
       authListener.subscription.unsubscribe();
     };
@@ -402,6 +419,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = async () => {
     const destination = new URL(logoutDestination(currentAdminScope(window.location.search), institutionId), window.location.origin).href;
     setLogoutPending(true);
+    ownLogout.current = true;
     try {
       await logoutToPublicInstitution(() => supabase.auth.signOut(), destination, () => {
         writeSessionValue('auth-login-method', null);
@@ -420,6 +438,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setPublicLogoutTarget(publicUrl.pathname + publicUrl.search);
       });
     } finally {
+      ownLogout.current = false;
       setLogoutPending(false);
     }
   };

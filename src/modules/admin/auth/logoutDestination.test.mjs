@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { logoutDestination, logoutToPublicInstitution } from './logoutDestination.ts';
+import { logoutDestination, logoutToPublicInstitution, remoteSignOutTarget } from './logoutDestination.ts';
 
 test('logout returns every school and role to its public root with a clean context', async () => {
   for (const slug of ['ue-luz-de-america','ue-puerto-limon','ue-la-concordia','ue-el-esfuerzo']) {
@@ -30,4 +30,15 @@ test('logout uses the current origin and only the verified institution on localh
       assert.deepEqual([...target.searchParams.keys()], ['institution']);
     }
   }
+});
+
+test('a tab whose session ended elsewhere goes to the public portal of its institution in one step', () => {
+  const origin = 'https://demo.test';
+  assert.equal(remoteSignOutTarget(origin, '/panel/admin', 'id-1'), 'https://demo.test/?institution=id-1');
+  assert.equal(remoteSignOutTarget(origin, '/panel/publicaciones/noticias', 'ue luz'), 'https://demo.test/?institution=ue%20luz');
+  assert.equal(remoteSignOutTarget(origin, '/ue-luz/dece', null), 'https://demo.test/');
+});
+
+test('public pages stay where they are when the session ends elsewhere', () => {
+  for (const path of ['/', '/login', '/register', '/proyectos']) assert.equal(remoteSignOutTarget('https://demo.test', path, 'id-1'), null, path);
 });

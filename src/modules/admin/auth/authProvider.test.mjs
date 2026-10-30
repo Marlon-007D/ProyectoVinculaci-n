@@ -179,3 +179,26 @@ test('adding the already-resolved institution to the URL does not raise loading'
   assert(app.snapshots.slice(before).every(snapshot => !snapshot.loading));
   assert.equal(app.value.institutionId, 'a');
 });
+
+test('a sign-out made in another tab sends the private panel to the public portal in one step', async t => {
+  const app = authProviderHarness(t, session('admin'));
+  app.setQuery(twoSchools);
+  app.scope('?institution=a&slug=school-a');
+  await app.until(value => !value.loading && value.institutionId === 'a');
+  app.emit('SIGNED_OUT', null);
+  assert.deepEqual(app.replacements, ['http://localhost:5173/?institution=a']);
+  await app.until(value => value.user === null);
+});
+
+test('the normal logout and a public page never trigger the remote redirect', async t => {
+  const app = authProviderHarness(t, session('admin'));
+  app.scope('?institution=a&slug=school-a');
+  await app.until(value => !value.loading && value.role === 'institution_admin');
+  await app.value.logout();
+  assert.deepEqual(app.replacements, []);
+  const publicTab = authProviderHarness(t, session('admin'));
+  await publicTab.until(value => !value.loading);
+  publicTab.location.pathname = '/';
+  publicTab.emit('SIGNED_OUT', null);
+  assert.deepEqual(publicTab.replacements, []);
+});

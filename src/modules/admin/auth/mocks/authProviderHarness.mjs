@@ -18,12 +18,13 @@ export function authProviderHarness(t, initialSession = null, { mfaEnabled = tru
   const snapshots = [];
   const calls = [];
   const oauthRequests = [];
-  const location = { pathname: '/panel/admin', search: '', origin: 'http://localhost:5173' };
+  const replacements = [];
+  const location = { pathname: '/panel/admin', search: '', origin: 'http://localhost:5173', replace: url => { replacements.push(url); } };
   const stored = new Map(loginMethod ? [['auth-login-method', loginMethod]] : []);
   const hadWindow = Object.hasOwn(globalThis, 'window');
   const previousWindow = globalThis.window;
   const previousStorage = Object.getOwnPropertyDescriptor(globalThis, 'sessionStorage');
-  globalThis.window = { location, setTimeout, clearTimeout };
+  globalThis.window = { location, setTimeout, clearTimeout, addEventListener() {}, removeEventListener() {} };
   Object.defineProperty(globalThis, 'sessionStorage', { configurable: true, value: {
     getItem: key => stored.get(key) ?? null,
     setItem: (key, item) => stored.set(key, item),
@@ -144,7 +145,7 @@ export function authProviderHarness(t, initialSession = null, { mfaEnabled = tru
   });
   render();
   return {
-    get value() { return value; }, location, navigate, snapshots, calls, oauthRequests,
+    get value() { return value; }, location, navigate, snapshots, replacements, calls, oauthRequests,
     setOrigin(origin) { location.origin = origin; },
     setQuery(next) { query = next; },
     emit(event, nextSession) { session = nextSession; listener(event, nextSession); },

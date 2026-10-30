@@ -18,6 +18,8 @@ import { SessionProvider } from './core/auth/session';
 import AdminRoutes from './modules/admin/AdminRoutes';
 import { AcademicManagementRoutes } from './features/feats/pages/AcademicManagementRoutes';
 import { returnToFromLocation } from './modules/admin/auth/returnTo';
+import { logoutDestination } from './modules/admin/auth/logoutDestination';
+import { currentAdminScope } from './modules/admin/auth/institutionNavigation';
 import { AuthPage } from './features/auth/pages/AuthPage';
 import { membershipRequestService } from './modules/admin/userManagement/membershipRequestService';
 import { RegistrationRoute } from './modules/auth/RegistrationRoute';
@@ -52,14 +54,21 @@ function PublicDeceRoute() {
 // One private layout for every /panel workspace: InstitutionProvider and the site frame stay mounted
 // while the user moves between modules, so only the content area changes.
 function PrivateLayout() {
-  const { user, loading } = useAuth();
+  const { user, role, loading } = useAuth();
   const { activeInstitution, loadingTenant } = useTenant();
+  const { pathname, search } = useLocation();
   const resolvedFor = useRef<string | null>(null);
   if (!loading && !loadingTenant) resolvedFor.current = user?.id ?? null;
   // Children decide redirects from `user`, which is null until the session resolves.
   const resolving = loading || (Boolean(user) && resolvedFor.current !== user?.id);
   const shell = <PrivateWorkspace><PrivateContentSkeleton /></PrivateWorkspace>;
   if (resolving) return shell;
+  // Admin pages handle their own login and invitation flows; every other private page needs a session and an institution.
+  const ownsAccess = /^\/panel\/(?:admin|superadmin|instituciones)(?:\/|$)/.test(pathname);
+  const homeHref = logoutDestination(currentAdminScope(search), null);
+  if (!user && !ownsAccess) return <Navigate to={{ pathname: '/login', search }} state={{ returnTo: returnToFromLocation({ pathname, search, hash: '' }) }} replace />;
+  if (user && !activeInstitution && role !== 'super_admin' && !ownsAccess)
+    return <ErrorPage kind="institution" homeHref={homeHref} loginHref={'/login' + search} />;
   const outlet = <Outlet />;
   const content = user ? <PrivateWorkspace>{outlet}</PrivateWorkspace> : outlet;
   if (!activeInstitution) return <><InstitutionalHeader />{content}</>;

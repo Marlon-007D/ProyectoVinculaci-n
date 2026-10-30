@@ -30,7 +30,7 @@ test('rutas de integración conservan portada, cursos y navegación existente',(
   const {default:App}=load('src/App.tsx',{'react':{...react,lazy:()=>marker('NEW_MODULE')},'react/jsx-runtime':jsx,
    'react-router-dom':{...router,BrowserRouter:({children})=>react.createElement(router.MemoryRouter,{initialEntries:[path]},children)},
 
-   './core/AuthContext':{AuthProvider:({children})=>children,useAuth:()=>authState},'./modules/admin/auth/returnTo':{returnToFromLocation:()=>null},
+   './core/AuthContext':{AuthProvider:({children})=>children,useAuth:()=>authState},'./modules/admin/auth/returnTo':{returnToFromLocation:()=>null},'./modules/admin/auth/logoutDestination':{logoutDestination:()=>'/'},'./modules/admin/auth/institutionNavigation':{currentAdminScope:()=>({})},
    './core/TenantContext':{TenantProvider:({children})=>children,useTenant:()=>tenantState},
    './modules/site/components/Layout/InstitutionSessionLayout':{InstitutionSessionLayout:({children})=>children},
    './modules/site/components/Layout/PrivateWorkspace':{PrivateWorkspace:({children})=>children},'./modules/site/components/Layout/PrivateContentSkeleton':{PrivateContentSkeleton:marker('PRIVATE_SKELETON')},
@@ -56,9 +56,16 @@ test('rutas de integración conservan portada, cursos y navegación existente',(
   });
   return require('react-dom/server').renderToStaticMarkup(react.createElement(App));
  }
+ authState={user:{id:'u0'},role:'institution_admin',loading:false};tenantState={activeInstitution:{institution_id:'i0'},hasModuleAccess:()=>true,loadingTenant:false};
  for(const [path,expected] of [['/','EXISTING_HOME'],['/admin-cursos','EXISTING_COURSES'],['/unknown','EXISTING_NOT_FOUND'],['/panel/proyectos','NEW_MODULE'],['/panel/portal','NEW_MODULE'],['/proyectos?transparency=1','NEW_MODULE'],['/portal?institution=school','NEW_MODULE'],['/panel/ruta-inexistente','ERROR_PAGE'],['/panel/cursos','ACADEMIC']]){
   assert.ok(renderApp(path).includes(expected),path+' did not preserve its route');
  }
+ // Without a session, private pages never paint the workspace; with a session but no institution they show the common error page.
+ authState={user:null,loading:false};tenantState={activeInstitution:null,hasModuleAccess:()=>true,loadingTenant:false};
+ assert.ok(!renderApp('/panel/cursos').includes('ACADEMIC'),'a signed-out visitor must not see a private page');
+ authState={user:{id:'u0'},role:'institution_admin',loading:false};
+ const noInstitution=renderApp('/panel/cursos');
+ assert.ok(noInstitution.includes('ERROR_PAGE')&&!noInstitution.includes('ACADEMIC'),'no institution resolved shows ErrorPage');
  // Reloading a private page: children redirect from `user`, which is null until the session resolves.
  for(const path of ['/panel/publicaciones/cuadro-de-honor','/panel/cursos/categorias','/panel/dece','/panel/admin']){
   authState={user:null,loading:true};tenantState={activeInstitution:null,loadingTenant:true};
@@ -66,7 +73,7 @@ test('rutas de integración conservan portada, cursos y navegación existente',(
   assert.equal(loading.split('PRIVATE_SKELETON').length-1,1,path+' must show exactly one private skeleton while the session loads');
   for(const page of ['ACADEMIC','ADMIN','DECE'])assert.ok(!loading.includes(page),path+' rendered '+page+' before the session resolved');
  }
- authState={user:{id:'u1'},loading:false};tenantState={activeInstitution:null,loadingTenant:false};
+ authState={user:{id:'u1'},role:'institution_admin',loading:false};tenantState={activeInstitution:{institution_id:'i1'},hasModuleAccess:()=>true,loadingTenant:false};
  const ready=renderApp('/panel/publicaciones/cuadro-de-honor');
  assert.ok(ready.includes('ACADEMIC')&&!ready.includes('PRIVATE_SKELETON'),'the page replaces the skeleton once the session resolves');
  authState={user:{id:'u1'},loading:false};tenantState={activeInstitution:null,loadingTenant:true};
