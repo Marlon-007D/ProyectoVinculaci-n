@@ -10,3 +10,20 @@
 [data-dece-shell] .btn:focus-visible { outline: 2px solid #1a73e8; outline-offset: 2px; }
 [data-dece-shell] .form-control, [data-dece-shell] .form-select { min-height: 42px; border: 1px solid #dadce0; border-radius: 12px; font: 400 14px Roboto, Arial, sans-serif; }
 [data-dece-shell] .form-control:focus, [data-dece-shell] .form-select:focus { border-color: #1a73e8; outline: 2px solid #d2e3fc; box-shadow: none; }
+
+/* Breadcrumb: one per page, inside the content, with room above and below. */
+[data-dece-shell] nav[aria-label="Ruta de navegación"] { margin: 0 0 16px; }
+[data-dece-shell] .dash-crumb { margin: 0 0 16px; }
+[data-dece-shell] .main-area { padding-top: 24px; }
+
+/* Filters: the same field look as the projects module (.project-field): small label, gray box, 12px radius, 44px, one row. */
+[data-dece-shell] .dece-filters { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; margin: 0 0 16px; padding: 0; border: 0; background: transparent; }
+[data-dece-shell] .dece-filters label { display: grid; gap: 6px; margin: 0; color: #5f6368; font: 600 12px Roboto, Arial, sans-serif; }
+[data-dece-shell] .dece-filters .search-box { flex: 1 1 260px; max-width: none; padding: 0; border: 0; background: transparent; }
+[data-dece-shell] .dece-filters input, [data-dece-shell] .dece-filters select, [data-dece-shell] .dece-filters .form-control, [data-dece-shell] .dece-filters .form-select { box-sizing: border-box; width: 100%; min-width: 150px; height: 44px; padding: 0 14px; border: 1px solid transparent; border-radius: 12px; background-color: #f1f3f4; color: #202124; font: 400 14px Roboto, Arial, sans-serif; box-shadow: none; }
+[data-dece-shell] .dece-filters input:focus, [data-dece-shell] .dece-filters select:focus { border-color: #1a73e8; background-color: #fff; outline: 2px solid #d2e3fc; box-shadow: none; }
+[data-dece-shell] .dece-filters .btn-link { align-self: flex-end; height: 44px; padding: 0 14px; background: transparent; color: #1a73e8; text-decoration: none; }
+[data-dece-shell] .dece-filters .btn-link:hover { background: #e8f1ff; }
+[data-dece-shell] .dece-filters [role="group"] { display: inline-flex; gap: 8px; margin-left: auto; padding: 0; border: 0; }
+[data-dece-shell] .dece-filters [role="group"] button { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 16px; border: 0; border-radius: 22px; background: #e8f1ff; color: #38516e; font: 600 13px Roboto, Arial, sans-serif; cursor: pointer; }
+[data-dece-shell] .dece-filters [role="group"] button[aria-pressed="true"] { background: #1a73e8; color: #fff; }

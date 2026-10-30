@@ -1,4 +1,4 @@
-﻿import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faArrowLeft, faArrowRight } from '@fortawesome/free-solid-svg-icons'
 import type { Student } from '../../types/student'
 import type { DeceScreen } from '../../types/screen'
@@ -56,7 +56,7 @@ export default function StudentFormLayout({
         <FontAwesomeIcon icon={faArrowLeft} aria-hidden="true" />
         {detailReview ? 'Volver a revisión de fichas' : 'Volver al directorio'}
       </button>
-      {detailReview && <nav aria-label="Migas de pan" className="mb-3"><ol className="breadcrumb"><li className="breadcrumb-item"><button type="button" className="btn btn-link p-0" onClick={onBack}>Revisión de fichas</button></li><li className="breadcrumb-item active" aria-current="page">{heading}</li></ol></nav>}
+      {detailReview && <nav aria-label="Ruta de navegación" className="mb-3"><ol className="breadcrumb"><li className="breadcrumb-item"><button type="button" className="btn btn-link p-0" onClick={onBack}>Revisión de fichas</button></li><li className="breadcrumb-item active" aria-current="page">{heading}</li></ol></nav>}
       <div className="eyebrow">
         FICHAS ESTUDIANTILES / {general ? 'REGISTRO GENERAL' : 'AUTORIZACIÓN'}
       </div>

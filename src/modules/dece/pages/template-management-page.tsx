@@ -253,7 +253,7 @@ function LoadingState() { return <PrivateContentSkeleton label="Cargando plantil
 
 function Breadcrumbs({ name, section, onList, onTemplate }: { name?: string; section?: string; onList?: () => void; onTemplate?: () => void }) {
   const base = location.pathname.replace(/\/plantillas(?:\/[^/]+)?\/?$/, '')
-  return <nav aria-label="Migas de pan" className={styles.breadcrumb}><ol><li><a href={base || '/panel/dece'}>Panel principal</a></li>{name ? <><li><a href={`${base}/plantillas${location.search}`} onClick={event => { event.preventDefault(); onList?.() }}>Plantillas de fichas</a></li><li>{section ? <a href={location.pathname} onClick={event => { event.preventDefault(); onTemplate?.() }}>{name}</a> : <span aria-current="page">{name}</span>}</li>{section && <li aria-current="page">{section}</li>}</> : <li aria-current="page">Plantillas de fichas</li>}</ol></nav>
+  return <nav aria-label="Ruta de navegación" className={styles.breadcrumb}><ol><li><a href={base || '/panel/dece'}>Panel principal</a></li>{name ? <><li><a href={`${base}/plantillas${location.search}`} onClick={event => { event.preventDefault(); onList?.() }}>Plantillas de fichas</a></li><li>{section ? <a href={location.pathname} onClick={event => { event.preventDefault(); onTemplate?.() }}>{name}</a> : <span aria-current="page">{name}</span>}</li>{section && <li aria-current="page">{section}</li>}</> : <li aria-current="page">Plantillas de fichas</li>}</ol></nav>
 }
 
 function TemplateCard({ template, index, pdfBusy, actionBusy, onOpen, onPdf, onToggleStatus }: { template: Template; index: number; pdfBusy: boolean; actionBusy: boolean; onOpen: () => void; onPdf: () => Promise<void>; onToggleStatus: () => void }) {

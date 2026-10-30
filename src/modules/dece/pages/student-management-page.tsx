@@ -278,7 +278,7 @@ export default function StudentManagementPage({ onOpenForm, onStudentSaved, onOp
   const displayedName = record ? `${record.first_name} ${record.last_name}` : ''
 
   return <div className="page-content container-fluid">
-    {record && <nav aria-label="Migas de pan" className={styles.breadcrumb}><ol><li><button type="button" onClick={() => { history.pushState(null, '', basePath); setRouteStudentId(''); setError('') }}>Estudiantes</button></li><li aria-current="page">{displayedName}</li></ol></nav>}
+    {record && <nav aria-label="Ruta de navegación" className={styles.breadcrumb}><ol><li><button type="button" onClick={() => { history.pushState(null, '', basePath); setRouteStudentId(''); setError('') }}>Estudiantes</button></li><li aria-current="page">{displayedName}</li></ol></nav>}
     <div className="eyebrow">GESTIÓN DECE</div>
     <div className="welcome-row list-title"><div><h1>{record ? 'Detalle del estudiante' : 'Estudiantes'}</h1><p className="subheading">Registra y actualiza estudiantes de tu institución.</p></div>
       {record ? <button className="btn btn-outline-secondary" type="button" onClick={() => { history.pushState(null, '', basePath); setRouteStudentId(''); setError('') }}>Volver al listado</button> : !creating && <button className={`btn btn-primary ${styles.registerButton}`} type="button" onClick={() => { setValues(blankFields()); setValidationError(''); setCreating(true) }}>Registrar estudiante</button>}
@@ -297,7 +297,7 @@ export default function StudentManagementPage({ onOpenForm, onStudentSaved, onOp
       <StudentCases studentId={record.student_id} institutionId={integration?.institutionId ?? ''} onNew={() => onOpenCases?.(record.student_id)} onOpenCase={caseId => onOpenCase?.(caseId)} />
     </>}
     {!record && !creating && <>
-      <section className={styles.filters} aria-label="Filtros y orden de estudiantes">
+      <section className={`${styles.filters} dece-filters`} aria-label="Filtros y orden de estudiantes">
         <label>Curso<select className="form-select" value={course} onChange={event => setCourse(event.target.value)}><option value="all">Todos los cursos</option>{grades.map(grade => <option key={grade} value={grade}>{grade}</option>)}</select></label>
         <label className={styles.search}>Buscar estudiante<input className="form-control" aria-label="Buscar estudiantes por nombres, apellidos o cédula" value={search} onChange={event => setSearch(event.target.value)} placeholder="Nombres, apellidos o cédula" /></label>
         <label>Ordenar por<select className="form-select" value={sort} onChange={event => setSort(event.target.value as StudentSort)}><option value="last_name">Apellidos y nombres</option><option value="first_name">Nombres</option><option value="national_id">Cédula</option><option value="grade_level">Curso</option><option value="enrollment_number">Matrícula</option></select></label>

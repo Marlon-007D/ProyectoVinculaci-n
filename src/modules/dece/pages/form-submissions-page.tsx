@@ -185,7 +185,7 @@ export default function FormSubmissionsPage({ onOpen }: { onOpen: (student: Stud
     <p className="visually-hidden" role="status" aria-live="polite">{announcement || `Mostrando ${from} a ${to} de ${sorted.length}`}</p>
     {loading && <PrivateContentSkeleton label="Cargando fichas" />}{error && <div className="notice sensitive" role="alert">{error}</div>}
     {!loading && !error && <>
-      <section className={styles.filters} aria-label="Filtros de fichas">
+      <section className={`${styles.filters} dece-filters`} aria-label="Filtros de fichas">
         <label>Tipo de ficha<select className="form-select" value={query.form} onChange={event => updateQuery({ form: event.target.value }, true)}><option value="all">Todas las fichas</option>{forms.map(form => <option key={form.id} value={form.id}>{form.name}</option>)}</select></label>
         <label>Estado<select className="form-select" value={query.state} onChange={event => updateQuery({ state: event.target.value as typeof query.state }, true)}><option value="all">Todos</option><option value="draft">Borrador</option><option value="submitted">Enviada</option><option value="reviewed">Revisada</option></select></label>
         <label className={styles.check}><input type="checkbox" checked={query.includeDisabled} onChange={event => updateQuery({ includeDisabled: event.target.checked }, true)} /> Ver fichas deshabilitadas</label>
